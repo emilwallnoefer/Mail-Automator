@@ -5,7 +5,10 @@ import { motion } from "framer-motion";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,26 +20,48 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createClient();
-    const allowedDomain = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN;
-    if (allowedDomain && !email.toLowerCase().endsWith(`@${allowedDomain}`)) {
-      setError(`Please use your @${allowedDomain} email.`);
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
+    if (mode === "signin") {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = "/dashboard";
       setLoading(false);
       return;
     }
 
     const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
-    const { error: signInError } = await supabase.auth.signInWithOtp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
-      options: { emailRedirectTo: redirectTo },
+      password,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
     });
 
-    if (signInError) {
-      setError(signInError.message);
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
       return;
     }
 
-    setMessage("Magic link sent. Open your email to continue.");
+    setMessage("Account created. If email confirmation is enabled, confirm your email first.");
+    setPassword("");
+    setConfirmPassword("");
     setLoading(false);
   }
 
@@ -56,29 +81,86 @@ export default function LoginPage() {
             </p>
             <h1 className="text-2xl font-semibold md:text-3xl">Mail Automator</h1>
             <p className="mt-2 text-sm text-slate-200/80">
-              Sign in with your Flyability email to create Gmail drafts.
+              Sign in with email and password to create Gmail drafts.
             </p>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-white/15 bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signin");
+                setMessage(null);
+                setError(null);
+              }}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                mode === "signin" ? "bg-cyan-400/90 text-slate-950" : "text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signup");
+                setMessage(null);
+                setError(null);
+              }}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                mode === "signup" ? "bg-cyan-400/90 text-slate-950" : "text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              Sign up
+            </button>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm text-slate-100/90">Work email</span>
+              <span className="mb-2 block text-sm text-slate-100/90">Email</span>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@flyability.com"
+                placeholder="you@example.com"
                 className="h-12 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none transition focus:border-cyan-300/70 focus:bg-white/15"
               />
             </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm text-slate-100/90">Password</span>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                className="h-12 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none transition focus:border-cyan-300/70 focus:bg-white/15"
+              />
+            </label>
+
+            {mode === "signup" && (
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate-100/90">Confirm password</span>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat your password"
+                  className="h-12 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none transition focus:border-cyan-300/70 focus:bg-white/15"
+                />
+              </label>
+            )}
 
             <button
               type="submit"
               disabled={loading}
               className="h-12 w-full rounded-xl bg-cyan-400/90 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
             >
-              {loading ? "Sending..." : "Send magic link"}
+              {loading ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
             </button>
           </form>
 

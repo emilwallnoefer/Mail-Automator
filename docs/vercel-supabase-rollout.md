@@ -13,7 +13,7 @@ This guide deploys the web app in `web/` for you and one colleague.
    - **Redirect URLs**:
      - `http://localhost:3000/auth/callback`
      - `https://mail-helper.vercel.app/auth/callback`
-4. In `Authentication -> Providers -> Email`, enable magic link sign-in.
+4. In `Authentication -> Providers -> Email`, enable email/password sign-in.
 
 ## 2) Local run
 
@@ -28,8 +28,6 @@ Set values in `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` (optional, e.g. `flyability.com`)
-
 Then run:
 
 ```bash
@@ -48,7 +46,6 @@ Open [http://localhost:3000](http://localhost:3000).
 3. Add environment variables in Vercel project settings:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` (optional)
 4. Deploy.
 
 ## 4) Final auth URL sync
@@ -64,7 +61,7 @@ After first Vercel deploy:
 ## 5) Colleague onboarding
 
 1. Share app URL.
-2. Colleague signs in via magic link using work email.
+2. Colleague signs in with email + password.
 3. They access dashboard and use app flow.
 
 ## Notes
