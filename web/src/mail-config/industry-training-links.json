@@ -1,0 +1,60 @@
+{
+  "courses": [
+    {
+      "id": "introductory_training",
+      "label_en": "Introductory Training Course",
+      "label_de": "Einführungstraining (Online-Kurs)",
+      "url": "https://flyabilityacademy.thinkific.com/courses/Introductorytrainingcourse",
+      "keywords": ["intro", "new pilot", "beginner", "onboarding"]
+    },
+    {
+      "id": "gas_sensor",
+      "label_en": "Gas Sensor Course",
+      "label_de": "Gas Sensor Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/Gassensor",
+      "keywords": ["gas", "h2s", "methane", "hazmat", "chemical", "chemie", "petrochemical"]
+    },
+    {
+      "id": "cement",
+      "label_en": "Cement Industry Course",
+      "label_de": "Zement-Industrie Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/cement",
+      "keywords": ["cement", "clinker", "kiln"]
+    },
+    {
+      "id": "mining",
+      "label_en": "Mining Industry Course",
+      "label_de": "Bergbau Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/mining",
+      "keywords": ["mining", "mine", "stope", "underground"]
+    },
+    {
+      "id": "wastewater",
+      "label_en": "Wastewater Course",
+      "label_de": "Abwasser Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/elios-3-wastewater-training",
+      "keywords": ["wastewater", "sewer", "water treatment", "drainage"]
+    },
+    {
+      "id": "regulation",
+      "label_en": "Regulation Course",
+      "label_de": "Regulatorik Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/regulation",
+      "keywords": ["regulation", "compliance", "authority", "rules", "aviation law"]
+    },
+    {
+      "id": "elios3_ut",
+      "label_en": "Elios 3 UT Course",
+      "label_de": "Elios 3 UT Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/Elios3UT",
+      "keywords": ["ut", "ultrasonic", "thickness", "ndt", "corrosion"]
+    },
+    {
+      "id": "faro_connect",
+      "label_en": "FARO Connect Online Course",
+      "label_de": "FARO Connect Online-Kurs",
+      "url": "https://flyabilityacademy.thinkific.com/courses/Faro-connect-online-course",
+      "keywords": ["faro", "point cloud", "scan", "bim", "surveying"]
+    }
+  ]
+}

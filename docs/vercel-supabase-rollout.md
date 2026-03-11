@@ -28,6 +28,9 @@ Set values in `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI` (local: `http://localhost:3000/api/gmail/callback`)
 Then run:
 
 ```bash
@@ -46,9 +49,20 @@ Open [http://localhost:3000](http://localhost:3000).
 3. Add environment variables in Vercel project settings:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `GOOGLE_OAUTH_CLIENT_ID`
+   - `GOOGLE_OAUTH_CLIENT_SECRET`
+   - `GOOGLE_OAUTH_REDIRECT_URI` (prod: `https://<your-domain>/api/gmail/callback`)
 4. Deploy.
 
-## 4) Final auth URL sync
+## 4) Google OAuth setup (for Gmail draft creation)
+
+1. In Google Cloud Console, create OAuth credentials for a web application.
+2. Add authorized redirect URIs:
+   - `http://localhost:3000/api/gmail/callback`
+   - `https://<your-domain>/api/gmail/callback`
+3. Enable Gmail API in the same project.
+
+## 5) Final auth URL sync
 
 After first Vercel deploy:
 
@@ -58,11 +72,12 @@ After first Vercel deploy:
    - Site URL = production URL
    - Redirect URL = `<production-url>/auth/callback`
 
-## 5) Colleague onboarding
+## 6) Colleague onboarding
 
 1. Share app URL.
 2. Colleague signs in with email + password.
-3. They access dashboard and use app flow.
+3. In dashboard, click **Connect Gmail** once.
+4. Generate mail preview and click **Create Gmail draft**.
 
 ## Notes
 

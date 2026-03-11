@@ -1,0 +1,44 @@
+{
+  "common": [
+    {
+      "link_key": "INSPECTOR_URL",
+      "label_en": "Inspector 5",
+      "label_de": "Inspector 5",
+      "desc_en": "Software to download drone flight data",
+      "desc_de": "Software zum Herunterladen von Flugdaten"
+    },
+    {
+      "link_key": "KNOWLEDGE_BASE_URL",
+      "label_en": "Knowledge Base",
+      "label_de": "Knowledge Base",
+      "desc_en": "An answer to (almost) all your questions",
+      "desc_de": "Eine Antwort auf (fast) alle eure Fragen"
+    }
+  ],
+  "conditional": [
+    {
+      "link_key": "NUBIGON_URL",
+      "label_en": "Nubigon",
+      "label_de": "Nubigon",
+      "desc_en": "Software for creating point cloud animations",
+      "desc_de": "Software zur Erstellung von Punktwolken-Animationen",
+      "industry_course_ids": ["faro_connect"]
+    },
+    {
+      "link_key": "INTRO_UT_TRAINING_URL",
+      "label_en": "Intro UT Training Deck",
+      "label_de": "UT Einführungstraining",
+      "desc_en": "Basics about our UT kit and how to use it",
+      "desc_de": "Grundlagen zum UT-Kit und dessen Anwendung",
+      "industry_course_ids": ["elios3_ut"]
+    },
+    {
+      "link_key": "CUSTOMER_TOOLKIT_URL",
+      "label_en": "Customer Toolkit",
+      "label_de": "Customer Toolkit",
+      "desc_en": "Downloadable brand assets, brochures, spec sheets, sample datasets, and media for Elios 3",
+      "desc_de": "Downloadbare Brand-Assets, Broschüren, Datenblätter, Beispieldatensätze und Medien für Elios 3",
+      "include_flag": "include_customer_toolkit"
+    }
+  ]
+}
