@@ -1,0 +1,74 @@
+# Vercel + Supabase Setup (2-person internal helper)
+
+This guide deploys the web app in `web/` for you and one colleague.
+
+## 1) Supabase project
+
+1. Create a Supabase project.
+2. In `Project Settings -> API`, copy:
+   - `Project URL`
+   - `anon public key`
+3. In `Authentication -> URL Configuration` set:
+   - **Site URL**: your Vercel production URL (later), e.g. `https://mail-helper.vercel.app`
+   - **Redirect URLs**:
+     - `http://localhost:3000/auth/callback`
+     - `https://mail-helper.vercel.app/auth/callback`
+4. In `Authentication -> Providers -> Email`, enable magic link sign-in.
+
+## 2) Local run
+
+From project root:
+
+```bash
+cd web
+cp .env.example .env.local
+```
+
+Set values in `.env.local`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` (optional, e.g. `flyability.com`)
+
+Then run:
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## 3) Vercel deploy
+
+1. Push this folder to GitHub.
+2. In Vercel:
+   - Import repository
+   - Set **Root Directory** to `web`
+3. Add environment variables in Vercel project settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` (optional)
+4. Deploy.
+
+## 4) Final auth URL sync
+
+After first Vercel deploy:
+
+1. Copy production URL.
+2. Go back to Supabase `Authentication -> URL Configuration`.
+3. Update:
+   - Site URL = production URL
+   - Redirect URL = `<production-url>/auth/callback`
+
+## 5) Colleague onboarding
+
+1. Share app URL.
+2. Colleague signs in via magic link using work email.
+3. They access dashboard and use app flow.
+
+## Notes
+
+- This app is draft-helper UX and auth shell for team usage.
+- Keep Gmail draft creation logic behind explicit confirmation (draft only).
+- Upgrade to paid plans once usage increases or if team policy requires non-Hobby hosting.

@@ -1,0 +1,11 @@
+{
+  "mail_type": "post",
+  "language": "en",
+  "recipient_name": "Irene and Iraklis",
+  "company_name": "Demo Company",
+  "date": "2026-04-03",
+  "location": "Athens",
+  "to": "irene@example.com,iraklis@example.com",
+  "custom_opener_note": "I apologize for not being able to attend the last day of the training myself, hopefully Stefano and Camilla were still able to give you the knowledge you needed to complete your own UT inspections.",
+  "company_context_line": "Great to see how your team is building an in-house inspection workflow."
+}

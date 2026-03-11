@@ -1,0 +1,11 @@
+{
+  "mail_type": "post",
+  "language": "de",
+  "recipient_name": "Team Muster",
+  "company_name": "Muster GmbH",
+  "date": "2026-04-08",
+  "location": "Wien",
+  "to": "team@example.com",
+  "custom_opener_note": "",
+  "company_context_line": "Vielen Dank fuer die gute Zusammenarbeit waehrend der Schulung."
+}

@@ -1,0 +1,13 @@
+{
+  "mail_type": "pre",
+  "template_variant": "abroad",
+  "language": "de",
+  "training_type": "aiim_3day",
+  "recipient_name": "Kundenteam",
+  "company_name": "Beispiel AG",
+  "date": "2026-04-10",
+  "location": "Hamburg",
+  "to": "kunde@example.com",
+  "custom_opener_note": "",
+  "company_context_line": ""
+}

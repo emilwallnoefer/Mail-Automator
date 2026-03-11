@@ -1,0 +1,13 @@
+{
+  "mail_type": "pre",
+  "template_variant": "lausanne",
+  "language": "en",
+  "training_type": "intro_1day",
+  "recipient_name": "Irene and Iraklis",
+  "company_name": "Demo Company",
+  "date": "2026-04-02",
+  "location": "Lausanne",
+  "to": "irene@example.com,iraklis@example.com",
+  "custom_opener_note": "",
+  "company_context_line": ""
+}

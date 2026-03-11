@@ -1,0 +1,17 @@
+{
+  "mail_type": "post",
+  "template_variant": "abroad",
+  "language": "de",
+  "training_type": "intro_1day",
+  "recipient_name": "marko",
+  "company_name": "Synthomer",
+  "date": "04.05",
+  "location": "Germany",
+  "to": "hans@test.com",
+  "cc": "",
+  "custom_opener_note": "",
+  "tone": "neutral",
+  "company_context_line": "Synthomer ist ein globaler Anbieter von Hochleistungspolymeren und Spezialchemie-Lösungen.",
+  "include_certification_note": false,
+  "include_simulator_note": false
+}

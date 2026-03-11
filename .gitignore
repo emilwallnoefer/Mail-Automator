@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+
+scripts/credentials.json
+scripts/token.json
+
+web/.env.local
+web/.next/
+web/node_modules/
