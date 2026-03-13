@@ -5,14 +5,15 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as MailInput;
 
-    const required: Array<keyof MailInput> = [
+    const requiredBase: Array<keyof MailInput> = [
       "mail_type",
       "language",
       "recipient_name",
       "company_name",
-      "date",
-      "location",
     ];
+    const requiredPre: Array<keyof MailInput> = ["template_variant", "training_type", "date", "location"];
+    const required = payload.mail_type === "pre" ? [...requiredBase, ...requiredPre] : requiredBase;
+
     const missing = required.filter((field) => !payload[field]);
     if (missing.length) {
       return NextResponse.json({ error: `Missing fields: ${missing.join(", ")}` }, { status: 400 });

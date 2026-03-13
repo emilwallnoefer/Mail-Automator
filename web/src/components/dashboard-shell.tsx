@@ -15,10 +15,10 @@ type GenerateResponse = {
 };
 
 type FormState = {
-  mail_type: "pre" | "post";
-  template_variant: "lausanne" | "abroad";
-  language: "en" | "de";
-  training_type: "intro_1day" | "aiim_3day";
+  mail_type: "" | "pre" | "post";
+  template_variant: "" | "lausanne" | "abroad";
+  language: "" | "en" | "de";
+  training_type: "" | "intro_1day" | "aiim_3day";
   recipient_name: string;
   company_name: string;
   date: string;
@@ -30,14 +30,102 @@ type FormState = {
   industry_course_ids: string;
   include_certification_note: boolean;
   include_simulator_note: boolean;
+  include_customer_toolkit: boolean;
+  quick_input: string;
 };
+
+type MailType = FormState["mail_type"];
+
+function parseQuickInput(raw: string, current: FormState): FormState {
+  const text = raw.trim();
+  if (!text) return current;
+
+  // First support key:value lines for robust copy/paste.
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const fromKv: Partial<FormState> = {};
+  for (const line of lines) {
+    const match = line.match(/^([a-zA-Z_]+)\s*:\s*(.+)$/);
+    if (!match) continue;
+    const key = match[1].toLowerCase();
+    const value = match[2].trim();
+    if (key === "mail_type" && /(pre|post)/i.test(value)) fromKv.mail_type = value.toLowerCase() as MailType;
+    if (key === "template_variant" && /(lausanne|abroad|abraod)/i.test(value)) {
+      fromKv.template_variant = value.toLowerCase().replace("abraod", "abroad") as FormState["template_variant"];
+    }
+    if (key === "language" && /(de|en|deutsch|english|german)/i.test(value)) {
+      fromKv.language = /(de|deutsch|german)/i.test(value) ? "de" : "en";
+    }
+    if (key === "training_type" && /(intro|aiim)/i.test(value)) {
+      fromKv.training_type = /aiim/i.test(value) ? "aiim_3day" : "intro_1day";
+    }
+    if (key === "recipient_name") fromKv.recipient_name = value;
+    if (key === "company_name") fromKv.company_name = value;
+    if (key === "date") fromKv.date = value;
+    if (key === "location") fromKv.location = value;
+    if (key === "to") fromKv.to = value;
+    if (key === "cc") fromKv.cc = value;
+    if (key === "bcc") fromKv.bcc = value;
+    if (key === "industry_course_ids") fromKv.industry_course_ids = value;
+    if (key === "custom_opener_note") fromKv.custom_opener_note = value;
+  }
+  if (Object.keys(fromKv).length > 0) {
+    return { ...current, ...fromKv, quick_input: raw };
+  }
+
+  // Fallback shorthand parser: "/mail post abraod de intro marko Synthomer 04.05 Germany hans@test.com"
+  const cleaned = text.replace(/^\/mail\s+/i, "").trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  const next = { ...current, quick_input: raw };
+
+  const take = () => tokens.shift() ?? "";
+
+  const t0 = tokens[0]?.toLowerCase();
+  if (t0 === "post" || t0 === "pre") next.mail_type = take().toLowerCase() as MailType;
+
+  const t1 = tokens[0]?.toLowerCase();
+  if (["abroad", "abraod", "lausanne"].includes(t1)) {
+    next.template_variant = (take().toLowerCase().replace("abraod", "abroad") as FormState["template_variant"]) || "";
+  }
+
+  const t2 = tokens[0]?.toLowerCase();
+  if (["de", "en", "deutsch", "german", "english"].includes(t2)) {
+    const value = take().toLowerCase();
+    next.language = ["de", "deutsch", "german"].includes(value) ? "de" : "en";
+  }
+
+  const t3 = tokens[0]?.toLowerCase();
+  if (t3 && /(intro|aiim)/i.test(t3)) {
+    const value = take().toLowerCase();
+    next.training_type = /aiim/.test(value) ? "aiim_3day" : "intro_1day";
+  }
+
+  const emailMatch = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi);
+  if (emailMatch?.[0]) next.to = emailMatch[0];
+
+  // Remove already-consumed tokens that are obvious fields.
+  const remainder = tokens.filter((token) => !token.includes("@"));
+  const dateIndex = remainder.findIndex((token) => /\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?/.test(token));
+
+  if (!next.recipient_name && remainder[0]) next.recipient_name = remainder[0];
+  if (!next.company_name && remainder[1]) next.company_name = remainder[1];
+  if (!next.date && dateIndex >= 0) next.date = remainder[dateIndex];
+  if (!next.location) {
+    const locationCandidate = dateIndex >= 0 ? remainder[dateIndex + 1] : remainder[2];
+    if (locationCandidate) next.location = locationCandidate;
+  }
+
+  return next;
+}
 
 export function DashboardShell({ email }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>({
-    mail_type: "post",
-    template_variant: "abroad",
-    language: "de",
-    training_type: "intro_1day",
+    mail_type: "",
+    template_variant: "",
+    language: "",
+    training_type: "",
     recipient_name: "",
     company_name: "",
     date: "",
@@ -49,11 +137,31 @@ export function DashboardShell({ email }: DashboardShellProps) {
     industry_course_ids: "",
     include_certification_note: false,
     include_simulator_note: false,
+    include_customer_toolkit: false,
+    quick_input: "",
   });
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
+
+  const shouldShowLanguage = Boolean(form.mail_type);
+  const shouldShowVariant = form.mail_type === "pre" && Boolean(form.language);
+  const shouldShowTrainingType = form.mail_type === "pre" && Boolean(form.template_variant);
+  const shouldShowRecipient =
+    form.mail_type === "post" ? Boolean(form.language) : Boolean(form.training_type);
+  const shouldShowCompany = shouldShowRecipient && Boolean(form.recipient_name);
+  const shouldShowDate = shouldShowCompany && (form.mail_type === "pre" || form.mail_type === "post");
+  const shouldShowTo = form.mail_type === "pre" ? Boolean(form.location) : shouldShowCompany;
+
+  const generateDisabled =
+    !form.mail_type ||
+    !form.language ||
+    !form.recipient_name ||
+    !form.company_name ||
+    !form.to ||
+    (form.mail_type === "pre" && (!form.template_variant || !form.training_type || !form.date || !form.location));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -90,7 +198,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          template_variant: form.template_variant || undefined,
+          training_type: form.training_type || undefined,
+        }),
       });
       const data = (await response.json()) as GenerateResponse | { error: string };
       if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
@@ -209,7 +321,28 @@ export function DashboardShell({ email }: DashboardShellProps) {
         <section className="mt-6 grid gap-6 md:grid-cols-2">
           <div className="glass-card p-6">
             <h2 className="text-lg font-medium">Generate Mail</h2>
-            <p className="mt-1 text-sm text-slate-200/80">Fill once, generate instantly.</p>
+            <p className="mt-1 text-sm text-slate-200/80">
+              Guided mode: each next field appears after the previous one is set.
+            </p>
+
+            <div className="mt-4">
+              <label className="mb-2 block text-xs tracking-wide text-cyan-200/85 uppercase">
+                Quick paste (auto-fill)
+              </label>
+              <textarea
+                placeholder="Paste all info here (e.g. /mail post abraod de intro marko Synthomer 04.05 Germany hans@test.com)"
+                value={form.quick_input}
+                onChange={(e) => setForm({ ...form, quick_input: e.target.value })}
+                className="min-h-20 w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setForm((prev) => parseQuickInput(prev.quick_input, prev))}
+                className="mt-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
+              >
+                Auto-fill fields
+              </button>
+            </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               <select
@@ -217,68 +350,96 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 onChange={(e) => setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] })}
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               >
+                <option value="">mail_type</option>
                 <option value="post">post</option>
                 <option value="pre">pre</option>
               </select>
-              <select
-                value={form.template_variant}
-                onChange={(e) => setForm({ ...form, template_variant: e.target.value as FormState["template_variant"] })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              >
-                <option value="abroad">abroad</option>
-                <option value="lausanne">lausanne</option>
-              </select>
-              <select
-                value={form.language}
-                onChange={(e) => setForm({ ...form, language: e.target.value as FormState["language"] })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              >
-                <option value="de">de</option>
-                <option value="en">en</option>
-              </select>
-              <select
-                value={form.training_type}
-                onChange={(e) => setForm({ ...form, training_type: e.target.value as FormState["training_type"] })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              >
-                <option value="intro_1day">intro_1day</option>
-                <option value="aiim_3day">aiim_3day</option>
-              </select>
             </div>
 
+            {shouldShowLanguage && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <select
+                  value={form.language}
+                  onChange={(e) => setForm({ ...form, language: e.target.value as FormState["language"] })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                >
+                  <option value="">language</option>
+                  <option value="de">de</option>
+                  <option value="en">en</option>
+                </select>
+              </div>
+            )}
+
+            {shouldShowVariant && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <select
+                  value={form.template_variant}
+                  onChange={(e) => setForm({ ...form, template_variant: e.target.value as FormState["template_variant"] })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                >
+                  <option value="">template_variant</option>
+                  <option value="abroad">abroad</option>
+                  <option value="lausanne">lausanne</option>
+                </select>
+              </div>
+            )}
+
+            {shouldShowTrainingType && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <select
+                  value={form.training_type}
+                  onChange={(e) => setForm({ ...form, training_type: e.target.value as FormState["training_type"] })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                >
+                  <option value="">training_type</option>
+                  <option value="intro_1day">intro_1day</option>
+                  <option value="aiim_3day">aiim_3day</option>
+                </select>
+              </div>
+            )}
+
             <div className="mt-3 grid gap-3">
+              {shouldShowRecipient && (
               <input
                 placeholder="recipient_name"
                 value={form.recipient_name}
                 onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               />
+              )}
+              {shouldShowCompany && (
               <input
                 placeholder="company_name"
                 value={form.company_name}
                 onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               />
+              )}
+              {shouldShowDate && (
               <div className="grid grid-cols-2 gap-3">
                 <input
-                  placeholder="date"
+                  placeholder={form.mail_type === "pre" ? "date (required)" : "date (optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
                 <input
-                  placeholder="location"
+                  placeholder={form.mail_type === "pre" ? "location (required)" : "location (optional)"}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </div>
+              )}
+              {shouldShowTo && (
               <input
                 placeholder="to (recipient emails, comma separated)"
                 value={form.to}
                 onChange={(e) => setForm({ ...form, to: e.target.value })}
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               />
+              )}
+              {shouldShowTo && (
               <div className="grid grid-cols-2 gap-3">
                 <input
                   placeholder="cc (optional)"
@@ -293,18 +454,24 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </div>
+              )}
+              {shouldShowTo && (
               <input
                 placeholder="industry_course_ids (optional: gas_sensor,elios3_ut)"
                 value={form.industry_course_ids}
                 onChange={(e) => setForm({ ...form, industry_course_ids: e.target.value })}
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               />
+              )}
+              {shouldShowTo && (
               <textarea
                 placeholder="custom opener note (optional)"
                 value={form.custom_opener_note}
                 onChange={(e) => setForm({ ...form, custom_opener_note: e.target.value })}
                 className="min-h-20 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               />
+              )}
+              {shouldShowTo && (
               <div className="flex gap-4 text-sm text-slate-200/90">
                 <label className="flex items-center gap-2">
                   <input
@@ -322,12 +489,21 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   />
                   simulator note
                 </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.include_customer_toolkit}
+                    onChange={(e) => setForm({ ...form, include_customer_toolkit: e.target.checked })}
+                  />
+                  customer toolkit
+                </label>
               </div>
+              )}
             </div>
 
             <button
               onClick={handleGenerate}
-              disabled={loading}
+              disabled={loading || generateDisabled}
               className="mt-4 rounded-lg bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70"
               type="button"
             >
@@ -377,40 +553,29 @@ export function DashboardShell({ email }: DashboardShellProps) {
           </div>
         </section>
 
-        <section className="glass-card mt-6 p-6">
-          <h2 className="text-lg font-medium">Setup README</h2>
-          <p className="mt-2 text-sm text-slate-200/80">
-            Use this checklist to set up the app for colleagues.
-          </p>
+        <section className="glass-card mt-6 p-4">
+          <button
+            onClick={() => setShowSetup((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-left text-sm font-medium hover:bg-white/15"
+            type="button"
+          >
+            <span>Gmail Setup README</span>
+            <span>{showSetup ? "Hide" : "Show"}</span>
+          </button>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-xs tracking-wide text-cyan-200/85 uppercase">Vercel environment variables</p>
-              <pre className="mt-2 whitespace-pre-wrap rounded-lg border border-white/15 bg-slate-900/40 p-3 text-xs leading-6">
-{`NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-GOOGLE_OAUTH_CLIENT_ID
-GOOGLE_OAUTH_CLIENT_SECRET
-GOOGLE_OAUTH_REDIRECT_URI=https://mail-automator.vercel.app/api/gmail/callback`}
-              </pre>
+          {showSetup && (
+            <div className="mt-4 rounded-lg border border-white/15 bg-slate-900/35 p-4 text-sm text-slate-200/90">
+              <p className="font-medium text-cyan-200">How to connect Mail Automator to Gmail</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>Sign in to this app and open the dashboard.</li>
+                <li>Click <strong>Connect Gmail</strong>.</li>
+                <li>In Google popup, choose your Gmail account.</li>
+                <li>Allow draft access permission.</li>
+                <li>Return to dashboard and confirm status shows <strong>Gmail connected</strong>.</li>
+                <li>Generate a mail, then click <strong>Create Gmail draft</strong>.</li>
+              </ol>
             </div>
-
-            <div>
-              <p className="text-xs tracking-wide text-cyan-200/85 uppercase">Required platform settings</p>
-              <ul className="mt-2 space-y-2 text-sm text-slate-200/85">
-                <li>1. Vercel Root Directory = <code className="rounded bg-white/10 px-1">web</code></li>
-                <li>2. Supabase Auth enabled (Email/Password)</li>
-                <li>3. Supabase redirect URL:
-                  <code className="ml-1 rounded bg-white/10 px-1">https://mail-automator.vercel.app/auth/callback</code>
-                </li>
-                <li>4. Google Cloud: Gmail API enabled</li>
-                <li>5. Google OAuth redirect URI:
-                  <code className="ml-1 rounded bg-white/10 px-1">https://mail-automator.vercel.app/api/gmail/callback</code>
-                </li>
-                <li>6. After changes: redeploy Vercel</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </section>
       </section>
     </main>
