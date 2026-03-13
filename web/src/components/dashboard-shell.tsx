@@ -156,24 +156,26 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [showChanges, setShowChanges] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [beginAnimating, setBeginAnimating] = useState(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
   const shouldShowTrainingType = shouldShowVariant && Boolean(form.template_variant);
   const shouldShowRecipient =
     form.mail_type === "post" ? Boolean(form.language) : Boolean(form.training_type);
-  const shouldShowCompany = shouldShowRecipient && Boolean(form.recipient_name);
-  const shouldShowDate = shouldShowCompany;
+  const shouldShowCompany = form.mail_type === "post" && shouldShowRecipient && Boolean(form.recipient_name);
+  const shouldShowDate =
+    form.mail_type === "post" ? shouldShowCompany : shouldShowRecipient && Boolean(form.recipient_name);
   const shouldShowLocation = form.mail_type === "pre" ? Boolean(form.date) : shouldShowDate;
-  const shouldShowTo = form.mail_type === "pre" ? Boolean(form.location) : shouldShowLocation;
-  const shouldShowChanges = Boolean(form.to);
+  const shouldShowTo = form.mail_type === "post" ? shouldShowLocation : false;
+  const shouldShowChanges = form.mail_type === "post" && Boolean(form.to);
 
   const generateDisabled =
     !form.mail_type ||
     !form.language ||
     !form.recipient_name ||
-    !form.company_name ||
-    !form.to ||
+    (form.mail_type === "post" && (!form.company_name || !form.to)) ||
     (form.mail_type === "pre" && (!form.template_variant || !form.training_type || !form.date || !form.location));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
@@ -272,6 +274,15 @@ export function DashboardShell({ email }: DashboardShellProps) {
     }
   }
 
+  function handleBeginAutomating() {
+    if (beginAnimating) return;
+    setBeginAnimating(true);
+    setTimeout(() => {
+      setShowComposer(true);
+      setBeginAnimating(false);
+    }, 260);
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
@@ -315,23 +326,49 @@ export function DashboardShell({ email }: DashboardShellProps) {
           </div>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {cards.map((card, index) => (
-            <motion.article
-              key={card.title}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08, duration: 0.35 }}
-              className="glass-card p-5"
+        {!showComposer && (
+          <>
+            <div className="grid gap-4 md:grid-cols-3">
+              {cards.map((card, index) => (
+                <motion.article
+                  key={card.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08, duration: 0.35 }}
+                  className="glass-card p-5"
+                >
+                  <h2 className="text-lg font-medium">{card.title}</h2>
+                  <p className="mt-2 text-sm text-slate-200/80">{card.description}</p>
+                </motion.article>
+              ))}
+            </div>
+            <motion.div
+              animate={beginAnimating ? { scale: 1.1, opacity: 0 } : { scale: 1, opacity: 1 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="mt-6 flex justify-center"
             >
-              <h2 className="text-lg font-medium">{card.title}</h2>
-              <p className="mt-2 text-sm text-slate-200/80">{card.description}</p>
-            </motion.article>
-          ))}
-        </div>
+              <button
+                onClick={handleBeginAutomating}
+                type="button"
+                className="rounded-xl bg-cyan-400/95 px-7 py-3 text-base font-semibold text-slate-900 transition hover:bg-cyan-300"
+              >
+                Begin automating
+              </button>
+            </motion.div>
+          </>
+        )}
 
-        <section className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="glass-card p-6">
+        <AnimatePresence initial={false}>
+          {showComposer ? (
+            <motion.section
+              key="composer"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.99 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="mt-6 grid gap-6 md:grid-cols-2"
+            >
+              <div className="glass-card p-6">
             <h2 className="text-lg font-medium">Generate Mail</h2>
             <p className="mt-1 text-sm text-slate-200/80">
               Guided mode: fill top-down and each next field appears automatically.
@@ -503,23 +540,25 @@ export function DashboardShell({ email }: DashboardShellProps) {
             >
               {loading ? "Generating..." : "Generate draft"}
             </button>
-            <button
-              onClick={handleCreateDraft}
-              disabled={draftLoading || !gmailStatus.connected || !result}
-              className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
-              type="button"
-            >
-              {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
-            </button>
+            {form.mail_type === "post" && (
+              <button
+                onClick={handleCreateDraft}
+                disabled={draftLoading || !gmailStatus.connected || !result}
+                className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+              >
+                {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
+              </button>
+            )}
             {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
             {draftInfo && (
               <p className="mt-3 text-sm text-emerald-300">
                 Draft created: {draftInfo.draftId} ({draftInfo.messageId})
               </p>
             )}
-          </div>
+              </div>
 
-          <div className="glass-card p-6 md:sticky md:top-6 md:self-start">
+              <div className="glass-card p-6 md:sticky md:top-6 md:self-start">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-medium">Preview</h2>
               {result && (
@@ -544,23 +583,25 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 </pre>
               </div>
             )}
-          </div>
-        </section>
+              </div>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
 
-        <section className="glass-card mt-6 p-4">
+        <section className="glass-card mt-auto pt-4 p-3">
           <button
             onClick={() => setShowSetup((prev) => !prev)}
-            className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-left text-sm font-medium hover:bg-white/15"
+            className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-left text-xs font-medium hover:bg-white/15"
             type="button"
           >
-            <span>Gmail Setup README</span>
+            <span>Gmail setup README</span>
             <span>{showSetup ? "Hide" : "Show"}</span>
           </button>
 
           {showSetup && (
-            <div className="mt-4 rounded-lg border border-white/15 bg-slate-900/35 p-4 text-sm text-slate-200/90">
+            <div className="mt-2 rounded-lg border border-white/15 bg-slate-900/35 p-3 text-xs text-slate-200/90">
               <p className="font-medium text-cyan-200">How to connect Mail Automator to Gmail</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5">
+              <ol className="mt-2 list-decimal space-y-1 pl-4">
                 <li>Sign in to this app and open the dashboard.</li>
                 <li>Click <strong>Connect Gmail</strong>.</li>
                 <li>In Google popup, choose your Gmail account.</li>

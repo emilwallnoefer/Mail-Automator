@@ -5,14 +5,10 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as MailInput;
 
-    const requiredBase: Array<keyof MailInput> = [
-      "mail_type",
-      "language",
-      "recipient_name",
-      "company_name",
-    ];
+    const requiredBase: Array<keyof MailInput> = ["mail_type", "language", "recipient_name"];
+    const requiredPost: Array<keyof MailInput> = ["company_name"];
     const requiredPre: Array<keyof MailInput> = ["template_variant", "training_type", "date", "location"];
-    const required = payload.mail_type === "pre" ? [...requiredBase, ...requiredPre] : requiredBase;
+    const required = payload.mail_type === "pre" ? [...requiredBase, ...requiredPre] : [...requiredBase, ...requiredPost];
 
     const missing = required.filter((field) => !payload[field]);
     if (missing.length) {
