@@ -334,7 +334,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
           <div className="glass-card p-6">
             <h2 className="text-lg font-medium">Generate Mail</h2>
             <p className="mt-1 text-sm text-slate-200/80">
-              Guided mode: each next field appears after the previous one is set.
+              Guided mode: fill top-down and each next field appears automatically.
             </p>
 
             <div className="mt-4">
