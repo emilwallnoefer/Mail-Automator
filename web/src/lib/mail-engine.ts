@@ -18,6 +18,7 @@ export type MailInput = {
   include_certification_note?: boolean;
   include_simulator_note?: boolean;
   include_customer_toolkit?: boolean;
+  included_material_ids?: string;
   company_research_text?: string;
 };
 
@@ -35,6 +36,68 @@ type Course = {
   url: string;
   keywords: string[];
 };
+
+type TrainingMaterial = {
+  id: string;
+  url_key: string;
+  label_en: string;
+  desc_en: string;
+  label_de: string;
+  desc_de: string;
+};
+
+const TRAINING_MATERIALS: TrainingMaterial[] = [
+  {
+    id: "intro_training",
+    url_key: "INTRO_TRAINING_URL",
+    label_en: "Introductory Training for Elios 3",
+    desc_en:
+      "This covers everything we went through on the first day. It is your go-to guide if you ever forget how a function works or need a refresher on drone operation.",
+    label_de: "Einführungstraining für den Elios 3",
+    desc_de:
+      "Enthält alles, was wir am ersten Tag durchgegangen sind. Es ist euer Nachschlagewerk, falls ihr jemals eine Funktion vergesst oder eine Auffrischung zur Drohnenbedienung braucht.",
+  },
+  {
+    id: "aiim_training",
+    url_key: "AIIM_TRAINING_URL",
+    label_en: "Indoor Aerial Inspection Methodology (AIIM) Training",
+    desc_en:
+      "This is from our second day and includes step-by-step preparation for inspection missions, including the important reco flights. It is especially useful when preparing for complex missions.",
+    label_de: "Indoor Aerial Inspection Methodology (AIIM) Training",
+    desc_de:
+      "Stammt aus unserem zweiten Schulungstag und beinhaltet die schrittweise Vorbereitung von Inspektionsmissionen inklusive der wichtigen Erkundungsflüge. Besonders hilfreich bei der Planung komplexerer Einsätze.",
+  },
+  {
+    id: "method_statement",
+    url_key: "METHOD_STATEMENT_URL",
+    label_en: "Method Statement Template",
+    desc_en:
+      "Use this to collect important information from your client. It ensures all mission details are clearly documented.",
+    label_de: "Method Statement Vorlage",
+    desc_de:
+      "Verwendet dieses Dokument, um wichtige Informationen vom Kunden zu sammeln. Es stellt sicher, dass alle Missionsdetails klar dokumentiert sind.",
+  },
+  {
+    id: "risk_assessment",
+    url_key: "RISK_ASSESSMENT_URL",
+    label_en: "Risk Assessment Guide",
+    desc_en:
+      "This helps classify missions based on their difficulty and risk level. It is a great tool for understanding the experience required and preparing accordingly.",
+    label_de: "Leitfaden zur Risikobewertung",
+    desc_de:
+      "Hilft dabei, Missionen anhand ihres Schwierigkeits- und Risikograds zu klassifizieren. Ein großartiges Werkzeug, um den erforderlichen Erfahrungsstand zu verstehen und sich entsprechend vorzubereiten.",
+  },
+  {
+    id: "sop",
+    url_key: "SOP_URL",
+    label_en: "SOP (Standard Operating Procedure)",
+    desc_en:
+      "Our most up-to-date manual with all pre- and post-inspection steps. I recommend printing it and using it for every mission to maintain high-quality standards.",
+    label_de: "SOP (Standard Operating Procedure)",
+    desc_de:
+      "Unser aktuellstes Handbuch mit allen Schritten vor und nach der Inspektion. Ich empfehle, es auszudrucken und bei jeder Mission zu verwenden, um eine gleichbleibend hohe Qualität sicherzustellen.",
+  },
+];
 
 function readTemplates(): string {
   const filePath = path.join(process.cwd(), "src/mail-config/training-email-templates.md");
@@ -133,6 +196,44 @@ function parseIndustryIds(raw: string | undefined) {
     .filter(Boolean);
 }
 
+function parseMaterialIds(raw: string | undefined) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+function buildTrainingMaterialsBlock(language: "en" | "de", selectedMaterialIds: string[]) {
+  const heading = language === "de" ? "Schulungsunterlagen" : "Training Materials";
+  const allowed = selectedMaterialIds.length ? new Set(selectedMaterialIds) : null;
+  const selected = TRAINING_MATERIALS.filter((material) => !allowed || allowed.has(material.id));
+
+  const lines: string[] = [heading, ""];
+  selected.forEach((material, index) => {
+    const label = language === "de" ? material.label_de : material.label_en;
+    const desc = language === "de" ? material.desc_de : material.desc_en;
+    lines.push(`${index + 1}. [${label}]({{${material.url_key}}})`);
+    lines.push(desc);
+    lines.push("");
+  });
+
+  if (!selected.length) {
+    lines.push(language === "de" ? "Keine Unterlagen ausgewählt." : "No training materials selected.");
+    lines.push("");
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
+function replaceTrainingMaterialsSection(body: string, language: "en" | "de", selectedMaterialIds: string[]) {
+  const block = buildTrainingMaterialsBlock(language, selectedMaterialIds);
+  return body.replace(
+    /(Training Materials|Schulungsunterlagen)[\s\S]*?(?=\{\{USEFUL_LINKS_BLOCK\}\})/m,
+    `${block}\n\n`,
+  );
+}
+
 function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
   const explicit = parseIndustryIds(input.industry_course_ids);
   if (explicit.length) return explicit;
@@ -218,6 +319,10 @@ export function renderMail(input: MailInput): RenderResult {
 
   let { subject, body } = extractSubjectAndBody(template);
   if (templateId.startsWith("pre_")) body = trimPretrainingDays(body, input.training_type);
+  if (templateId.startsWith("post_")) {
+    const selectedMaterialIds = parseMaterialIds(input.included_material_ids);
+    body = replaceTrainingMaterialsSection(body, input.language, selectedMaterialIds);
+  }
 
   const catalog = (industryLinks.courses as Course[]) ?? [];
   const selected = inferIndustryCourseIds(input, catalog);

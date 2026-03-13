@@ -31,10 +31,21 @@ type FormState = {
   include_certification_note: boolean;
   include_simulator_note: boolean;
   include_customer_toolkit: boolean;
+  included_material_ids: string[];
   quick_input: string;
 };
 
 type MailType = FormState["mail_type"];
+
+const MATERIAL_OPTIONS = [
+  { id: "intro_training", label: "Introductory Training for Elios 3" },
+  { id: "aiim_training", label: "Indoor Aerial Inspection Methodology (AIIM) Training" },
+  { id: "method_statement", label: "Method Statement Template" },
+  { id: "risk_assessment", label: "Risk Assessment Guide" },
+  { id: "sop", label: "SOP (Standard Operating Procedure)" },
+] as const;
+
+const DEFAULT_MATERIAL_IDS = MATERIAL_OPTIONS.map((item) => item.id);
 
 function parseQuickInput(raw: string, current: FormState): FormState {
   const text = raw.trim();
@@ -70,6 +81,12 @@ function parseQuickInput(raw: string, current: FormState): FormState {
     if (key === "bcc") fromKv.bcc = value;
     if (key === "industry_course_ids") fromKv.industry_course_ids = value;
     if (key === "custom_opener_note") fromKv.custom_opener_note = value;
+    if (key === "included_material_ids") {
+      fromKv.included_material_ids = value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
   }
   if (Object.keys(fromKv).length > 0) {
     return { ...current, ...fromKv, quick_input: raw };
@@ -138,6 +155,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
     include_certification_note: false,
     include_simulator_note: false,
     include_customer_toolkit: false,
+    included_material_ids: DEFAULT_MATERIAL_IDS,
     quick_input: "",
   });
   const [loading, setLoading] = useState(false);
@@ -145,6 +163,8 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [showOptionals, setShowOptionals] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = form.mail_type === "pre" && Boolean(form.language);
@@ -152,8 +172,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const shouldShowRecipient =
     form.mail_type === "post" ? Boolean(form.language) : Boolean(form.training_type);
   const shouldShowCompany = shouldShowRecipient && Boolean(form.recipient_name);
-  const shouldShowDate = shouldShowCompany && (form.mail_type === "pre" || form.mail_type === "post");
-  const shouldShowTo = form.mail_type === "pre" ? Boolean(form.location) : shouldShowCompany;
+  const shouldShowDate = form.mail_type === "pre" && shouldShowCompany;
+  const shouldShowLocation = form.mail_type === "pre" && shouldShowDate && Boolean(form.date);
+  const shouldShowTo = form.mail_type === "pre" ? shouldShowLocation && Boolean(form.location) : shouldShowCompany;
 
   const generateDisabled =
     !form.mail_type ||
@@ -162,6 +183,8 @@ export function DashboardShell({ email }: DashboardShellProps) {
     !form.company_name ||
     !form.to ||
     (form.mail_type === "pre" && (!form.template_variant || !form.training_type || !form.date || !form.location));
+
+  const canShowOptionals = shouldShowTo;
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -202,6 +225,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
           ...form,
           template_variant: form.template_variant || undefined,
           training_type: form.training_type || undefined,
+          included_material_ids: form.included_material_ids.join(","),
         }),
       });
       const data = (await response.json()) as GenerateResponse | { error: string };
@@ -213,6 +237,22 @@ export function DashboardShell({ email }: DashboardShellProps) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleMaterial(id: string) {
+    setForm((prev) => {
+      const exists = prev.included_material_ids.includes(id);
+      if (exists) {
+        return {
+          ...prev,
+          included_material_ids: prev.included_material_ids.filter((itemId) => itemId !== id),
+        };
+      }
+      return {
+        ...prev,
+        included_material_ids: [...prev.included_material_ids, id],
+      };
+    });
   }
 
   async function copyText(value: string) {
@@ -400,104 +440,167 @@ export function DashboardShell({ email }: DashboardShellProps) {
 
             <div className="mt-3 grid gap-3">
               {shouldShowRecipient && (
-              <input
-                placeholder="recipient_name"
-                value={form.recipient_name}
-                onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowCompany && (
-              <input
-                placeholder="company_name"
-                value={form.company_name}
-                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowDate && (
-              <div className="grid grid-cols-2 gap-3">
                 <input
-                  placeholder={form.mail_type === "pre" ? "date (required)" : "date (optional)"}
+                  placeholder="recipient_name"
+                  value={form.recipient_name}
+                  onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                />
+              )}
+
+              {shouldShowCompany && (
+                <input
+                  placeholder="company_name"
+                  value={form.company_name}
+                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                />
+              )}
+
+              {shouldShowDate && (
+                <input
+                  placeholder="date (required)"
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
+              )}
+
+              {shouldShowLocation && (
                 <input
-                  placeholder={form.mail_type === "pre" ? "location (required)" : "location (optional)"}
+                  placeholder="location (required)"
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
-              </div>
               )}
+
               {shouldShowTo && (
-              <input
-                placeholder="to (recipient emails, comma separated)"
-                value={form.to}
-                onChange={(e) => setForm({ ...form, to: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowTo && (
-              <div className="grid grid-cols-2 gap-3">
                 <input
-                  placeholder="cc (optional)"
-                  value={form.cc}
-                  onChange={(e) => setForm({ ...form, cc: e.target.value })}
+                  placeholder="to (recipient emails, comma separated)"
+                  value={form.to}
+                  onChange={(e) => setForm({ ...form, to: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
-                <input
-                  placeholder="bcc (optional)"
-                  value={form.bcc}
-                  onChange={(e) => setForm({ ...form, bcc: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                />
-              </div>
               )}
-              {shouldShowTo && (
-              <input
-                placeholder="industry_course_ids (optional: gas_sensor,elios3_ut)"
-                value={form.industry_course_ids}
-                onChange={(e) => setForm({ ...form, industry_course_ids: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowTo && (
-              <textarea
-                placeholder="custom opener note (optional)"
-                value={form.custom_opener_note}
-                onChange={(e) => setForm({ ...form, custom_opener_note: e.target.value })}
-                className="min-h-20 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowTo && (
-              <div className="flex gap-4 text-sm text-slate-200/90">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.include_certification_note}
-                    onChange={(e) => setForm({ ...form, include_certification_note: e.target.checked })}
-                  />
-                  certification note
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.include_simulator_note}
-                    onChange={(e) => setForm({ ...form, include_simulator_note: e.target.checked })}
-                  />
-                  simulator note
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.include_customer_toolkit}
-                    onChange={(e) => setForm({ ...form, include_customer_toolkit: e.target.checked })}
-                  />
-                  customer toolkit
-                </label>
-              </div>
+
+              {canShowOptionals && (
+                <div className="rounded-lg border border-white/15 bg-white/5 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowOptionals((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-left text-sm hover:bg-white/15"
+                  >
+                    <span>Optional fields</span>
+                    <span>{showOptionals ? "Hide" : "Show"}</span>
+                  </button>
+
+                  {showOptionals && (
+                    <div className="mt-3 grid gap-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          placeholder="cc (optional)"
+                          value={form.cc}
+                          onChange={(e) => setForm({ ...form, cc: e.target.value })}
+                          className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                        />
+                        <input
+                          placeholder="bcc (optional)"
+                          value={form.bcc}
+                          onChange={(e) => setForm({ ...form, bcc: e.target.value })}
+                          className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                        />
+                      </div>
+
+                      {form.mail_type === "post" && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            placeholder="date (optional)"
+                            value={form.date}
+                            onChange={(e) => setForm({ ...form, date: e.target.value })}
+                            className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                          />
+                          <input
+                            placeholder="location (optional)"
+                            value={form.location}
+                            onChange={(e) => setForm({ ...form, location: e.target.value })}
+                            className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <input
+                        placeholder="industry_course_ids (optional: gas_sensor,elios3_ut)"
+                        value={form.industry_course_ids}
+                        onChange={(e) => setForm({ ...form, industry_course_ids: e.target.value })}
+                        className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                      />
+
+                      <textarea
+                        placeholder="custom opener note (optional)"
+                        value={form.custom_opener_note}
+                        onChange={(e) => setForm({ ...form, custom_opener_note: e.target.value })}
+                        className="min-h-20 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                      />
+
+                      <div className="flex flex-wrap gap-4 text-sm text-slate-200/90">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={form.include_certification_note}
+                            onChange={(e) => setForm({ ...form, include_certification_note: e.target.checked })}
+                          />
+                          certification note
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={form.include_simulator_note}
+                            onChange={(e) => setForm({ ...form, include_simulator_note: e.target.checked })}
+                          />
+                          simulator note
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={form.include_customer_toolkit}
+                            onChange={(e) => setForm({ ...form, include_customer_toolkit: e.target.checked })}
+                          />
+                          customer toolkit
+                        </label>
+                      </div>
+
+                      {form.mail_type === "post" && (
+                        <div className="rounded-lg border border-white/15 bg-white/5 p-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowMaterials((prev) => !prev)}
+                            className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-left text-sm hover:bg-white/15"
+                          >
+                            <span>Add/Remove Files</span>
+                            <span>
+                              {form.included_material_ids.length}/{MATERIAL_OPTIONS.length} selected
+                            </span>
+                          </button>
+                          {showMaterials && (
+                            <div className="mt-3 grid gap-2 text-sm">
+                              {MATERIAL_OPTIONS.map((item) => (
+                                <label key={item.id} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={form.included_material_ids.includes(item.id)}
+                                    onChange={() => toggleMaterial(item.id)}
+                                  />
+                                  {item.label}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
