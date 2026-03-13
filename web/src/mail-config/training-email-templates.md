@@ -14,22 +14,7 @@ Hello {{RECIPIENT_NAME}},
 
 As I promised during our training, here is the recap email with links to all the useful training slide decks we used. Please save this email somewhere and keep it accessible so you can come back to it whenever you need any information.
 
-Training Materials
-
-1. [Introductory Training for Elios 3]({{INTRO_TRAINING_URL}})
-This covers everything we went through on the first day. It is your go-to guide if you ever forget how a function works or need a refresher on drone operation.
-
-2. [Indoor Aerial Inspection Methodology (AIIM) Training]({{AIIM_TRAINING_URL}})
-This is from our second day and includes step-by-step preparation for inspection missions, including the important reco flights. It is especially useful when preparing for complex missions.
-
-3. [Method Statement Template]({{METHOD_STATEMENT_URL}})
-Use this to collect important information from your client. It ensures all mission details are clearly documented.
-
-4. [Risk Assessment Guide]({{RISK_ASSESSMENT_URL}})
-This helps classify missions based on their difficulty and risk level. It is a great tool for understanding the experience required and preparing accordingly.
-
-5. [SOP (Standard Operating Procedure)]({{SOP_URL}})
-Our most up-to-date manual with all pre- and post-inspection steps. I recommend printing it and using it for every mission to maintain high-quality standards.
+{{TRAINING_MATERIALS_BLOCK}}
 
 {{USEFUL_LINKS_BLOCK}}
 
@@ -59,22 +44,7 @@ Hallo {{RECIPIENT_NAME}},
 
 wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainingsunterlagen, die wir verwendet haben. Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.
 
-Schulungsunterlagen
-
-1. [Einführungstraining für den Elios 3]({{INTRO_TRAINING_URL}})
-Enthält alles, was wir am ersten Tag durchgegangen sind. Es ist euer Nachschlagewerk, falls ihr jemals eine Funktion vergesst oder eine Auffrischung zur Drohnenbedienung braucht.
-
-2. [Indoor Aerial Inspection Methodology (AIIM) Training]({{AIIM_TRAINING_URL}})
-Stammt aus unserem zweiten Schulungstag und beinhaltet die schrittweise Vorbereitung von Inspektionsmissionen inklusive der wichtigen Erkundungsflüge. Besonders hilfreich bei der Planung komplexerer Einsätze.
-
-3. [Method Statement Vorlage]({{METHOD_STATEMENT_URL}})
-Verwendet dieses Dokument, um wichtige Informationen vom Kunden zu sammeln. Es stellt sicher, dass alle Missionsdetails klar dokumentiert sind.
-
-4. [Leitfaden zur Risikobewertung]({{RISK_ASSESSMENT_URL}})
-Hilft dabei, Missionen anhand ihres Schwierigkeits- und Risikograds zu klassifizieren. Ein großartiges Werkzeug, um den erforderlichen Erfahrungsstand zu verstehen und sich entsprechend vorzubereiten.
-
-5. [SOP (Standard Operating Procedure)]({{SOP_URL}})
-Unser aktuellstes Handbuch mit allen Schritten vor und nach der Inspektion. Ich empfehle, es auszudrucken und bei jeder Mission zu verwenden, um eine gleichbleibend hohe Qualität sicherzustellen.
+{{TRAINING_MATERIALS_BLOCK}}
 
 {{USEFUL_LINKS_BLOCK}}
 
