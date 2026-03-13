@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { useEffect, useState, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 
 type DashboardShellProps = {
@@ -25,16 +26,29 @@ type FormState = {
   date: string;
   location: string;
   to: string;
-  cc: string;
-  bcc: string;
-  custom_opener_note: string;
-  include_certification_note: boolean;
-  include_simulator_note: boolean;
   included_change_ids: string[];
   quick_input: string;
 };
 
 type MailType = FormState["mail_type"];
+
+function ProgressiveField({ show, children }: { show: boolean; children: ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {show ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -6, height: 0 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden"
+        >
+          {children}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
 
 function parseQuickInput(raw: string, current: FormState): FormState {
   const text = raw.trim();
@@ -66,15 +80,12 @@ function parseQuickInput(raw: string, current: FormState): FormState {
     if (key === "date") fromKv.date = value;
     if (key === "location") fromKv.location = value;
     if (key === "to") fromKv.to = value;
-    if (key === "cc") fromKv.cc = value;
-    if (key === "bcc") fromKv.bcc = value;
     if (key === "included_change_ids") {
       fromKv.included_change_ids = value
         .split(",")
         .map((entry) => entry.trim())
         .filter(Boolean);
     }
-    if (key === "custom_opener_note") fromKv.custom_opener_note = value;
   }
   if (Object.keys(fromKv).length > 0) {
     return { ...current, ...fromKv, quick_input: raw };
@@ -136,11 +147,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
     date: "",
     location: "",
     to: "",
-    cc: "",
-    bcc: "",
-    custom_opener_note: "",
-    include_certification_note: false,
-    include_simulator_note: false,
     included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
     quick_input: "",
   });
@@ -160,11 +166,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const shouldShowDate = shouldShowCompany;
   const shouldShowLocation = form.mail_type === "pre" ? Boolean(form.date) : shouldShowDate;
   const shouldShowTo = form.mail_type === "pre" ? Boolean(form.location) : shouldShowLocation;
-  const shouldShowCc = Boolean(form.to);
-  const shouldShowBcc = shouldShowCc;
-  const shouldShowOpener = shouldShowBcc;
-  const shouldShowNotes = shouldShowOpener;
-  const shouldShowChanges = shouldShowNotes;
+  const shouldShowChanges = Boolean(form.to);
 
   const generateDisabled =
     !form.mail_type ||
@@ -255,8 +257,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: form.to,
-          cc: form.cc,
-          bcc: form.bcc,
           subject: result.subject,
           body: result.body,
           html_body: result.html_body,
@@ -368,7 +368,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </select>
             </div>
 
-            {shouldShowLanguage && (
+            <ProgressiveField show={shouldShowLanguage}>
               <div className="mt-3">
                 <select
                   value={form.language}
@@ -380,9 +380,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   <option value="en">en</option>
                 </select>
               </div>
-            )}
+            </ProgressiveField>
 
-            {shouldShowVariant && (
+            <ProgressiveField show={shouldShowVariant}>
               <div className="mt-3">
                 <select
                   value={form.template_variant}
@@ -394,9 +394,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   <option value="lausanne">lausanne</option>
                 </select>
               </div>
-            )}
+            </ProgressiveField>
 
-            {shouldShowTrainingType && (
+            <ProgressiveField show={shouldShowTrainingType}>
               <div className="mt-3">
                 <select
                   value={form.training_type}
@@ -408,94 +408,50 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   <option value="aiim_3day">aiim_3day</option>
                 </select>
               </div>
-            )}
+            </ProgressiveField>
 
             <div className="mt-3 grid gap-3">
-              {shouldShowRecipient && (
-              <input
-                placeholder="recipient_name"
-                value={form.recipient_name}
-                onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowCompany && (
-              <input
-                placeholder="company_name"
-                value={form.company_name}
-                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowDate && (
+              <ProgressiveField show={shouldShowRecipient}>
+                <input
+                  placeholder="recipient_name"
+                  value={form.recipient_name}
+                  onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                />
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowCompany}>
+                <input
+                  placeholder="company_name"
+                  value={form.company_name}
+                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                />
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowDate}>
                 <input
                   placeholder={form.mail_type === "pre" ? "date (required)" : "date (optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
-              )}
-              {shouldShowLocation && (
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowLocation}>
                 <input
                   placeholder={form.mail_type === "pre" ? "location (required)" : "location (optional)"}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
-              )}
-              {shouldShowTo && (
-              <input
-                placeholder="to (recipient emails, comma separated)"
-                value={form.to}
-                onChange={(e) => setForm({ ...form, to: e.target.value })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowCc && (
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowTo}>
                 <input
-                  placeholder="cc (optional)"
-                  value={form.cc}
-                  onChange={(e) => setForm({ ...form, cc: e.target.value })}
+                  placeholder="to (recipient emails, comma separated)"
+                  value={form.to}
+                  onChange={(e) => setForm({ ...form, to: e.target.value })}
                   className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
-              )}
-              {shouldShowBcc && (
-                <input
-                  placeholder="bcc (optional)"
-                  value={form.bcc}
-                  onChange={(e) => setForm({ ...form, bcc: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                />
-              )}
-              {shouldShowOpener && (
-              <textarea
-                placeholder="custom opener note (optional)"
-                value={form.custom_opener_note}
-                onChange={(e) => setForm({ ...form, custom_opener_note: e.target.value })}
-                className="min-h-20 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              )}
-              {shouldShowNotes && (
-              <div className="flex gap-4 text-sm text-slate-200/90">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.include_certification_note}
-                    onChange={(e) => setForm({ ...form, include_certification_note: e.target.checked })}
-                  />
-                  certification note
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.include_simulator_note}
-                    onChange={(e) => setForm({ ...form, include_simulator_note: e.target.checked })}
-                  />
-                  simulator note
-                </label>
-              </div>
-              )}
-              {shouldShowChanges && (
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowChanges}>
                 <div className="rounded-lg border border-white/15 bg-white/5 p-3">
                   <button
                     type="button"
@@ -536,7 +492,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                     </div>
                   )}
                 </div>
-              )}
+              </ProgressiveField>
             </div>
 
             <button
@@ -563,7 +519,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             )}
           </div>
 
-          <div className="glass-card p-6">
+          <div className="glass-card p-6 md:sticky md:top-6 md:self-start">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-medium">Preview</h2>
               {result && (
