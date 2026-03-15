@@ -76,23 +76,49 @@ export default function LoginPage() {
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
       <motion.section
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-6"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-6 px-6 py-10 lg:grid-cols-2"
       >
-        <div className="glass-card w-full max-w-md p-8 md:p-10">
-          <div className="mb-8">
-            <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">
+        <div className="glass-card hidden h-full min-h-[560px] p-8 lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <p className="mb-3 text-xs tracking-[0.25em] text-cyan-200/85 uppercase">
               Flyability Internal
             </p>
-            <h1 className="text-2xl font-semibold md:text-3xl">Mail Automator</h1>
+            <h1 className="max-w-md text-3xl leading-tight font-semibold md:text-4xl">
+              Flya allrounderm for daily operations.
+            </h1>
+            <p className="mt-4 max-w-md text-sm text-slate-200/80">
+              Generate structured training emails, create Gmail drafts, and manage your time tracking in one workflow.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="text-sm font-medium">Smart Mail Generation</p>
+              <p className="mt-1 text-xs text-slate-300/85">Guided fields with fast auto-fill and template logic.</p>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="text-sm font-medium">Time Tracking</p>
+              <p className="mt-1 text-xs text-slate-300/85">Track working hours, breaks, and overtime bank.</p>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="text-sm font-medium">Draft-Safe by Default</p>
+              <p className="mt-1 text-xs text-slate-300/85">Everything lands in Gmail drafts for review.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card mx-auto w-full max-w-md p-8 md:p-10">
+          <div className="mb-7">
+            <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
+            <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>
             <p className="mt-2 text-sm text-slate-200/80">
-              Sign in with email and password to create Gmail drafts.
+              Sign in to continue to Flya allrounderm.
             </p>
           </div>
 
-          <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-white/15 bg-white/5 p-1">
+          <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-white/15 bg-white/5 p-1.5">
             <button
               type="button"
               onClick={() => {

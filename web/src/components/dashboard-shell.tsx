@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
+import { AuthNavbar } from "@/components/auth-navbar";
+import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 
 type DashboardShellProps = {
   email: string;
@@ -167,6 +169,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
+  const [activeModule, setActiveModule] = useState<"mail" | "time">("mail");
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
@@ -196,16 +199,16 @@ export function DashboardShell({ email }: DashboardShellProps) {
 
   const cards = [
     {
-      title: "Generate in Web UI",
-      description: "Same template engine as /mail, now available directly in dashboard.",
+      title: "Mail Automator",
+      description: "Generate training emails and create Gmail drafts with one guided flow.",
     },
     {
-      title: "Industry-Aware Links",
-      description: "Only common + relevant industry links are included to keep emails focused.",
+      title: "Time Tracker",
+      description: "Track workdays, breaks, compensation time, and overtime bank in one place.",
     },
     {
-      title: "Draft-Only Safety",
-      description: "No auto-send actions. Everything lands in Drafts for manual review.",
+      title: "Allround Workspace",
+      description: "Switch between tools depending on what you need today.",
     },
   ];
 
@@ -301,45 +304,13 @@ export function DashboardShell({ email }: DashboardShellProps) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-8">
-        <header className="glass-card mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Flyability Internal</p>
-            <h1 className="text-xl font-semibold md:text-2xl">Mail Automator Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-200/80">{email}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {gmailStatus.connected ? (
-              <>
-                <span className="rounded-lg border border-emerald-300/40 bg-emerald-500/20 px-3 py-2 text-xs">
-                  Gmail connected
-                </span>
-                <button
-                  className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm transition hover:bg-white/15"
-                  onClick={handleDisconnectGmail}
-                  type="button"
-                >
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <a
-                className="rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-                href="/api/gmail/connect"
-              >
-                Connect Gmail
-              </a>
-            )}
-            <form action="/logout" method="post">
-              <button
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition hover:bg-white/15"
-                type="submit"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </header>
+      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-5 py-8 md:px-8">
+        <AuthNavbar
+          email={email}
+          gmailConnected={gmailStatus.connected}
+          gmailEmail={gmailStatus.gmail_email}
+          onDisconnectGmail={handleDisconnectGmail}
+        />
 
         {!showComposer && (
           <>
@@ -350,24 +321,34 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.08, duration: 0.35 }}
-                  className="glass-card p-5"
+                  className="glass-card p-5 md:p-6"
                 >
-                  <h2 className="text-lg font-medium">{card.title}</h2>
-                  <p className="mt-2 text-sm text-slate-200/80">{card.description}</p>
+                  <h2 className="text-base font-semibold md:text-lg">{card.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-200/80">{card.description}</p>
                 </motion.article>
               ))}
             </div>
             <motion.div
               animate={beginAnimating ? { scale: 1.1, opacity: 0 } : { scale: 1, opacity: 1 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="mt-6 flex justify-center"
+              className="mt-1 flex flex-wrap justify-center gap-3"
             >
               <button
                 onClick={handleBeginAutomating}
                 type="button"
-                className="rounded-xl bg-cyan-400/95 px-7 py-3 text-base font-semibold text-slate-900 transition hover:bg-cyan-300"
+                className="rounded-xl bg-cyan-400/95 px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:bg-cyan-300"
               >
                 Begin automating
+              </button>
+              <button
+                onClick={() => {
+                  setActiveModule("time");
+                  handleBeginAutomating();
+                }}
+                type="button"
+                className="rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold transition hover:bg-white/15"
+              >
+                Open time tracker
               </button>
             </motion.div>
           </>
@@ -381,15 +362,46 @@ export function DashboardShell({ email }: DashboardShellProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.99 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="mt-6 grid gap-6 md:grid-cols-2"
+              className="space-y-4"
             >
-              <div className="glass-card p-6">
-            <h2 className="text-lg font-medium">Generate Mail</h2>
-            <p className="mt-1 text-sm text-slate-200/80">
+              <div className="glass-card flex flex-wrap items-center justify-between gap-3 p-4 md:p-5">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Flya allrounderm</p>
+                  <p className="text-sm text-slate-200/80">Choose a module to work in.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/20 bg-white/10 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule("mail")}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      activeModule === "mail" ? "bg-cyan-400/90 text-slate-900" : "text-slate-200 hover:bg-white/10"
+                    }`}
+                  >
+                    Mail automator
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule("time")}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      activeModule === "time" ? "bg-cyan-400/90 text-slate-900" : "text-slate-200 hover:bg-white/10"
+                    }`}
+                  >
+                    Time tracker
+                  </button>
+                </div>
+              </div>
+
+              {activeModule === "time" ? (
+                <TimeTrackerPanel />
+              ) : (
+                <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="glass-card p-6 md:p-7">
+            <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-200/80">
               Guided mode: fill top-down and each next field appears automatically.
             </p>
 
-            <div className="mt-4">
+            <div className="mt-5">
               <label className="mb-2 block text-xs tracking-wide text-cyan-200/85 uppercase">
                 Quick paste (auto-fill)
               </label>
@@ -402,7 +414,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               <button
                 type="button"
                 onClick={() => setForm((prev) => parseQuickInput(prev.quick_input, prev))}
-                className="mt-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
+                className="mt-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium transition hover:bg-white/15"
               >
                 Auto-fill fields
               </button>
@@ -573,7 +585,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <button
               onClick={handleGenerate}
               disabled={loading || generateDisabled}
-              className="mt-4 rounded-lg bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70"
+              className="mt-5 rounded-lg bg-cyan-400/90 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70"
               type="button"
             >
               {loading ? "Generating..." : "Generate draft"}
@@ -581,7 +593,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <button
               onClick={handleCreateDraft}
               disabled={draftLoading || !gmailStatus.connected || !result}
-              className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
             >
               {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
@@ -592,11 +604,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 Draft created: {draftInfo.draftId} ({draftInfo.messageId})
               </p>
             )}
-              </div>
+                  </div>
 
-              <div className="glass-card sticky top-6 self-start p-6">
+                  <div className="glass-card sticky top-6 self-start p-6 md:p-7">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-medium">Preview</h2>
+              <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (
                 <button
                   className="rounded-md border border-white/20 bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
@@ -608,7 +620,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               )}
             </div>
             {!result ? (
-              <p className="text-sm text-slate-200/75">Generated subject and body will appear here.</p>
+              <p className="text-sm text-slate-200/75">Generated subject and body appear here in real time.</p>
             ) : (
               <div className="space-y-3">
                 <p className="text-xs tracking-wide text-cyan-200/85 uppercase">Subject</p>
@@ -619,12 +631,14 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 </pre>
               </div>
             )}
-              </div>
+                  </div>
+                </section>
+              )}
             </motion.section>
           ) : null}
         </AnimatePresence>
 
-        <section className="glass-card mt-auto pt-4 p-3">
+        <section className="glass-card mt-auto p-3">
           <button
             onClick={() => setShowSetup((prev) => !prev)}
             className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-left text-xs font-medium hover:bg-white/15"

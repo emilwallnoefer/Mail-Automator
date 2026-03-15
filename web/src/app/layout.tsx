@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flyability Mail Automator",
-  description: "Internal helper app for generating and drafting training emails.",
+  title: "Flya allrounderm",
+  description: "Flyability internal allround workspace for mail automation and time tracking.",
 };
 
 export default function RootLayout({
