@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
+  const supabaseConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +18,10 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!supabaseConfigured) {
+      setError("Missing Supabase env vars in deployment. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      return;
+    }
     setLoading(true);
     setMessage(null);
     setError(null);
@@ -115,6 +122,12 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
+            {!supabaseConfigured && (
+              <p className="rounded-lg border border-rose-300/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200">
+                Supabase is not configured for this deployment. Add `NEXT_PUBLIC_SUPABASE_URL` and
+                `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel and redeploy.
+              </p>
+            )}
             <label className="block">
               <span className="mb-2 block text-sm text-slate-100/90">Email</span>
               <input
@@ -157,7 +170,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !supabaseConfigured}
               className="h-12 w-full rounded-xl bg-cyan-400/90 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
             >
               {loading ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
