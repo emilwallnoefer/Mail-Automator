@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 type RequestPayload = {
-  to: string;
+  to?: string;
   cc?: string;
   bcc?: string;
   subject: string;
@@ -20,8 +20,8 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const payload = (await request.json()) as RequestPayload;
-  if (!payload.to || !payload.subject || !payload.body) {
-    return NextResponse.json({ error: "Missing required fields: to, subject, body" }, { status: 400 });
+  if (!payload.subject || !payload.body) {
+    return NextResponse.json({ error: "Missing required fields: subject, body" }, { status: 400 });
   }
 
   const refreshToken = user.user_metadata?.gmail_refresh_token as string | undefined;

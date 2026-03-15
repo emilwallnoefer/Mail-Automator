@@ -127,13 +127,51 @@ const thinkificOptions: ChangeOption[] = ((industryLinks.courses as Array<Record
     const label_en = String(course.label_en ?? id);
     const label_de = String(course.label_de ?? label_en);
     const url = String(course.url ?? "");
+    const descriptionById: Record<string, { en: string; de: string }> = {
+      introductory_training: {
+        en: "Basics for Elios 3 setup, safety, and first missions.",
+        de: "Grundlagen zu Elios-3-Setup, Sicherheit und ersten Missionen.",
+      },
+      gas_sensor: {
+        en: "Use of gas sensor payload and gas reading best practices.",
+        de: "Einsatz des Gas-Sensor-Payloads und Best Practices bei Messwerten.",
+      },
+      cement: {
+        en: "Inspection workflows for cement plants and kiln environments.",
+        de: "Inspektions-Workflows für Zementwerke und Ofenbereiche.",
+      },
+      mining: {
+        en: "Inspection workflows for underground mining environments.",
+        de: "Inspektions-Workflows für untertägige Bergbauumgebungen.",
+      },
+      wastewater: {
+        en: "Workflows for wastewater assets, sewers, and treatment structures.",
+        de: "Workflows für Abwasseranlagen, Kanäle und Beckenstrukturen.",
+      },
+      regulation: {
+        en: "Key rules, compliance, and operational regulation guidance.",
+        de: "Wichtige Regeln, Compliance- und Regulatorik-Hinweise.",
+      },
+      elios3_ut: {
+        en: "UT payload operation and wall-thickness/NDT workflows.",
+        de: "UT-Payload-Bedienung und Workflows für Wanddicke/NDT.",
+      },
+      faro_connect: {
+        en: "Point-cloud processing and FARO Connect workflow essentials.",
+        de: "Grundlagen zu Punktwolkenverarbeitung und FARO-Connect-Workflow.",
+      },
+    };
+    const desc = descriptionById[id] ?? {
+      en: "Use-case specific online training content.",
+      de: "Use-Case-spezifische Online-Trainingsinhalte.",
+    };
     return {
       id: `thinkific_${id}`,
       category: "thinkific" as const,
       label_en,
       label_de,
-      desc_en: "Optional Thinkific online course for this topic.",
-      desc_de: "Optionaler Thinkific-Onlinekurs zu diesem Thema.",
+      desc_en: desc.en,
+      desc_de: desc.de,
       default_checked: false,
       course_id: id,
       url,

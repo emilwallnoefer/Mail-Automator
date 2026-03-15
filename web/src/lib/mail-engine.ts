@@ -12,6 +12,7 @@ export type MailInput = {
   training_type?: "intro_1day" | "aiim_3day";
   recipient_name: string;
   company_name: string;
+  use_case?: string;
   date: string;
   location: string;
   custom_opener_note?: string;
@@ -37,6 +38,19 @@ type Course = {
   url: string;
   keywords: string[];
 };
+
+function resolveLinkUrl(linkKey: string, catalog: Course[]) {
+  const links = trainingLinks as Record<string, string>;
+  const url = links[linkKey];
+  if (url) return url;
+
+  // Fallback for UT deck when dedicated deck link is not configured.
+  if (linkKey === "INTRO_UT_TRAINING_URL") {
+    const utCourse = catalog.find((course) => course.id === "elios3_ut");
+    return utCourse?.url ?? "";
+  }
+  return "";
+}
 
 function readTemplates(): string {
   const filePath = path.join(process.cwd(), "src/mail-config/training-email-templates.md");
@@ -174,6 +188,7 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
 
   const source = [
     input.company_name,
+    input.use_case ?? "",
     input.company_research_text ?? "",
     input.custom_opener_note ?? "",
   ]
@@ -188,7 +203,9 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
 function buildIndustryTrainingBlock(language: "en" | "de", selectedIds: string[], catalog: Course[]) {
   if (!selectedIds.length) return "";
   const byId = new Map(catalog.map((course) => [course.id, course]));
-  const lines = [language === "de" ? "Branchenspezifische Academy-Kurse" : "Industry-specific Academy courses"];
+  const lines = [
+    language === "de" ? "Use-Case-spezifische Trainings und Unterlagen" : "Use-case specific trainings and docs",
+  ];
 
   for (const id of selectedIds) {
     const course = byId.get(id);
@@ -230,14 +247,14 @@ function buildUsefulLinksBlock(language: "en" | "de", selectedIds: string[], inp
 
 function buildUsefulLinksBlockFromChanges(language: "en" | "de", selectedChangeIds: string[]) {
   const selected = new Set(selectedChangeIds);
-  const links = trainingLinks as Record<string, string>;
+  const catalog = (industryLinks.courses as Course[]) ?? [];
   const options = CHANGE_OPTIONS.filter((opt) => opt.category === "useful_link");
   const lines = [language === "de" ? "Weitere nützliche Links" : "Other Useful Links"];
 
   for (const item of options) {
     if (!selected.has(item.id)) continue;
     const linkKey = item.link_key ?? "";
-    const url = links[linkKey];
+    const url = resolveLinkUrl(linkKey, catalog);
     if (!url) continue;
     const label = language === "de" ? item.label_de : item.label_en;
     const desc = language === "de" ? item.desc_de : item.desc_en;
@@ -249,7 +266,9 @@ function buildUsefulLinksBlockFromChanges(language: "en" | "de", selectedChangeI
 function buildThinkificBlockFromChanges(language: "en" | "de", selectedChangeIds: string[]) {
   const selected = new Set(selectedChangeIds);
   const options = CHANGE_OPTIONS.filter((opt) => opt.category === "thinkific");
-  const lines = [language === "de" ? "Thinkific Trainings" : "Thinkific Courses"];
+  const lines = [
+    language === "de" ? "Use-Case-spezifische Trainings und Unterlagen" : "Use-case specific trainings and docs",
+  ];
 
   for (const item of options) {
     if (!selected.has(item.id)) continue;

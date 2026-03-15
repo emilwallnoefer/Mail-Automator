@@ -32,7 +32,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
 }
 
 type DraftPayload = {
-  to: string;
+  to?: string;
   cc?: string;
   bcc?: string;
   subject: string;
@@ -51,7 +51,7 @@ function base64urlEncode(input: string) {
 function buildRawMessage(payload: DraftPayload) {
   const boundary = "mail-automator-boundary";
   const headers = [
-    `To: ${payload.to}`,
+    payload.to ? `To: ${payload.to}` : "",
     payload.cc ? `Cc: ${payload.cc}` : "",
     payload.bcc ? `Bcc: ${payload.bcc}` : "",
     `Subject: ${payload.subject}`,

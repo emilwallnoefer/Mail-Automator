@@ -16,10 +16,9 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+        setAll() {
+          // In Server Components, cookies are read-only.
+          // Session refresh cookie writes are handled by middleware/route handlers.
         },
       },
     },

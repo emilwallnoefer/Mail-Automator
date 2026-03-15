@@ -14,6 +14,7 @@ type GenerateResponse = {
   subject: string;
   body: string;
   html_body: string;
+  selected_change_ids?: string[];
 };
 
 type FormState = {
@@ -23,6 +24,7 @@ type FormState = {
   training_type: "" | "intro_1day" | "aiim_3day";
   recipient_name: string;
   company_name: string;
+  use_case: string;
   date: string;
   location: string;
   to: string;
@@ -77,6 +79,7 @@ function parseQuickInput(raw: string, current: FormState): FormState {
     }
     if (key === "recipient_name") fromKv.recipient_name = value;
     if (key === "company_name") fromKv.company_name = value;
+    if (key === "use_case") fromKv.use_case = value;
     if (key === "date") fromKv.date = value;
     if (key === "location") fromKv.location = value;
     if (key === "to") fromKv.to = value;
@@ -127,6 +130,10 @@ function parseQuickInput(raw: string, current: FormState): FormState {
 
   if (!next.recipient_name && remainder[0]) next.recipient_name = remainder[0];
   if (!next.company_name && remainder[1]) next.company_name = remainder[1];
+  if (!next.use_case) {
+    if (dateIndex > 2) next.use_case = remainder.slice(2, dateIndex).join(" ");
+    else if (remainder[2]) next.use_case = remainder[2];
+  }
   if (!next.date && dateIndex >= 0) next.date = remainder[dateIndex];
   if (!next.location) {
     const locationCandidate = dateIndex >= 0 ? remainder[dateIndex + 1] : remainder[2];
@@ -144,6 +151,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
     training_type: "",
     recipient_name: "",
     company_name: "",
+    use_case: "",
     date: "",
     location: "",
     to: "",
@@ -158,6 +166,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [showChanges, setShowChanges] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
+  const [changesTouched, setChangesTouched] = useState(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
@@ -165,18 +174,21 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const shouldShowRecipient =
     form.mail_type === "post" ? Boolean(form.language) : Boolean(form.training_type);
   const shouldShowCompany = form.mail_type === "post" && shouldShowRecipient && Boolean(form.recipient_name);
+  const shouldShowUseCase = form.mail_type === "post" && shouldShowCompany && Boolean(form.company_name);
   const shouldShowDate =
-    form.mail_type === "post" ? shouldShowCompany : shouldShowRecipient && Boolean(form.recipient_name);
-  const shouldShowLocation = form.mail_type === "pre" ? Boolean(form.date) : shouldShowDate;
-  const shouldShowTo = form.mail_type === "post" ? shouldShowLocation : false;
+    form.mail_type === "pre" ? shouldShowRecipient && Boolean(form.recipient_name) : false;
+  const isPreLausanne = form.mail_type === "pre" && form.template_variant === "lausanne";
+  const shouldShowLocation = form.mail_type === "pre" && Boolean(form.date) && !isPreLausanne;
+  const shouldShowTo = form.mail_type === "post" ? shouldShowUseCase && Boolean(form.use_case) : false;
   const shouldShowChanges = form.mail_type === "post" && Boolean(form.to);
 
   const generateDisabled =
     !form.mail_type ||
     !form.language ||
     !form.recipient_name ||
-    (form.mail_type === "post" && (!form.company_name || !form.to)) ||
-    (form.mail_type === "pre" && (!form.template_variant || !form.training_type || !form.date || !form.location));
+    (form.mail_type === "post" && (!form.company_name || !form.use_case || !form.to)) ||
+    (form.mail_type === "pre" &&
+      (!form.template_variant || !form.training_type || !form.date || (form.template_variant === "abroad" && !form.location)));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -217,12 +229,19 @@ export function DashboardShell({ email }: DashboardShellProps) {
           ...form,
           template_variant: form.template_variant || undefined,
           training_type: form.training_type || undefined,
-          included_change_ids: form.included_change_ids,
+          included_change_ids: changesTouched ? form.included_change_ids : undefined,
         }),
       });
       const data = (await response.json()) as GenerateResponse | { error: string };
       if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
-      setResult(data as GenerateResponse);
+      const generated = data as GenerateResponse;
+      setResult(generated);
+      if (generated.selected_change_ids && generated.selected_change_ids.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          included_change_ids: generated.selected_change_ids ?? prev.included_change_ids,
+        }));
+      }
       setDraftInfo(null);
     } catch (err) {
       setError((err as Error).message);
@@ -246,10 +265,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
       setError("Generate a draft first.");
       return;
     }
-    if (!form.to) {
-      setError("Recipient email (to) is required.");
-      return;
-    }
 
     setDraftLoading(true);
     setError(null);
@@ -258,7 +273,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: form.to,
+          to: form.to || undefined,
           subject: result.subject,
           body: result.body,
           html_body: result.html_body,
@@ -393,11 +408,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </button>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5">
               <select
                 value={form.mail_type}
                 onChange={(e) => setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] })}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               >
                 <option value="">mail_type</option>
                 <option value="post">post</option>
@@ -423,7 +438,19 @@ export function DashboardShell({ email }: DashboardShellProps) {
               <div className="mt-3">
                 <select
                   value={form.template_variant}
-                  onChange={(e) => setForm({ ...form, template_variant: e.target.value as FormState["template_variant"] })}
+                  onChange={(e) => {
+                    const nextVariant = e.target.value as FormState["template_variant"];
+                    setForm((prev) => ({
+                      ...prev,
+                      template_variant: nextVariant,
+                      location:
+                        nextVariant === "lausanne"
+                          ? "Lausanne"
+                          : prev.location === "Lausanne"
+                            ? ""
+                            : prev.location,
+                    }));
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
                   <option value="">template_variant</option>
@@ -453,7 +480,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   placeholder="recipient_name"
                   value={form.recipient_name}
                   onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowCompany}>
@@ -461,7 +488,15 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   placeholder="company_name"
                   value={form.company_name}
                   onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                />
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowUseCase}>
+                <input
+                  placeholder="use_case"
+                  value={form.use_case}
+                  onChange={(e) => setForm({ ...form, use_case: e.target.value })}
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowDate}>
@@ -469,7 +504,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   placeholder={form.mail_type === "pre" ? "date (required)" : "date (optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowLocation}>
@@ -477,7 +512,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   placeholder={form.mail_type === "pre" ? "location (required)" : "location (optional)"}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowTo}>
@@ -485,7 +520,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   placeholder="to (recipient emails, comma separated)"
                   value={form.to}
                   onChange={(e) => setForm({ ...form, to: e.target.value })}
-                  className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
@@ -511,12 +546,15 @@ export function DashboardShell({ email }: DashboardShellProps) {
                               className="mt-1"
                               checked={checked}
                               onChange={(e) =>
-                                setForm((prev) => ({
-                                  ...prev,
-                                  included_change_ids: e.target.checked
-                                    ? [...prev.included_change_ids, option.id]
-                                    : prev.included_change_ids.filter((id) => id !== option.id),
-                                }))
+                                {
+                                  setChangesTouched(true);
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    included_change_ids: e.target.checked
+                                      ? [...prev.included_change_ids, option.id]
+                                      : prev.included_change_ids.filter((id) => id !== option.id),
+                                  }));
+                                }
                               }
                             />
                             <span>
@@ -540,16 +578,14 @@ export function DashboardShell({ email }: DashboardShellProps) {
             >
               {loading ? "Generating..." : "Generate draft"}
             </button>
-            {form.mail_type === "post" && (
-              <button
-                onClick={handleCreateDraft}
-                disabled={draftLoading || !gmailStatus.connected || !result}
-                className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-              >
-                {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
-              </button>
-            )}
+            <button
+              onClick={handleCreateDraft}
+              disabled={draftLoading || !gmailStatus.connected || !result}
+              className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+            >
+              {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
+            </button>
             {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
             {draftInfo && (
               <p className="mt-3 text-sm text-emerald-300">
@@ -558,7 +594,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             )}
               </div>
 
-              <div className="glass-card p-6 md:sticky md:top-6 md:self-start">
+              <div className="glass-card sticky top-6 self-start p-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-medium">Preview</h2>
               {result && (
@@ -578,7 +614,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <p className="text-xs tracking-wide text-cyan-200/85 uppercase">Subject</p>
                 <p className="text-sm">{result.subject}</p>
                 <p className="text-xs tracking-wide text-cyan-200/85 uppercase">Body</p>
-                <pre className="max-h-[460px] overflow-auto whitespace-pre-wrap rounded-lg border border-white/15 bg-slate-900/40 p-3 text-xs leading-6">
+                <pre className="whitespace-pre-wrap rounded-lg border border-white/15 bg-slate-900/40 p-3 text-xs leading-6">
                   {result.body}
                 </pre>
               </div>
