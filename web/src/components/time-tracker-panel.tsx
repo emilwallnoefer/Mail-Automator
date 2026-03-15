@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 const TARGET_MINS = 504;
 
@@ -94,6 +94,19 @@ function dayLabel(dateKey: string) {
 }
 
 export function TimeTrackerPanel() {
+  const bubbles = [
+    { left: "6%", size: "10px", duration: "9s", delay: "0s" },
+    { left: "14%", size: "8px", duration: "12s", delay: "-3s" },
+    { left: "22%", size: "12px", duration: "10s", delay: "-1.2s" },
+    { left: "34%", size: "9px", duration: "11s", delay: "-4s" },
+    { left: "46%", size: "11px", duration: "13s", delay: "-2.2s" },
+    { left: "58%", size: "7px", duration: "8.5s", delay: "-5s" },
+    { left: "68%", size: "10px", duration: "10.5s", delay: "-2.8s" },
+    { left: "79%", size: "8px", duration: "9.5s", delay: "-1.8s" },
+    { left: "88%", size: "12px", duration: "14s", delay: "-6s" },
+    { left: "94%", size: "9px", duration: "11.5s", delay: "-3.5s" },
+  ];
+
   const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -241,7 +254,23 @@ export function TimeTrackerPanel() {
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <section className="underwater-panel grid gap-6 rounded-2xl p-2 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="bubble-layer" aria-hidden="true">
+        {bubbles.map((bubble, idx) => (
+          <span
+            key={`${bubble.left}-${idx}`}
+            className="bubble"
+            style={
+              {
+                "--bubble-left": bubble.left,
+                "--bubble-size": bubble.size,
+                "--bubble-duration": bubble.duration,
+                "--bubble-delay": bubble.delay,
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
       <div className="glass-card p-5 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -295,6 +324,7 @@ export function TimeTrackerPanel() {
             {(data?.days ?? []).map((day) => {
               const donePct = Math.round(Math.min(1, (day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
+              const fillPct = Math.max(0, Math.min(100, donePct));
               return (
                 <article
                   key={day.date}
@@ -314,6 +344,9 @@ export function TimeTrackerPanel() {
                     <p className="mt-1 text-xs text-slate-300/80">
                       Completion {donePct}% {day.comp_mins > 0 ? `· Comp ${fmtHM(day.comp_mins)}` : ""}
                     </p>
+                    <div className="wave-tank mt-3">
+                      <div className="wave-fill" style={{ height: `${fillPct}%` }} />
+                    </div>
                   </button>
                   <div className="mt-3 flex gap-2">
                     <button
