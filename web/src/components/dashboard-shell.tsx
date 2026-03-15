@@ -310,6 +310,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
           gmailConnected={gmailStatus.connected}
           gmailEmail={gmailStatus.gmail_email}
           onDisconnectGmail={handleDisconnectGmail}
+          activeModule={activeModule}
+          onSelectModule={(module) => {
+            setActiveModule(module);
+            setShowComposer(true);
+          }}
         />
 
         {!showComposer && (
@@ -331,24 +336,17 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <motion.div
               animate={beginAnimating ? { scale: 1.1, opacity: 0 } : { scale: 1, opacity: 1 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="mt-1 flex flex-wrap justify-center gap-3"
+              className="mt-1 flex justify-center"
             >
               <button
-                onClick={handleBeginAutomating}
-                type="button"
-                className="rounded-xl bg-cyan-400/95 px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:bg-cyan-300"
-              >
-                Begin automating
-              </button>
-              <button
                 onClick={() => {
-                  setActiveModule("time");
+                  setActiveModule("mail");
                   handleBeginAutomating();
                 }}
                 type="button"
-                className="rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold transition hover:bg-white/15"
+                className="rounded-xl bg-cyan-400/95 px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:bg-cyan-300"
               >
-                Open time tracker
+                Open workspace
               </button>
             </motion.div>
           </>
@@ -364,33 +362,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="space-y-4"
             >
-              <div className="glass-card flex flex-wrap items-center justify-between gap-3 p-4 md:p-5">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Flya allrounderm</p>
-                  <p className="text-sm text-slate-200/80">Choose a module to work in.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/20 bg-white/10 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveModule("mail")}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      activeModule === "mail" ? "bg-cyan-400/90 text-slate-900" : "text-slate-200 hover:bg-white/10"
-                    }`}
-                  >
-                    Mail automator
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveModule("time")}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      activeModule === "time" ? "bg-cyan-400/90 text-slate-900" : "text-slate-200 hover:bg-white/10"
-                    }`}
-                  >
-                    Time tracker
-                  </button>
-                </div>
-              </div>
-
               {activeModule === "time" ? (
                 <TimeTrackerPanel />
               ) : (
