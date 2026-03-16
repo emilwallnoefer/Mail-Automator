@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { getOAuthClient } from "@/lib/gmail";
 
 export type TravelInfo = {
   client: string;
@@ -16,55 +17,6 @@ function requiredEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
-}
-
-function getFirstEnv(...names: string[]) {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-  return "";
-}
-
-type OAuthConfig = {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-};
-
-function collectOAuthCandidates() {
-  const candidates: OAuthConfig[] = [];
-  const pushIfComplete = (clientId: string, clientSecret: string, redirectUri: string) => {
-    if (!clientId || !clientSecret || !redirectUri) return;
-    const duplicate = candidates.some(
-      (item) =>
-        item.clientId === clientId &&
-        item.clientSecret === clientSecret &&
-        item.redirectUri === redirectUri,
-    );
-    if (!duplicate) candidates.push({ clientId, clientSecret, redirectUri });
-  };
-
-  // Prefer the main Gmail OAuth client first because the stored refresh token comes from Gmail connect flow.
-  pushIfComplete(
-    process.env.GOOGLE_OAUTH_CLIENT_ID || "",
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET || "",
-    process.env.GOOGLE_OAUTH_REDIRECT_URI || "",
-  );
-  // Fallback to Sheets-specific credentials if configured.
-  pushIfComplete(
-    process.env.GOOGLE_SHEETS_CLIENT_ID || "",
-    process.env.GOOGLE_SHEETS_CLIENT_SECRET || "",
-    process.env.GOOGLE_SHEETS_REDIRECT_URI || "",
-  );
-  // Mixed fallback for projects that share ID/secret but set redirect in only one namespace.
-  pushIfComplete(
-    getFirstEnv("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_SHEETS_CLIENT_ID"),
-    getFirstEnv("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_SHEETS_CLIENT_SECRET"),
-    getFirstEnv("GOOGLE_OAUTH_REDIRECT_URI", "GOOGLE_SHEETS_REDIRECT_URI"),
-  );
-
-  return candidates;
 }
 
 function columnLetterToIndex(letter: string) {
@@ -159,62 +111,47 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   const locationColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_LOCATION", DEFAULT_LOCATION_COLUMN);
   const responsibleColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_RESPONSIBLE", DEFAULT_RESPONSIBLE_COLUMN);
 
-  const oauthCandidates = collectOAuthCandidates();
-  if (oauthCandidates.length === 0) {
-    throw new Error("Missing Google OAuth env vars for Sheets access");
-  }
-  let lastError: unknown = null;
-  for (const candidate of oauthCandidates) {
-    try {
-      const oauthClient = new google.auth.OAuth2(
-        candidate.clientId,
-        candidate.clientSecret,
-        candidate.redirectUri,
-      );
-      oauthClient.setCredentials({ refresh_token: refreshToken });
-      const sheets = google.sheets({ version: "v4", auth: oauthClient });
-      let range = baseRange;
-      if (!range.includes("!") && gid) {
-        const meta = await sheets.spreadsheets.get({
-          spreadsheetId,
-          fields: "sheets(properties(sheetId,title))",
-        });
-        const targetSheetId = Number.parseInt(gid, 10);
-        const tabTitle =
-          meta.data.sheets?.find((sheet) => sheet.properties?.sheetId === targetSheetId)?.properties?.title ?? "";
-        if (tabTitle) {
-          range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
-        }
-      }
-
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range,
-      });
-
-      const rows = response.data.values ?? [];
-      const result: Record<string, TravelInfo> = {};
-
-      let activeMonthYear = "";
-      for (const row of rows) {
-        const monthYearCandidate = cleanCell(row[monthYearColIdx]);
-        if (monthYearCandidate) activeMonthYear = monthYearCandidate;
-        const monthYear = activeMonthYear;
-        const day = cleanCell(row[dayColIdx]);
-        const dateKey = parseDateFromMonthYearDay(monthYear, day);
-        if (!dateKey) continue;
-
-        result[dateKey] = {
-          client: cleanCell(row[clientColIdx]),
-          location: cleanCell(row[locationColIdx]),
-          responsible: cleanCell(row[responsibleColIdx]),
-        };
-      }
-
-      return result;
-    } catch (error) {
-      lastError = error;
+  const redirectUri = requiredEnv("GOOGLE_OAUTH_REDIRECT_URI");
+  const oauthClient = getOAuthClient(redirectUri);
+  oauthClient.setCredentials({ refresh_token: refreshToken });
+  const sheets = google.sheets({ version: "v4", auth: oauthClient });
+  let range = baseRange;
+  if (!range.includes("!") && gid) {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(sheetId,title))",
+    });
+    const targetSheetId = Number.parseInt(gid, 10);
+    const tabTitle =
+      meta.data.sheets?.find((sheet) => sheet.properties?.sheetId === targetSheetId)?.properties?.title ?? "";
+    if (tabTitle) {
+      range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
     }
   }
-  throw (lastError instanceof Error ? lastError : new Error("Could not access Google Sheets with configured OAuth credentials."));
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range,
+  });
+
+  const rows = response.data.values ?? [];
+  const result: Record<string, TravelInfo> = {};
+
+  let activeMonthYear = "";
+  for (const row of rows) {
+    const monthYearCandidate = cleanCell(row[monthYearColIdx]);
+    if (monthYearCandidate) activeMonthYear = monthYearCandidate;
+    const monthYear = activeMonthYear;
+    const day = cleanCell(row[dayColIdx]);
+    const dateKey = parseDateFromMonthYearDay(monthYear, day);
+    if (!dateKey) continue;
+
+    result[dateKey] = {
+      client: cleanCell(row[clientColIdx]),
+      location: cleanCell(row[locationColIdx]),
+      responsible: cleanCell(row[responsibleColIdx]),
+    };
+  }
+
+  return result;
 }
