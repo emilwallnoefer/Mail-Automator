@@ -123,6 +123,11 @@ function isWeekendDate(dateKey: string) {
   return day === 0 || day === 6;
 }
 
+function getWeekDayKeys(weekStart: string) {
+  const start = getMonday(weekStart);
+  return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(start, index)));
+}
+
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
 }
@@ -539,11 +544,14 @@ export function TimeTrackerPanel() {
 
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
   const isEditorVisible = editorOpen && Boolean(selectedDay);
+  const activeWeekData = data?.week_start === weekStart ? data : null;
+  const hasActiveWeekData = Boolean(activeWeekData);
+  const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
 
   return (
     <section
       className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
-        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr]" : "lg:grid-cols-1"
+        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-1"
       }`}
     >
       <div className="bubble-layer" aria-hidden="true">
@@ -564,7 +572,7 @@ export function TimeTrackerPanel() {
       </div>
       <div
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          isEditorVisible ? "justify-self-stretch" : "max-w-[1040px] justify-self-center"
+          isEditorVisible ? "justify-self-stretch" : "justify-self-stretch"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -609,26 +617,32 @@ export function TimeTrackerPanel() {
           <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
             <span>Weekly hours:</span>
             <span className="ml-2 inline-block min-w-[8ch] text-right">
-              <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={data?.week_hours_mins ?? 0} durationMs={760}>
-                {(value) => fmtHM(Math.round(value))}
-              </AnimatedNumber>
+              {hasActiveWeekData ? (
+                <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={760}>
+                  {(value) => fmtHM(Math.round(value))}
+                </AnimatedNumber>
+              ) : (
+                <span className="inline-block h-4 w-16 animate-pulse rounded bg-white/20" aria-hidden="true" />
+              )}
             </span>
           </span>
           <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
             <span>Overtime bank:</span>
             <span className="ml-2 inline-block min-w-[9ch] text-right">
-              <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={data?.overtime_bank_mins ?? 0} durationMs={760}>
-                {(value) => fmtSignedHM(Math.round(value))}
-              </AnimatedNumber>
+              {hasActiveWeekData ? (
+                <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={760}>
+                  {(value) => fmtSignedHM(Math.round(value))}
+                </AnimatedNumber>
+              ) : (
+                <span className="inline-block h-4 w-20 animate-pulse rounded bg-white/20" aria-hidden="true" />
+              )}
             </span>
           </span>
         </div>
 
-        {loading ? (
-          <p className="mt-5 text-sm text-slate-200/80">Loading tracker week...</p>
-        ) : (
-          <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
-            {(data?.days ?? []).map((day, index) => {
+        <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
+          {hasActiveWeekData &&
+            activeWeekData.days.map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
               const revealed = index < revealedDayCount;
@@ -772,13 +786,39 @@ export function TimeTrackerPanel() {
                 </article>
               );
             })}
-          </div>
-        )}
+          {!hasActiveWeekData &&
+            placeholderDayKeys.map((dateKey, index) => (
+              <article key={dateKey} className="liquid-day-card rounded-xl p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
+                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                </div>
+                <p className="mt-1">
+                  <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                </p>
+                <div className="day-progress mt-3" aria-label="Loading day progress">
+                  <span
+                    className="day-progress-segment day-progress-sand animate-pulse"
+                    style={{ width: `${18 + (index % 5) * 9}%` }}
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="mt-2">
+                  <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                </div>
+              </article>
+            ))}
+        </div>
+        {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
       </div>
 
       {isEditorVisible && selectedDay ? (
-        <div className="scroll-mt-24 glass-card p-4 md:p-5 lg:justify-self-stretch">
-          <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+        <div className="scroll-mt-24 self-start glass-card p-4 md:p-5">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             <div>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-base font-semibold">Day Logger</h3>
