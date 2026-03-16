@@ -642,7 +642,7 @@ export function TimeTrackerPanel() {
 
         <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
           {hasActiveWeekData &&
-            activeWeekData.days.map((day, index) => {
+            (activeWeekData?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
               const revealed = index < revealedDayCount;
