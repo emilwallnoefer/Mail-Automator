@@ -123,11 +123,6 @@ function isWeekendDate(dateKey: string) {
   return day === 0 || day === 6;
 }
 
-function isDesktopWideLayout() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(min-width: 1024px)").matches;
-}
-
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
 }
@@ -211,8 +206,6 @@ export function TimeTrackerPanel() {
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const dayLoggerRef = useRef<HTMLDivElement | null>(null);
-  const weekGridRef = useRef<HTMLDivElement | null>(null);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
 
@@ -380,10 +373,6 @@ export function TimeTrackerPanel() {
   function returnToWeekdays() {
     setEditorOpen(false);
     setSelectedDate(null);
-    window.setTimeout(() => {
-      if (isDesktopWideLayout()) return;
-      weekGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
   }
 
   const patchDayInCurrentWeek = useCallback(
@@ -546,15 +535,6 @@ export function TimeTrackerPanel() {
   function handleEditDay(date: string) {
     setSelectedDate(date);
     setEditorOpen(true);
-    window.setTimeout(() => {
-      if (isDesktopWideLayout()) return;
-      const node = dayLoggerRef.current;
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      const alreadyMostlyVisible = rect.top >= 120 && rect.bottom <= window.innerHeight - 24;
-      if (alreadyMostlyVisible) return;
-      node.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 40);
   }
 
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
@@ -584,7 +564,7 @@ export function TimeTrackerPanel() {
       </div>
       <div
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          isEditorVisible ? "order-1 justify-self-stretch" : "order-1 max-w-[1040px] justify-self-center"
+          isEditorVisible ? "justify-self-stretch" : "max-w-[1040px] justify-self-center"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -647,10 +627,7 @@ export function TimeTrackerPanel() {
         {loading ? (
           <p className="mt-5 text-sm text-slate-200/80">Loading tracker week...</p>
         ) : (
-          <div
-            ref={weekGridRef}
-            className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}
-          >
+          <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
             {(data?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
@@ -800,7 +777,7 @@ export function TimeTrackerPanel() {
       </div>
 
       {isEditorVisible && selectedDay ? (
-        <div ref={dayLoggerRef} className="order-2 scroll-mt-24 glass-card p-4 md:p-5 lg:order-none lg:justify-self-stretch">
+        <div className="scroll-mt-24 glass-card p-4 md:p-5 lg:justify-self-stretch">
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
             <div>
               <div className="flex items-center justify-between gap-2">
