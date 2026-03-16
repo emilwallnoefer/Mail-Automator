@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import type { Credentials } from "google-auth-library";
 
 const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",
@@ -32,6 +33,14 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
   const client = getOAuthClient(redirectUri);
   const { tokens } = await client.getToken(code);
   return tokens;
+}
+
+export async function getConnectedGmailEmail(tokens: Credentials, redirectUri: string) {
+  const oauthClient = getOAuthClient(redirectUri);
+  oauthClient.setCredentials(tokens);
+  const gmail = google.gmail({ version: "v1", auth: oauthClient });
+  const profile = await gmail.users.getProfile({ userId: "me" });
+  return profile.data.emailAddress ?? null;
 }
 
 type DraftPayload = {

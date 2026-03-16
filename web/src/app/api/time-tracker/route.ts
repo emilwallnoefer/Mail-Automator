@@ -185,12 +185,68 @@ export async function GET(request: Request) {
       responsible: string;
     }
   > = {};
+  let travelDebug: {
+    status:
+      | "not_attempted"
+      | "missing_refresh_token"
+      | "ok"
+      | "ok_empty"
+      | "ok_no_week_match"
+      | "error";
+    message: string;
+    fetched_dates: number;
+    week_matches: number;
+  } = {
+    status: "not_attempted",
+    message: "Not attempted yet.",
+    fetched_dates: 0,
+    week_matches: 0,
+  };
+  const weekDateSet = new Set(weekDays.map((day) => day.date));
   try {
     const refreshToken = String(user.user_metadata?.gmail_refresh_token ?? "");
-    if (refreshToken) {
+    if (!refreshToken) {
+      travelDebug = {
+        status: "missing_refresh_token",
+        message: "No Google refresh token found. Reconnect Gmail/Google in Settings.",
+        fetched_dates: 0,
+        week_matches: 0,
+      };
+    } else {
       travelByDate = await fetchTravelByDate(refreshToken);
+      const fetchedDates = Object.keys(travelByDate);
+      const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
+      if (fetchedDates.length === 0) {
+        travelDebug = {
+          status: "ok_empty",
+          message: "Sheet fetch succeeded but no parseable travel rows were found.",
+          fetched_dates: 0,
+          week_matches: 0,
+        };
+      } else if (weekMatches === 0) {
+        travelDebug = {
+          status: "ok_no_week_match",
+          message: "Travel rows loaded, but none match the currently selected week.",
+          fetched_dates: fetchedDates.length,
+          week_matches: 0,
+        };
+      } else {
+        travelDebug = {
+          status: "ok",
+          message: "Travel rows loaded and matched at least one date in this week.",
+          fetched_dates: fetchedDates.length,
+          week_matches: weekMatches,
+        };
+      }
     }
-  } catch {
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown travel sheet error.";
+    travelDebug = {
+      status: "error",
+      message: errMsg,
+      fetched_dates: 0,
+      week_matches: 0,
+    };
     // Non-blocking: tracker remains available even if travel sheet access fails.
   }
 
@@ -202,6 +258,7 @@ export async function GET(request: Request) {
     overtime_bank_mins: overtimeBankMins,
     days: weekDays,
     travel_by_date: travelByDate,
+    travel_debug: travelDebug,
   });
 }
 

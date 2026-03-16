@@ -1,5 +1,4 @@
 import { google } from "googleapis";
-import { getOAuthClient } from "@/lib/gmail";
 
 export type TravelInfo = {
   client: string;
@@ -17,6 +16,14 @@ function requiredEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
+}
+
+function getFirstEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  return "";
 }
 
 function columnLetterToIndex(letter: string) {
@@ -74,7 +81,7 @@ function parseDateFromMonthYearDay(monthYearRaw: string, dayRaw: string) {
   const day = Number.parseInt(dayRaw.trim(), 10);
   if (!monthYear || !Number.isFinite(day) || day < 1 || day > 31) return null;
 
-  const match = monthYear.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  const match = monthYear.match(/^([\p{L}.-]+)\s+(\d{4})$/u);
   if (!match) return null;
   const monthToken = match[1].toLowerCase();
   const year = Number.parseInt(match[2], 10);
@@ -100,7 +107,10 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
 
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
   const baseRange = process.env.GOOGLE_SHEETS_RANGE || "A:R";
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || "";
+  const redirectUri =
+    getFirstEnv("GOOGLE_SHEETS_REDIRECT_URI", "GOOGLE_OAUTH_REDIRECT_URI") || "";
+  const oauthClientId = getFirstEnv("GOOGLE_SHEETS_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID");
+  const oauthClientSecret = getFirstEnv("GOOGLE_SHEETS_CLIENT_SECRET", "GOOGLE_OAUTH_CLIENT_SECRET");
   const gid = process.env.GOOGLE_SHEETS_GID;
 
   const monthYearColIdx = getColumnIndexFromEnv(
@@ -112,7 +122,10 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   const locationColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_LOCATION", DEFAULT_LOCATION_COLUMN);
   const responsibleColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_RESPONSIBLE", DEFAULT_RESPONSIBLE_COLUMN);
 
-  const oauthClient = getOAuthClient(redirectUri);
+  if (!oauthClientId || !oauthClientSecret || !redirectUri) {
+    throw new Error("Missing Google OAuth env vars for Sheets access");
+  }
+  const oauthClient = new google.auth.OAuth2(oauthClientId, oauthClientSecret, redirectUri);
   oauthClient.setCredentials({ refresh_token: refreshToken });
   const sheets = google.sheets({ version: "v4", auth: oauthClient });
   let range = baseRange;

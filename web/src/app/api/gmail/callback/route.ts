@@ -1,4 +1,4 @@
-import { exchangeCodeForTokens } from "@/lib/gmail";
+import { exchangeCodeForTokens, getConnectedGmailEmail } from "@/lib/gmail";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -17,11 +17,16 @@ export async function GET(request: Request) {
 
   try {
     const tokens = await exchangeCodeForTokens(code, redirectUri);
+    const connectedGmail =
+      (await getConnectedGmailEmail(tokens, redirectUri).catch(() => null)) ||
+      String(user.user_metadata?.gmail_email ?? "");
     const nextMetadata: Record<string, unknown> = { ...user.user_metadata };
     if (tokens.refresh_token) {
       nextMetadata.gmail_refresh_token = tokens.refresh_token;
     }
-    nextMetadata.gmail_email = user.email ?? "Connected";
+    if (connectedGmail) {
+      nextMetadata.gmail_email = connectedGmail;
+    }
 
     const { error } = await supabase.auth.updateUser({
       data: nextMetadata,

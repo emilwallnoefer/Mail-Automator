@@ -37,6 +37,18 @@ type WeekResponse = {
       responsible: string;
     }
   >;
+  travel_debug?: {
+    status:
+      | "not_attempted"
+      | "missing_refresh_token"
+      | "ok"
+      | "ok_empty"
+      | "ok_no_week_match"
+      | "error";
+    message: string;
+    fetched_dates: number;
+    week_matches: number;
+  };
 };
 
 type ToastState = { kind: "ok" | "error"; message: string } | null;
@@ -864,7 +876,16 @@ export function TimeTrackerPanel() {
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
               <p className="mt-2 text-xs text-slate-300/80">{dayLabel(selectedDay.date)}</p>
               {!selectedTravelInfo ? (
-                <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+                <>
+                  <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+                  {data?.travel_debug ? (
+                    <p className="mt-3 text-xs text-slate-400/90">
+                      Debug: {data.travel_debug.status} - {data.travel_debug.message}
+                      {"  "}
+                      ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <div className="mt-4 space-y-3 text-sm">
                   <div>
