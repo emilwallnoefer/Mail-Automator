@@ -94,6 +94,12 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function isWeekendDate(dateKey: string) {
+  const date = fromDateKey(dateKey);
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
 export function TimeTrackerPanel() {
   const bubbles = [
     { left: "6%", size: "10px", duration: "9s", delay: "0s" },
@@ -380,14 +386,16 @@ export function TimeTrackerPanel() {
             {(data?.days ?? []).map((day) => {
               const donePct = Math.round(Math.min(1, (day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
+              const todayKey = toDateKey(new Date());
+              const weekendRuleApplies = isWeekendDate(day.date) && day.date >= todayKey;
               const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
-              const overtimeWorkedMins = Math.max(0, day.net_mins - TARGET_MINS);
+              const overtimeWorkedMins = weekendRuleApplies ? Math.max(0, day.net_mins) : Math.max(0, day.net_mins - TARGET_MINS);
               const overtimeCompMins = Math.max(0, day.comp_mins);
               const barTotalMins = Math.max(
                 TARGET_MINS,
-                workedBaseMins + overtimeWorkedMins + overtimeCompMins,
+                (weekendRuleApplies ? 0 : workedBaseMins) + overtimeWorkedMins + overtimeCompMins,
               );
-              const sandPct = (workedBaseMins / barTotalMins) * 100;
+              const sandPct = ((weekendRuleApplies ? 0 : workedBaseMins) / barTotalMins) * 100;
               const algaePct = (overtimeWorkedMins / barTotalMins) * 100;
               const compPct = (overtimeCompMins / barTotalMins) * 100;
               return (
@@ -415,7 +423,7 @@ export function TimeTrackerPanel() {
                       <span className="day-progress-segment day-progress-comp" style={{ width: `${compPct}%` }} />
                     </div>
                     <p className="mt-2 text-[11px] text-slate-300/80">
-                      Core hours {fmtHM(workedBaseMins)}
+                      Core hours {fmtHM(weekendRuleApplies ? 0 : workedBaseMins)}
                       {overtimeWorkedMins > 0 ? ` · Overtime worked ${fmtHM(overtimeWorkedMins)}` : ""}
                       {overtimeCompMins > 0 ? ` · Overtime compensated ${fmtHM(overtimeCompMins)}` : ""}
                     </p>

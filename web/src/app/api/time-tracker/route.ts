@@ -63,6 +63,13 @@ function addDays(date: Date, days: number) {
   return next;
 }
 
+function isWeekendDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map((value) => Number.parseInt(value, 10));
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  const weekday = date.getDay();
+  return weekday === 0 || weekday === 6;
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -157,13 +164,15 @@ export async function GET(request: Request) {
     allCompByDate.set(row.work_date, sanitizeMins(row.mins));
   }
   const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
+  const todayKey = toDateString(new Date());
 
   let overtimeBankMins = 0;
   for (const date of allDates) {
     const work = allWorkByDate.get(date);
     const comp = allCompByDate.get(date) ?? 0;
     if (work?.holiday) continue;
-    const overtime = Math.max(0, (work?.net ?? 0) - TARGET_MINS);
+    const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
+    const overtime = weekendRuleApplies ? Math.max(0, work?.net ?? 0) : Math.max(0, (work?.net ?? 0) - TARGET_MINS);
     overtimeBankMins += overtime - comp;
   }
 
@@ -198,11 +207,17 @@ export async function POST(request: Request) {
       p_reason: reason,
     });
     if (snapshotRes.error) {
+      const detail = snapshotRes.error.message ?? "";
+      const looksLikeMissingDurabilityObjects =
+        /create_time_tracker_snapshot|function .* does not exist|time_tracker_snapshots|relation .* does not exist/i.test(
+          detail,
+        );
       return NextResponse.json(
         {
-          error:
-            "Could not create safety snapshot before update. No data was changed. Please retry.",
-          detail: snapshotRes.error.message,
+          error: looksLikeMissingDurabilityObjects
+            ? "Could not create safety snapshot before update. Run web/supabase/time-tracker-durability.sql in Supabase SQL Editor, then retry."
+            : "Could not create safety snapshot before update. No data was changed. Please retry.",
+          detail,
         },
         { status: 500 },
       );
