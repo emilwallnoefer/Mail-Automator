@@ -130,6 +130,48 @@ body {
   animation: waveShift 5.2s ease-in-out infinite reverse;
 }
 
+.day-progress {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(2, 6, 23, 0.45);
+  overflow: hidden;
+}
+
+.day-progress-segment {
+  height: 100%;
+  min-width: 0;
+}
+
+.day-progress-sand {
+  background: linear-gradient(180deg, rgba(245, 208, 120, 0.95), rgba(194, 146, 78, 0.92));
+}
+
+.day-progress-algae {
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.95), rgba(20, 122, 107, 0.92));
+  position: relative;
+}
+
+.day-progress-algae::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    120deg,
+    rgba(167, 243, 208, 0.25) 0px,
+    rgba(167, 243, 208, 0.25) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+  animation: shimmerSweep 7s linear infinite;
+}
+
+.day-progress-comp {
+  background: linear-gradient(180deg, rgba(251, 146, 146, 0.95), rgba(185, 71, 71, 0.92));
+}
+
 @keyframes underwaterDrift {
   0% {
     transform: translate3d(-2%, -1%, 0) scale(1);

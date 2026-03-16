@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 const TARGET_MINS = 504;
+const PREFETCH_WEEKS_EACH_SIDE = 4;
 
 type DayBreak = {
   name: string;
@@ -115,6 +116,8 @@ export function TimeTrackerPanel() {
   const [data, setData] = useState<WeekResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
+  const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -126,6 +129,56 @@ export function TimeTrackerPanel() {
   const [formStop, setFormStop] = useState("");
   const [formHoliday, setFormHoliday] = useState(false);
   const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
+
+  const applyWeekData = useCallback((weekData: WeekResponse) => {
+    setData(weekData);
+    const days = weekData.days ?? [];
+    setSelectedDate((prev) => {
+      if (prev && days.some((day) => day.date === prev)) return prev;
+      return days[0]?.date ?? null;
+    });
+  }, []);
+
+  const fetchWeekData = useCallback(async (
+    targetWeekStart: string,
+    options?: { force?: boolean },
+  ): Promise<WeekResponse> => {
+    const force = options?.force ?? false;
+    if (!force) {
+      const cached = weekCacheRef.current.get(targetWeekStart);
+      if (cached) return cached;
+      const inflight = weekInflightRef.current.get(targetWeekStart);
+      if (inflight) return inflight;
+    }
+
+    const requestPromise = (async () => {
+      const response = await fetch(`/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}`);
+      const payload = (await response.json()) as WeekResponse | { error: string };
+      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
+      const weekData = payload as WeekResponse;
+      weekCacheRef.current.set(targetWeekStart, weekData);
+      return weekData;
+    })();
+
+    weekInflightRef.current.set(targetWeekStart, requestPromise);
+    try {
+      return await requestPromise;
+    } finally {
+      weekInflightRef.current.delete(targetWeekStart);
+    }
+  }, []);
+
+  const prefetchNearbyWeeks = useCallback((centerWeekStart: string) => {
+    const center = getMonday(centerWeekStart);
+    for (let i = -PREFETCH_WEEKS_EACH_SIDE; i <= PREFETCH_WEEKS_EACH_SIDE; i += 1) {
+      if (i === 0) continue;
+      const key = toDateKey(addDays(center, i * 7));
+      if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
+      void fetchWeekData(key).catch(() => {
+        // Silent prefetch failures should not interrupt UI interactions.
+      });
+    }
+  }, [fetchWeekData]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -139,15 +192,19 @@ export function TimeTrackerPanel() {
   useEffect(() => {
     let active = true;
     async function loadWeek() {
-      setLoading(true);
       try {
-        const response = await fetch(`/api/time-tracker?weekStart=${encodeURIComponent(weekStart)}`);
-        const payload = (await response.json()) as WeekResponse | { error: string };
-        if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
+        const cached = weekCacheRef.current.get(weekStart);
+        if (cached) {
+          if (!active) return;
+          applyWeekData(cached);
+          prefetchNearbyWeeks(weekStart);
+          return;
+        }
+        setLoading(true);
+        const weekData = await fetchWeekData(weekStart);
         if (!active) return;
-        setData(payload as WeekResponse);
-        const days = (payload as WeekResponse).days ?? [];
-        setSelectedDate((prev) => prev ?? days[0]?.date ?? null);
+        applyWeekData(weekData);
+        prefetchNearbyWeeks(weekStart);
       } catch (error) {
         if (!active) return;
         setToast({ kind: "error", message: (error as Error).message });
@@ -159,13 +216,12 @@ export function TimeTrackerPanel() {
     return () => {
       active = false;
     };
-  }, [weekStart]);
+  }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   async function refreshWeek() {
-    const response = await fetch(`/api/time-tracker?weekStart=${encodeURIComponent(weekStart)}`);
-    const payload = (await response.json()) as WeekResponse | { error: string };
-    if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to refresh tracker");
-    setData(payload as WeekResponse);
+    const weekData = await fetchWeekData(weekStart, { force: true });
+    applyWeekData(weekData);
+    prefetchNearbyWeeks(weekStart);
   }
 
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
@@ -324,7 +380,16 @@ export function TimeTrackerPanel() {
             {(data?.days ?? []).map((day) => {
               const donePct = Math.round(Math.min(1, (day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
-              const fillPct = Math.max(0, Math.min(100, donePct));
+              const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
+              const overtimeWorkedMins = Math.max(0, day.net_mins - TARGET_MINS);
+              const overtimeCompMins = Math.max(0, day.comp_mins);
+              const barTotalMins = Math.max(
+                TARGET_MINS,
+                workedBaseMins + overtimeWorkedMins + overtimeCompMins,
+              );
+              const sandPct = (workedBaseMins / barTotalMins) * 100;
+              const algaePct = (overtimeWorkedMins / barTotalMins) * 100;
+              const compPct = (overtimeCompMins / barTotalMins) * 100;
               return (
                 <article
                   key={day.date}
@@ -337,16 +402,23 @@ export function TimeTrackerPanel() {
                     onClick={() => setSelectedDate(day.date)}
                     className="w-full text-left"
                   >
-                    <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+                      <p className="text-xs font-medium text-cyan-100/90">{donePct}%</p>
+                    </div>
                     <p className="mt-1 text-sm font-medium">
                       {day.holiday ? "Public holiday" : `${fmtHM(day.net_mins)} worked`}
                     </p>
-                    <p className="mt-1 text-xs text-slate-300/80">
-                      Completion {donePct}% {day.comp_mins > 0 ? `· Comp ${fmtHM(day.comp_mins)}` : ""}
-                    </p>
-                    <div className="wave-tank mt-3">
-                      <div className="wave-fill" style={{ height: `${fillPct}%` }} />
+                    <div className="day-progress mt-3" aria-label="Day progress bar">
+                      <span className="day-progress-segment day-progress-sand" style={{ width: `${sandPct}%` }} />
+                      <span className="day-progress-segment day-progress-algae" style={{ width: `${algaePct}%` }} />
+                      <span className="day-progress-segment day-progress-comp" style={{ width: `${compPct}%` }} />
                     </div>
+                    <p className="mt-2 text-[11px] text-slate-300/80">
+                      Core hours {fmtHM(workedBaseMins)}
+                      {overtimeWorkedMins > 0 ? ` · Overtime worked ${fmtHM(overtimeWorkedMins)}` : ""}
+                      {overtimeCompMins > 0 ? ` · Overtime compensated ${fmtHM(overtimeCompMins)}` : ""}
+                    </p>
                   </button>
                   <div className="mt-3 flex gap-2">
                     <button

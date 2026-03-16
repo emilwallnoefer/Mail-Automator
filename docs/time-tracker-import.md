@@ -7,14 +7,17 @@ This imports legacy Hour Logger JSON into per-user Supabase tables for the Mail 
 In Supabase SQL Editor, run:
 
 - `web/supabase/time-tracker-schema.sql`
+- `web/supabase/time-tracker-durability.sql`
 
 This creates:
 
 - `public.time_day_logs`
 - `public.time_day_breaks`
 - `public.time_comp_adjustments`
+- `public.time_tracker_audit_log` (immutable row-level change history)
+- `public.time_tracker_snapshots` (full per-user snapshots before writes)
 
-All tables are protected with RLS for per-user access.
+All tables are protected with RLS for per-user access. The durability layer adds a safety snapshot before every API write so failed updates do not silently destroy state.
 
 ## 2) Add service role key locally
 

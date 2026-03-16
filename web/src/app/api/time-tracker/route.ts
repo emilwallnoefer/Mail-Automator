@@ -184,6 +184,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authedUser = user;
 
   const payload = (await request.json()) as
     | { action: "save_day"; day: DayInput }
@@ -191,17 +192,38 @@ export async function POST(request: Request) {
     | { action: "fill_missing"; work_date: string }
     | { action: "import_json"; data: ImportPayload };
 
+  async function requireSnapshot(reason: string) {
+    const snapshotRes = await supabase.rpc("create_time_tracker_snapshot", {
+      p_user: authedUser.id,
+      p_reason: reason,
+    });
+    if (snapshotRes.error) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not create safety snapshot before update. No data was changed. Please retry.",
+          detail: snapshotRes.error.message,
+        },
+        { status: 500 },
+      );
+    }
+    return null;
+  }
+
   if (payload.action === "save_day") {
     const day = payload.day;
     if (!day?.work_date || !isDateKey(day.work_date)) {
       return NextResponse.json({ error: "Invalid work_date" }, { status: 400 });
     }
 
+    const snapshotErr = await requireSnapshot(`before_save_day_${day.work_date}`);
+    if (snapshotErr) return snapshotErr;
+
     const saveRes = await supabase
       .from("time_day_logs")
       .upsert(
         {
-          user_id: user.id,
+          user_id: authedUser.id,
           work_date: day.work_date,
           start_time: day.start_time ?? "",
           stop_time: day.stop_time ?? "",
@@ -239,13 +261,20 @@ export async function POST(request: Request) {
     const date = payload.work_date;
     if (!date || !isDateKey(date)) return NextResponse.json({ error: "Invalid work_date" }, { status: 400 });
 
-    const deleteLogRes = await supabase.from("time_day_logs").delete().eq("user_id", user.id).eq("work_date", date);
+    const snapshotErr = await requireSnapshot(`before_reset_day_${date}`);
+    if (snapshotErr) return snapshotErr;
+
+    const deleteLogRes = await supabase
+      .from("time_day_logs")
+      .delete()
+      .eq("user_id", authedUser.id)
+      .eq("work_date", date);
     if (deleteLogRes.error) return NextResponse.json({ error: deleteLogRes.error.message }, { status: 500 });
 
     const deleteCompRes = await supabase
       .from("time_comp_adjustments")
       .delete()
-      .eq("user_id", user.id)
+      .eq("user_id", authedUser.id)
       .eq("work_date", date);
     if (deleteCompRes.error) return NextResponse.json({ error: deleteCompRes.error.message }, { status: 500 });
 
@@ -256,10 +285,13 @@ export async function POST(request: Request) {
     const date = payload.work_date;
     if (!date || !isDateKey(date)) return NextResponse.json({ error: "Invalid work_date" }, { status: 400 });
 
+    const snapshotErr = await requireSnapshot(`before_fill_missing_${date}`);
+    if (snapshotErr) return snapshotErr;
+
     const dayRes = await supabase
       .from("time_day_logs")
       .select("net_mins")
-      .eq("user_id", user.id)
+      .eq("user_id", authedUser.id)
       .eq("work_date", date)
       .maybeSingle();
     if (dayRes.error) return NextResponse.json({ error: dayRes.error.message }, { status: 500 });
@@ -270,7 +302,7 @@ export async function POST(request: Request) {
     const currentCompRes = await supabase
       .from("time_comp_adjustments")
       .select("mins")
-      .eq("user_id", user.id)
+      .eq("user_id", authedUser.id)
       .eq("work_date", date)
       .maybeSingle();
     if (currentCompRes.error) return NextResponse.json({ error: currentCompRes.error.message }, { status: 500 });
@@ -283,7 +315,7 @@ export async function POST(request: Request) {
         .from("time_comp_adjustments")
         .upsert(
           {
-            user_id: user.id,
+            user_id: authedUser.id,
             work_date: date,
             mins: next,
             note: "auto-fill",
@@ -296,7 +328,7 @@ export async function POST(request: Request) {
       const deleteCompRes = await supabase
         .from("time_comp_adjustments")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", authedUser.id)
         .eq("work_date", date);
       if (deleteCompRes.error) return NextResponse.json({ error: deleteCompRes.error.message }, { status: 500 });
     }
@@ -305,12 +337,15 @@ export async function POST(request: Request) {
   }
 
   if (payload.action === "import_json") {
+    const snapshotErr = await requireSnapshot("before_import_json");
+    if (snapshotErr) return snapshotErr;
+
     const input = payload.data;
     const workEntries = Object.entries(input.work ?? {}).filter(([date]) => isDateKey(date));
     const compEntries = Object.entries(input.comp ?? {}).filter(([date]) => isDateKey(date));
 
     const dayRows = workEntries.map(([date, item]) => ({
-      user_id: user.id,
+      user_id: authedUser.id,
       work_date: date,
       start_time: item?.start ?? "",
       stop_time: item?.stop ?? "",
@@ -329,7 +364,7 @@ export async function POST(request: Request) {
     const dayLookupRes = await supabase
       .from("time_day_logs")
       .select("id, work_date")
-      .eq("user_id", user.id)
+      .eq("user_id", authedUser.id)
       .in(
         "work_date",
         workEntries.map(([date]) => date),
@@ -361,7 +396,7 @@ export async function POST(request: Request) {
     }
 
     const compRows = compEntries.map(([date, item]) => ({
-      user_id: user.id,
+      user_id: authedUser.id,
       work_date: date,
       mins: sanitizeMins(item?.mins),
       note: item?.note ?? "",

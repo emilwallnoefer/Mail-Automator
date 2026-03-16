@@ -164,7 +164,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [draftLoading, setDraftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
-  const [showSetup, setShowSetup] = useState(false);
   const [showChanges, setShowChanges] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
@@ -609,30 +608,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
           ) : null}
         </AnimatePresence>
 
-        <section className="glass-card mt-auto p-3">
-          <button
-            onClick={() => setShowSetup((prev) => !prev)}
-            className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-left text-xs font-medium hover:bg-white/15"
-            type="button"
-          >
-            <span>Gmail setup README</span>
-            <span>{showSetup ? "Hide" : "Show"}</span>
-          </button>
-
-          {showSetup && (
-            <div className="mt-2 rounded-lg border border-white/15 bg-slate-900/35 p-3 text-xs text-slate-200/90">
-              <p className="font-medium text-cyan-200">How to connect Mail Automator to Gmail</p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4">
-                <li>Sign in to this app and open the dashboard.</li>
-                <li>Click <strong>Connect Gmail</strong>.</li>
-                <li>In Google popup, choose your Gmail account.</li>
-                <li>Allow draft access permission.</li>
-                <li>Return to dashboard and confirm status shows <strong>Gmail connected</strong>.</li>
-                <li>Generate a mail, then click <strong>Create Gmail draft</strong>.</li>
-              </ol>
-            </div>
-          )}
-        </section>
       </section>
     </main>
   );

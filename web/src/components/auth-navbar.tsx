@@ -22,6 +22,7 @@ export function AuthNavbar({
   onSelectModule,
 }: AuthNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -108,6 +109,28 @@ export function AuthNavbar({
               </div>
 
               <div className="mt-2 grid gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowSetup((prev) => !prev)}
+                  className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
+                >
+                  Gmail setup README {showSetup ? "▲" : "▼"}
+                </button>
+
+                {showSetup && (
+                  <div className="rounded-lg border border-white/10 bg-slate-900/45 p-2.5 text-[11px] text-slate-200/90">
+                    <p className="font-medium text-cyan-200">How to connect Mail Automator to Gmail</p>
+                    <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+                      <li>Sign in to this app and open the dashboard.</li>
+                      <li>Click <strong>Connect Gmail</strong>.</li>
+                      <li>In Google popup, choose your Gmail account.</li>
+                      <li>Allow draft access permission.</li>
+                      <li>Confirm status shows <strong>Gmail connected</strong>.</li>
+                      <li>Generate mail and click <strong>Create Gmail draft</strong>.</li>
+                    </ol>
+                  </div>
+                )}
+
                 {gmailConnected ? (
                   <button
                     type="button"
