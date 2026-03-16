@@ -58,6 +58,15 @@ const MONTHS: Record<string, number> = {
   oct: 10,
   nov: 11,
   dec: 12,
+  januar: 1,
+  februar: 2,
+  maerz: 3,
+  märz: 3,
+  mai: 5,
+  juni: 6,
+  juli: 7,
+  oktober: 10,
+  dezember: 12,
 };
 
 function parseDateFromMonthYearDay(monthYearRaw: string, dayRaw: string) {
@@ -90,8 +99,9 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   if (!refreshToken) return {};
 
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
-  const range = process.env.GOOGLE_SHEETS_RANGE || "A:R";
+  const baseRange = process.env.GOOGLE_SHEETS_RANGE || "A:R";
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || "";
+  const gid = process.env.GOOGLE_SHEETS_GID;
 
   const monthYearColIdx = getColumnIndexFromEnv(
     "GOOGLE_SHEETS_DATE_MONTH_YEAR_COLUMN",
@@ -105,6 +115,19 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   const oauthClient = getOAuthClient(redirectUri);
   oauthClient.setCredentials({ refresh_token: refreshToken });
   const sheets = google.sheets({ version: "v4", auth: oauthClient });
+  let range = baseRange;
+  if (!range.includes("!") && gid) {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(sheetId,title))",
+    });
+    const targetSheetId = Number.parseInt(gid, 10);
+    const tabTitle =
+      meta.data.sheets?.find((sheet) => sheet.properties?.sheetId === targetSheetId)?.properties?.title ?? "";
+    if (tabTitle) {
+      range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
+    }
+  }
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -114,8 +137,11 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   const rows = response.data.values ?? [];
   const result: Record<string, TravelInfo> = {};
 
+  let activeMonthYear = "";
   for (const row of rows) {
-    const monthYear = cleanCell(row[monthYearColIdx]);
+    const monthYearCandidate = cleanCell(row[monthYearColIdx]);
+    if (monthYearCandidate) activeMonthYear = monthYearCandidate;
+    const monthYear = activeMonthYear;
     const day = cleanCell(row[dayColIdx]);
     const dateKey = parseDateFromMonthYearDay(monthYear, day);
     if (!dateKey) continue;
