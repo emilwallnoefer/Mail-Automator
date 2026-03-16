@@ -53,7 +53,6 @@ export function AuthNavbar({
           <button
             type="button"
             onClick={() => {
-              playUiSound("click");
               setMenuOpen((prev) => !prev);
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-2.5 py-1.5 text-xs transition hover:bg-white/12"
@@ -70,7 +69,7 @@ export function AuthNavbar({
                 <button
                   type="button"
                   onClick={() => {
-                    playUiSound("click");
+                    playUiSound("switchWhoosh");
                     onSelectModule("mail");
                     setMenuOpen(false);
                   }}
@@ -85,7 +84,7 @@ export function AuthNavbar({
                 <button
                   type="button"
                   onClick={() => {
-                    playUiSound("click");
+                    playUiSound("switchWhoosh");
                     onSelectModule("time");
                     setMenuOpen(false);
                   }}
@@ -118,7 +117,6 @@ export function AuthNavbar({
               <div className="mt-2 grid gap-1.5">
                 <a
                   href="/settings"
-                  onClick={() => playUiSound("click")}
                   className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
                 >
                   Open settings
@@ -126,7 +124,6 @@ export function AuthNavbar({
                 <form action="/logout" method="post">
                   <button
                     type="submit"
-                    onClick={() => playUiSound("click")}
                     className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
                   >
                     Sign out

@@ -31,6 +31,13 @@ Set values in `.env.local`:
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `GOOGLE_OAUTH_REDIRECT_URI` (local: `http://localhost:3000/api/gmail/callback`)
+- `GOOGLE_SHEETS_SPREADSHEET_ID`
+- `GOOGLE_SHEETS_RANGE` (example: `A:R`)
+- `GOOGLE_SHEETS_DATE_MONTH_YEAR_COLUMN` (set `A`)
+- `GOOGLE_SHEETS_DATE_DAY_COLUMN` (set `C`)
+- `GOOGLE_SHEETS_COL_CLIENT` (set `P`)
+- `GOOGLE_SHEETS_COL_LOCATION` (set `Q`)
+- `GOOGLE_SHEETS_COL_RESPONSIBLE` (set `R`)
 Then run:
 
 ```bash
@@ -52,6 +59,13 @@ Open [http://localhost:3000](http://localhost:3000).
    - `GOOGLE_OAUTH_CLIENT_ID`
    - `GOOGLE_OAUTH_CLIENT_SECRET`
    - `GOOGLE_OAUTH_REDIRECT_URI` (prod: `https://<your-domain>/api/gmail/callback`)
+   - `GOOGLE_SHEETS_SPREADSHEET_ID`
+   - `GOOGLE_SHEETS_RANGE`
+   - `GOOGLE_SHEETS_DATE_MONTH_YEAR_COLUMN`
+   - `GOOGLE_SHEETS_DATE_DAY_COLUMN`
+   - `GOOGLE_SHEETS_COL_CLIENT`
+   - `GOOGLE_SHEETS_COL_LOCATION`
+   - `GOOGLE_SHEETS_COL_RESPONSIBLE`
 4. Deploy.
 
 ## 4) Google OAuth setup (for Gmail draft creation)
@@ -60,7 +74,22 @@ Open [http://localhost:3000](http://localhost:3000).
 2. Add authorized redirect URIs:
    - `http://localhost:3000/api/gmail/callback`
    - `https://<your-domain>/api/gmail/callback`
-3. Enable Gmail API in the same project.
+3. Enable Gmail API and Google Sheets API in the same project.
+4. OAuth scope must include:
+   - `https://www.googleapis.com/auth/gmail.compose`
+   - `https://www.googleapis.com/auth/spreadsheets.readonly`
+5. If Gmail was already connected before adding Sheets scope, disconnect/reconnect once so the refresh token gets the new permission.
+
+## 4.1 Travel sheet mapping used by Time Tracker
+
+The tracker reads per-date travel info from your sheet with this mapping:
+
+- Date = composed from `A` (month+year text, e.g. `January 2026`) + `C` (day number, e.g. `25`)
+- `P` = Client
+- `Q` = Location
+- `R` = Responsible sales person
+
+In Day Logger, this appears in a read-only right-side info pane for the selected date.
 
 ## 5) Final auth URL sync
 

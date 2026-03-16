@@ -341,6 +341,25 @@ body {
   z-index: 1;
 }
 
+.day-ready-mask-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 246, 255, 0) 22%,
+    rgba(212, 246, 255, 0.18) 46%,
+    rgba(212, 246, 255, 0) 72%
+  );
+  mix-blend-mode: screen;
+  filter: blur(2.8px);
+  opacity: 0;
+  animation: dayReadyMaskedSweep 860ms ease-out both;
+  animation-delay: var(--day-ready-delay, 0ms);
+}
+
 .day-card-selected {
   border-color: rgba(103, 232, 249, 0.72);
   box-shadow:
@@ -412,6 +431,20 @@ body {
     transform: scaleY(1);
     transform-origin: top;
     opacity: 1;
+  }
+}
+
+@keyframes dayReadyMaskedSweep {
+  0% {
+    transform: translate3d(-38%, -38%, 0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.58;
+  }
+  100% {
+    transform: translate3d(38%, 38%, 0);
+    opacity: 0;
   }
 }
 

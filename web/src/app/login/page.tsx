@@ -1,7 +1,6 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { playUiSound } from "@/lib/ui-sounds";
 import { motion } from "framer-motion";
 import { FormEvent, useState } from "react";
 
@@ -19,7 +18,6 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    playUiSound("click");
     if (!supabaseConfigured) {
       setError("Missing Supabase env vars in deployment. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
       return;
@@ -124,7 +122,6 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                playUiSound("click");
                 setMode("signin");
                 setMessage(null);
                 setError(null);
@@ -138,7 +135,6 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                playUiSound("click");
                 setMode("signup");
                 setMessage(null);
                 setError(null);

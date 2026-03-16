@@ -1,12 +1,12 @@
 "use client";
 
 export type UiSoundKey =
-  | "click"
   | "switchWhoosh"
+  | "generateReady"
   | "mailSend"
+  | "fillSwoosh"
   | "saveConfirm"
-  | "resetTap"
-  | "fillSwoosh";
+  | "resetTap";
 
 type SoundConfig = {
   src: string;
@@ -14,15 +14,15 @@ type SoundConfig = {
   cooldownMs?: number;
 };
 
-const SOUND_VERSION = "v4-20260316b";
+const SOUND_VERSION = "v7-20260316e";
 
 const SOUND_CONFIG: Record<UiSoundKey, SoundConfig> = {
-  click: { src: `/sounds/click-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.46, cooldownMs: 40 },
-  switchWhoosh: { src: `/sounds/switch-whoosh-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.48, cooldownMs: 80 },
-  mailSend: { src: `/sounds/mail-send-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.5, cooldownMs: 120 },
-  saveConfirm: { src: `/sounds/save-confirm-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.5, cooldownMs: 120 },
-  resetTap: { src: `/sounds/reset-tap-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.46, cooldownMs: 100 },
-  fillSwoosh: { src: `/sounds/fill-swoosh-minimal-cine-v4.wav?v=${SOUND_VERSION}`, volume: 0.48, cooldownMs: 120 },
+  switchWhoosh: { src: `/sounds/switch-wind-v7.wav?v=${SOUND_VERSION}`, volume: 0.56, cooldownMs: 80 },
+  generateReady: { src: `/sounds/generate-wind-v7.wav?v=${SOUND_VERSION}`, volume: 0.5, cooldownMs: 120 },
+  mailSend: { src: `/sounds/mail-send-wind-v7.wav?v=${SOUND_VERSION}`, volume: 0.52, cooldownMs: 140 },
+  fillSwoosh: { src: `/sounds/fill-wind-v7.wav?v=${SOUND_VERSION}`, volume: 0.5, cooldownMs: 140 },
+  saveConfirm: { src: `/sounds/save-rise-v5.wav?v=${SOUND_VERSION}`, volume: 0.52, cooldownMs: 120 },
+  resetTap: { src: `/sounds/reset-thud-v5.wav?v=${SOUND_VERSION}`, volume: 0.56, cooldownMs: 100 },
 };
 
 const cache = new Map<UiSoundKey, HTMLAudioElement>();

@@ -146,6 +146,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
       if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
       const generated = data as GenerateResponse;
       setResult(generated);
+      playUiSound("generateReady");
       if (generated.selected_change_ids && generated.selected_change_ids.length > 0) {
         setForm((prev) => ({
           ...prev,
@@ -186,6 +187,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
       const data = (await response.json()) as { draftId: string; messageId: string } | { error: string };
       if (!response.ok) throw new Error((data as { error: string }).error || "Failed to create draft");
       setDraftInfo(data as { draftId: string; messageId: string });
+      playUiSound("mailSend");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -410,7 +412,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      playUiSound("click");
                       setShowChanges((prev) => !prev);
                     }}
                     className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -458,7 +459,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <div className="mt-5 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => {
-                  playUiSound("click");
                   void handleGenerate();
                 }}
                 disabled={loading || generateDisabled}
@@ -469,7 +469,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </button>
               <button
                 onClick={() => {
-                  playUiSound("mailSend");
                   void handleCreateDraft();
                 }}
                 disabled={draftLoading || !gmailStatus.connected || !result}
@@ -480,7 +479,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </button>
               <button
                 onClick={() => {
-                  playUiSound("click");
                   handleResetComposer();
                 }}
                 className="h-11 w-full rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-slate-100 transition hover:bg-white/15 sm:w-auto"
@@ -504,7 +502,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <button
                   className="rounded-md border border-white/20 bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
                   onClick={() => {
-                    playUiSound("click");
                     void copyText(`Subject: ${result.subject}\n\n${result.body}`);
                   }}
                   type="button"

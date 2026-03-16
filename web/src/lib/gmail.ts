@@ -1,6 +1,9 @@
 import { google } from "googleapis";
 
-const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.compose"];
+const GMAIL_SCOPES = [
+  "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/spreadsheets.readonly",
+];
 
 function requiredEnv(name: string) {
   const value = process.env[name];

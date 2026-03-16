@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { playUiSound } from "@/lib/ui-sounds";
 
 type SettingsShellProps = {
   email: string;
@@ -77,7 +76,6 @@ export function SettingsShell({ email }: SettingsShellProps) {
           </div>
           <a
             href="/dashboard"
-            onClick={() => playUiSound("click")}
             className="rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs transition hover:bg-white/12"
           >
             Back to dashboard
@@ -95,7 +93,6 @@ export function SettingsShell({ email }: SettingsShellProps) {
               <button
                 type="button"
                 onClick={() => {
-                  playUiSound("click");
                   void handleDisconnectGmail();
                 }}
                 className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 sm:w-auto"
@@ -105,7 +102,6 @@ export function SettingsShell({ email }: SettingsShellProps) {
             ) : (
               <a
                 href="/api/gmail/connect"
-                onClick={() => playUiSound("click")}
                 className="w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:bg-cyan-300 sm:w-auto"
               >
                 Connect Gmail
@@ -118,7 +114,6 @@ export function SettingsShell({ email }: SettingsShellProps) {
           <button
             type="button"
             onClick={() => {
-              playUiSound("click");
               setShowSetup((prev) => !prev);
             }}
             className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
@@ -153,7 +148,6 @@ export function SettingsShell({ email }: SettingsShellProps) {
           <button
             type="button"
             onClick={() => {
-              playUiSound("click");
               importFileRef.current?.click();
             }}
             disabled={importing}

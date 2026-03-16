@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchTravelByDate } from "@/lib/google-sheets";
 import { NextResponse } from "next/server";
 
 const TARGET_MINS = 504;
@@ -176,6 +177,23 @@ export async function GET(request: Request) {
     overtimeBankMins += overtime - comp;
   }
 
+  let travelByDate: Record<
+    string,
+    {
+      client: string;
+      location: string;
+      responsible: string;
+    }
+  > = {};
+  try {
+    const refreshToken = String(user.user_metadata?.gmail_refresh_token ?? "");
+    if (refreshToken) {
+      travelByDate = await fetchTravelByDate(refreshToken);
+    }
+  } catch {
+    // Non-blocking: tracker remains available even if travel sheet access fails.
+  }
+
   return NextResponse.json({
     week_start: weekStart,
     week_end: weekEnd,
@@ -183,6 +201,7 @@ export async function GET(request: Request) {
     week_hours_mins: weekHoursMins,
     overtime_bank_mins: overtimeBankMins,
     days: weekDays,
+    travel_by_date: travelByDate,
   });
 }
 
