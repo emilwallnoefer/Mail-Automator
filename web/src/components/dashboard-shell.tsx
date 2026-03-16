@@ -214,7 +214,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell">
         <AuthNavbar

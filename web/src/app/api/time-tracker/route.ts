@@ -81,6 +81,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const weekStartDate = getWeekStart(url.searchParams.get("weekStart") ?? undefined);
+  const includeTravel = url.searchParams.get("includeTravel") !== "0";
   if (!weekStartDate) return NextResponse.json({ error: "Invalid weekStart date" }, { status: 400 });
 
   const weekStart = toDateString(weekStartDate);
@@ -203,51 +204,60 @@ export async function GET(request: Request) {
     week_matches: 0,
   };
   const weekDateSet = new Set(weekDays.map((day) => day.date));
-  try {
-    const refreshToken = String(user.user_metadata?.gmail_refresh_token ?? "");
-    if (!refreshToken) {
-      travelDebug = {
-        status: "missing_refresh_token",
-        message: "No Google refresh token found. Reconnect Gmail/Google in Settings.",
-        fetched_dates: 0,
-        week_matches: 0,
-      };
-    } else {
-      travelByDate = await fetchTravelByDate(refreshToken);
-      const fetchedDates = Object.keys(travelByDate);
-      const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
-      if (fetchedDates.length === 0) {
+  if (includeTravel) {
+    try {
+      const refreshToken = String(user.user_metadata?.gmail_refresh_token ?? "");
+      if (!refreshToken) {
         travelDebug = {
-          status: "ok_empty",
-          message: "Sheet fetch succeeded but no parseable travel rows were found.",
+          status: "missing_refresh_token",
+          message: "No Google refresh token found. Reconnect Gmail/Google in Settings.",
           fetched_dates: 0,
           week_matches: 0,
         };
-      } else if (weekMatches === 0) {
-        travelDebug = {
-          status: "ok_no_week_match",
-          message: "Travel rows loaded, but none match the currently selected week.",
-          fetched_dates: fetchedDates.length,
-          week_matches: 0,
-        };
       } else {
-        travelDebug = {
-          status: "ok",
-          message: "Travel rows loaded and matched at least one date in this week.",
-          fetched_dates: fetchedDates.length,
-          week_matches: weekMatches,
-        };
+        travelByDate = await fetchTravelByDate(refreshToken);
+        const fetchedDates = Object.keys(travelByDate);
+        const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
+        if (fetchedDates.length === 0) {
+          travelDebug = {
+            status: "ok_empty",
+            message: "Sheet fetch succeeded but no parseable travel rows were found.",
+            fetched_dates: 0,
+            week_matches: 0,
+          };
+        } else if (weekMatches === 0) {
+          travelDebug = {
+            status: "ok_no_week_match",
+            message: "Travel rows loaded, but none match the currently selected week.",
+            fetched_dates: fetchedDates.length,
+            week_matches: 0,
+          };
+        } else {
+          travelDebug = {
+            status: "ok",
+            message: "Travel rows loaded and matched at least one date in this week.",
+            fetched_dates: fetchedDates.length,
+            week_matches: weekMatches,
+          };
+        }
       }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : "Unknown travel sheet error.";
+      travelDebug = {
+        status: "error",
+        message: errMsg,
+        fetched_dates: 0,
+        week_matches: 0,
+      };
+      // Non-blocking: tracker remains available even if travel sheet access fails.
     }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : "Unknown travel sheet error.";
+  } else {
     travelDebug = {
-      status: "error",
-      message: errMsg,
+      status: "not_attempted",
+      message: "Travel fetch skipped for fast initial week load.",
       fetched_dates: 0,
       week_matches: 0,
     };
-    // Non-blocking: tracker remains available even if travel sheet access fails.
   }
 
   return NextResponse.json({

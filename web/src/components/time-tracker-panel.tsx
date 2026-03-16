@@ -237,9 +237,10 @@ export function TimeTrackerPanel() {
 
   const fetchWeekData = useCallback(async (
     targetWeekStart: string,
-    options?: { force?: boolean },
+    options?: { force?: boolean; includeTravel?: boolean },
   ): Promise<WeekResponse> => {
     const force = options?.force ?? false;
+    const includeTravel = options?.includeTravel ?? true;
     if (!force) {
       const cached = weekCacheRef.current.get(targetWeekStart);
       if (cached) return cached;
@@ -248,7 +249,9 @@ export function TimeTrackerPanel() {
     }
 
     const requestPromise = (async () => {
-      const response = await fetch(`/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}`);
+      const response = await fetch(
+        `/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}`,
+      );
       const payload = (await response.json()) as WeekResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
       const weekData = payload as WeekResponse;
@@ -270,7 +273,7 @@ export function TimeTrackerPanel() {
       if (i === 0) continue;
       const key = toDateKey(addDays(center, i * 7));
       if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-      void fetchWeekData(key).catch(() => {
+      void fetchWeekData(key, { includeTravel: false }).catch(() => {
         // Silent prefetch failures should not interrupt UI interactions.
       });
     }
@@ -288,6 +291,24 @@ export function TimeTrackerPanel() {
   useEffect(() => {
     let active = true;
     async function loadWeek() {
+      const hydrateTravelInBackground = (targetWeekStart: string) => {
+        void fetchWeekData(targetWeekStart, { force: true, includeTravel: true })
+          .then((fullWeek) => {
+            if (!active) return;
+            if (fullWeek.week_start !== targetWeekStart) return;
+            setData((prev) => {
+              if (!prev || prev.week_start !== targetWeekStart) return prev;
+              return {
+                ...prev,
+                travel_by_date: fullWeek.travel_by_date,
+                travel_debug: fullWeek.travel_debug,
+              };
+            });
+          })
+          .catch(() => {
+            // Keep quick week load even if travel hydration fails.
+          });
+      };
       try {
         const cached = weekCacheRef.current.get(weekStart);
         if (cached) {
@@ -295,14 +316,18 @@ export function TimeTrackerPanel() {
           applyWeekData(cached);
           setWeekLoadTick((prev) => prev + 1);
           prefetchNearbyWeeks(weekStart);
+          if (cached.travel_debug?.status === "not_attempted") {
+            hydrateTravelInBackground(weekStart);
+          }
           return;
         }
         setLoading(true);
-        const weekData = await fetchWeekData(weekStart);
+        const weekData = await fetchWeekData(weekStart, { includeTravel: false });
         if (!active) return;
         applyWeekData(weekData);
         setWeekLoadTick((prev) => prev + 1);
         prefetchNearbyWeeks(weekStart);
+        hydrateTravelInBackground(weekStart);
       } catch (error) {
         if (!active) return;
         setToast({ kind: "error", message: (error as Error).message });
