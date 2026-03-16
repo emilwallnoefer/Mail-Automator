@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
@@ -212,10 +211,8 @@ export function TimeTrackerPanel() {
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorClosing, setEditorClosing] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
-  const closeTimerRef = useRef<number | null>(null);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -300,14 +297,6 @@ export function TimeTrackerPanel() {
   }, [selectedDay, todayKey]);
 
   useEffect(() => {
-    return () => {
-      if (closeTimerRef.current != null) {
-        window.clearTimeout(closeTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     let active = true;
     async function loadWeek() {
       const hydrateWeekDetailsInBackground = (targetWeekStart: string) => {
@@ -389,17 +378,8 @@ export function TimeTrackerPanel() {
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   function returnToWeekdays() {
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setEditorClosing(true);
     setEditorOpen(false);
-    closeTimerRef.current = window.setTimeout(() => {
-      setSelectedDate(null);
-      setEditorClosing(false);
-      closeTimerRef.current = null;
-    }, 280);
+    setSelectedDate(null);
   }
 
   const patchDayInCurrentWeek = useCallback(
@@ -573,28 +553,22 @@ export function TimeTrackerPanel() {
   }, [refreshWeek]);
 
   function handleEditDay(date: string) {
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setEditorClosing(false);
     setSelectedDate(date);
     setEditorOpen(true);
   }
 
   const selectedDaySupportsBreaks = Boolean(selectedDay && selectedDay.date < todayKey);
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
-  const isEditorVisible = (editorOpen || editorClosing) && Boolean(selectedDay);
+  const isEditorVisible = editorOpen;
+  const panelDateLabel = selectedDay ? dayLabel(selectedDay.date) : "Select a day";
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
 
   return (
-    <motion.section
-      layout
-      transition={{ duration: 0.32, ease: "easeOut" }}
+    <section
       className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
-        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-1"
+        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-[1fr_0fr] lg:items-start"
       }`}
     >
       <div className="bubble-layer" aria-hidden="true">
@@ -613,11 +587,9 @@ export function TimeTrackerPanel() {
           />
         ))}
       </div>
-      <motion.div
-        layout
-        transition={{ duration: 0.32, ease: "easeOut" }}
+      <div
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          isEditorVisible ? "justify-self-stretch" : "justify-self-stretch"
+          isEditorVisible ? "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20" : "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -859,32 +831,27 @@ export function TimeTrackerPanel() {
             ))}
         </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
-      </motion.div>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {isEditorVisible && selectedDay ? (
-        <motion.div
-          layout
-          initial={{ opacity: 0, x: 22, scale: 0.985 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 18, scale: 0.99 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
-          className="scroll-mt-24 self-start glass-card p-4 md:p-5"
-        >
-          <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div
+        className={`scroll-mt-24 h-fit self-start glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
+          isEditorVisible ? "block opacity-100 lg:translate-x-0" : "hidden opacity-0 lg:block lg:translate-x-6"
+        } ${isEditorVisible ? "pointer-events-auto" : "pointer-events-none"}`}
+      >
+          <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
             <div>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-base font-semibold">Day Logger</h3>
               </div>
 
               <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-300/80">{dayLabel(selectedDay.date)}</p>
+                <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
                 <label className="block">
                   <span className="mb-1 block text-xs text-slate-200/90">Start</span>
                   <input
                     type="time"
                     value={formStart}
-                    disabled={formHoliday}
+                    disabled={formHoliday || !selectedDay}
                     onChange={(event) => setFormStart(event.target.value)}
                     className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                   />
@@ -894,7 +861,7 @@ export function TimeTrackerPanel() {
                   <input
                     type="time"
                     value={formStop}
-                    disabled={formHoliday}
+                    disabled={formHoliday || !selectedDay}
                     onChange={(event) => setFormStop(event.target.value)}
                     className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                   />
@@ -903,6 +870,7 @@ export function TimeTrackerPanel() {
                   <input
                     type="checkbox"
                     checked={formHoliday}
+                    disabled={!selectedDay}
                     onChange={(event) => setFormHoliday(event.target.checked)}
                   />
                   Public holiday (full day)
@@ -968,7 +936,7 @@ export function TimeTrackerPanel() {
                       playUiSound("saveConfirm");
                       void handleSaveDay();
                     }}
-                    disabled={saving}
+                    disabled={saving || !selectedDay}
                     className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
                   >
                     {saving ? "Saving..." : "Save day"}
@@ -979,7 +947,7 @@ export function TimeTrackerPanel() {
                       playUiSound("resetTap");
                       void handleResetDay();
                     }}
-                    disabled={saving}
+                    disabled={saving || !selectedDay}
                     className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
                   >
                     Reset day
@@ -992,10 +960,12 @@ export function TimeTrackerPanel() {
               )}
             </div>
 
-            <aside className="rounded-xl border border-white/15 bg-white/5 p-4">
+            <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-              <p className="mt-2 text-xs text-slate-300/80">{dayLabel(selectedDay.date)}</p>
-              {!selectedTravelInfo ? (
+              <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+              {!selectedDay ? (
+                <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+              ) : !selectedTravelInfo ? (
                 <>
                   <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
                   {data?.travel_debug ? (
@@ -1024,9 +994,7 @@ export function TimeTrackerPanel() {
               )}
             </aside>
           </div>
-        </motion.div>
-      ) : null}
-      </AnimatePresence>
-    </motion.section>
+      </div>
+    </section>
   );
 }
