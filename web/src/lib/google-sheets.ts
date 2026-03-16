@@ -26,6 +26,47 @@ function getFirstEnv(...names: string[]) {
   return "";
 }
 
+type OAuthConfig = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+};
+
+function collectOAuthCandidates() {
+  const candidates: OAuthConfig[] = [];
+  const pushIfComplete = (clientId: string, clientSecret: string, redirectUri: string) => {
+    if (!clientId || !clientSecret || !redirectUri) return;
+    const duplicate = candidates.some(
+      (item) =>
+        item.clientId === clientId &&
+        item.clientSecret === clientSecret &&
+        item.redirectUri === redirectUri,
+    );
+    if (!duplicate) candidates.push({ clientId, clientSecret, redirectUri });
+  };
+
+  // Prefer the main Gmail OAuth client first because the stored refresh token comes from Gmail connect flow.
+  pushIfComplete(
+    process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET || "",
+    process.env.GOOGLE_OAUTH_REDIRECT_URI || "",
+  );
+  // Fallback to Sheets-specific credentials if configured.
+  pushIfComplete(
+    process.env.GOOGLE_SHEETS_CLIENT_ID || "",
+    process.env.GOOGLE_SHEETS_CLIENT_SECRET || "",
+    process.env.GOOGLE_SHEETS_REDIRECT_URI || "",
+  );
+  // Mixed fallback for projects that share ID/secret but set redirect in only one namespace.
+  pushIfComplete(
+    getFirstEnv("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_SHEETS_CLIENT_ID"),
+    getFirstEnv("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_SHEETS_CLIENT_SECRET"),
+    getFirstEnv("GOOGLE_OAUTH_REDIRECT_URI", "GOOGLE_SHEETS_REDIRECT_URI"),
+  );
+
+  return candidates;
+}
+
 function columnLetterToIndex(letter: string) {
   const normalized = letter.trim().toUpperCase();
   if (!/^[A-Z]+$/.test(normalized)) return -1;
@@ -107,10 +148,6 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
 
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
   const baseRange = process.env.GOOGLE_SHEETS_RANGE || "A:R";
-  const redirectUri =
-    getFirstEnv("GOOGLE_SHEETS_REDIRECT_URI", "GOOGLE_OAUTH_REDIRECT_URI") || "";
-  const oauthClientId = getFirstEnv("GOOGLE_SHEETS_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID");
-  const oauthClientSecret = getFirstEnv("GOOGLE_SHEETS_CLIENT_SECRET", "GOOGLE_OAUTH_CLIENT_SECRET");
   const gid = process.env.GOOGLE_SHEETS_GID;
 
   const monthYearColIdx = getColumnIndexFromEnv(
@@ -122,49 +159,62 @@ export async function fetchTravelByDate(refreshToken: string): Promise<Record<st
   const locationColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_LOCATION", DEFAULT_LOCATION_COLUMN);
   const responsibleColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_RESPONSIBLE", DEFAULT_RESPONSIBLE_COLUMN);
 
-  if (!oauthClientId || !oauthClientSecret || !redirectUri) {
+  const oauthCandidates = collectOAuthCandidates();
+  if (oauthCandidates.length === 0) {
     throw new Error("Missing Google OAuth env vars for Sheets access");
   }
-  const oauthClient = new google.auth.OAuth2(oauthClientId, oauthClientSecret, redirectUri);
-  oauthClient.setCredentials({ refresh_token: refreshToken });
-  const sheets = google.sheets({ version: "v4", auth: oauthClient });
-  let range = baseRange;
-  if (!range.includes("!") && gid) {
-    const meta = await sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: "sheets(properties(sheetId,title))",
-    });
-    const targetSheetId = Number.parseInt(gid, 10);
-    const tabTitle =
-      meta.data.sheets?.find((sheet) => sheet.properties?.sheetId === targetSheetId)?.properties?.title ?? "";
-    if (tabTitle) {
-      range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
+  let lastError: unknown = null;
+  for (const candidate of oauthCandidates) {
+    try {
+      const oauthClient = new google.auth.OAuth2(
+        candidate.clientId,
+        candidate.clientSecret,
+        candidate.redirectUri,
+      );
+      oauthClient.setCredentials({ refresh_token: refreshToken });
+      const sheets = google.sheets({ version: "v4", auth: oauthClient });
+      let range = baseRange;
+      if (!range.includes("!") && gid) {
+        const meta = await sheets.spreadsheets.get({
+          spreadsheetId,
+          fields: "sheets(properties(sheetId,title))",
+        });
+        const targetSheetId = Number.parseInt(gid, 10);
+        const tabTitle =
+          meta.data.sheets?.find((sheet) => sheet.properties?.sheetId === targetSheetId)?.properties?.title ?? "";
+        if (tabTitle) {
+          range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
+        }
+      }
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+      });
+
+      const rows = response.data.values ?? [];
+      const result: Record<string, TravelInfo> = {};
+
+      let activeMonthYear = "";
+      for (const row of rows) {
+        const monthYearCandidate = cleanCell(row[monthYearColIdx]);
+        if (monthYearCandidate) activeMonthYear = monthYearCandidate;
+        const monthYear = activeMonthYear;
+        const day = cleanCell(row[dayColIdx]);
+        const dateKey = parseDateFromMonthYearDay(monthYear, day);
+        if (!dateKey) continue;
+
+        result[dateKey] = {
+          client: cleanCell(row[clientColIdx]),
+          location: cleanCell(row[locationColIdx]),
+          responsible: cleanCell(row[responsibleColIdx]),
+        };
+      }
+
+      return result;
+    } catch (error) {
+      lastError = error;
     }
   }
-
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  });
-
-  const rows = response.data.values ?? [];
-  const result: Record<string, TravelInfo> = {};
-
-  let activeMonthYear = "";
-  for (const row of rows) {
-    const monthYearCandidate = cleanCell(row[monthYearColIdx]);
-    if (monthYearCandidate) activeMonthYear = monthYearCandidate;
-    const monthYear = activeMonthYear;
-    const day = cleanCell(row[dayColIdx]);
-    const dateKey = parseDateFromMonthYearDay(monthYear, day);
-    if (!dateKey) continue;
-
-    result[dateKey] = {
-      client: cleanCell(row[clientColIdx]),
-      location: cleanCell(row[locationColIdx]),
-      responsible: cleanCell(row[responsibleColIdx]),
-    };
-  }
-
-  return result;
+  throw (lastError instanceof Error ? lastError : new Error("Could not access Google Sheets with configured OAuth credentials."));
 }
