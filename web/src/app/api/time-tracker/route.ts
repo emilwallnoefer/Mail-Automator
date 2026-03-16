@@ -82,12 +82,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const weekStartDate = getWeekStart(url.searchParams.get("weekStart") ?? undefined);
   const includeTravel = url.searchParams.get("includeTravel") !== "0";
+  const includeBank = url.searchParams.get("includeBank") !== "0";
   if (!weekStartDate) return NextResponse.json({ error: "Invalid weekStart date" }, { status: 400 });
 
   const weekStart = toDateString(weekStartDate);
   const weekEnd = toDateString(addDays(weekStartDate, 6));
 
-  const [logsWeekRes, compWeekRes, logsAllRes, compAllRes] = await Promise.all([
+  const [logsWeekRes, compWeekRes] = await Promise.all([
     supabase
       .from("time_day_logs")
       .select("id, work_date, start_time, stop_time, net_mins, holiday")
@@ -102,14 +103,10 @@ export async function GET(request: Request) {
       .gte("work_date", weekStart)
       .lte("work_date", weekEnd)
       .order("work_date", { ascending: true }),
-    supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", user.id),
-    supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", user.id),
   ]);
 
   if (logsWeekRes.error) return NextResponse.json({ error: logsWeekRes.error.message }, { status: 500 });
   if (compWeekRes.error) return NextResponse.json({ error: compWeekRes.error.message }, { status: 500 });
-  if (logsAllRes.error) return NextResponse.json({ error: logsAllRes.error.message }, { status: 500 });
-  if (compAllRes.error) return NextResponse.json({ error: compAllRes.error.message }, { status: 500 });
 
   const weekLogs = logsWeekRes.data ?? [];
   const weekLogIds = weekLogs.map((row) => row.id);
@@ -154,28 +151,37 @@ export async function GET(request: Request) {
 
   const weekHoursMins = weekDays.reduce((sum, day) => sum + day.net_mins, 0);
 
-  const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
-  for (const row of logsAllRes.data ?? []) {
-    allWorkByDate.set(row.work_date, {
-      net: sanitizeMins(row.net_mins),
-      holiday: Boolean(row.holiday),
-    });
-  }
-  const allCompByDate = new Map<string, number>();
-  for (const row of compAllRes.data ?? []) {
-    allCompByDate.set(row.work_date, sanitizeMins(row.mins));
-  }
-  const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
-  const todayKey = toDateString(new Date());
-
   let overtimeBankMins = 0;
-  for (const date of allDates) {
-    const work = allWorkByDate.get(date);
-    const comp = allCompByDate.get(date) ?? 0;
-    if (work?.holiday) continue;
-    const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
-    const overtime = weekendRuleApplies ? Math.max(0, work?.net ?? 0) : Math.max(0, (work?.net ?? 0) - TARGET_MINS);
-    overtimeBankMins += overtime - comp;
+  if (includeBank) {
+    const [logsAllRes, compAllRes] = await Promise.all([
+      supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", user.id),
+      supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", user.id),
+    ]);
+    if (logsAllRes.error) return NextResponse.json({ error: logsAllRes.error.message }, { status: 500 });
+    if (compAllRes.error) return NextResponse.json({ error: compAllRes.error.message }, { status: 500 });
+
+    const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
+    for (const row of logsAllRes.data ?? []) {
+      allWorkByDate.set(row.work_date, {
+        net: sanitizeMins(row.net_mins),
+        holiday: Boolean(row.holiday),
+      });
+    }
+    const allCompByDate = new Map<string, number>();
+    for (const row of compAllRes.data ?? []) {
+      allCompByDate.set(row.work_date, sanitizeMins(row.mins));
+    }
+    const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
+    const todayKey = toDateString(new Date());
+
+    for (const date of allDates) {
+      const work = allWorkByDate.get(date);
+      const comp = allCompByDate.get(date) ?? 0;
+      if (work?.holiday) continue;
+      const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
+      const overtime = weekendRuleApplies ? Math.max(0, work?.net ?? 0) : Math.max(0, (work?.net ?? 0) - TARGET_MINS);
+      overtimeBankMins += overtime - comp;
+    }
   }
 
   let travelByDate: Record<
@@ -269,6 +275,8 @@ export async function GET(request: Request) {
     days: weekDays,
     travel_by_date: travelByDate,
     travel_debug: travelDebug,
+    includes_travel: includeTravel,
+    includes_bank: includeBank,
   });
 }
 

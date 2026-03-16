@@ -49,6 +49,8 @@ type WeekResponse = {
     fetched_dates: number;
     week_matches: number;
   };
+  includes_travel?: boolean;
+  includes_bank?: boolean;
 };
 
 type ToastState = { kind: "ok" | "error"; message: string } | null;
@@ -237,10 +239,11 @@ export function TimeTrackerPanel() {
 
   const fetchWeekData = useCallback(async (
     targetWeekStart: string,
-    options?: { force?: boolean; includeTravel?: boolean },
+    options?: { force?: boolean; includeTravel?: boolean; includeBank?: boolean },
   ): Promise<WeekResponse> => {
     const force = options?.force ?? false;
     const includeTravel = options?.includeTravel ?? true;
+    const includeBank = options?.includeBank ?? true;
     if (!force) {
       const cached = weekCacheRef.current.get(targetWeekStart);
       if (cached) return cached;
@@ -250,7 +253,7 @@ export function TimeTrackerPanel() {
 
     const requestPromise = (async () => {
       const response = await fetch(
-        `/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}`,
+        `/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}&includeBank=${includeBank ? "1" : "0"}`,
       );
       const payload = (await response.json()) as WeekResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
@@ -273,7 +276,7 @@ export function TimeTrackerPanel() {
       if (i === 0) continue;
       const key = toDateKey(addDays(center, i * 7));
       if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-      void fetchWeekData(key, { includeTravel: false }).catch(() => {
+      void fetchWeekData(key, { includeTravel: false, includeBank: false }).catch(() => {
         // Silent prefetch failures should not interrupt UI interactions.
       });
     }
@@ -291,8 +294,8 @@ export function TimeTrackerPanel() {
   useEffect(() => {
     let active = true;
     async function loadWeek() {
-      const hydrateTravelInBackground = (targetWeekStart: string) => {
-        void fetchWeekData(targetWeekStart, { force: true, includeTravel: true })
+      const hydrateWeekDetailsInBackground = (targetWeekStart: string) => {
+        void fetchWeekData(targetWeekStart, { force: true, includeTravel: true, includeBank: true })
           .then((fullWeek) => {
             if (!active) return;
             if (fullWeek.week_start !== targetWeekStart) return;
@@ -300,13 +303,16 @@ export function TimeTrackerPanel() {
               if (!prev || prev.week_start !== targetWeekStart) return prev;
               return {
                 ...prev,
+                overtime_bank_mins: fullWeek.overtime_bank_mins,
                 travel_by_date: fullWeek.travel_by_date,
                 travel_debug: fullWeek.travel_debug,
+                includes_travel: fullWeek.includes_travel,
+                includes_bank: fullWeek.includes_bank,
               };
             });
           })
           .catch(() => {
-            // Keep quick week load even if travel hydration fails.
+            // Keep quick week load even if background hydration fails.
           });
       };
       try {
@@ -316,18 +322,19 @@ export function TimeTrackerPanel() {
           applyWeekData(cached);
           setWeekLoadTick((prev) => prev + 1);
           prefetchNearbyWeeks(weekStart);
-          if (cached.travel_debug?.status === "not_attempted") {
-            hydrateTravelInBackground(weekStart);
+          const needsHydration = !cached.includes_travel || !cached.includes_bank;
+          if (needsHydration) {
+            hydrateWeekDetailsInBackground(weekStart);
           }
           return;
         }
         setLoading(true);
-        const weekData = await fetchWeekData(weekStart, { includeTravel: false });
+        const weekData = await fetchWeekData(weekStart, { includeTravel: false, includeBank: false });
         if (!active) return;
         applyWeekData(weekData);
         setWeekLoadTick((prev) => prev + 1);
         prefetchNearbyWeeks(weekStart);
-        hydrateTravelInBackground(weekStart);
+        hydrateWeekDetailsInBackground(weekStart);
       } catch (error) {
         if (!active) return;
         setToast({ kind: "error", message: (error as Error).message });
