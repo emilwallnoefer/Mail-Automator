@@ -519,11 +519,12 @@ export function TimeTrackerPanel() {
   }
 
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
+  const isEditorVisible = editorOpen && Boolean(selectedDay);
 
   return (
     <section
       className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
-        editorOpen ? "lg:grid-cols-[1.2fr_0.8fr]" : "lg:grid-cols-1"
+        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr]" : "lg:grid-cols-1"
       }`}
     >
       <div className="bubble-layer" aria-hidden="true">
@@ -544,7 +545,7 @@ export function TimeTrackerPanel() {
       </div>
       <div
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          editorOpen ? "justify-self-stretch" : "max-w-[1040px] justify-self-center"
+          isEditorVisible ? "justify-self-stretch" : "max-w-[1040px] justify-self-center"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -759,7 +760,7 @@ export function TimeTrackerPanel() {
         )}
       </div>
 
-      {editorOpen && selectedDay ? (
+      {isEditorVisible && selectedDay ? (
         <div ref={dayLoggerRef} className="scroll-mt-24 glass-card p-4 md:p-5 lg:justify-self-stretch">
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
             <div>
