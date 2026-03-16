@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { playUiSound } from "@/lib/ui-sounds";
 import { motion } from "framer-motion";
 import { FormEvent, useState } from "react";
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    playUiSound("click");
     if (!supabaseConfigured) {
       setError("Missing Supabase env vars in deployment. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
       return;
@@ -79,9 +81,9 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-6 px-6 py-10 lg:grid-cols-2"
+        className="page-shell grid items-center lg:grid-cols-2"
       >
-        <div className="glass-card hidden h-full min-h-[560px] p-8 lg:flex lg:flex-col lg:justify-between">
+        <div className="glass-card hidden h-full min-h-[560px] p-5 md:p-6 lg:flex lg:flex-col lg:justify-between">
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-cyan-200/85 uppercase">
               Flyability Internal
@@ -109,7 +111,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="glass-card mx-auto w-full max-w-md p-8 md:p-10">
+        <div className="glass-card mx-auto w-full max-w-md p-5 md:p-6">
           <div className="mb-7">
             <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
             <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>
@@ -122,6 +124,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
+                playUiSound("click");
                 setMode("signin");
                 setMessage(null);
                 setError(null);
@@ -135,6 +138,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
+                playUiSound("click");
                 setMode("signup");
                 setMessage(null);
                 setError(null);

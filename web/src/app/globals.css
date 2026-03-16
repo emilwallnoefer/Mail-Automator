@@ -19,6 +19,8 @@ body {
 }
 
 .aurora-bg {
+  position: relative;
+  overflow: hidden;
   background:
     radial-gradient(45rem 45rem at 0% 0%, rgba(34, 211, 238, 0.2), transparent 60%),
     radial-gradient(40rem 40rem at 95% 15%, rgba(99, 102, 241, 0.25), transparent 55%),
@@ -27,15 +29,115 @@ body {
   filter: saturate(115%);
 }
 
+.aurora-bg::before,
+.aurora-bg::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+}
+
+/* Broad, soft light beams coming from top-left. */
+.aurora-bg::before {
+  background:
+    repeating-linear-gradient(
+      64deg,
+      rgba(220, 245, 255, 0.34) 0px,
+      rgba(220, 245, 255, 0.34) 2px,
+      rgba(220, 245, 255, 0.08) 2px,
+      rgba(220, 245, 255, 0.08) 68px
+    ),
+    radial-gradient(92rem 40rem at 2% -8%, rgba(190, 235, 255, 0.34), transparent 74%),
+    linear-gradient(148deg, rgba(186, 230, 253, 0.2) 0%, rgba(186, 230, 253, 0) 64%);
+  mix-blend-mode: screen;
+  filter: blur(14px);
+  opacity: 0.54;
+  animation: waterCausticSweep 18s linear infinite;
+}
+
+/* Secondary ripple layer for realistic underwater shimmer spread. */
+.aurora-bg::after {
+  background:
+    repeating-linear-gradient(
+      60deg,
+      rgba(205, 239, 255, 0.2) 0px,
+      rgba(205, 239, 255, 0.2) 1px,
+      transparent 1px,
+      transparent 44px
+    ),
+    radial-gradient(100rem 46rem at -8% -16%, rgba(191, 239, 255, 0.24), transparent 74%),
+    linear-gradient(150deg, rgba(125, 211, 252, 0.22), rgba(125, 211, 252, 0) 70%);
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  opacity: 0.34;
+  animation: waterCausticPulse 11s ease-in-out infinite alternate;
+}
+
 .glass-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  backdrop-filter: blur(22px) saturate(155%);
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
   border-radius: 1rem;
   box-shadow:
-    0 10px 40px rgba(15, 23, 42, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 22px 48px rgba(6, 17, 36, 0.5),
+    0 8px 24px rgba(8, 29, 58, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-card::before,
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+}
+
+.glass-card::before {
+  background:
+    radial-gradient(26rem 16rem at 12% 8%, rgba(219, 245, 255, 0.22), transparent 70%),
+    radial-gradient(22rem 14rem at 86% 72%, rgba(103, 232, 249, 0.12), transparent 74%);
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  animation: glassRefractionDrift 15s ease-in-out infinite alternate;
+}
+
+.glass-card::after {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.015) 42%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(24rem 14rem at 88% 14%, rgba(228, 247, 255, 0.055), transparent 75%);
+  opacity: 0.32;
+  filter: blur(1.4px);
+}
+
+.glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-shell {
+  position: relative;
+  z-index: 10;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 80rem;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    gap: 1.5rem;
+    padding: 2rem;
+  }
 }
 
 .underwater-panel {
@@ -46,32 +148,12 @@ body {
 .hourlogger-surface {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(7, 11, 25, 0.9) 0%, rgba(4, 15, 34, 0.92) 52%, rgba(1, 8, 22, 0.95) 100%),
-    radial-gradient(55rem 28rem at 8% -12%, rgba(129, 230, 255, 0.22), transparent 68%),
-    radial-gradient(42rem 30rem at 74% 0%, rgba(56, 189, 248, 0.18), transparent 65%),
-    radial-gradient(40rem 34rem at 46% 74%, rgba(14, 165, 233, 0.1), transparent 70%);
+  background: transparent;
 }
 
 .hourlogger-surface::before,
 .hourlogger-surface::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.hourlogger-surface::before {
-  background:
-    linear-gradient(90deg, rgba(161, 233, 255, 0.1) 20%, rgba(120, 214, 255, 0.015) 38%, rgba(0, 0, 0, 0) 66%),
-    linear-gradient(90deg, rgba(127, 219, 255, 0.08) 48%, rgba(127, 219, 255, 0) 64%);
-  mix-blend-mode: screen;
-  filter: blur(2.2px);
-  animation: hourloggerColumnDrift 14s ease-in-out infinite alternate;
-}
-
-.hourlogger-surface::after {
-  background: linear-gradient(180deg, rgba(2, 8, 20, 0.15) 0%, rgba(2, 8, 20, 0.48) 100%);
+  content: none;
 }
 
 .underwater-panel::before,
@@ -90,16 +172,12 @@ body {
 }
 
 .underwater-panel::after {
-  background: repeating-linear-gradient(
-    116deg,
-    rgba(190, 234, 255, 0.03) 0px,
-    rgba(190, 234, 255, 0.03) 1px,
-    transparent 1px,
-    transparent 30px
-  );
-  opacity: 0.18;
+  background:
+    radial-gradient(56rem 24rem at 86% -4%, rgba(185, 232, 255, 0.16), transparent 74%),
+    linear-gradient(180deg, rgba(186, 230, 253, 0.08), rgba(186, 230, 253, 0));
+  opacity: 0.22;
   mix-blend-mode: screen;
-  filter: blur(1.4px);
+  filter: blur(5px);
   animation: shimmerSweep 12s linear infinite;
 }
 
@@ -243,8 +321,8 @@ body {
 
 .liquid-day-card::before {
   background:
-    radial-gradient(22rem 16rem at 12% 10%, rgba(212, 246, 255, 0.38), transparent 68%),
-    radial-gradient(16rem 12rem at 76% 72%, rgba(90, 214, 255, 0.24), transparent 70%);
+    radial-gradient(22rem 16rem at 12% 10%, rgba(212, 246, 255, 0.26), transparent 68%),
+    radial-gradient(16rem 12rem at 76% 72%, rgba(90, 214, 255, 0.17), transparent 70%);
   filter: blur(14px);
   mix-blend-mode: screen;
   animation: liquidRefractionDrift 11s ease-in-out infinite alternate;
@@ -252,16 +330,10 @@ body {
 
 .liquid-day-card::after {
   background:
-    linear-gradient(112deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.03) 44%, rgba(255, 255, 255, 0) 72%),
-    repeating-linear-gradient(
-      122deg,
-      rgba(220, 245, 255, 0.06) 0px,
-      rgba(220, 245, 255, 0.06) 1px,
-      transparent 1px,
-      transparent 28px
-    );
-  opacity: 0.58;
-  filter: blur(1.8px);
+    linear-gradient(112deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.02) 44%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(20rem 11rem at 84% 16%, rgba(221, 247, 255, 0.07), transparent 75%);
+  opacity: 0.34;
+  filter: blur(2.4px);
 }
 
 .liquid-day-card > * {
@@ -358,5 +430,37 @@ body {
   }
   to {
     transform: translate3d(3%, 2%, 0) scale(1.04);
+  }
+}
+
+@keyframes glassRefractionDrift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, 1.5%, 0) scale(1.03);
+  }
+}
+
+@keyframes waterCausticSweep {
+  0% {
+    transform: translate3d(-8%, -8%, 0) rotate(-0.2deg) scale(1);
+  }
+  50% {
+    transform: translate3d(1%, 1%, 0) rotate(0.8deg) scale(1.05);
+  }
+  100% {
+    transform: translate3d(10%, 11%, 0) rotate(1.6deg) scale(1.1);
+  }
+}
+
+@keyframes waterCausticPulse {
+  0% {
+    transform: translate3d(-6%, -4%, 0) scale(0.98);
+    opacity: 0.14;
+  }
+  100% {
+    transform: translate3d(7%, 8%, 0) scale(1.07);
+    opacity: 0.3;
   }
 }

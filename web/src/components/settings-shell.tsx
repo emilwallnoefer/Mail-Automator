@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { playUiSound } from "@/lib/ui-sounds";
 
 type SettingsShellProps = {
   email: string;
@@ -67,8 +68,8 @@ export function SettingsShell({ email }: SettingsShellProps) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-5 px-5 py-8 md:px-8">
-        <header className="glass-card flex flex-wrap items-center justify-between gap-3 p-4">
+      <section className="page-shell max-w-5xl">
+        <header className="glass-card flex flex-wrap items-center justify-between gap-3 p-4 md:p-5">
           <div>
             <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Flyability Internal</p>
             <h1 className="text-lg font-semibold md:text-xl">Settings</h1>
@@ -76,31 +77,36 @@ export function SettingsShell({ email }: SettingsShellProps) {
           </div>
           <a
             href="/dashboard"
+            onClick={() => playUiSound("click")}
             className="rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs transition hover:bg-white/12"
           >
             Back to dashboard
           </a>
         </header>
 
-        <section className="glass-card p-5">
+        <section className="glass-card p-4 md:p-5">
           <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Gmail</h2>
           <p className="mt-2 text-sm text-slate-200/90">
             Status: {gmailStatus.connected ? "Connected" : "Disconnected"}
             {gmailStatus.gmail_email ? ` (${gmailStatus.gmail_email})` : ""}
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {gmailStatus.connected ? (
               <button
                 type="button"
-                onClick={handleDisconnectGmail}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15"
+                onClick={() => {
+                  playUiSound("click");
+                  void handleDisconnectGmail();
+                }}
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 sm:w-auto"
               >
                 Disconnect Gmail
               </button>
             ) : (
               <a
                 href="/api/gmail/connect"
-                className="rounded-lg bg-cyan-400/90 px-3 py-2 text-xs font-medium text-slate-900 transition hover:bg-cyan-300"
+                onClick={() => playUiSound("click")}
+                className="w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:bg-cyan-300 sm:w-auto"
               >
                 Connect Gmail
               </a>
@@ -108,10 +114,13 @@ export function SettingsShell({ email }: SettingsShellProps) {
           </div>
         </section>
 
-        <section className="glass-card p-5">
+        <section className="glass-card p-4 md:p-5">
           <button
             type="button"
-            onClick={() => setShowSetup((prev) => !prev)}
+            onClick={() => {
+              playUiSound("click");
+              setShowSetup((prev) => !prev);
+            }}
             className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
           >
             <span>Gmail setup README</span>
@@ -133,7 +142,7 @@ export function SettingsShell({ email }: SettingsShellProps) {
           )}
         </section>
 
-        <section className="glass-card p-5">
+        <section className="glass-card p-4 md:p-5">
           <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">
             Historical Time Data
           </h2>
@@ -143,7 +152,10 @@ export function SettingsShell({ email }: SettingsShellProps) {
           </p>
           <button
             type="button"
-            onClick={() => importFileRef.current?.click()}
+            onClick={() => {
+              playUiSound("click");
+              importFileRef.current?.click();
+            }}
             disabled={importing}
             className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
           >

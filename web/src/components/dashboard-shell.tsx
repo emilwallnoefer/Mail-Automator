@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
+import { playUiSound } from "@/lib/ui-sounds";
 
 type DashboardShellProps = {
   email: string;
@@ -33,6 +34,20 @@ type FormState = {
   included_change_ids: string[];
 };
 
+const INITIAL_FORM_STATE: FormState = {
+  mail_type: "",
+  template_variant: "",
+  language: "",
+  training_type: "",
+  recipient_name: "",
+  company_name: "",
+  use_case: "",
+  date: "",
+  location: "",
+  to: "",
+  included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
+};
+
 function ProgressiveField({ show, children }: { show: boolean; children: ReactNode }) {
   return (
     <AnimatePresence initial={false}>
@@ -52,19 +67,7 @@ function ProgressiveField({ show, children }: { show: boolean; children: ReactNo
 }
 
 export function DashboardShell({ email }: DashboardShellProps) {
-  const [form, setForm] = useState<FormState>({
-    mail_type: "",
-    template_variant: "",
-    language: "",
-    training_type: "",
-    recipient_name: "",
-    company_name: "",
-    use_case: "",
-    date: "",
-    location: "",
-    to: "",
-    included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
-  });
+  const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,16 +202,26 @@ export function DashboardShell({ email }: DashboardShellProps) {
     }, 260);
   }
 
+  function handleResetComposer() {
+    setForm({ ...INITIAL_FORM_STATE, included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS] });
+    setResult(null);
+    setError(null);
+    setDraftInfo(null);
+    setShowChanges(false);
+    setChangesTouched(false);
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 aurora-bg" />
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-5 py-8 md:px-8">
+      <section className="page-shell">
         <AuthNavbar
           email={email}
           gmailConnected={gmailStatus.connected}
           gmailEmail={gmailStatus.gmail_email}
           activeModule={activeModule}
           onSelectModule={(module) => {
+            playUiSound("switchWhoosh");
             setActiveModule(module);
             setShowComposer(true);
           }}
@@ -223,7 +236,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.08, duration: 0.35 }}
-                  className="glass-card p-5 md:p-6"
+                  className="glass-card p-4 md:p-5"
                 >
                   <h2 className="text-base font-semibold md:text-lg">{card.title}</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-200/80">{card.description}</p>
@@ -233,17 +246,29 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <motion.div
               animate={beginAnimating ? { scale: 1.1, opacity: 0 } : { scale: 1, opacity: 1 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="mt-1 flex justify-center"
+              className="mt-1 flex flex-wrap justify-center gap-3"
             >
               <button
                 onClick={() => {
+                  playUiSound("switchWhoosh");
                   setActiveModule("mail");
                   handleBeginAutomating();
                 }}
                 type="button"
-                className="rounded-xl bg-cyan-400/95 px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:bg-cyan-300"
+                className="w-full rounded-xl bg-cyan-400/95 px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:bg-cyan-300 sm:w-auto"
               >
-                Open workspace
+                Open Mail Automator
+              </button>
+              <button
+                onClick={() => {
+                  playUiSound("switchWhoosh");
+                  setActiveModule("time");
+                  handleBeginAutomating();
+                }}
+                type="button"
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold transition hover:bg-white/15 sm:w-auto"
+              >
+                Open Time Tracker
               </button>
             </motion.div>
           </>
@@ -263,7 +288,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <TimeTrackerPanel />
               ) : (
                 <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                  <div className="glass-card p-6 md:p-7">
+                  <div className="glass-card p-4 md:p-5">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
             <div className="mt-4">
               <select
@@ -384,7 +409,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <div className="rounded-lg border border-white/15 bg-white/5 p-3">
                   <button
                     type="button"
-                    onClick={() => setShowChanges((prev) => !prev)}
+                    onClick={() => {
+                      playUiSound("click");
+                      setShowChanges((prev) => !prev);
+                    }}
                     className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm"
                   >
                     <span>changes</span>
@@ -427,22 +455,40 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={loading || generateDisabled}
-              className="mt-5 rounded-lg bg-cyan-400/90 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70"
-              type="button"
-            >
-              {loading ? "Generating..." : "Generate draft"}
-            </button>
-            <button
-              onClick={handleCreateDraft}
-              disabled={draftLoading || !gmailStatus.connected || !result}
-              className="mt-2 rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60"
-              type="button"
-            >
-              {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
-            </button>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
+              <button
+                onClick={() => {
+                  playUiSound("click");
+                  void handleGenerate();
+                }}
+                disabled={loading || generateDisabled}
+                className="h-11 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70 sm:w-auto"
+                type="button"
+              >
+                {loading ? "Generating..." : "Generate draft"}
+              </button>
+              <button
+                onClick={() => {
+                  playUiSound("mailSend");
+                  void handleCreateDraft();
+                }}
+                disabled={draftLoading || !gmailStatus.connected || !result}
+                className="h-11 w-full rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                type="button"
+              >
+                {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
+              </button>
+              <button
+                onClick={() => {
+                  playUiSound("click");
+                  handleResetComposer();
+                }}
+                className="h-11 w-full rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-slate-100 transition hover:bg-white/15 sm:w-auto"
+                type="button"
+              >
+                Reset
+              </button>
+            </div>
             {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
             {draftInfo && (
               <p className="mt-3 text-sm text-emerald-300">
@@ -451,13 +497,16 @@ export function DashboardShell({ email }: DashboardShellProps) {
             )}
                   </div>
 
-                  <div className="glass-card sticky top-6 self-start p-6 md:p-7">
+                  <div className="glass-card self-start p-4 md:p-5 lg:sticky lg:top-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (
                 <button
                   className="rounded-md border border-white/20 bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
-                  onClick={() => copyText(`Subject: ${result.subject}\n\n${result.body}`)}
+                  onClick={() => {
+                    playUiSound("click");
+                    void copyText(`Subject: ${result.subject}\n\n${result.body}`);
+                  }}
                   type="button"
                 >
                   Copy plain text

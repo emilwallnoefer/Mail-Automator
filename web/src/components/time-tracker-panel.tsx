@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
 const PREFETCH_WEEKS_EACH_SIDE = 4;
@@ -98,6 +99,66 @@ function isWeekendDate(dateKey: string) {
   const date = fromDateKey(dateKey);
   const day = date.getDay();
   return day === 0 || day === 6;
+}
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
+}
+
+function useAnimatedNumber(target: number, durationMs = 620) {
+  const [value, setValue] = useState(target);
+  const valueRef = useRef(target);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (Math.abs(target - valueRef.current) < 0.001) {
+      setValue(target);
+      return;
+    }
+    const from = valueRef.current;
+    const delta = target - from;
+    const start = performance.now();
+
+    function tick(now: number) {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / durationMs);
+      const next = from + delta * easeInOutCubic(t);
+      valueRef.current = next;
+      setValue(next);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }
+
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target, durationMs]);
+
+  return value;
+}
+
+function AnimatedNumber({
+  value,
+  durationMs,
+  children,
+}: {
+  value: number;
+  durationMs?: number;
+  children: (value: number) => ReactNode;
+}) {
+  const animated = useAnimatedNumber(value, durationMs);
+  return <>{children(animated)}</>;
+}
+
+function getDayOvertimeContributionMins(date: string, netMins: number, holiday: boolean, compMins: number) {
+  if (holiday) return 0;
+  const todayKey = toDateKey(new Date());
+  const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
+  const overtime = weekendRuleApplies ? Math.max(0, netMins) : Math.max(0, netMins - TARGET_MINS);
+  return overtime - compMins;
 }
 
 export function TimeTrackerPanel() {
@@ -231,6 +292,35 @@ export function TimeTrackerPanel() {
     prefetchNearbyWeeks(weekStart);
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
+  const patchDayInCurrentWeek = useCallback(
+    (date: string, updater: (day: DayData) => DayData) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const dayIndex = prev.days.findIndex((day) => day.date === date);
+        if (dayIndex < 0) return prev;
+        const prevDay = prev.days[dayIndex];
+        const nextDay = updater(prevDay);
+        const nextDays = [...prev.days];
+        nextDays[dayIndex] = nextDay;
+
+        const weekHoursDelta = nextDay.net_mins - prevDay.net_mins;
+        const overtimeDelta =
+          getDayOvertimeContributionMins(nextDay.date, nextDay.net_mins, nextDay.holiday, nextDay.comp_mins) -
+          getDayOvertimeContributionMins(prevDay.date, prevDay.net_mins, prevDay.holiday, prevDay.comp_mins);
+
+        const nextWeek: WeekResponse = {
+          ...prev,
+          week_hours_mins: prev.week_hours_mins + weekHoursDelta,
+          overtime_bank_mins: prev.overtime_bank_mins + overtimeDelta,
+          days: nextDays,
+        };
+        weekCacheRef.current.set(weekStart, nextWeek);
+        return nextWeek;
+      });
+    },
+    [weekStart],
+  );
+
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
     const response = await fetch("/api/time-tracker", {
       method: "POST",
@@ -258,7 +348,14 @@ export function TimeTrackerPanel() {
           breaks: formBreaks,
         },
       });
-      await refreshWeek();
+      patchDayInCurrentWeek(selectedDay.date, (day) => ({
+        ...day,
+        start_time: formStart,
+        stop_time: formStop,
+        net_mins: netMins,
+        holiday: formHoliday,
+        breaks: formBreaks.map((item) => ({ ...item })),
+      }));
       setToast({ kind: "ok", message: "Day saved." });
     } catch (error) {
       setToast({ kind: "error", message: (error as Error).message });
@@ -269,8 +366,12 @@ export function TimeTrackerPanel() {
 
   async function handleFillMissing(date: string) {
     try {
-      await postAction<{ ok: boolean; comp_mins: number }>({ action: "fill_missing", work_date: date });
-      await refreshWeek();
+      const payload = await postAction<{ ok: boolean; comp_mins: number }>({ action: "fill_missing", work_date: date });
+      patchDayInCurrentWeek(date, (day) => ({
+        ...day,
+        comp_mins: payload.comp_mins,
+        comp_note: payload.comp_mins > 0 ? "auto-fill" : "",
+      }));
       setToast({ kind: "ok", message: "Missing time updated." });
     } catch (error) {
       setToast({ kind: "error", message: (error as Error).message });
@@ -282,7 +383,16 @@ export function TimeTrackerPanel() {
     setSaving(true);
     try {
       await postAction<{ ok: boolean }>({ action: "reset_day", work_date: selectedDay.date });
-      await refreshWeek();
+      patchDayInCurrentWeek(selectedDay.date, (day) => ({
+        ...day,
+        start_time: "",
+        stop_time: "",
+        net_mins: 0,
+        holiday: false,
+        comp_mins: 0,
+        comp_note: "",
+        breaks: [],
+      }));
       setToast({ kind: "ok", message: "Day reset." });
     } catch (error) {
       setToast({ kind: "error", message: (error as Error).message });
@@ -347,37 +457,42 @@ export function TimeTrackerPanel() {
           />
         ))}
       </div>
-      <div className="glass-card hourlogger-surface p-5 md:p-6">
+      <div className="glass-card hourlogger-surface p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
             <button
               type="button"
               onClick={() => {
+                playUiSound("click");
                 const prev = addDays(fromDateKey(weekStart), -7);
                 setWeekStart(toDateKey(prev));
               }}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
             >
               Prev week
             </button>
             <button
               type="button"
-              onClick={() => setWeekStart(toDateKey(getMonday()))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+              onClick={() => {
+                playUiSound("click");
+                setWeekStart(toDateKey(getMonday()));
+              }}
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => {
+                playUiSound("click");
                 const next = addDays(fromDateKey(weekStart), 7);
                 setWeekStart(toDateKey(next));
               }}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
             >
               Next week
             </button>
@@ -419,48 +534,74 @@ export function TimeTrackerPanel() {
                 >
                   <button
                     type="button"
-                    onClick={() => handleEditDay(day.date)}
+                    onClick={() => {
+                      playUiSound("click");
+                      handleEditDay(day.date);
+                    }}
                     className="w-full text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
-                      <p className="text-xs font-medium text-cyan-100/90">{donePct}%</p>
+                      <AnimatedNumber value={donePct}>
+                        {(value) => <p className="text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
+                      </AnimatedNumber>
                     </div>
-                    <p className="mt-1 text-sm font-medium">
-                      {day.holiday ? "Public holiday" : `${fmtHM(day.net_mins)} worked`}
-                    </p>
+                    <AnimatedNumber value={day.net_mins}>
+                      {(value) => (
+                        <p className="mt-1 text-sm font-medium">
+                          {day.holiday ? "Public holiday" : `${fmtHM(Math.round(value))} worked`}
+                        </p>
+                      )}
+                    </AnimatedNumber>
                     <div className="day-progress mt-3" aria-label="Day progress bar">
-                      <span className="day-progress-topdown" style={{ height: `${Math.max(0, Math.min(100, donePct))}%` }} />
-                      <span
-                        className="day-progress-segment day-progress-sand"
-                        style={{ width: `${sandPct}%`, animationDelay: "40ms" }}
-                      />
-                      <span
-                        className="day-progress-segment day-progress-algae"
-                        style={{ width: `${algaePct}%`, animationDelay: "120ms" }}
-                      />
-                      <span
-                        className="day-progress-segment day-progress-comp"
-                        style={{ width: `${compPct}%`, animationDelay: "200ms" }}
-                      />
+                      <AnimatedNumber value={Math.max(0, Math.min(100, donePct))}>
+                        {(value) => <span className="day-progress-topdown" style={{ height: `${value}%` }} />}
+                      </AnimatedNumber>
+                      <AnimatedNumber value={sandPct}>
+                        {(value) => <span className="day-progress-segment day-progress-sand" style={{ width: `${Math.max(0, value)}%` }} />}
+                      </AnimatedNumber>
+                      <AnimatedNumber value={algaePct}>
+                        {(value) => <span className="day-progress-segment day-progress-algae" style={{ width: `${Math.max(0, value)}%` }} />}
+                      </AnimatedNumber>
+                      <AnimatedNumber value={compPct}>
+                        {(value) => <span className="day-progress-segment day-progress-comp" style={{ width: `${Math.max(0, value)}%` }} />}
+                      </AnimatedNumber>
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-300/80">
-                      Core hours {fmtHM(weekendRuleApplies ? 0 : workedBaseMins)}
-                      {overtimeWorkedMins > 0 ? ` · Overtime worked ${fmtHM(overtimeWorkedMins)}` : ""}
-                      {overtimeCompMins > 0 ? ` · Overtime compensated ${fmtHM(overtimeCompMins)}` : ""}
-                    </p>
+                    <AnimatedNumber value={weekendRuleApplies ? 0 : workedBaseMins}>
+                      {(coreValue) => (
+                        <AnimatedNumber value={overtimeWorkedMins}>
+                          {(overtimeValue) => (
+                            <AnimatedNumber value={overtimeCompMins}>
+                              {(compValue) => (
+                                <p className="mt-2 text-[11px] text-slate-300/80">
+                                  Core hours {fmtHM(Math.round(coreValue))}
+                                  {Math.round(overtimeValue) > 0 ? ` · Overtime worked ${fmtHM(Math.round(overtimeValue))}` : ""}
+                                  {Math.round(compValue) > 0 ? ` · Overtime compensated ${fmtHM(Math.round(compValue))}` : ""}
+                                </p>
+                              )}
+                            </AnimatedNumber>
+                          )}
+                        </AnimatedNumber>
+                      )}
+                    </AnimatedNumber>
                   </button>
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
-                      onClick={() => handleFillMissing(day.date)}
+                      onClick={() => {
+                        playUiSound("fillSwoosh");
+                        void handleFillMissing(day.date);
+                      }}
                       className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
                     >
                       Fill missing
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleEditDay(day.date)}
+                      onClick={() => {
+                        playUiSound("click");
+                        handleEditDay(day.date);
+                      }}
                       className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
                     >
                       Edit
@@ -474,7 +615,7 @@ export function TimeTrackerPanel() {
       </div>
 
       {editorOpen && selectedDay ? (
-        <div ref={dayLoggerRef} className="scroll-mt-24 glass-card p-5 md:p-6">
+        <div ref={dayLoggerRef} className="scroll-mt-24 glass-card p-4 md:p-5">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold">Day Logger</h3>
         </div>
@@ -526,7 +667,7 @@ export function TimeTrackerPanel() {
                 <p className="text-xs text-slate-300/80">No breaks added.</p>
               ) : (
                 formBreaks.map((item, index) => (
-                  <div key={`${index}-${item.name}`} className="grid grid-cols-[1fr_90px_auto] gap-2">
+                  <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
                     <input
                       placeholder="Name"
                       value={item.name}
@@ -550,7 +691,7 @@ export function TimeTrackerPanel() {
                     <button
                       type="button"
                       onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                      className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200"
+                      className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
                     >
                       Remove
                     </button>
@@ -561,10 +702,13 @@ export function TimeTrackerPanel() {
 
             <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
-                onClick={handleSaveDay}
+                onClick={() => {
+                  playUiSound("saveConfirm");
+                  void handleSaveDay();
+                }}
                 disabled={saving}
                 className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
               >
@@ -572,7 +716,10 @@ export function TimeTrackerPanel() {
               </button>
               <button
                 type="button"
-                onClick={handleResetDay}
+                onClick={() => {
+                  playUiSound("resetTap");
+                  void handleResetDay();
+                }}
                 disabled={saving}
                 className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
               >

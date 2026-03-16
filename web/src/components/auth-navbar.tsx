@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { playUiSound } from "@/lib/ui-sounds";
 
 type ModuleKey = "mail" | "time";
 
@@ -36,15 +37,15 @@ export function AuthNavbar({
   const statusLabel = gmailConnected ? "Gmail connected" : "Gmail disconnected";
 
   return (
-    <nav className="glass-card sticky top-3 z-30 p-2.5 md:p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
+    <nav className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex items-center gap-2.5">
           <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-cyan-300 to-indigo-400 text-[10px] font-semibold text-slate-950">
             FA
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">Flyability Internal</p>
-            <p className="text-xs font-medium md:text-sm">Flya Allrounder</p>
+            <p className="truncate text-xs font-medium md:text-sm">Flya Allrounder</p>
           </div>
         </div>
 
@@ -52,6 +53,7 @@ export function AuthNavbar({
           <button
             type="button"
             onClick={() => {
+              playUiSound("click");
               setMenuOpen((prev) => !prev);
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-2.5 py-1.5 text-xs transition hover:bg-white/12"
@@ -62,12 +64,13 @@ export function AuthNavbar({
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-[17.5rem] rounded-xl border border-white/15 bg-slate-950/92 p-2.5 shadow-xl backdrop-blur-xl">
+            <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-white/15 bg-slate-950/92 p-2.5 shadow-xl backdrop-blur-xl">
               <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Workspace</p>
               <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
                 <button
                   type="button"
                   onClick={() => {
+                    playUiSound("click");
                     onSelectModule("mail");
                     setMenuOpen(false);
                   }}
@@ -82,6 +85,7 @@ export function AuthNavbar({
                 <button
                   type="button"
                   onClick={() => {
+                    playUiSound("click");
                     onSelectModule("time");
                     setMenuOpen(false);
                   }}
@@ -114,6 +118,7 @@ export function AuthNavbar({
               <div className="mt-2 grid gap-1.5">
                 <a
                   href="/settings"
+                  onClick={() => playUiSound("click")}
                   className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
                 >
                   Open settings
@@ -121,6 +126,7 @@ export function AuthNavbar({
                 <form action="/logout" method="post">
                   <button
                     type="submit"
+                    onClick={() => playUiSound("click")}
                     className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
                   >
                     Sign out
