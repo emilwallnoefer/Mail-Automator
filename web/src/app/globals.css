@@ -43,6 +43,37 @@ body {
   overflow: hidden;
 }
 
+.hourlogger-surface {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 25, 0.9) 0%, rgba(4, 15, 34, 0.92) 52%, rgba(1, 8, 22, 0.95) 100%),
+    radial-gradient(55rem 28rem at 8% -12%, rgba(129, 230, 255, 0.22), transparent 68%),
+    radial-gradient(42rem 30rem at 74% 0%, rgba(56, 189, 248, 0.18), transparent 65%),
+    radial-gradient(40rem 34rem at 46% 74%, rgba(14, 165, 233, 0.1), transparent 70%);
+}
+
+.hourlogger-surface::before,
+.hourlogger-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hourlogger-surface::before {
+  background:
+    linear-gradient(90deg, rgba(161, 233, 255, 0.1) 20%, rgba(120, 214, 255, 0.015) 38%, rgba(0, 0, 0, 0) 66%),
+    linear-gradient(90deg, rgba(127, 219, 255, 0.08) 48%, rgba(127, 219, 255, 0) 64%);
+  mix-blend-mode: screen;
+  filter: blur(2.2px);
+  animation: hourloggerColumnDrift 14s ease-in-out infinite alternate;
+}
+
+.hourlogger-surface::after {
+  background: linear-gradient(180deg, rgba(2, 8, 20, 0.15) 0%, rgba(2, 8, 20, 0.48) 100%);
+}
+
 .underwater-panel::before,
 .underwater-panel::after {
   content: "";
@@ -60,14 +91,15 @@ body {
 
 .underwater-panel::after {
   background: repeating-linear-gradient(
-    115deg,
-    rgba(255, 255, 255, 0.04) 0px,
-    rgba(255, 255, 255, 0.04) 2px,
-    transparent 2px,
-    transparent 16px
+    116deg,
+    rgba(190, 234, 255, 0.03) 0px,
+    rgba(190, 234, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 30px
   );
-  opacity: 0.4;
+  opacity: 0.18;
   mix-blend-mode: screen;
+  filter: blur(1.4px);
   animation: shimmerSweep 12s linear infinite;
 }
 
@@ -131,6 +163,7 @@ body {
 }
 
 .day-progress {
+  position: relative;
   display: flex;
   width: 100%;
   height: 14px;
@@ -140,9 +173,23 @@ body {
   overflow: hidden;
 }
 
+.day-progress-topdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: linear-gradient(180deg, rgba(207, 250, 254, 0.35), rgba(125, 211, 252, 0.06));
+  animation: dayFillTopDown 520ms ease-out both;
+  z-index: 0;
+}
+
 .day-progress-segment {
+  position: relative;
+  z-index: 1;
   height: 100%;
   min-width: 0;
+  transform-origin: left center;
+  animation: dayFillLeftRight 620ms ease-out both;
 }
 
 .day-progress-sand {
@@ -170,6 +217,64 @@ body {
 
 .day-progress-comp {
   background: linear-gradient(180deg, rgba(251, 146, 146, 0.95), rgba(185, 71, 71, 0.92));
+}
+
+.liquid-day-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(142deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.liquid-day-card::before,
+.liquid-day-card::after {
+  content: "";
+  position: absolute;
+  inset: -28%;
+  pointer-events: none;
+}
+
+.liquid-day-card::before {
+  background:
+    radial-gradient(22rem 16rem at 12% 10%, rgba(212, 246, 255, 0.38), transparent 68%),
+    radial-gradient(16rem 12rem at 76% 72%, rgba(90, 214, 255, 0.24), transparent 70%);
+  filter: blur(14px);
+  mix-blend-mode: screen;
+  animation: liquidRefractionDrift 11s ease-in-out infinite alternate;
+}
+
+.liquid-day-card::after {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.03) 44%, rgba(255, 255, 255, 0) 72%),
+    repeating-linear-gradient(
+      122deg,
+      rgba(220, 245, 255, 0.06) 0px,
+      rgba(220, 245, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 28px
+    );
+  opacity: 0.58;
+  filter: blur(1.8px);
+}
+
+.liquid-day-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.day-card-selected {
+  border-color: rgba(103, 232, 249, 0.72);
+  box-shadow:
+    0 30px 64px rgba(2, 11, 28, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 1px rgba(103, 232, 249, 0.22);
 }
 
 @keyframes underwaterDrift {
@@ -211,5 +316,47 @@ body {
   }
   50% {
     transform: translateX(10px);
+  }
+}
+
+@keyframes dayFillLeftRight {
+  from {
+    transform: scaleX(0);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dayFillTopDown {
+  from {
+    transform: scaleY(0);
+    transform-origin: top;
+    opacity: 0.2;
+  }
+  to {
+    transform: scaleY(1);
+    transform-origin: top;
+    opacity: 1;
+  }
+}
+
+@keyframes hourloggerColumnDrift {
+  from {
+    transform: translateX(-2%) scale(1);
+  }
+  to {
+    transform: translateX(2%) scale(1.02);
+  }
+}
+
+@keyframes liquidRefractionDrift {
+  from {
+    transform: translate3d(-3%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.04);
   }
 }

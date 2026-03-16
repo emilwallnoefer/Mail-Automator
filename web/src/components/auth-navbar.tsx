@@ -8,7 +8,6 @@ type AuthNavbarProps = {
   email: string;
   gmailConnected: boolean;
   gmailEmail?: string | null;
-  onDisconnectGmail: () => Promise<void> | void;
   activeModule: ModuleKey;
   onSelectModule: (module: ModuleKey) => void;
 };
@@ -17,12 +16,10 @@ export function AuthNavbar({
   email,
   gmailConnected,
   gmailEmail,
-  onDisconnectGmail,
   activeModule,
   onSelectModule,
 }: AuthNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -47,14 +44,16 @@ export function AuthNavbar({
           </div>
           <div>
             <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">Flyability Internal</p>
-            <p className="text-xs font-medium md:text-sm">Flya allrounderm</p>
+            <p className="text-xs font-medium md:text-sm">Flya Allrounder</p>
           </div>
         </div>
 
         <div className="relative" ref={menuRef}>
           <button
             type="button"
-            onClick={() => setMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setMenuOpen((prev) => !prev);
+            }}
             className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-2.5 py-1.5 text-xs transition hover:bg-white/12"
             aria-label="Toggle navigation menu"
           >
@@ -73,7 +72,9 @@ export function AuthNavbar({
                     setMenuOpen(false);
                   }}
                   className={`rounded-md px-2 py-1.5 text-xs transition ${
-                    activeModule === "mail" ? "bg-cyan-400/90 font-medium text-slate-900" : "text-slate-200 hover:bg-white/10"
+                    activeModule === "mail"
+                      ? "bg-cyan-400/90 font-medium text-slate-900"
+                      : "text-slate-200 hover:bg-white/10"
                   }`}
                 >
                   Mail automator
@@ -85,7 +86,9 @@ export function AuthNavbar({
                     setMenuOpen(false);
                   }}
                   className={`rounded-md px-2 py-1.5 text-xs transition ${
-                    activeModule === "time" ? "bg-cyan-400/90 font-medium text-slate-900" : "text-slate-200 hover:bg-white/10"
+                    activeModule === "time"
+                      ? "bg-cyan-400/90 font-medium text-slate-900"
+                      : "text-slate-200 hover:bg-white/10"
                   }`}
                 >
                   Time tracker
@@ -109,48 +112,12 @@ export function AuthNavbar({
               </div>
 
               <div className="mt-2 grid gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setShowSetup((prev) => !prev)}
+                <a
+                  href="/settings"
                   className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
                 >
-                  Gmail setup README {showSetup ? "▲" : "▼"}
-                </button>
-
-                {showSetup && (
-                  <div className="rounded-lg border border-white/10 bg-slate-900/45 p-2.5 text-[11px] text-slate-200/90">
-                    <p className="font-medium text-cyan-200">How to connect Mail Automator to Gmail</p>
-                    <ol className="mt-1.5 list-decimal space-y-1 pl-4">
-                      <li>Sign in to this app and open the dashboard.</li>
-                      <li>Click <strong>Connect Gmail</strong>.</li>
-                      <li>In Google popup, choose your Gmail account.</li>
-                      <li>Allow draft access permission.</li>
-                      <li>Confirm status shows <strong>Gmail connected</strong>.</li>
-                      <li>Generate mail and click <strong>Create Gmail draft</strong>.</li>
-                    </ol>
-                  </div>
-                )}
-
-                {gmailConnected ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await onDisconnectGmail();
-                      setMenuOpen(false);
-                    }}
-                    className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
-                  >
-                    Disconnect Gmail
-                  </button>
-                ) : (
-                  <a
-                    href="/api/gmail/connect"
-                    className="w-full rounded-lg bg-cyan-400/90 px-2.5 py-2 text-left text-xs font-medium text-slate-900 transition hover:bg-cyan-300"
-                  >
-                    Connect Gmail
-                  </a>
-                )}
-
+                  Open settings
+                </a>
                 <form action="/logout" method="post">
                   <button
                     type="submit"

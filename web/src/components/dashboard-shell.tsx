@@ -31,10 +31,7 @@ type FormState = {
   location: string;
   to: string;
   included_change_ids: string[];
-  quick_input: string;
 };
-
-type MailType = FormState["mail_type"];
 
 function ProgressiveField({ show, children }: { show: boolean; children: ReactNode }) {
   return (
@@ -54,97 +51,6 @@ function ProgressiveField({ show, children }: { show: boolean; children: ReactNo
   );
 }
 
-function parseQuickInput(raw: string, current: FormState): FormState {
-  const text = raw.trim();
-  if (!text) return current;
-
-  // First support key:value lines for robust copy/paste.
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const fromKv: Partial<FormState> = {};
-  for (const line of lines) {
-    const match = line.match(/^([a-zA-Z_]+)\s*:\s*(.+)$/);
-    if (!match) continue;
-    const key = match[1].toLowerCase();
-    const value = match[2].trim();
-    if (key === "mail_type" && /(pre|post)/i.test(value)) fromKv.mail_type = value.toLowerCase() as MailType;
-    if (key === "template_variant" && /(lausanne|abroad|abraod)/i.test(value)) {
-      fromKv.template_variant = value.toLowerCase().replace("abraod", "abroad") as FormState["template_variant"];
-    }
-    if (key === "language" && /(de|en|deutsch|english|german)/i.test(value)) {
-      fromKv.language = /(de|deutsch|german)/i.test(value) ? "de" : "en";
-    }
-    if (key === "training_type" && /(intro|aiim)/i.test(value)) {
-      fromKv.training_type = /aiim/i.test(value) ? "aiim_3day" : "intro_1day";
-    }
-    if (key === "recipient_name") fromKv.recipient_name = value;
-    if (key === "company_name") fromKv.company_name = value;
-    if (key === "use_case") fromKv.use_case = value;
-    if (key === "date") fromKv.date = value;
-    if (key === "location") fromKv.location = value;
-    if (key === "to") fromKv.to = value;
-    if (key === "included_change_ids") {
-      fromKv.included_change_ids = value
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-    }
-  }
-  if (Object.keys(fromKv).length > 0) {
-    return { ...current, ...fromKv, quick_input: raw };
-  }
-
-  // Fallback shorthand parser: "/mail post abraod de intro marko Synthomer 04.05 Germany hans@test.com"
-  const cleaned = text.replace(/^\/mail\s+/i, "").trim();
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-  const next = { ...current, quick_input: raw };
-
-  const take = () => tokens.shift() ?? "";
-
-  const t0 = tokens[0]?.toLowerCase();
-  if (t0 === "post" || t0 === "pre") next.mail_type = take().toLowerCase() as MailType;
-
-  const t1 = tokens[0]?.toLowerCase();
-  if (["abroad", "abraod", "lausanne"].includes(t1)) {
-    next.template_variant = (take().toLowerCase().replace("abraod", "abroad") as FormState["template_variant"]) || "";
-  }
-
-  const t2 = tokens[0]?.toLowerCase();
-  if (["de", "en", "deutsch", "german", "english"].includes(t2)) {
-    const value = take().toLowerCase();
-    next.language = ["de", "deutsch", "german"].includes(value) ? "de" : "en";
-  }
-
-  const t3 = tokens[0]?.toLowerCase();
-  if (t3 && /(intro|aiim)/i.test(t3)) {
-    const value = take().toLowerCase();
-    next.training_type = /aiim/.test(value) ? "aiim_3day" : "intro_1day";
-  }
-
-  const emailMatch = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi);
-  if (emailMatch?.[0]) next.to = emailMatch[0];
-
-  // Remove already-consumed tokens that are obvious fields.
-  const remainder = tokens.filter((token) => !token.includes("@"));
-  const dateIndex = remainder.findIndex((token) => /\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?/.test(token));
-
-  if (!next.recipient_name && remainder[0]) next.recipient_name = remainder[0];
-  if (!next.company_name && remainder[1]) next.company_name = remainder[1];
-  if (!next.use_case) {
-    if (dateIndex > 2) next.use_case = remainder.slice(2, dateIndex).join(" ");
-    else if (remainder[2]) next.use_case = remainder[2];
-  }
-  if (!next.date && dateIndex >= 0) next.date = remainder[dateIndex];
-  if (!next.location) {
-    const locationCandidate = dateIndex >= 0 ? remainder[dateIndex + 1] : remainder[2];
-    if (locationCandidate) next.location = locationCandidate;
-  }
-
-  return next;
-}
-
 export function DashboardShell({ email }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>({
     mail_type: "",
@@ -158,7 +64,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
     location: "",
     to: "",
     included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
-    quick_input: "",
   });
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -256,12 +161,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
     await navigator.clipboard.writeText(value);
   }
 
-  async function handleDisconnectGmail() {
-    await fetch("/api/gmail/disconnect", { method: "POST" });
-    setGmailStatus({ connected: false });
-    setDraftInfo(null);
-  }
-
   async function handleCreateDraft() {
     if (!result) {
       setError("Generate a draft first.");
@@ -308,7 +207,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
           email={email}
           gmailConnected={gmailStatus.connected}
           gmailEmail={gmailStatus.gmail_email}
-          onDisconnectGmail={handleDisconnectGmail}
           activeModule={activeModule}
           onSelectModule={(module) => {
             setActiveModule(module);
@@ -367,30 +265,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="glass-card p-6 md:p-7">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-200/80">
-              Guided mode: fill top-down and each next field appears automatically.
-            </p>
-
-            <div className="mt-5">
-              <label className="mb-2 block text-xs tracking-wide text-cyan-200/85 uppercase">
-                Quick paste (auto-fill)
-              </label>
-              <textarea
-                placeholder="Paste all info here (e.g. /mail post abraod de intro marko Synthomer 04.05 Germany hans@test.com)"
-                value={form.quick_input}
-                onChange={(e) => setForm({ ...form, quick_input: e.target.value })}
-                className="min-h-20 w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setForm((prev) => parseQuickInput(prev.quick_input, prev))}
-                className="mt-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium transition hover:bg-white/15"
-              >
-                Auto-fill fields
-              </button>
-            </div>
-
-            <div className="mt-5">
+            <div className="mt-4">
               <select
                 value={form.mail_type}
                 onChange={(e) => setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] })}

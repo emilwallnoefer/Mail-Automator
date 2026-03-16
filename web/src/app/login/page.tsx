@@ -87,7 +87,7 @@ export default function LoginPage() {
               Flyability Internal
             </p>
             <h1 className="max-w-md text-3xl leading-tight font-semibold md:text-4xl">
-              Flya allrounderm for daily operations.
+              Flya Allrounder for daily operations.
             </h1>
             <p className="mt-4 max-w-md text-sm text-slate-200/80">
               Generate structured training emails, create Gmail drafts, and manage your time tracking in one workflow.
@@ -114,7 +114,7 @@ export default function LoginPage() {
             <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
             <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>
             <p className="mt-2 text-sm text-slate-200/80">
-              Sign in to continue to Flya allrounderm.
+              Sign in to continue to Flya Allrounder.
             </p>
           </div>
 

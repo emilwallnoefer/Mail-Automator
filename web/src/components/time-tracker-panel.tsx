@@ -117,18 +117,18 @@ export function TimeTrackerPanel() {
   const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const [data, setData] = useState<WeekResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const dayLoggerRef = useRef<HTMLDivElement | null>(null);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
-    if (!selectedDate) return data.days[0];
-    return data.days.find((day) => day.date === selectedDate) ?? data.days[0];
+    if (!selectedDate) return null;
+    return data.days.find((day) => day.date === selectedDate) ?? null;
   }, [data, selectedDate]);
 
   const [formStart, setFormStart] = useState("");
@@ -141,8 +141,9 @@ export function TimeTrackerPanel() {
     const days = weekData.days ?? [];
     setSelectedDate((prev) => {
       if (prev && days.some((day) => day.date === prev)) return prev;
-      return days[0]?.date ?? null;
+      return null;
     });
+    setEditorOpen(false);
   }, []);
 
   const fetchWeekData = useCallback(async (
@@ -224,11 +225,11 @@ export function TimeTrackerPanel() {
     };
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
-  async function refreshWeek() {
+  const refreshWeek = useCallback(async () => {
     const weekData = await fetchWeekData(weekStart, { force: true });
     applyWeekData(weekData);
     prefetchNearbyWeeks(weekStart);
-  }
+  }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
     const response = await fetch("/api/time-tracker", {
@@ -290,27 +291,40 @@ export function TimeTrackerPanel() {
     }
   }
 
-  async function handleImportFile(file: File) {
-    setImporting(true);
-    try {
-      const raw = await file.text();
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const payload = await postAction<{
-        ok: boolean;
-        imported_day_logs: number;
-        imported_break_rows: number;
-        imported_comp_rows: number;
-      }>({ action: "import_json", data: parsed });
-      await refreshWeek();
-      setToast({
-        kind: "ok",
-        message: `Import done (${String(payload.imported_day_logs ?? 0)} days).`,
-      });
-    } catch (error) {
-      setToast({ kind: "error", message: (error as Error).message });
-    } finally {
-      setImporting(false);
+  useEffect(() => {
+    function onImported(event: Event) {
+      const detail = (event as CustomEvent<{ imported_day_logs?: number; error?: string }>).detail;
+      if (detail?.error) {
+        setToast({ kind: "error", message: detail.error });
+        return;
+      }
+      void refreshWeek()
+        .then(() => {
+          setToast({
+            kind: "ok",
+            message: `Import done (${String(detail?.imported_day_logs ?? 0)} days).`,
+          });
+        })
+        .catch((error) => {
+          setToast({ kind: "error", message: (error as Error).message });
+        });
     }
+
+    window.addEventListener("time-tracker-imported", onImported as EventListener);
+    return () => window.removeEventListener("time-tracker-imported", onImported as EventListener);
+  }, [refreshWeek]);
+
+  function handleEditDay(date: string) {
+    setSelectedDate(date);
+    setEditorOpen(true);
+    window.setTimeout(() => {
+      const node = dayLoggerRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const alreadyMostlyVisible = rect.top >= 120 && rect.bottom <= window.innerHeight - 24;
+      if (alreadyMostlyVisible) return;
+      node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 40);
   }
 
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
@@ -333,7 +347,7 @@ export function TimeTrackerPanel() {
           />
         ))}
       </div>
-      <div className="glass-card p-5 md:p-6">
+      <div className="glass-card hourlogger-surface p-5 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
@@ -401,13 +415,11 @@ export function TimeTrackerPanel() {
               return (
                 <article
                   key={day.date}
-                  className={`rounded-xl border p-3 transition ${
-                    isSelected ? "border-cyan-300/60 bg-cyan-500/10" : "border-white/15 bg-white/5"
-                  }`}
+                  className={`liquid-day-card rounded-xl p-3 transition ${isSelected ? "day-card-selected" : ""}`}
                 >
                   <button
                     type="button"
-                    onClick={() => setSelectedDate(day.date)}
+                    onClick={() => handleEditDay(day.date)}
                     className="w-full text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -418,9 +430,19 @@ export function TimeTrackerPanel() {
                       {day.holiday ? "Public holiday" : `${fmtHM(day.net_mins)} worked`}
                     </p>
                     <div className="day-progress mt-3" aria-label="Day progress bar">
-                      <span className="day-progress-segment day-progress-sand" style={{ width: `${sandPct}%` }} />
-                      <span className="day-progress-segment day-progress-algae" style={{ width: `${algaePct}%` }} />
-                      <span className="day-progress-segment day-progress-comp" style={{ width: `${compPct}%` }} />
+                      <span className="day-progress-topdown" style={{ height: `${Math.max(0, Math.min(100, donePct))}%` }} />
+                      <span
+                        className="day-progress-segment day-progress-sand"
+                        style={{ width: `${sandPct}%`, animationDelay: "40ms" }}
+                      />
+                      <span
+                        className="day-progress-segment day-progress-algae"
+                        style={{ width: `${algaePct}%`, animationDelay: "120ms" }}
+                      />
+                      <span
+                        className="day-progress-segment day-progress-comp"
+                        style={{ width: `${compPct}%`, animationDelay: "200ms" }}
+                      />
                     </div>
                     <p className="mt-2 text-[11px] text-slate-300/80">
                       Core hours {fmtHM(weekendRuleApplies ? 0 : workedBaseMins)}
@@ -438,7 +460,7 @@ export function TimeTrackerPanel() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedDate(day.date)}
+                      onClick={() => handleEditDay(day.date)}
                       className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
                     >
                       Edit
@@ -451,33 +473,12 @@ export function TimeTrackerPanel() {
         )}
       </div>
 
-      <div className="glass-card p-5 md:p-6">
+      {editorOpen && selectedDay ? (
+        <div ref={dayLoggerRef} className="scroll-mt-24 glass-card p-5 md:p-6">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold">Day Logger</h3>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs hover:bg-white/15 disabled:opacity-60"
-          >
-            {importing ? "Importing..." : "Upload time tracking data"}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void handleImportFile(file);
-              event.currentTarget.value = "";
-            }}
-          />
         </div>
 
-        {!selectedDay ? (
-          <p className="mt-4 text-sm text-slate-200/80">Select a day to edit.</p>
-        ) : (
           <div className="mt-4 space-y-3">
             <p className="text-xs text-slate-300/80">{dayLabel(selectedDay.date)}</p>
             <label className="block">
@@ -579,12 +580,12 @@ export function TimeTrackerPanel() {
               </button>
             </div>
           </div>
-        )}
 
         {toast && (
           <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
         )}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
