@@ -123,6 +123,11 @@ function isWeekendDate(dateKey: string) {
   return day === 0 || day === 6;
 }
 
+function isDesktopWideLayout() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(min-width: 1024px)").matches;
+}
+
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
 }
@@ -376,6 +381,7 @@ export function TimeTrackerPanel() {
     setEditorOpen(false);
     setSelectedDate(null);
     window.setTimeout(() => {
+      if (isDesktopWideLayout()) return;
       weekGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
@@ -541,6 +547,7 @@ export function TimeTrackerPanel() {
     setSelectedDate(date);
     setEditorOpen(true);
     window.setTimeout(() => {
+      if (isDesktopWideLayout()) return;
       const node = dayLoggerRef.current;
       if (!node) return;
       const rect = node.getBoundingClientRect();
@@ -577,7 +584,7 @@ export function TimeTrackerPanel() {
       </div>
       <div
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          isEditorVisible ? "justify-self-stretch" : "max-w-[1040px] justify-self-center"
+          isEditorVisible ? "order-1 justify-self-stretch" : "order-1 max-w-[1040px] justify-self-center"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -793,7 +800,7 @@ export function TimeTrackerPanel() {
       </div>
 
       {isEditorVisible && selectedDay ? (
-        <div ref={dayLoggerRef} className="scroll-mt-24 glass-card p-4 md:p-5 lg:justify-self-stretch">
+        <div ref={dayLoggerRef} className="order-2 scroll-mt-24 glass-card p-4 md:p-5 lg:order-none lg:justify-self-stretch">
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
             <div>
               <div className="flex items-center justify-between gap-2">
