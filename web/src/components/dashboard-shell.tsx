@@ -5,6 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
+import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { playUiSound } from "@/lib/ui-sounds";
 
@@ -76,7 +77,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
-  const [activeModule, setActiveModule] = useState<"mail" | "time">("mail");
+  const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">("mail");
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
@@ -272,6 +273,17 @@ export function DashboardShell({ email }: DashboardShellProps) {
               >
                 Open Time Tracker
               </button>
+              <button
+                onClick={() => {
+                  playUiSound("switchWhoosh");
+                  setActiveModule("settings");
+                  handleBeginAutomating();
+                }}
+                type="button"
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold transition hover:bg-white/15 sm:w-auto"
+              >
+                Open Settings
+              </button>
             </motion.div>
           </>
         )}
@@ -288,6 +300,8 @@ export function DashboardShell({ email }: DashboardShellProps) {
             >
               {activeModule === "time" ? (
                 <TimeTrackerPanel />
+              ) : activeModule === "settings" ? (
+                <SettingsPanel email={email} />
               ) : (
                 <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="glass-card p-4 md:p-5">

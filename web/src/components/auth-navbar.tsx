@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { playUiSound } from "@/lib/ui-sounds";
 
-type ModuleKey = "mail" | "time";
+type ModuleKey = "mail" | "time" | "settings";
 
 type AuthNavbarProps = {
   email: string;
@@ -65,7 +65,7 @@ export function AuthNavbar({
           {menuOpen && (
             <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-white/15 bg-slate-950/92 p-2.5 shadow-xl backdrop-blur-xl">
               <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Workspace</p>
-              <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+              <div className="space-y-1" role="tablist" aria-label="Workspace tabs">
                 <button
                   type="button"
                   onClick={() => {
@@ -73,13 +73,16 @@ export function AuthNavbar({
                     onSelectModule("mail");
                     setMenuOpen(false);
                   }}
-                  className={`rounded-md px-2 py-1.5 text-xs transition ${
+                  role="tab"
+                  aria-selected={activeModule === "mail"}
+                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition ${
                     activeModule === "mail"
                       ? "bg-cyan-400/90 font-medium text-slate-900"
-                      : "text-slate-200 hover:bg-white/10"
+                      : "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
                   }`}
                 >
-                  Mail automator
+                  <span>Mail Automator</span>
+                  {activeModule === "mail" ? <span className="text-[10px] opacity-80">Active</span> : null}
                 </button>
                 <button
                   type="button"
@@ -88,13 +91,34 @@ export function AuthNavbar({
                     onSelectModule("time");
                     setMenuOpen(false);
                   }}
-                  className={`rounded-md px-2 py-1.5 text-xs transition ${
+                  role="tab"
+                  aria-selected={activeModule === "time"}
+                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition ${
                     activeModule === "time"
                       ? "bg-cyan-400/90 font-medium text-slate-900"
-                      : "text-slate-200 hover:bg-white/10"
+                      : "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
                   }`}
                 >
-                  Time tracker
+                  <span>Time Tracker</span>
+                  {activeModule === "time" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playUiSound("switchWhoosh");
+                    onSelectModule("settings");
+                    setMenuOpen(false);
+                  }}
+                  role="tab"
+                  aria-selected={activeModule === "settings"}
+                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition ${
+                    activeModule === "settings"
+                      ? "bg-cyan-400/90 font-medium text-slate-900"
+                      : "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                  }`}
+                >
+                  <span>Settings</span>
+                  {activeModule === "settings" ? <span className="text-[10px] opacity-80">Active</span> : null}
                 </button>
               </div>
 
@@ -115,12 +139,6 @@ export function AuthNavbar({
               </div>
 
               <div className="mt-2 grid gap-1.5">
-                <a
-                  href="/settings"
-                  className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
-                >
-                  Open settings
-                </a>
                 <form action="/logout" method="post">
                   <button
                     type="submit"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
@@ -211,8 +212,10 @@ export function TimeTrackerPanel() {
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editorClosing, setEditorClosing] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
+  const closeTimerRef = useRef<number | null>(null);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -229,6 +232,7 @@ export function TimeTrackerPanel() {
   const [formStop, setFormStop] = useState("");
   const [formHoliday, setFormHoliday] = useState(false);
   const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
+  const todayKey = toDateKey(new Date());
 
   const applyWeekData = useCallback((weekData: WeekResponse) => {
     setData(weekData);
@@ -291,8 +295,17 @@ export function TimeTrackerPanel() {
     setFormStart(selectedDay.start_time ?? "");
     setFormStop(selectedDay.stop_time ?? "");
     setFormHoliday(Boolean(selectedDay.holiday));
-    setFormBreaks(selectedDay.breaks?.map((item) => ({ ...item })) ?? []);
-  }, [selectedDay]);
+    const canUseBreaks = selectedDay.date < todayKey;
+    setFormBreaks(canUseBreaks ? (selectedDay.breaks?.map((item) => ({ ...item })) ?? []) : []);
+  }, [selectedDay, todayKey]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current != null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -376,8 +389,17 @@ export function TimeTrackerPanel() {
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   function returnToWeekdays() {
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setEditorClosing(true);
     setEditorOpen(false);
-    setSelectedDate(null);
+    closeTimerRef.current = window.setTimeout(() => {
+      setSelectedDate(null);
+      setEditorClosing(false);
+      closeTimerRef.current = null;
+    }, 280);
   }
 
   const patchDayInCurrentWeek = useCallback(
@@ -420,37 +442,50 @@ export function TimeTrackerPanel() {
     return payload as T;
   }
 
-  async function handleSaveDay() {
+  function handleSaveDay() {
     if (!selectedDay) return;
-    setSaving(true);
-    try {
-      const netMins = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
-      await postAction<{ ok: boolean }>({
-        action: "save_day",
-        day: {
-          work_date: selectedDay.date,
-          start_time: formStart,
-          stop_time: formStop,
-          holiday: formHoliday,
-          net_mins: netMins,
-          breaks: formBreaks,
-        },
-      });
-      patchDayInCurrentWeek(selectedDay.date, (day) => ({
-        ...day,
+    const date = selectedDay.date;
+    const canUseBreaks = date < todayKey;
+    const nextBreaks = canUseBreaks ? formBreaks.map((item) => ({ ...item })) : [];
+    const netMins = formHoliday ? 0 : computeNetMins(formStart, formStop, nextBreaks);
+    const previousDaySnapshot: DayData = {
+      ...selectedDay,
+      breaks: selectedDay.breaks.map((item) => ({ ...item })),
+    };
+
+    // Optimistic save: close editor and update card immediately.
+    patchDayInCurrentWeek(date, (day) => ({
+      ...day,
+      start_time: formStart,
+      stop_time: formStop,
+      net_mins: netMins,
+      holiday: formHoliday,
+      breaks: nextBreaks,
+    }));
+    returnToWeekdays();
+
+    void postAction<{ ok: boolean }>({
+      action: "save_day",
+      day: {
+        work_date: date,
         start_time: formStart,
         stop_time: formStop,
-        net_mins: netMins,
         holiday: formHoliday,
-        breaks: formBreaks.map((item) => ({ ...item })),
-      }));
-      returnToWeekdays();
-      setToast({ kind: "ok", message: "Day saved." });
-    } catch (error) {
-      setToast({ kind: "error", message: (error as Error).message });
-    } finally {
-      setSaving(false);
-    }
+        net_mins: netMins,
+        breaks: nextBreaks,
+      },
+    })
+      .then(() => {
+        setToast({ kind: "ok", message: "Day saved." });
+      })
+      .catch((error) => {
+        // Roll back optimistic values if persistence failed.
+        patchDayInCurrentWeek(date, () => ({
+          ...previousDaySnapshot,
+          breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
+        }));
+        setToast({ kind: "error", message: `Save failed. ${String((error as Error).message)}` });
+      });
   }
 
   async function handleFillMissing(date: string) {
@@ -538,18 +573,26 @@ export function TimeTrackerPanel() {
   }, [refreshWeek]);
 
   function handleEditDay(date: string) {
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setEditorClosing(false);
     setSelectedDate(date);
     setEditorOpen(true);
   }
 
-  const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, formBreaks);
-  const isEditorVisible = editorOpen && Boolean(selectedDay);
+  const selectedDaySupportsBreaks = Boolean(selectedDay && selectedDay.date < todayKey);
+  const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
+  const isEditorVisible = (editorOpen || editorClosing) && Boolean(selectedDay);
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
 
   return (
-    <section
+    <motion.section
+      layout
+      transition={{ duration: 0.32, ease: "easeOut" }}
       className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
         isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-1"
       }`}
@@ -570,7 +613,9 @@ export function TimeTrackerPanel() {
           />
         ))}
       </div>
-      <div
+      <motion.div
+        layout
+        transition={{ duration: 0.32, ease: "easeOut" }}
         className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
           isEditorVisible ? "justify-self-stretch" : "justify-self-stretch"
         }`}
@@ -814,10 +859,18 @@ export function TimeTrackerPanel() {
             ))}
         </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
-      </div>
+      </motion.div>
 
-      {isEditorVisible && selectedDay ? (
-        <div className="scroll-mt-24 self-start glass-card p-4 md:p-5">
+      <AnimatePresence initial={false}>
+        {isEditorVisible && selectedDay ? (
+        <motion.div
+          layout
+          initial={{ opacity: 0, x: 22, scale: 0.985 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 18, scale: 0.99 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="scroll-mt-24 self-start glass-card p-4 md:p-5"
+        >
           <div className="grid items-start gap-4 lg:grid-cols-2">
             <div>
               <div className="flex items-center justify-between gap-2">
@@ -855,54 +908,56 @@ export function TimeTrackerPanel() {
                   Public holiday (full day)
                 </label>
 
-                <div className="space-y-2 rounded-xl border border-white/15 bg-white/5 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-                    <button
-                      type="button"
-                      onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-                    >
-                      Add break
-                    </button>
-                  </div>
+                {selectedDaySupportsBreaks ? (
+                  <div className="space-y-2 rounded-xl border border-white/15 bg-white/5 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+                      <button
+                        type="button"
+                        onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
+                        className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                      >
+                        Add break
+                      </button>
+                    </div>
 
-                  {formBreaks.length === 0 ? (
-                    <p className="text-xs text-slate-300/80">No breaks added.</p>
-                  ) : (
-                    formBreaks.map((item, index) => (
-                      <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
-                        <input
-                          placeholder="Name"
-                          value={item.name}
-                          onChange={(event) => {
-                            const name = event.target.value;
-                            setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
-                          }}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          placeholder="mins"
-                          value={item.mins}
-                          onChange={(event) => {
-                            const mins = Number.parseInt(event.target.value || "0", 10) || 0;
-                            setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
-                          }}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                          className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+                    {formBreaks.length === 0 ? (
+                      <p className="text-xs text-slate-300/80">No breaks added.</p>
+                    ) : (
+                      formBreaks.map((item, index) => (
+                        <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
+                          <input
+                            placeholder="Name"
+                            value={item.name}
+                            onChange={(event) => {
+                              const name = event.target.value;
+                              setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
+                            }}
+                            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="mins"
+                            value={item.mins}
+                            onChange={(event) => {
+                              const mins = Number.parseInt(event.target.value || "0", 10) || 0;
+                              setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
+                            }}
+                            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
+                            className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
 
                 <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
 
@@ -969,8 +1024,9 @@ export function TimeTrackerPanel() {
               )}
             </aside>
           </div>
-        </div>
+        </motion.div>
       ) : null}
-    </section>
+      </AnimatePresence>
+    </motion.section>
   );
 }
