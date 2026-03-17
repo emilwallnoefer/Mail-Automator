@@ -446,6 +446,24 @@ export function TimeTrackerPanel() {
     const canUseBreaks = date < todayKey;
     const nextBreaks = canUseBreaks ? formBreaks.map((item) => ({ ...item })) : [];
     const netMins = formHoliday ? 0 : computeNetMins(formStart, formStop, nextBreaks);
+    const breaksChanged =
+      selectedDay.breaks.length !== nextBreaks.length ||
+      selectedDay.breaks.some((item, index) => {
+        const next = nextBreaks[index];
+        if (!next) return true;
+        return item.name !== next.name || item.mins !== next.mins;
+      });
+    const hasChanges =
+      selectedDay.start_time !== formStart ||
+      selectedDay.stop_time !== formStop ||
+      Boolean(selectedDay.holiday) !== Boolean(formHoliday) ||
+      selectedDay.net_mins !== netMins ||
+      breaksChanged;
+
+    if (hasChanges) {
+      playUiSound("saveConfirm");
+    }
+
     const previousDaySnapshot: DayData = {
       ...selectedDay,
       breaks: selectedDay.breaks.map((item) => ({ ...item })),
@@ -951,7 +969,6 @@ export function TimeTrackerPanel() {
                   <button
                     type="button"
                     onClick={() => {
-                      playUiSound("saveConfirm");
                       void handleSaveDay();
                     }}
                     disabled={saving || !selectedDay}
