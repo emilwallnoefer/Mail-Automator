@@ -10,6 +10,12 @@ export function SettingsPanel({ email }: SettingsPanelProps) {
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
+  const [travelMapping, setTravelMapping] = useState({
+    clientColumn: "",
+    locationColumn: "",
+    responsibleColumn: "",
+  });
+  const [mappingSaving, setMappingSaving] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -18,12 +24,52 @@ export function SettingsPanel({ email }: SettingsPanelProps) {
 
   useEffect(() => {
     (async () => {
-      const response = await fetch("/api/gmail/status");
-      if (!response.ok) return;
-      const data = (await response.json()) as { connected: boolean; gmail_email?: string | null };
-      setGmailStatus(data);
+      const [gmailResponse, mappingResponse] = await Promise.all([
+        fetch("/api/gmail/status"),
+        fetch("/api/settings/travel-mapping"),
+      ]);
+      if (gmailResponse.ok) {
+        const data = (await gmailResponse.json()) as { connected: boolean; gmail_email?: string | null };
+        setGmailStatus(data);
+      }
+      if (mappingResponse.ok) {
+        const mapping = (await mappingResponse.json()) as {
+          clientColumn?: string;
+          locationColumn?: string;
+          responsibleColumn?: string;
+        };
+        setTravelMapping({
+          clientColumn: String(mapping.clientColumn ?? ""),
+          locationColumn: String(mapping.locationColumn ?? ""),
+          responsibleColumn: String(mapping.responsibleColumn ?? ""),
+        });
+      }
     })();
   }, []);
+
+  function normalizeColumnInput(value: string) {
+    return value.toUpperCase().replace(/[^A-Z]/g, "");
+  }
+
+  async function handleSaveTravelMapping() {
+    setMappingSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/settings/travel-mapping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(travelMapping),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Could not save mapping.");
+      setMessage("Travel column mapping saved.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMappingSaving(false);
+    }
+  }
 
   async function handleDisconnectGmail() {
     setError(null);
@@ -100,6 +146,61 @@ export function SettingsPanel({ email }: SettingsPanelProps) {
             </a>
           )}
         </div>
+      </section>
+
+      <section className="glass-card p-4 md:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Travel Column Mapping</h2>
+        <p className="mt-2 text-xs text-slate-300/90">
+          Configure per-user columns for travel import. Date columns stay unchanged.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-200/90">Client column</span>
+            <input
+              value={travelMapping.clientColumn}
+              onChange={(event) => {
+                const value = normalizeColumnInput(event.target.value);
+                setTravelMapping((prev) => ({ ...prev, clientColumn: value }));
+              }}
+              placeholder="P"
+              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-200/90">Location column</span>
+            <input
+              value={travelMapping.locationColumn}
+              onChange={(event) => {
+                const value = normalizeColumnInput(event.target.value);
+                setTravelMapping((prev) => ({ ...prev, locationColumn: value }));
+              }}
+              placeholder="Q"
+              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-200/90">Responsible column</span>
+            <input
+              value={travelMapping.responsibleColumn}
+              onChange={(event) => {
+                const value = normalizeColumnInput(event.target.value);
+                setTravelMapping((prev) => ({ ...prev, responsibleColumn: value }));
+              }}
+              placeholder="R"
+              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            void handleSaveTravelMapping();
+          }}
+          disabled={mappingSaving}
+          className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+        >
+          {mappingSaving ? "Saving..." : "Save travel mapping"}
+        </button>
       </section>
 
       <section className="glass-card p-4 md:p-5">

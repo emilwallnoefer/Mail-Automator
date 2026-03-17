@@ -7,6 +7,16 @@ export type TravelInfo = {
   responsible: string;
 };
 
+export type TravelSheetColumnMapping = {
+  monthYearColumn?: string;
+  dayColumn?: string;
+  clientColumn?: string;
+  locationColumn?: string;
+  responsibleColumn?: string;
+  range?: string;
+  gid?: string;
+};
+
 const DEFAULT_MONTH_YEAR_COLUMN = "A";
 const DEFAULT_DAY_COLUMN = "C";
 const DEFAULT_CLIENT_COLUMN = "P";
@@ -88,28 +98,40 @@ function cleanCell(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function getColumnIndexFromEnv(name: string, fallback: string) {
-  const fromEnv = process.env[name] || fallback;
-  const index = columnLetterToIndex(fromEnv);
-  if (index < 0) throw new Error(`Invalid sheet column letter in ${name}: ${fromEnv}`);
+function getColumnIndexWithOverride(name: string, fallback: string, override?: string) {
+  const source = override || process.env[name] || fallback;
+  const index = columnLetterToIndex(source);
+  if (index < 0) throw new Error(`Invalid sheet column letter in ${name}: ${source}`);
   return index;
 }
 
-export async function fetchTravelByDate(refreshToken: string): Promise<Record<string, TravelInfo>> {
+export async function fetchTravelByDate(
+  refreshToken: string,
+  mapping?: TravelSheetColumnMapping,
+): Promise<Record<string, TravelInfo>> {
   if (!refreshToken) return {};
 
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
-  const baseRange = process.env.GOOGLE_SHEETS_RANGE || "A:R";
-  const gid = process.env.GOOGLE_SHEETS_GID;
+  const baseRange = mapping?.range || process.env.GOOGLE_SHEETS_RANGE || "A:R";
+  const gid = mapping?.gid || process.env.GOOGLE_SHEETS_GID;
 
-  const monthYearColIdx = getColumnIndexFromEnv(
+  const monthYearColIdx = getColumnIndexWithOverride(
     "GOOGLE_SHEETS_DATE_MONTH_YEAR_COLUMN",
     DEFAULT_MONTH_YEAR_COLUMN,
+    mapping?.monthYearColumn,
   );
-  const dayColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_DATE_DAY_COLUMN", DEFAULT_DAY_COLUMN);
-  const clientColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_CLIENT", DEFAULT_CLIENT_COLUMN);
-  const locationColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_LOCATION", DEFAULT_LOCATION_COLUMN);
-  const responsibleColIdx = getColumnIndexFromEnv("GOOGLE_SHEETS_COL_RESPONSIBLE", DEFAULT_RESPONSIBLE_COLUMN);
+  const dayColIdx = getColumnIndexWithOverride("GOOGLE_SHEETS_DATE_DAY_COLUMN", DEFAULT_DAY_COLUMN, mapping?.dayColumn);
+  const clientColIdx = getColumnIndexWithOverride("GOOGLE_SHEETS_COL_CLIENT", DEFAULT_CLIENT_COLUMN, mapping?.clientColumn);
+  const locationColIdx = getColumnIndexWithOverride(
+    "GOOGLE_SHEETS_COL_LOCATION",
+    DEFAULT_LOCATION_COLUMN,
+    mapping?.locationColumn,
+  );
+  const responsibleColIdx = getColumnIndexWithOverride(
+    "GOOGLE_SHEETS_COL_RESPONSIBLE",
+    DEFAULT_RESPONSIBLE_COLUMN,
+    mapping?.responsibleColumn,
+  );
 
   const redirectUri = requiredEnv("GOOGLE_OAUTH_REDIRECT_URI");
   const oauthClient = getOAuthClient(redirectUri);

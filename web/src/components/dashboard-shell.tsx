@@ -27,6 +27,7 @@ type FormState = {
   language: "" | "en" | "de";
   training_type: "" | "intro_1day" | "aiim_3day";
   recipient_name: string;
+  recipient_optional: string;
   company_name: string;
   use_case: string;
   date: string;
@@ -41,6 +42,7 @@ const INITIAL_FORM_STATE: FormState = {
   language: "",
   training_type: "",
   recipient_name: "",
+  recipient_optional: "",
   company_name: "",
   use_case: "",
   date: "",
@@ -90,14 +92,14 @@ export function DashboardShell({ email }: DashboardShellProps) {
     form.mail_type === "pre" ? shouldShowRecipient && Boolean(form.recipient_name) : false;
   const isPreLausanne = form.mail_type === "pre" && form.template_variant === "lausanne";
   const shouldShowLocation = form.mail_type === "pre" && Boolean(form.date) && !isPreLausanne;
-  const shouldShowTo = form.mail_type === "post" ? shouldShowUseCase && Boolean(form.use_case) : false;
-  const shouldShowChanges = form.mail_type === "post" && Boolean(form.to);
+  const shouldShowChanges = form.mail_type === "post" ? shouldShowUseCase && Boolean(form.use_case) : false;
+  const shouldShowRecipientOptional = form.mail_type === "post" ? shouldShowChanges : shouldShowRecipient;
 
   const generateDisabled =
     !form.mail_type ||
     !form.language ||
     !form.recipient_name ||
-    (form.mail_type === "post" && (!form.company_name || !form.use_case || !form.to)) ||
+    (form.mail_type === "post" && (!form.company_name || !form.use_case)) ||
     (form.mail_type === "pre" &&
       (!form.template_variant || !form.training_type || !form.date || (form.template_variant === "abroad" && !form.location)));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
@@ -140,6 +142,8 @@ export function DashboardShell({ email }: DashboardShellProps) {
           ...form,
           template_variant: form.template_variant || undefined,
           training_type: form.training_type || undefined,
+          to: form.to || form.recipient_optional || undefined,
+          recipient_optional: form.recipient_optional || undefined,
           included_change_ids: changesTouched ? form.included_change_ids : undefined,
         }),
       });
@@ -179,7 +183,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: form.to || undefined,
+          to: form.to || form.recipient_optional || undefined,
           subject: result.subject,
           body: result.body,
           html_body: result.html_body,
@@ -413,11 +417,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
-              <ProgressiveField show={shouldShowTo}>
+              <ProgressiveField show={shouldShowRecipientOptional}>
                 <input
-                  placeholder="to (recipient emails, comma separated)"
-                  value={form.to}
-                  onChange={(e) => setForm({ ...form, to: e.target.value })}
+                  placeholder="recipient (optional, comma separated emails)"
+                  value={form.recipient_optional}
+                  onChange={(e) => setForm({ ...form, recipient_optional: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>

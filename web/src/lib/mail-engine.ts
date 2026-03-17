@@ -11,6 +11,7 @@ export type MailInput = {
   language: "en" | "de";
   training_type?: "intro_1day" | "aiim_3day";
   recipient_name: string;
+  recipient_optional?: string;
   company_name: string;
   use_case?: string;
   date: string;
@@ -313,6 +314,7 @@ export function renderMail(input: MailInput): RenderResult {
   const replacements: Record<string, string> = {
     ...(trainingLinks as Record<string, string>),
     RECIPIENT_NAME: input.recipient_name || "",
+    RECIPIENT_OPTIONAL: input.recipient_optional || "",
     COMPANY_NAME: input.company_name || "",
     TRAINING_DATE: input.date || "",
     LOCATION: input.location || "",

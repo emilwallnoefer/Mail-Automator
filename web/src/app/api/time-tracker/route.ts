@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { fetchTravelByDate } from "@/lib/google-sheets";
+import { fetchTravelByDate, type TravelSheetColumnMapping } from "@/lib/google-sheets";
 import { NextResponse } from "next/server";
 
 const TARGET_MINS = 504;
@@ -69,6 +69,38 @@ function isWeekendDate(dateKey: string) {
   const date = new Date(year, (month || 1) - 1, day || 1);
   const weekday = date.getDay();
   return weekday === 0 || weekday === 6;
+}
+
+function normalizeColumnLetter(value: unknown) {
+  const text = String(value ?? "").trim().toUpperCase();
+  if (!text) return undefined;
+  if (!/^[A-Z]+$/.test(text)) return undefined;
+  return text;
+}
+
+function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping | undefined {
+  if (!rawMetadata || typeof rawMetadata !== "object" || Array.isArray(rawMetadata)) return undefined;
+  const metadata = rawMetadata as Record<string, unknown>;
+  const rawMapping = metadata.travel_sheet_mapping;
+  if (!rawMapping || typeof rawMapping !== "object" || Array.isArray(rawMapping)) return undefined;
+  const mappingInput = rawMapping as Record<string, unknown>;
+
+  const mapping: TravelSheetColumnMapping = {
+    monthYearColumn: normalizeColumnLetter(mappingInput.monthYearColumn),
+    dayColumn: normalizeColumnLetter(mappingInput.dayColumn),
+    clientColumn: normalizeColumnLetter(mappingInput.clientColumn),
+    locationColumn: normalizeColumnLetter(mappingInput.locationColumn),
+    responsibleColumn: normalizeColumnLetter(mappingInput.responsibleColumn),
+  };
+
+  const range = String(mappingInput.range ?? "").trim();
+  if (range) mapping.range = range;
+
+  const gid = String(mappingInput.gid ?? "").trim();
+  if (gid) mapping.gid = gid;
+
+  const hasAnyConfig = Object.values(mapping).some((value) => Boolean(value));
+  return hasAnyConfig ? mapping : undefined;
 }
 
 export async function GET(request: Request) {
@@ -221,7 +253,8 @@ export async function GET(request: Request) {
           week_matches: 0,
         };
       } else {
-        travelByDate = await fetchTravelByDate(refreshToken);
+        const userTravelMapping = parseUserTravelMapping(user.user_metadata);
+        travelByDate = await fetchTravelByDate(refreshToken, userTravelMapping);
         const fetchedDates = Object.keys(travelByDate);
         const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
         if (fetchedDates.length === 0) {
