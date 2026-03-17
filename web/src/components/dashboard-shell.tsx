@@ -307,7 +307,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               ) : activeModule === "settings" ? (
                 <SettingsPanel email={email} />
               ) : (
-                <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                <section className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="glass-card p-4 md:p-5">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
             <div className="mt-4">
@@ -513,7 +513,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             )}
                   </div>
 
-                  <div className="glass-card self-start p-4 md:p-5 lg:sticky lg:top-5">
+                  <div className="glass-card self-start p-4 md:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (
