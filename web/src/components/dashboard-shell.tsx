@@ -289,6 +289,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
           ...prev,
           included_change_ids: generated.selected_change_ids ?? prev.included_change_ids,
         }));
+        setChangesTouched(false);
       }
       setDraftInfo(null);
     } catch (err) {
@@ -476,7 +477,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <div className="mt-4">
               <select
                 value={form.mail_type}
-                onChange={(e) => setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] })}
+                onChange={(e) => {
+                  setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] });
+                  setChangesTouched(false);
+                }}
                 className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               >
                 <option value="">Mail Type</option>
@@ -489,7 +493,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
               <div className="mt-3">
                 <select
                   value={form.language}
-                  onChange={(e) => setForm({ ...form, language: e.target.value as FormState["language"] })}
+                  onChange={(e) => {
+                    setForm({ ...form, language: e.target.value as FormState["language"] });
+                    setChangesTouched(false);
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
                   <option value="">Language</option>
@@ -515,6 +522,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                             ? ""
                             : prev.location,
                     }));
+                    setChangesTouched(false);
                   }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
@@ -549,9 +557,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                       }
                       return { ...prev, training_type: nextTrainingType };
                     });
-                    if (nextTrainingType === "intro_1day" || nextTrainingType === "aiim_3day") {
-                      setChangesTouched(true);
-                    }
+                    setChangesTouched(false);
                   }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
@@ -567,7 +573,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <input
                   placeholder="Recipient Name"
                   value={form.recipient_name}
-                  onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, recipient_name: e.target.value });
+                    setChangesTouched(false);
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
@@ -575,7 +584,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <input
                   placeholder="Company Name"
                   value={form.company_name}
-                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, company_name: e.target.value });
+                    setChangesTouched(false);
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
@@ -583,7 +595,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 <input
                   placeholder="Use Case"
                   value={form.use_case}
-                  onChange={(e) => setForm({ ...form, use_case: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, use_case: e.target.value });
+                    setChangesTouched(false);
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
