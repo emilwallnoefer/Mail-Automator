@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
@@ -99,12 +99,16 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [currentDeployKey, setCurrentDeployKey] = useState("local-dev");
   const [animatedPreviewSubject, setAnimatedPreviewSubject] = useState("");
   const [animatedPreviewBody, setAnimatedPreviewBody] = useState("");
+  const previousPreviewWritingRef = useRef(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
-  const shouldShowTrainingType = shouldShowVariant && Boolean(form.template_variant);
+  const shouldShowTrainingType =
+    form.mail_type === "post"
+      ? shouldShowLanguage
+      : shouldShowVariant && Boolean(form.template_variant);
   const shouldShowRecipient =
-    form.mail_type === "post" ? Boolean(form.language) : Boolean(form.training_type);
+    form.mail_type === "post" ? shouldShowTrainingType && Boolean(form.training_type) : Boolean(form.training_type);
   const shouldShowCompany = form.mail_type === "post" && shouldShowRecipient && Boolean(form.recipient_name);
   const shouldShowUseCase = form.mail_type === "post" && shouldShowCompany && Boolean(form.company_name);
   const shouldShowDate =
@@ -118,7 +122,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
     !form.mail_type ||
     !form.language ||
     !form.recipient_name ||
-    (form.mail_type === "post" && (!form.company_name || !form.use_case)) ||
+    (form.mail_type === "post" && (!form.training_type || !form.company_name || !form.use_case)) ||
     (form.mail_type === "pre" &&
       (!form.template_variant || !form.training_type || !form.date || (form.template_variant === "abroad" && !form.location)));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
@@ -206,22 +210,36 @@ export function DashboardShell({ email }: DashboardShellProps) {
     };
   }, [result?.body]);
 
+  const previewIsWriting = Boolean(result) && (
+    animatedPreviewSubject.length < (result?.subject.length ?? 0) ||
+    animatedPreviewBody.length < (result?.body.length ?? 0)
+  );
+
   useEffect(() => {
-    if (!result?.subject && !result?.body) return;
-    const subjectLen = result?.subject.length ?? 0;
-    const bodyLen = result?.body.length ?? 0;
-    const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / 2) : 0;
-    const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / 10) : 0;
-    const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * 28 : 0;
-    const bodyMs = bodySteps > 0 ? (bodySteps - 1) * 24 : 0;
-    const totalWriteMs = Math.max(subjectMs, bodyMs);
-    if (totalWriteMs <= 0) return;
-    playUiSoundWithCrossfadeFill("previewWrite", totalWriteMs + 40, {
-      fadeInMs: 110,
-      fadeOutMs: 220,
-      crossfadeMs: 170,
-    });
-  }, [result?.subject, result?.body]);
+    const wasWriting = previousPreviewWritingRef.current;
+    previousPreviewWritingRef.current = previewIsWriting;
+
+    if (!wasWriting && previewIsWriting) {
+      const subjectLen = result?.subject.length ?? 0;
+      const bodyLen = result?.body.length ?? 0;
+      const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / 2) : 0;
+      const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / 10) : 0;
+      const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * 28 : 0;
+      const bodyMs = bodySteps > 0 ? (bodySteps - 1) * 24 : 0;
+      const rawEstimateMs = Math.max(subjectMs, bodyMs);
+      const paddedEstimateMs = Math.max(2200, Math.round(rawEstimateMs * 2.2));
+      playUiSoundWithCrossfadeFill("previewWrite", paddedEstimateMs, {
+        fadeInMs: 110,
+        fadeOutMs: 220,
+        crossfadeMs: 1000,
+      });
+      return;
+    }
+
+    if (wasWriting && !previewIsWriting) {
+      stopUiSound("previewWrite", { fadeOutMs: 220 });
+    }
+  }, [previewIsWriting, result?.subject, result?.body]);
 
   useEffect(() => {
     return () => {
@@ -461,9 +479,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                 onChange={(e) => setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] })}
                 className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
               >
-                <option value="">mail_type</option>
-                <option value="post">post</option>
-                <option value="pre">pre</option>
+                <option value="">Mail Type</option>
+                <option value="pre">Before Training</option>
+                <option value="post">After Training</option>
               </select>
             </div>
 
@@ -474,9 +492,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   onChange={(e) => setForm({ ...form, language: e.target.value as FormState["language"] })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
-                  <option value="">language</option>
-                  <option value="de">de</option>
-                  <option value="en">en</option>
+                  <option value="">Language</option>
+                  <option value="de">German</option>
+                  <option value="en">English</option>
                 </select>
               </div>
             </ProgressiveField>
@@ -500,9 +518,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
-                  <option value="">template_variant</option>
-                  <option value="abroad">abroad</option>
-                  <option value="lausanne">lausanne</option>
+                  <option value="">Template Variant</option>
+                  <option value="abroad">Abroad</option>
+                  <option value="lausanne">Lausanne</option>
                 </select>
               </div>
             </ProgressiveField>
@@ -511,12 +529,35 @@ export function DashboardShell({ email }: DashboardShellProps) {
               <div className="mt-3">
                 <select
                   value={form.training_type}
-                  onChange={(e) => setForm({ ...form, training_type: e.target.value as FormState["training_type"] })}
+                  onChange={(e) => {
+                    const nextTrainingType = e.target.value as FormState["training_type"];
+                    setForm((prev) => {
+                      const hasAiim = prev.included_change_ids.includes("material_aiim");
+                      if (nextTrainingType === "intro_1day") {
+                        return {
+                          ...prev,
+                          training_type: nextTrainingType,
+                          included_change_ids: prev.included_change_ids.filter((id) => id !== "material_aiim"),
+                        };
+                      }
+                      if (nextTrainingType === "aiim_3day" && !hasAiim) {
+                        return {
+                          ...prev,
+                          training_type: nextTrainingType,
+                          included_change_ids: [...prev.included_change_ids, "material_aiim"],
+                        };
+                      }
+                      return { ...prev, training_type: nextTrainingType };
+                    });
+                    if (nextTrainingType === "intro_1day" || nextTrainingType === "aiim_3day") {
+                      setChangesTouched(true);
+                    }
+                  }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
-                  <option value="">training_type</option>
-                  <option value="intro_1day">intro_1day</option>
-                  <option value="aiim_3day">aiim_3day</option>
+                  <option value="">Training Type</option>
+                  <option value="intro_1day">Intro (1 Day)</option>
+                  <option value="aiim_3day">AIIM (3 Days)</option>
                 </select>
               </div>
             </ProgressiveField>
@@ -524,7 +565,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
             <div className="mt-3 grid gap-3">
               <ProgressiveField show={shouldShowRecipient}>
                 <input
-                  placeholder="recipient_name"
+                  placeholder="Recipient Name"
                   value={form.recipient_name}
                   onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -532,7 +573,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
               <ProgressiveField show={shouldShowCompany}>
                 <input
-                  placeholder="company_name"
+                  placeholder="Company Name"
                   value={form.company_name}
                   onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -540,7 +581,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
               <ProgressiveField show={shouldShowUseCase}>
                 <input
-                  placeholder="use_case"
+                  placeholder="Use Case"
                   value={form.use_case}
                   onChange={(e) => setForm({ ...form, use_case: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -548,7 +589,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
               <ProgressiveField show={shouldShowDate}>
                 <input
-                  placeholder={form.mail_type === "pre" ? "date (required)" : "date (optional)"}
+                  placeholder={form.mail_type === "pre" ? "Training Date (Required)" : "Training Date (Optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -556,7 +597,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
               <ProgressiveField show={shouldShowLocation}>
                 <input
-                  placeholder={form.mail_type === "pre" ? "location (required)" : "location (optional)"}
+                  placeholder={form.mail_type === "pre" ? "Location (Required)" : "Location (Optional)"}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -564,7 +605,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
               </ProgressiveField>
               <ProgressiveField show={shouldShowRecipientOptional}>
                 <input
-                  placeholder="recipient (optional, comma separated emails)"
+                  placeholder="Additional Recipients (Optional, comma-separated emails)"
                   value={form.recipient_optional}
                   onChange={(e) => setForm({ ...form, recipient_optional: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
@@ -579,7 +620,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
                     }}
                     className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm"
                   >
-                    <span>changes</span>
+                    <span>Suggested Resources</span>
                     <span>{showChanges ? "Hide" : "Show"}</span>
                   </button>
                   {showChanges && (

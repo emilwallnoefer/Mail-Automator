@@ -708,9 +708,9 @@ export function TimeTrackerPanel() {
                   className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
                     isSelected ? "day-card-selected" : ""
                   } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
-                  style={{ "--day-ready-delay": `${index * 70}ms` } as CSSProperties}
+                  style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
                 >
-                  {showUpToDateSweep && revealed ? <span className="day-ready-mask-sheen" aria-hidden="true" /> : null}
+                  {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
                   <button
                     type="button"
                     onClick={() => {

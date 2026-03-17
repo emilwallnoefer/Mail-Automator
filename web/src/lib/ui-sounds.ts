@@ -19,7 +19,7 @@ type SoundConfig = {
   loop?: boolean;
 };
 
-const SOUND_VERSION = "v8-20260317l";
+const SOUND_VERSION = "v8-20260317n";
 
 const SOUND_CONFIG: Record<UiSoundKey, SoundConfig> = {
   switchWhoosh: { src: `/sounds/switch-clean-air-v8.wav?v=${SOUND_VERSION}`, volume: 0.52, cooldownMs: 120 },
@@ -28,7 +28,7 @@ const SOUND_CONFIG: Record<UiSoundKey, SoundConfig> = {
   fillSwoosh: { src: `/sounds/fill-wind-v7.wav?v=${SOUND_VERSION}`, volume: 0.5, cooldownMs: 140 },
   saveConfirm: { src: `/sounds/save-day-paper-v1.wav?v=${SOUND_VERSION}`, volume: 0.52, cooldownMs: 120 },
   resetTap: { src: `/sounds/reset-thud-v5.wav?v=${SOUND_VERSION}`, volume: 0.56, cooldownMs: 100 },
-  weekReadyGlow: { src: `/sounds/week-glow-whoosh-v1.wav?v=${SOUND_VERSION}`, volume: 0.5, loop: true },
+  weekReadyGlow: { src: `/sounds/week-glow-whoosh-v1.wav?v=${SOUND_VERSION}`, volume: 0.34, loop: true },
   daysAppearStart: { src: `/sounds/days-appear-rise-v1.wav?v=${SOUND_VERSION}`, volume: 0.26, cooldownMs: 120 },
   dayLoggerSlide: { src: `/sounds/day-logger-slide-v1.wav?v=${SOUND_VERSION}`, volume: 0.23, cooldownMs: 80 },
   previewWrite: { src: `/sounds/live-preview-write-full-v1.wav?v=${SOUND_VERSION}`, volume: 0.2, loop: false },
@@ -272,10 +272,9 @@ export function playUiSoundWithCrossfadeFill(
   const config = SOUND_CONFIG[sound];
   const fadeInMs = Math.max(0, options?.fadeInMs ?? 120);
   const fadeOutMs = Math.max(0, options?.fadeOutMs ?? 200);
-  const crossfadeMs = Math.max(60, options?.crossfadeMs ?? 160);
-  const clipMs = Math.max(crossfadeMs + 120, getKnownDurationMs(sound));
-  const strideMs = Math.max(120, clipMs - crossfadeMs);
-  const segmentCount = Math.max(1, Math.ceil((totalMs - crossfadeMs) / strideMs));
+  const requestedCrossfadeMs = Math.max(60, options?.crossfadeMs ?? 1000);
+  const clipMs = Math.max(240, getKnownDurationMs(sound));
+  const crossfadeMs = Math.min(requestedCrossfadeMs, Math.max(60, clipMs - 140));
 
   clearFadeInterval(sound);
   clearLayeredTimers(sound);
@@ -293,29 +292,54 @@ export function playUiSoundWithCrossfadeFill(
   const activeAudios: HTMLAudioElement[] = [];
   layeredAudios.set(sound, activeAudios);
 
-  for (let index = 0; index < segmentCount; index += 1) {
-    const segmentStartMs = index * strideMs;
-    const startTimeoutId = window.setTimeout(() => {
-      const audio = new Audio(config.src);
-      audio.preload = "auto";
-      audio.loop = false;
-      audio.volume = 0;
-      activeAudios.push(audio);
-      void audio.play().catch(() => {
-        // Ignore autoplay/user-gesture restriction noise.
-      });
+  const endAlignedStartMs = Math.max(0, totalMs - clipMs);
+  const strideMs = Math.max(120, clipMs - crossfadeMs);
+  const startTimes: number[] = [0];
+  let cursor = 0;
+  while (cursor + strideMs < endAlignedStartMs) {
+    cursor += strideMs;
+    startTimes.push(cursor);
+  }
+  if (endAlignedStartMs > 0 && startTimes[startTimes.length - 1] !== endAlignedStartMs) {
+    startTimes.push(endAlignedStartMs);
+  }
 
-      const localFadeInMs = index === 0 ? fadeInMs : Math.min(crossfadeMs, 140);
-      fadeAudioVolume(sound, audio, 0, config.volume, localFadeInMs);
+  const launchSegment = (segmentStartMs: number, index: number) => {
+    const nextStartMs = startTimes[index + 1];
+    const audio = new Audio(config.src);
+    audio.preload = "auto";
+    audio.loop = false;
+    audio.volume = 0;
+    activeAudios.push(audio);
+    void audio.play().catch(() => {
+      // Ignore autoplay/user-gesture restriction noise.
+    });
 
-      const isLast = index === segmentCount - 1;
-      const fadeStartAbsoluteMs = isLast
-        ? Math.max(segmentStartMs, totalMs - fadeOutMs)
-        : segmentStartMs + Math.max(0, clipMs - crossfadeMs);
+    const localFadeInMs = index === 0 ? fadeInMs : Math.min(crossfadeMs, 180);
+    fadeAudioVolume(sound, audio, 0, config.volume, localFadeInMs);
+
+    if (nextStartMs != null) {
+      const deltaToNext = Math.max(0, nextStartMs - segmentStartMs);
+      const localCrossfade = Math.min(crossfadeMs, Math.max(0, clipMs - deltaToNext));
+      if (localCrossfade > 0) {
+        const fadeTimeoutId = window.setTimeout(() => {
+          fadeAudioVolume(sound, audio, audio.volume, 0, localCrossfade, () => {
+            try {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.volume = config.volume;
+            } catch {
+              // Ignore cleanup failures.
+            }
+          });
+        }, deltaToNext);
+        pushLayeredTimeout(sound, fadeTimeoutId);
+      }
+    } else {
+      const fadeStartAbsoluteMs = Math.max(segmentStartMs, totalMs - fadeOutMs);
       const fadeDelayMs = Math.max(0, fadeStartAbsoluteMs - segmentStartMs);
-      const localFadeOutMs = isLast ? fadeOutMs : crossfadeMs;
       const fadeTimeoutId = window.setTimeout(() => {
-        fadeAudioVolume(sound, audio, audio.volume, 0, localFadeOutMs, () => {
+        fadeAudioVolume(sound, audio, audio.volume, 0, fadeOutMs, () => {
           try {
             audio.pause();
             audio.currentTime = 0;
@@ -326,6 +350,16 @@ export function playUiSoundWithCrossfadeFill(
         });
       }, fadeDelayMs);
       pushLayeredTimeout(sound, fadeTimeoutId);
+    }
+  };
+
+  // Start first segment immediately to avoid autoplay race.
+  launchSegment(startTimes[0], 0);
+
+  for (let index = 1; index < startTimes.length; index += 1) {
+    const segmentStartMs = startTimes[index];
+    const startTimeoutId = window.setTimeout(() => {
+      launchSegment(segmentStartMs, index);
     }, segmentStartMs);
     pushLayeredTimeout(sound, startTimeoutId);
   }
