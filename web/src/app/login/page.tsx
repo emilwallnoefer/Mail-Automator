@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type CSSProperties } from "react";
 
 export default function LoginPage() {
   const supabaseConfigured = Boolean(
@@ -79,9 +79,32 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="page-shell grid items-center lg:grid-cols-2"
+        className="page-shell underwater-panel grid items-center rounded-2xl p-2 lg:grid-cols-2"
       >
-        <div className="glass-card hidden h-full min-h-[560px] p-5 md:p-6 lg:flex lg:flex-col lg:justify-between">
+        <div className="bubble-layer" aria-hidden="true">
+          {[
+            { left: "9%", size: "8px", duration: "9s", delay: "0s" },
+            { left: "22%", size: "7px", duration: "11.5s", delay: "-2s" },
+            { left: "37%", size: "10px", duration: "10s", delay: "-1.3s" },
+            { left: "54%", size: "8px", duration: "12s", delay: "-3.8s" },
+            { left: "71%", size: "9px", duration: "9.8s", delay: "-2.7s" },
+            { left: "88%", size: "11px", duration: "13.3s", delay: "-5.2s" },
+          ].map((bubble, idx) => (
+            <span
+              key={`${bubble.left}-${idx}`}
+              className="bubble"
+              style={
+                {
+                  "--bubble-left": bubble.left,
+                  "--bubble-size": bubble.size,
+                  "--bubble-duration": bubble.duration,
+                  "--bubble-delay": bubble.delay,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+        <div className="glass-card hourlogger-surface hidden h-full min-h-[560px] p-5 md:p-6 lg:flex lg:flex-col lg:justify-between">
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-cyan-200/85 uppercase">
               Flyability Internal
@@ -109,7 +132,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="glass-card mx-auto w-full max-w-md p-5 md:p-6">
+        <div className="glass-card hourlogger-surface mx-auto w-full max-w-md p-5 md:p-6">
           <div className="mb-7">
             <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
             <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>

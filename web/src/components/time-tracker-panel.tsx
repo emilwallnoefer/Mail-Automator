@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { playUiSound } from "@/lib/ui-sounds";
+import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
 const PREFETCH_WEEKS_EACH_SIDE = 4;
@@ -213,6 +213,7 @@ export function TimeTrackerPanel() {
   const [editorOpen, setEditorOpen] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
+  const previousEditorOpenRef = useRef<boolean | null>(null);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -356,6 +357,7 @@ export function TimeTrackerPanel() {
   useEffect(() => {
     const total = data?.days?.length ?? 0;
     if (total === 0) return;
+    playUiSound("daysAppearStart");
     setRevealedDayCount(0);
     setShowUpToDateSweep(false);
     let current = 0;
@@ -370,6 +372,22 @@ export function TimeTrackerPanel() {
     }, 85);
     return () => window.clearInterval(intervalId);
   }, [weekLoadTick, data?.days?.length]);
+
+  useEffect(() => {
+    if (showUpToDateSweep) {
+      playUiSound("weekReadyGlow");
+      return () => stopUiSound("weekReadyGlow");
+    }
+    stopUiSound("weekReadyGlow");
+    return undefined;
+  }, [showUpToDateSweep]);
+
+  useEffect(() => {
+    const previous = previousEditorOpenRef.current;
+    previousEditorOpenRef.current = editorOpen;
+    if (previous == null || previous === editorOpen) return;
+    playUiSound("dayLoggerSlide");
+  }, [editorOpen]);
 
   const refreshWeek = useCallback(async () => {
     const weekData = await fetchWeekData(weekStart, { force: true });

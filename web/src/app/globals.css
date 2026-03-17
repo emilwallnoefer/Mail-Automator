@@ -368,6 +368,26 @@ body {
     0 0 0 1px rgba(103, 232, 249, 0.22);
 }
 
+.write-glow-live {
+  text-shadow:
+    0 0 6px rgba(120, 237, 255, 0.42),
+    0 0 16px rgba(72, 193, 255, 0.28);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.write-glow-fade {
+  animation: writeGlowFadeOut 920ms ease-out both;
+}
+
+.write-appear-glow {
+  animation: writeRiseGlowFade 1650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.write-char-neon {
+  display: inline;
+  animation: writeCharNeonFade 1000ms ease-out both;
+}
+
 @keyframes underwaterDrift {
   0% {
     transform: translate3d(-2%, -1%, 0) scale(1);
@@ -445,6 +465,77 @@ body {
   100% {
     transform: translate3d(38%, 38%, 0);
     opacity: 0;
+  }
+}
+
+@keyframes writeGlowFadeOut {
+  0% {
+    text-shadow:
+      0 0 7px rgba(120, 237, 255, 0.4),
+      0 0 18px rgba(72, 193, 255, 0.3);
+  }
+  100% {
+    text-shadow:
+      0 0 0 rgba(120, 237, 255, 0),
+      0 0 0 rgba(72, 193, 255, 0);
+  }
+}
+
+@keyframes writeRiseGlowFade {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+    text-shadow:
+      0 0 0 rgba(120, 237, 255, 0),
+      0 0 0 rgba(72, 193, 255, 0);
+  }
+  24% {
+    opacity: 0.62;
+    transform: translateY(5px);
+    text-shadow:
+      0 0 14px rgba(122, 255, 240, 0.9),
+      0 0 34px rgba(62, 228, 255, 0.7),
+      0 0 56px rgba(38, 148, 255, 0.5);
+  }
+  48% {
+    opacity: 1;
+    transform: translateY(0);
+    text-shadow:
+      0 0 18px rgba(122, 255, 240, 0.95),
+      0 0 42px rgba(62, 228, 255, 0.78),
+      0 0 74px rgba(38, 148, 255, 0.56);
+  }
+  74% {
+    opacity: 1;
+    transform: translateY(0);
+    text-shadow:
+      0 0 10px rgba(120, 250, 245, 0.45),
+      0 0 26px rgba(55, 205, 255, 0.3),
+      0 0 44px rgba(35, 140, 255, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    text-shadow:
+      0 0 0 rgba(130, 241, 255, 0),
+      0 0 0 rgba(64, 190, 255, 0);
+  }
+}
+
+@keyframes writeCharNeonFade {
+  0% {
+    color: #e9ffff;
+    text-shadow:
+      0 0 22px rgba(152, 255, 246, 1),
+      0 0 46px rgba(86, 237, 255, 0.92),
+      0 0 84px rgba(52, 166, 255, 0.72);
+  }
+  100% {
+    color: inherit;
+    text-shadow:
+      0 0 0 rgba(122, 255, 240, 0),
+      0 0 0 rgba(62, 228, 255, 0),
+      0 0 0 rgba(38, 148, 255, 0);
   }
 }
 
