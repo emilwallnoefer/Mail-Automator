@@ -2,12 +2,12 @@
 
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
-import { playUiSound, startUiSound, stopUiSound } from "@/lib/ui-sounds";
+import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 
 type DashboardShellProps = {
   email: string;
@@ -99,7 +99,6 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [currentDeployKey, setCurrentDeployKey] = useState("local-dev");
   const [animatedPreviewSubject, setAnimatedPreviewSubject] = useState("");
   const [animatedPreviewBody, setAnimatedPreviewBody] = useState("");
-  const previousPreviewWritingRef = useRef(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
   const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
@@ -207,22 +206,22 @@ export function DashboardShell({ email }: DashboardShellProps) {
     };
   }, [result?.body]);
 
-  const previewIsWriting = Boolean(result) && (
-    animatedPreviewSubject.length < (result?.subject.length ?? 0) ||
-    animatedPreviewBody.length < (result?.body.length ?? 0)
-  );
-
   useEffect(() => {
-    const wasWriting = previousPreviewWritingRef.current;
-    previousPreviewWritingRef.current = previewIsWriting;
-    if (!wasWriting && previewIsWriting) {
-      startUiSound("previewWrite", { fadeInMs: 110, restart: true });
-      return;
-    }
-    if (wasWriting && !previewIsWriting) {
-      stopUiSound("previewWrite", { fadeOutMs: 180 });
-    }
-  }, [previewIsWriting]);
+    if (!result?.subject && !result?.body) return;
+    const subjectLen = result?.subject.length ?? 0;
+    const bodyLen = result?.body.length ?? 0;
+    const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / 2) : 0;
+    const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / 10) : 0;
+    const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * 28 : 0;
+    const bodyMs = bodySteps > 0 ? (bodySteps - 1) * 24 : 0;
+    const totalWriteMs = Math.max(subjectMs, bodyMs);
+    if (totalWriteMs <= 0) return;
+    playUiSoundWithCrossfadeFill("previewWrite", totalWriteMs + 40, {
+      fadeInMs: 110,
+      fadeOutMs: 220,
+      crossfadeMs: 170,
+    });
+  }, [result?.subject, result?.body]);
 
   useEffect(() => {
     return () => {

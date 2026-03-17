@@ -37,6 +37,12 @@ const SOUND_CONFIG: Record<UiSoundKey, SoundConfig> = {
 const cache = new Map<UiSoundKey, HTMLAudioElement>();
 const lastPlayedAt = new Map<UiSoundKey, number>();
 const fadeIntervals = new Map<UiSoundKey, number>();
+const layeredAudios = new Map<UiSoundKey, HTMLAudioElement[]>();
+const layeredTimeouts = new Map<UiSoundKey, number[]>();
+const layeredIntervals = new Map<UiSoundKey, number[]>();
+const SOUND_DURATION_FALLBACK_MS: Partial<Record<UiSoundKey, number>> = {
+  previewWrite: 3474,
+};
 
 function canPlay() {
   return typeof window !== "undefined" && typeof Audio !== "undefined";
@@ -69,6 +75,82 @@ function clearFadeInterval(sound: UiSoundKey) {
   }
 }
 
+function pushLayeredTimeout(sound: UiSoundKey, timeoutId: number) {
+  const list = layeredTimeouts.get(sound) ?? [];
+  list.push(timeoutId);
+  layeredTimeouts.set(sound, list);
+}
+
+function pushLayeredInterval(sound: UiSoundKey, intervalId: number) {
+  const list = layeredIntervals.get(sound) ?? [];
+  list.push(intervalId);
+  layeredIntervals.set(sound, list);
+}
+
+function clearLayeredTimers(sound: UiSoundKey) {
+  const timeouts = layeredTimeouts.get(sound) ?? [];
+  for (const timeoutId of timeouts) window.clearTimeout(timeoutId);
+  layeredTimeouts.delete(sound);
+
+  const intervals = layeredIntervals.get(sound) ?? [];
+  for (const intervalId of intervals) window.clearInterval(intervalId);
+  layeredIntervals.delete(sound);
+}
+
+function clearLayeredAudios(sound: UiSoundKey) {
+  const config = SOUND_CONFIG[sound];
+  const audios = layeredAudios.get(sound) ?? [];
+  for (const audio of audios) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = config.volume;
+    } catch {
+      // Ignore cleanup failures.
+    }
+  }
+  layeredAudios.delete(sound);
+}
+
+function getKnownDurationMs(sound: UiSoundKey) {
+  const audio = getAudio(sound);
+  if (Number.isFinite(audio.duration) && audio.duration > 0) {
+    return audio.duration * 1000;
+  }
+  return SOUND_DURATION_FALLBACK_MS[sound] ?? 1200;
+}
+
+function fadeAudioVolume(
+  sound: UiSoundKey,
+  audio: HTMLAudioElement,
+  from: number,
+  to: number,
+  durationMs: number,
+  onDone?: () => void,
+) {
+  if (durationMs <= 0) {
+    audio.volume = to;
+    onDone?.();
+    return;
+  }
+  audio.volume = from;
+  const startedAt = performance.now();
+  const intervalId = window.setInterval(() => {
+    const progress = Math.min(1, (performance.now() - startedAt) / durationMs);
+    audio.volume = from + (to - from) * progress;
+    if (progress >= 1) {
+      window.clearInterval(intervalId);
+      const intervals = layeredIntervals.get(sound) ?? [];
+      layeredIntervals.set(
+        sound,
+        intervals.filter((id) => id !== intervalId),
+      );
+      onDone?.();
+    }
+  }, 20);
+  pushLayeredInterval(sound, intervalId);
+}
+
 export function playUiSound(sound: UiSoundKey) {
   if (!canPlay()) return;
   const now = Date.now();
@@ -91,6 +173,8 @@ export function playUiSound(sound: UiSoundKey) {
 export function startUiSound(sound: UiSoundKey, options?: { fadeInMs?: number; restart?: boolean }) {
   if (!canPlay()) return;
   try {
+    clearLayeredTimers(sound);
+    clearLayeredAudios(sound);
     const audio = getAudio(sound);
     const targetVolume = SOUND_CONFIG[sound].volume;
     const shouldRestart = options?.restart ?? true;
@@ -124,10 +208,34 @@ export function startUiSound(sound: UiSoundKey, options?: { fadeInMs?: number; r
 
 export function stopUiSound(sound: UiSoundKey, options?: { fadeOutMs?: number }) {
   if (!canPlay()) return;
+  clearLayeredTimers(sound);
+  const layered = layeredAudios.get(sound) ?? [];
+  const fadeOutMs = Math.max(0, options?.fadeOutMs ?? 0);
+  if (layered.length > 0) {
+    if (fadeOutMs <= 0) {
+      clearLayeredAudios(sound);
+    } else {
+      for (const audio of layered) {
+        fadeAudioVolume(sound, audio, audio.volume, 0, fadeOutMs, () => {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = SOUND_CONFIG[sound].volume;
+          } catch {
+            // Ignore cleanup failures.
+          }
+        });
+      }
+      const cleanupTimeoutId = window.setTimeout(() => {
+        clearLayeredAudios(sound);
+      }, fadeOutMs + 40);
+      pushLayeredTimeout(sound, cleanupTimeoutId);
+    }
+  }
+
   const audio = cache.get(sound);
   if (!audio) return;
   try {
-    const fadeOutMs = Math.max(0, options?.fadeOutMs ?? 0);
     clearFadeInterval(sound);
     if (fadeOutMs <= 0) {
       audio.pause();
@@ -150,4 +258,81 @@ export function stopUiSound(sound: UiSoundKey, options?: { fadeOutMs?: number })
   } catch {
     // Ignore stop failures to keep UI responsive.
   }
+}
+
+export function playUiSoundWithCrossfadeFill(
+  sound: UiSoundKey,
+  durationMs: number,
+  options?: { fadeInMs?: number; fadeOutMs?: number; crossfadeMs?: number },
+) {
+  if (!canPlay()) return;
+  const totalMs = Math.max(0, Math.round(durationMs));
+  if (totalMs <= 0) return;
+
+  const config = SOUND_CONFIG[sound];
+  const fadeInMs = Math.max(0, options?.fadeInMs ?? 120);
+  const fadeOutMs = Math.max(0, options?.fadeOutMs ?? 200);
+  const crossfadeMs = Math.max(60, options?.crossfadeMs ?? 160);
+  const clipMs = Math.max(crossfadeMs + 120, getKnownDurationMs(sound));
+  const strideMs = Math.max(120, clipMs - crossfadeMs);
+  const segmentCount = Math.max(1, Math.ceil((totalMs - crossfadeMs) / strideMs));
+
+  clearFadeInterval(sound);
+  clearLayeredTimers(sound);
+  clearLayeredAudios(sound);
+  const baseAudio = cache.get(sound);
+  if (baseAudio) {
+    try {
+      baseAudio.pause();
+      baseAudio.currentTime = 0;
+    } catch {
+      // Ignore stop failures.
+    }
+  }
+
+  const activeAudios: HTMLAudioElement[] = [];
+  layeredAudios.set(sound, activeAudios);
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const segmentStartMs = index * strideMs;
+    const startTimeoutId = window.setTimeout(() => {
+      const audio = new Audio(config.src);
+      audio.preload = "auto";
+      audio.loop = false;
+      audio.volume = 0;
+      activeAudios.push(audio);
+      void audio.play().catch(() => {
+        // Ignore autoplay/user-gesture restriction noise.
+      });
+
+      const localFadeInMs = index === 0 ? fadeInMs : Math.min(crossfadeMs, 140);
+      fadeAudioVolume(sound, audio, 0, config.volume, localFadeInMs);
+
+      const isLast = index === segmentCount - 1;
+      const fadeStartAbsoluteMs = isLast
+        ? Math.max(segmentStartMs, totalMs - fadeOutMs)
+        : segmentStartMs + Math.max(0, clipMs - crossfadeMs);
+      const fadeDelayMs = Math.max(0, fadeStartAbsoluteMs - segmentStartMs);
+      const localFadeOutMs = isLast ? fadeOutMs : crossfadeMs;
+      const fadeTimeoutId = window.setTimeout(() => {
+        fadeAudioVolume(sound, audio, audio.volume, 0, localFadeOutMs, () => {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = config.volume;
+          } catch {
+            // Ignore cleanup failures.
+          }
+        });
+      }, fadeDelayMs);
+      pushLayeredTimeout(sound, fadeTimeoutId);
+    }, segmentStartMs);
+    pushLayeredTimeout(sound, startTimeoutId);
+  }
+
+  const cleanupTimeoutId = window.setTimeout(() => {
+    clearLayeredTimers(sound);
+    clearLayeredAudios(sound);
+  }, totalMs + fadeOutMs + 80);
+  pushLayeredTimeout(sound, cleanupTimeoutId);
 }
