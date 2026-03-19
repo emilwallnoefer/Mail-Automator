@@ -54,15 +54,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-white">
       <div className="absolute inset-0 aurora-bg" />
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="page-shell underwater-panel grid items-center rounded-2xl p-2"
-      >
-        <div className="bubble-layer" aria-hidden="true">
+      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-xl" />
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="bubble-layer">
           {[
             { left: "9%", size: "8px", duration: "9s", delay: "0s" },
             { left: "22%", size: "7px", duration: "11.5s", delay: "-2s" },
@@ -85,7 +81,14 @@ export default function LoginPage() {
             />
           ))}
         </div>
-        <div className="glass-card hourlogger-surface mx-auto w-full max-w-md p-5 md:p-6">
+      </div>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <div className="glass-card hourlogger-surface w-full p-5 md:p-6">
           <div className="mb-7">
             <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
             <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>
@@ -111,7 +114,6 @@ export default function LoginPage() {
             >
               {loading ? "Redirecting..." : "Continue with Google"}
             </button>
-            <p className="text-xs text-slate-300/80">Only `@flyability.com` accounts can access this app.</p>
           </div>
 
           {message && <p className="mt-4 text-sm text-emerald-300">{message}</p>}
