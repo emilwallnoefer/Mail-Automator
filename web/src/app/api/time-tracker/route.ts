@@ -38,6 +38,7 @@ const dayInputSchema = z.object({
 const importPayloadSchema = z.object({
   work: z
     .record(
+      z.string(),
       z.object({
         start: z.string().max(8).optional(),
         stop: z.string().max(8).optional(),
@@ -49,6 +50,7 @@ const importPayloadSchema = z.object({
     .optional(),
   comp: z
     .record(
+      z.string(),
       z.object({
         mins: z.number().int().min(0).max(1440).optional(),
         note: z.string().max(500).optional(),
