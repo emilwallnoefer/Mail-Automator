@@ -12,5 +12,14 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  return <DashboardShell email={user.email ?? "Signed in"} />;
+  const userRoleRaw =
+    user.user_metadata &&
+    typeof user.user_metadata === "object" &&
+    !Array.isArray(user.user_metadata) &&
+    "role" in user.user_metadata
+      ? (user.user_metadata as Record<string, unknown>).role
+      : null;
+  const initialRole = userRoleRaw === "pilot" || userRoleRaw === "sales" ? userRoleRaw : null;
+
+  return <DashboardShell email={user.email ?? "Signed in"} initialRole={initialRole} />;
 }

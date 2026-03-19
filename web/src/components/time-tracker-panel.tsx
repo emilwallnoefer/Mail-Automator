@@ -980,33 +980,29 @@ export function TimeTrackerPanel() {
                     <div className="mb-2.5 flex items-end justify-between gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-                        {selectedDayUsesBreakCounter ? (
-                          <p className="mt-1 text-[11px] text-slate-300/75">Quick adjust (this week+)</p>
-                        ) : null}
                       </div>
-                      <p className="text-xs text-slate-300/80">
-                        Added <span className="font-semibold text-slate-100 tabular-nums">{formTotalBreakMins} min</span>
-                      </p>
                     </div>
                     {selectedDayUsesBreakCounter ? (
-                      <div className="grid grid-cols-3 items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                          className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                        >
-                          -15
-                        </button>
-                        <span className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums">
-                          {formTotalBreakMins} min
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                          className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                        >
-                          +15
-                        </button>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
+                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                          >
+                            -15
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
+                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                          >
+                            +15
+                          </button>
+                        </div>
+                        <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
+                          Break {formTotalBreakMins} min
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">

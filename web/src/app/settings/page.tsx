@@ -12,5 +12,14 @@ export default async function SettingsPage() {
 
   if (!user) redirect("/login");
 
-  return <SettingsShell email={user.email ?? "Signed in"} />;
+  const userRoleRaw =
+    user.user_metadata &&
+    typeof user.user_metadata === "object" &&
+    !Array.isArray(user.user_metadata) &&
+    "role" in user.user_metadata
+      ? (user.user_metadata as Record<string, unknown>).role
+      : null;
+  const userRole = userRoleRaw === "pilot" || userRoleRaw === "sales" ? userRoleRaw : null;
+
+  return <SettingsShell email={user.email ?? "Signed in"} userRole={userRole} />;
 }

@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type SettingsPanelProps = {
   email: string;
   showStandaloneActions?: boolean;
   autoOpenProgramReadmeToken?: number;
+  userRole?: "pilot" | "sales";
 };
 
 export function SettingsPanel({
   email,
   showStandaloneActions = false,
   autoOpenProgramReadmeToken = 0,
+  userRole = "pilot",
 }: SettingsPanelProps) {
   const [openSetting, setOpenSetting] = useState<"gmail" | "mapping" | "import" | null>(null);
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
@@ -29,14 +32,18 @@ export function SettingsPanel({
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const importFileRef = useRef<HTMLInputElement | null>(null);
+  const isSalesOnly = userRole === "sales";
 
   useEffect(() => {
     (async () => {
-      const [gmailResponse, mappingResponse] = await Promise.all([
-        fetch("/api/gmail/status"),
-        fetch("/api/settings/travel-mapping"),
-      ]);
+      if (isSalesOnly) return;
+      const [gmailResponse, mappingResponse] = await Promise.all([fetch("/api/gmail/status"), fetch("/api/settings/travel-mapping")]);
       if (gmailResponse.ok) {
         const data = (await gmailResponse.json()) as { connected: boolean; gmail_email?: string | null };
         setGmailStatus(data);
@@ -54,7 +61,7 @@ export function SettingsPanel({
         });
       }
     })();
-  }, []);
+  }, [isSalesOnly]);
 
   function normalizeColumnInput(value: string) {
     return value.toUpperCase().replace(/[^A-Z]/g, "");
@@ -151,6 +158,54 @@ export function SettingsPanel({
     }
   }
 
+  async function handleChangePassword() {
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      setMessage(null);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      setMessage(null);
+      return;
+    }
+    setPasswordSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      setMessage("Password updated.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError((err as Error).message || "Could not update password.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== "DELETE") {
+      setError("Type DELETE to confirm account deletion.");
+      setMessage(null);
+      return;
+    }
+    setDeletingAccount(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/account/delete", { method: "POST" });
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Could not delete account.");
+      window.location.href = "/login";
+    } catch (err) {
+      setError((err as Error).message || "Could not delete account.");
+      setDeletingAccount(false);
+    }
+  }
+
   function toggleReadme(key: "program" | "gmail" | "mapping" | "import") {
     setOpenReadme((prev) => (prev === key ? null : key));
   }
@@ -204,38 +259,42 @@ export function SettingsPanel({
 
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Overview</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Gmail</p>
-            <p className="mt-1 text-sm">{gmailStatus.connected ? "Connected" : "Disconnected"}</p>
-            <p className="mt-1 truncate text-xs text-slate-300/80">{gmailStatus.gmail_email ?? "No account connected"}</p>
-            <button
-              type="button"
-              onClick={() => setOpenSetting((prev) => (prev === "gmail" ? null : "gmail"))}
-              className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-            >
-              {openSetting === "gmail" ? "Hide Gmail settings" : "Open Gmail settings"}
-            </button>
-          </div>
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Travel Mapping</p>
-            <p className="mt-1 text-sm">
-              {travelMapping.clientColumn && travelMapping.locationColumn && travelMapping.responsibleColumn
-                ? "Configured"
-                : "Using defaults"}
-            </p>
-            <p className="mt-1 text-xs text-slate-300/80">
-              Client {travelMapping.clientColumn || "-"} · Location {travelMapping.locationColumn || "-"} · Responsible{" "}
-              {travelMapping.responsibleColumn || "-"}
-            </p>
-            <button
-              type="button"
-              onClick={() => setOpenSetting((prev) => (prev === "mapping" ? null : "mapping"))}
-              className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-            >
-              {openSetting === "mapping" ? "Hide mapping settings" : "Open mapping settings"}
-            </button>
-          </div>
+        <div className={`mt-3 grid gap-3 ${isSalesOnly ? "md:grid-cols-1" : "md:grid-cols-3"}`}>
+          {!isSalesOnly ? (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Gmail</p>
+              <p className="mt-1 text-sm">{gmailStatus.connected ? "Connected" : "Disconnected"}</p>
+              <p className="mt-1 truncate text-xs text-slate-300/80">{gmailStatus.gmail_email ?? "No account connected"}</p>
+              <button
+                type="button"
+                onClick={() => setOpenSetting((prev) => (prev === "gmail" ? null : "gmail"))}
+                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
+              >
+                {openSetting === "gmail" ? "Hide Gmail settings" : "Open Gmail settings"}
+              </button>
+            </div>
+          ) : null}
+          {!isSalesOnly ? (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Travel Mapping</p>
+              <p className="mt-1 text-sm">
+                {travelMapping.clientColumn && travelMapping.locationColumn && travelMapping.responsibleColumn
+                  ? "Configured"
+                  : "Using defaults"}
+              </p>
+              <p className="mt-1 text-xs text-slate-300/80">
+                Client {travelMapping.clientColumn || "-"} · Location {travelMapping.locationColumn || "-"} · Responsible{" "}
+                {travelMapping.responsibleColumn || "-"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setOpenSetting((prev) => (prev === "mapping" ? null : "mapping"))}
+                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
+              >
+                {openSetting === "mapping" ? "Hide mapping settings" : "Open mapping settings"}
+              </button>
+            </div>
+          ) : null}
           <div className="rounded-xl border border-white/15 bg-white/5 p-3">
             <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Time Import</p>
             <p className="mt-1 text-sm">One-time migration</p>
@@ -251,7 +310,67 @@ export function SettingsPanel({
         </div>
       </section>
 
-      {openSetting === "gmail" ? (
+      <section className="glass-card hourlogger-surface p-4 md:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Security and Access</h2>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+            <p className="text-xs font-medium text-slate-100">Change password</p>
+            <div className="mt-2 space-y-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="New password"
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Confirm new password"
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleChangePassword();
+              }}
+              disabled={passwordSaving}
+              className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+            >
+              {passwordSaving ? "Saving..." : "Update password"}
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-3">
+            <p className="text-xs font-medium text-rose-200">Delete account</p>
+            <p className="mt-1 text-xs text-rose-100/80">
+              This permanently removes your account and all app access for this login.
+            </p>
+            <div className="mt-2">
+              <input
+                value={deleteConfirmText}
+                onChange={(event) => setDeleteConfirmText(event.target.value)}
+                placeholder='Type "DELETE" to confirm'
+                className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDeleteAccount();
+              }}
+              disabled={deletingAccount}
+              className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
+            >
+              {deletingAccount ? "Deleting account..." : "Delete account"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {!isSalesOnly && openSetting === "gmail" ? (
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Integrations</h2>
         <div className="mt-3 rounded-xl border border-white/15 bg-white/5 p-3">
@@ -283,7 +402,7 @@ export function SettingsPanel({
       </section>
       ) : null}
 
-      {openSetting === "mapping" ? (
+      {!isSalesOnly && openSetting === "mapping" ? (
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Travel Column Mapping</h2>
         <p className="mt-2 text-xs text-slate-300/90">
@@ -415,22 +534,28 @@ export function SettingsPanel({
             <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
               <p className="font-medium text-cyan-200">What this program does</p>
               <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li>
-                  <strong>Mail Automator</strong> creates pre/post training mails from structured inputs (language,
-                  context, materials, and custom notes).
-                </li>
-                <li>
-                  <strong>Gmail Draft Mode</strong> allows generated mails to be saved as drafts directly in the
-                  connected Gmail account.
-                </li>
+                {!isSalesOnly ? (
+                  <li>
+                    <strong>Mail Automator</strong> creates pre/post training mails from structured inputs (language,
+                    context, materials, and custom notes).
+                  </li>
+                ) : null}
+                {!isSalesOnly ? (
+                  <li>
+                    <strong>Gmail Draft Mode</strong> allows generated mails to be saved as drafts directly in the
+                    connected Gmail account.
+                  </li>
+                ) : null}
                 <li>
                   <strong>Time Tracker</strong> records work logs, compensation, and overtime bank per authenticated
                   user.
                 </li>
-                <li>
-                  <strong>Travel Integration</strong> enriches tracker days with travel context from Google Sheets using
-                  per-user mapping.
-                </li>
+                {!isSalesOnly ? (
+                  <li>
+                    <strong>Travel Integration</strong> enriches tracker days with travel context from Google Sheets using
+                    per-user mapping.
+                  </li>
+                ) : null}
                 <li>
                   <strong>Settings</strong> provides integration setup, mapping control, and legacy time-data import.
                 </li>
@@ -438,15 +563,17 @@ export function SettingsPanel({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => toggleReadme("gmail")}
-            className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-          >
-            <span>Gmail setup README</span>
-            <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
-          </button>
-          {openReadme === "gmail" ? (
+          {!isSalesOnly ? (
+            <button
+              type="button"
+              onClick={() => toggleReadme("gmail")}
+              className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+            >
+              <span>Gmail setup README</span>
+              <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
+            </button>
+          ) : null}
+          {!isSalesOnly && openReadme === "gmail" ? (
             <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
               <p className="font-medium text-cyan-200">What it does</p>
               <p className="mt-1 text-slate-300/90">
@@ -464,15 +591,17 @@ export function SettingsPanel({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => toggleReadme("mapping")}
-            className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-          >
-            <span>Travel mapping setup README</span>
-            <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
-          </button>
-          {openReadme === "mapping" ? (
+          {!isSalesOnly ? (
+            <button
+              type="button"
+              onClick={() => toggleReadme("mapping")}
+              className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+            >
+              <span>Travel mapping setup README</span>
+              <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
+            </button>
+          ) : null}
+          {!isSalesOnly && openReadme === "mapping" ? (
             <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
               <p className="font-medium text-cyan-200">What it does</p>
               <p className="mt-1 text-slate-300/90">

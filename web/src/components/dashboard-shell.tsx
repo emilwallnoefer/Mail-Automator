@@ -2,15 +2,17 @@
 
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
+import { createClient } from "@/lib/supabase/client";
 
 type DashboardShellProps = {
   email: string;
+  initialRole: "pilot" | "sales" | null;
 };
 
 const PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY = "ma_program_readme_prompt_seen_deploy_v1";
@@ -83,7 +85,7 @@ function ProgressiveField({ show, children }: { show: boolean; children: ReactNo
   );
 }
 
-export function DashboardShell({ email }: DashboardShellProps) {
+export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -93,7 +95,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
-  const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">("mail");
+  const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">(initialRole === "sales" ? "time" : "mail");
+  const [userRole, setUserRole] = useState<"pilot" | "sales" | null>(initialRole);
+  const [roleSaving, setRoleSaving] = useState(false);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
   const [currentDeployKey, setCurrentDeployKey] = useState("local-dev");
@@ -130,29 +134,41 @@ export function DashboardShell({ email }: DashboardShellProps) {
   });
   const [draftInfo, setDraftInfo] = useState<{ draftId: string; messageId: string } | null>(null);
 
-  const cards = [
-    {
-      title: "Mail Automator",
-      description: "Generate training emails and create Gmail drafts with one guided flow.",
-    },
-    {
-      title: "Time Tracker",
-      description: "Track workdays, breaks, compensation time, and overtime bank in one place.",
-    },
-    {
-      title: "Allround Workspace",
-      description: "Switch between tools depending on what you need today.",
-    },
-  ];
+  const cards = useMemo(
+    () => [
+      {
+        title: "Mail Automator",
+        description: "Generate training emails and create Gmail drafts with one guided flow.",
+      },
+      {
+        title: "Time Tracker",
+        description: "Track workdays, breaks, compensation time, and overtime bank in one place.",
+      },
+      {
+        title: "Allround Workspace",
+        description: "Switch between tools depending on what you need today.",
+      },
+    ],
+    [],
+  );
+  const availableModules = useMemo<Array<"mail" | "time" | "settings">>(
+    () => (userRole === "sales" ? ["time", "settings"] : ["mail", "time", "settings"]),
+    [userRole],
+  );
+  const visibleCards = useMemo(
+    () => (userRole === "sales" ? cards.filter((card) => card.title === "Time Tracker") : cards),
+    [cards, userRole],
+  );
 
   useEffect(() => {
     (async () => {
+      if (userRole === "sales") return;
       const response = await fetch("/api/gmail/status");
       if (!response.ok) return;
       const data = (await response.json()) as { connected: boolean; gmail_email?: string | null };
       setGmailStatus(data);
     })();
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     (async () => {
@@ -210,6 +226,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
     };
   }, [result?.body]);
 
+  useEffect(() => {
+    if (availableModules.includes(activeModule)) return;
+    setActiveModule(availableModules[0]);
+  }, [activeModule, availableModules]);
+
   const previewIsWriting = Boolean(result) && (
     animatedPreviewSubject.length < (result?.subject.length ?? 0) ||
     animatedPreviewBody.length < (result?.body.length ?? 0)
@@ -261,6 +282,25 @@ export function DashboardShell({ email }: DashboardShellProps) {
       window.localStorage.setItem(PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY, currentDeployKey);
     } catch {
       // Ignore storage errors to avoid blocking interaction.
+    }
+  }
+
+  async function handleSelectRole(nextRole: "pilot" | "sales") {
+    if (roleSaving) return;
+    setRoleSaving(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ data: { role: nextRole } });
+      if (updateError) throw updateError;
+      setUserRole(nextRole);
+      if (nextRole === "sales") {
+        setActiveModule("time");
+      }
+    } catch (err) {
+      setError((err as Error).message || "Could not save role.");
+    } finally {
+      setRoleSaving(false);
     }
   }
 
@@ -360,7 +400,10 @@ export function DashboardShell({ email }: DashboardShellProps) {
           gmailConnected={gmailStatus.connected}
           gmailEmail={gmailStatus.gmail_email}
           activeModule={activeModule}
+          availableModules={availableModules}
+          showGmailStatus={userRole !== "sales"}
           onSelectModule={(module) => {
+            if (!availableModules.includes(module)) return;
             if (module !== activeModule) playUiSound("switchWhoosh");
             setActiveModule(module);
             setShowComposer(true);
@@ -370,7 +413,7 @@ export function DashboardShell({ email }: DashboardShellProps) {
         {!showComposer && (
           <>
             <div className="grid gap-4 md:grid-cols-3">
-              {cards.map((card, index) => (
+              {visibleCards.map((card, index) => (
                 <motion.article
                   key={card.title}
                   initial={{ opacity: 0, y: 16 }}
@@ -388,17 +431,19 @@ export function DashboardShell({ email }: DashboardShellProps) {
               transition={{ duration: 0.25, ease: "easeInOut" }}
               className="mt-1 flex flex-wrap justify-center gap-3"
             >
-              <button
-                onClick={() => {
-                  if (activeModule !== "mail") playUiSound("switchWhoosh");
-                  setActiveModule("mail");
-                  handleBeginAutomating();
-                }}
-                type="button"
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
-              >
-                Open Mail Automator
-              </button>
+              {availableModules.includes("mail") ? (
+                <button
+                  onClick={() => {
+                    if (activeModule !== "mail") playUiSound("switchWhoosh");
+                    setActiveModule("mail");
+                    handleBeginAutomating();
+                  }}
+                  type="button"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
+                >
+                  Open Mail Automator
+                </button>
+              ) : null}
               <button
                 onClick={() => {
                   if (activeModule !== "time") playUiSound("switchWhoosh");
@@ -410,17 +455,19 @@ export function DashboardShell({ email }: DashboardShellProps) {
               >
                 Open Time Tracker
               </button>
-              <button
-                onClick={() => {
-                  if (activeModule !== "settings") playUiSound("switchWhoosh");
-                  setActiveModule("settings");
-                  handleBeginAutomating();
-                }}
-                type="button"
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
-              >
-                Open Settings
-              </button>
+              {availableModules.includes("settings") ? (
+                <button
+                  onClick={() => {
+                    if (activeModule !== "settings") playUiSound("switchWhoosh");
+                    setActiveModule("settings");
+                    handleBeginAutomating();
+                  }}
+                  type="button"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
+                >
+                  Open Settings
+                </button>
+              ) : null}
             </motion.div>
           </>
         )}
@@ -446,7 +493,11 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   {activeModule === "time" ? (
                     <TimeTrackerPanel />
                   ) : activeModule === "settings" ? (
-                    <SettingsPanel email={email} autoOpenProgramReadmeToken={settingsReadmeOpenToken} />
+                    <SettingsPanel
+                      email={email}
+                      autoOpenProgramReadmeToken={settingsReadmeOpenToken}
+                      userRole={userRole ?? "pilot"}
+                    />
                   ) : (
                     <section className="underwater-panel grid items-start gap-6 rounded-2xl p-2 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="bubble-layer" aria-hidden="true">
@@ -781,6 +832,39 @@ export function DashboardShell({ email }: DashboardShellProps) {
           >
             Open program README
           </button>
+        </div>
+      ) : null}
+      {userRole == null ? (
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-slate-950/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-950/95 p-4 shadow-xl">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-cyan-200/75">First Login Setup</p>
+            <h2 className="mt-2 text-lg font-semibold">Choose your workspace profile</h2>
+            <p className="mt-2 text-sm text-slate-300/85">
+              This controls which modules and settings you see.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSelectRole("pilot");
+                }}
+                disabled={roleSaving}
+                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/15 disabled:opacity-60"
+              >
+                Pilot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSelectRole("sales");
+                }}
+                disabled={roleSaving}
+                className="rounded-lg border border-cyan-300/60 bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/30 disabled:opacity-60"
+              >
+                Sales
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </main>
