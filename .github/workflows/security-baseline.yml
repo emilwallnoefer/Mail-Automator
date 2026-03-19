@@ -1,0 +1,38 @@
+name: Security Baseline
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/**"
+  push:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - ".github/workflows/**"
+
+jobs:
+  web-security-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies (lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

@@ -43,6 +43,19 @@ create index if not exists idx_time_comp_adjustments_user_date on public.time_co
 alter table public.time_day_logs enable row level security;
 alter table public.time_day_breaks enable row level security;
 alter table public.time_comp_adjustments enable row level security;
+alter table public.time_day_logs force row level security;
+alter table public.time_day_breaks force row level security;
+alter table public.time_comp_adjustments force row level security;
+
+revoke all on table public.time_day_logs from anon;
+revoke all on table public.time_day_breaks from anon;
+revoke all on table public.time_comp_adjustments from anon;
+revoke all on table public.time_day_logs from authenticated;
+revoke all on table public.time_day_breaks from authenticated;
+revoke all on table public.time_comp_adjustments from authenticated;
+grant select, insert, update, delete on table public.time_day_logs to authenticated;
+grant select, insert, update, delete on table public.time_day_breaks to authenticated;
+grant select, insert, update, delete on table public.time_comp_adjustments to authenticated;
 
 drop policy if exists "time_day_logs_select_own" on public.time_day_logs;
 create policy "time_day_logs_select_own"

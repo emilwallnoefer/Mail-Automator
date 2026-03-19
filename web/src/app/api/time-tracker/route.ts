@@ -1,22 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchTravelByDate, type TravelSheetColumnMapping } from "@/lib/google-sheets";
+import { sanitizeText } from "@/lib/security/input-sanitize";
+import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 const TARGET_MINS = 504;
-
-type BreakInput = {
-  name?: string;
-  mins?: number;
-};
-
-type DayInput = {
-  work_date: string;
-  start_time?: string;
-  stop_time?: string;
-  net_mins?: number;
-  holiday?: boolean;
-  breaks?: BreakInput[];
-};
 
 type ImportPayload = {
   work?: Record<
@@ -31,6 +20,50 @@ type ImportPayload = {
   >;
   comp?: Record<string, { mins?: number; note?: string }>;
 };
+
+const breakInputSchema = z.object({
+  name: z.string().max(120).optional(),
+  mins: z.number().int().min(0).max(1440).optional(),
+});
+
+const dayInputSchema = z.object({
+  work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start_time: z.string().max(8).optional(),
+  stop_time: z.string().max(8).optional(),
+  net_mins: z.number().int().min(0).max(1440).optional(),
+  holiday: z.boolean().optional(),
+  breaks: z.array(breakInputSchema).max(20).optional(),
+});
+
+const importPayloadSchema = z.object({
+  work: z
+    .record(
+      z.object({
+        start: z.string().max(8).optional(),
+        stop: z.string().max(8).optional(),
+        breaks: z.array(breakInputSchema).max(20).optional(),
+        netMins: z.number().int().min(0).max(1440).optional(),
+        holiday: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  comp: z
+    .record(
+      z.object({
+        mins: z.number().int().min(0).max(1440).optional(),
+        note: z.string().max(500).optional(),
+      }),
+    )
+    .optional(),
+});
+
+const postPayloadSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("save_day"), day: dayInputSchema }),
+  z.object({ action: z.literal("reset_day"), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  z.object({ action: z.literal("fill_missing"), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  z.object({ action: z.literal("import_json"), data: importPayloadSchema }),
+  z.object({ action: z.literal("export_json") }),
+]);
 
 function isDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -321,13 +354,23 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const authedUser = user;
+  const clientIp = getClientIp(request);
+  const limitResult = checkRateLimit(`time-tracker-write:${authedUser.id}:${clientIp}`, {
+    windowMs: 60 * 60 * 1000,
+    max: 180,
+  });
+  if (!limitResult.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Please retry later." },
+      { status: 429, headers: createRateLimitHeaders(limitResult) },
+    );
+  }
 
-  const payload = (await request.json()) as
-    | { action: "save_day"; day: DayInput }
-    | { action: "reset_day"; work_date: string }
-    | { action: "fill_missing"; work_date: string }
-    | { action: "import_json"; data: ImportPayload }
-    | { action: "export_json" };
+  const parsedPayload = postPayloadSchema.safeParse(await request.json());
+  if (!parsedPayload.success) {
+    return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
+  }
+  const payload = parsedPayload.data;
 
   async function requireSnapshot(reason: string) {
     const snapshotRes = await supabase.rpc("create_time_tracker_snapshot", {
@@ -368,8 +411,8 @@ export async function POST(request: Request) {
         {
           user_id: authedUser.id,
           work_date: day.work_date,
-          start_time: day.start_time ?? "",
-          stop_time: day.stop_time ?? "",
+          start_time: sanitizeText(day.start_time, { maxLen: 8 }),
+          stop_time: sanitizeText(day.stop_time, { maxLen: 8 }),
           net_mins: sanitizeMins(day.net_mins),
           holiday: Boolean(day.holiday),
           source: "ui",
@@ -388,7 +431,7 @@ export async function POST(request: Request) {
     const breaks = (day.breaks ?? []).map((item, index) => ({
       day_log_id: dayLogId,
       position: index,
-      name: item?.name ?? "",
+      name: sanitizeText(item?.name, { maxLen: 120 }),
       mins: sanitizeMins(item?.mins),
     }));
 
@@ -490,8 +533,8 @@ export async function POST(request: Request) {
     const dayRows = workEntries.map(([date, item]) => ({
       user_id: authedUser.id,
       work_date: date,
-      start_time: item?.start ?? "",
-      stop_time: item?.stop ?? "",
+      start_time: sanitizeText(item?.start, { maxLen: 8 }),
+      stop_time: sanitizeText(item?.stop, { maxLen: 8 }),
       net_mins: sanitizeMins(item?.netMins),
       holiday: Boolean(item?.holiday),
       source: "hourlogger_import_ui",
@@ -528,7 +571,7 @@ export async function POST(request: Request) {
       return breaks.map((entry, index) => ({
         day_log_id: dayLogId,
         position: index,
-        name: entry?.name ?? "",
+        name: sanitizeText(entry?.name, { maxLen: 120 }),
         mins: sanitizeMins(entry?.mins),
       }));
     });
@@ -542,7 +585,7 @@ export async function POST(request: Request) {
       user_id: authedUser.id,
       work_date: date,
       mins: sanitizeMins(item?.mins),
-      note: item?.note ?? "",
+      note: sanitizeText(item?.note, { maxLen: 500, allowNewlines: true }),
       source: "hourlogger_import_ui",
     }));
 

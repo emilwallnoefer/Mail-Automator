@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeColumnLetter } from "@/lib/security/input-sanitize";
+import { z } from "zod";
 
 type TravelMapping = {
   clientColumn: string;
   locationColumn: string;
   responsibleColumn: string;
 };
-
-function normalizeColumnLetter(value: unknown) {
-  const text = String(value ?? "").trim().toUpperCase();
-  if (!text) return "";
-  if (!/^[A-Z]+$/.test(text)) return "";
-  return text;
-}
 
 function readMappingFromUserMetadata(rawMetadata: unknown): TravelMapping {
   if (!rawMetadata || typeof rawMetadata !== "object" || Array.isArray(rawMetadata)) {
@@ -25,11 +20,17 @@ function readMappingFromUserMetadata(rawMetadata: unknown): TravelMapping {
   }
   const mapping = mappingRaw as Record<string, unknown>;
   return {
-    clientColumn: normalizeColumnLetter(mapping.clientColumn),
-    locationColumn: normalizeColumnLetter(mapping.locationColumn),
-    responsibleColumn: normalizeColumnLetter(mapping.responsibleColumn),
+    clientColumn: sanitizeColumnLetter(mapping.clientColumn),
+    locationColumn: sanitizeColumnLetter(mapping.locationColumn),
+    responsibleColumn: sanitizeColumnLetter(mapping.responsibleColumn),
   };
 }
+
+const travelMappingSchema = z.object({
+  clientColumn: z.string().min(1).max(5),
+  locationColumn: z.string().min(1).max(5),
+  responsibleColumn: z.string().min(1).max(5),
+});
 
 export async function GET() {
   const supabase = await createClient();
@@ -49,11 +50,15 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const payload = (await request.json()) as Partial<TravelMapping>;
+  const payload = await request.json();
+  const parsed = travelMappingSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid mapping payload." }, { status: 400 });
+  }
   const nextMapping: TravelMapping = {
-    clientColumn: normalizeColumnLetter(payload.clientColumn),
-    locationColumn: normalizeColumnLetter(payload.locationColumn),
-    responsibleColumn: normalizeColumnLetter(payload.responsibleColumn),
+    clientColumn: sanitizeColumnLetter(parsed.data.clientColumn),
+    locationColumn: sanitizeColumnLetter(parsed.data.locationColumn),
+    responsibleColumn: sanitizeColumnLetter(parsed.data.responsibleColumn),
   };
 
   if (!nextMapping.clientColumn || !nextMapping.locationColumn || !nextMapping.responsibleColumn) {
@@ -85,7 +90,7 @@ export async function POST(request: Request) {
   };
 
   const { error } = await supabase.auth.updateUser({ data: mergedMetadata });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Could not save mapping." }, { status: 500 });
 
   return NextResponse.json({ ok: true, ...nextMapping });
 }

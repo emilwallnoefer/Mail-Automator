@@ -162,6 +162,14 @@ create index if not exists idx_time_tracker_snapshots_user_time
   on public.time_tracker_snapshots (user_id, created_at desc);
 
 alter table public.time_tracker_snapshots enable row level security;
+alter table public.time_tracker_snapshots force row level security;
+
+revoke all on table public.time_tracker_audit_log from anon;
+revoke all on table public.time_tracker_snapshots from anon;
+revoke all on table public.time_tracker_audit_log from authenticated;
+revoke all on table public.time_tracker_snapshots from authenticated;
+grant select on table public.time_tracker_audit_log to authenticated;
+grant select, insert on table public.time_tracker_snapshots to authenticated;
 
 drop policy if exists "time_tracker_snapshots_select_own" on public.time_tracker_snapshots;
 create policy "time_tracker_snapshots_select_own"
@@ -244,3 +252,6 @@ begin
   return v_snapshot_id;
 end;
 $$;
+
+revoke all on function public.create_time_tracker_snapshot(uuid, text) from public;
+grant execute on function public.create_time_tracker_snapshot(uuid, text) to authenticated;
