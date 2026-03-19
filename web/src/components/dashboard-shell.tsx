@@ -16,6 +16,10 @@ type DashboardShellProps = {
 };
 
 const PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY = "ma_program_readme_prompt_seen_deploy_v1";
+const SUBJECT_WRITE_STEP = 2;
+const BODY_WRITE_STEP = 10;
+const SUBJECT_WRITE_INTERVAL_MS = 20;
+const BODY_WRITE_INTERVAL_MS = 17;
 
 type GenerateResponse = {
   template_id: string;
@@ -92,7 +96,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [showChanges, setShowChanges] = useState(false);
-  const [showComposer, setShowComposer] = useState(false);
+  const [showComposer, setShowComposer] = useState(initialRole === "sales");
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
   const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">(initialRole === "sales" ? "time" : "mail");
@@ -197,9 +201,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     let cursor = 0;
     let timeoutId: number | null = null;
     const step = () => {
-      cursor = Math.min(text.length, cursor + 2);
+      cursor = Math.min(text.length, cursor + SUBJECT_WRITE_STEP);
       setAnimatedPreviewSubject(text.slice(0, cursor));
-      if (cursor < text.length) timeoutId = window.setTimeout(step, 28);
+      if (cursor < text.length) timeoutId = window.setTimeout(step, SUBJECT_WRITE_INTERVAL_MS);
     };
     step();
     return () => {
@@ -216,9 +220,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     let cursor = 0;
     let timeoutId: number | null = null;
     const step = () => {
-      cursor = Math.min(text.length, cursor + 10);
+      cursor = Math.min(text.length, cursor + BODY_WRITE_STEP);
       setAnimatedPreviewBody(text.slice(0, cursor));
-      if (cursor < text.length) timeoutId = window.setTimeout(step, 24);
+      if (cursor < text.length) timeoutId = window.setTimeout(step, BODY_WRITE_INTERVAL_MS);
     };
     step();
     return () => {
@@ -243,10 +247,10 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     if (!wasWriting && previewIsWriting) {
       const subjectLen = result?.subject.length ?? 0;
       const bodyLen = result?.body.length ?? 0;
-      const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / 2) : 0;
-      const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / 10) : 0;
-      const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * 28 : 0;
-      const bodyMs = bodySteps > 0 ? (bodySteps - 1) * 24 : 0;
+      const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / SUBJECT_WRITE_STEP) : 0;
+      const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / BODY_WRITE_STEP) : 0;
+      const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * SUBJECT_WRITE_INTERVAL_MS : 0;
+      const bodyMs = bodySteps > 0 ? (bodySteps - 1) * BODY_WRITE_INTERVAL_MS : 0;
       const rawEstimateMs = Math.max(subjectMs, bodyMs);
       const paddedEstimateMs = Math.max(2200, Math.round(rawEstimateMs * 2.2));
       playUiSoundWithCrossfadeFill("previewWrite", paddedEstimateMs, {
@@ -296,6 +300,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
       setUserRole(nextRole);
       if (nextRole === "sales") {
         setActiveModule("time");
+        setShowComposer(true);
       }
     } catch (err) {
       setError((err as Error).message || "Could not save role.");
@@ -402,6 +407,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           activeModule={activeModule}
           availableModules={availableModules}
           showGmailStatus={userRole !== "sales"}
+          userRole={userRole}
           onSelectModule={(module) => {
             if (!availableModules.includes(module)) return;
             if (module !== activeModule) playUiSound("switchWhoosh");

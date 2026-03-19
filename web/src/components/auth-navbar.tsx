@@ -12,6 +12,7 @@ type AuthNavbarProps = {
   activeModule: ModuleKey;
   availableModules?: ModuleKey[];
   showGmailStatus?: boolean;
+  userRole?: "pilot" | "sales" | null;
   onSelectModule: (module: ModuleKey) => void;
 };
 
@@ -22,6 +23,7 @@ export function AuthNavbar({
   activeModule,
   availableModules = ["mail", "time", "settings"],
   showGmailStatus = true,
+  userRole = null,
   onSelectModule,
 }: AuthNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -152,6 +154,13 @@ export function AuthNavbar({
                   </div>
                 </div>
               )}
+
+              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Logged in as</p>
+                <p className="mt-1 text-xs font-medium text-slate-100">
+                  {userRole === "pilot" ? "Pilot" : userRole === "sales" ? "Sales" : "Not selected"}
+                </p>
+              </div>
 
               <div className="mt-2 grid gap-1.5">
                 <form action="/logout" method="post">

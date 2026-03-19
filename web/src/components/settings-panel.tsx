@@ -310,66 +310,6 @@ export function SettingsPanel({
         </div>
       </section>
 
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Security and Access</h2>
-        <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <p className="text-xs font-medium text-slate-100">Change password</p>
-            <div className="mt-2 space-y-2">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="New password"
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Confirm new password"
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                void handleChangePassword();
-              }}
-              disabled={passwordSaving}
-              className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
-            >
-              {passwordSaving ? "Saving..." : "Update password"}
-            </button>
-          </div>
-
-          <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-3">
-            <p className="text-xs font-medium text-rose-200">Delete account</p>
-            <p className="mt-1 text-xs text-rose-100/80">
-              This permanently removes your account and all app access for this login.
-            </p>
-            <div className="mt-2">
-              <input
-                value={deleteConfirmText}
-                onChange={(event) => setDeleteConfirmText(event.target.value)}
-                placeholder='Type "DELETE" to confirm'
-                className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                void handleDeleteAccount();
-              }}
-              disabled={deletingAccount}
-              className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
-            >
-              {deletingAccount ? "Deleting account..." : "Delete account"}
-            </button>
-          </div>
-        </div>
-      </section>
-
       {!isSalesOnly && openSetting === "gmail" ? (
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Integrations</h2>
@@ -501,6 +441,66 @@ export function SettingsPanel({
         />
       </section>
       ) : null}
+
+      <section className="glass-card hourlogger-surface p-4 md:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Security and Access</h2>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+            <p className="text-xs font-medium text-slate-100">Change password</p>
+            <div className="mt-2 space-y-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="New password"
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Confirm new password"
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleChangePassword();
+              }}
+              disabled={passwordSaving}
+              className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+            >
+              {passwordSaving ? "Saving..." : "Update password"}
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-3">
+            <p className="text-xs font-medium text-rose-200">Delete account</p>
+            <p className="mt-1 text-xs text-rose-100/80">
+              This permanently removes your account and all app access for this login.
+            </p>
+            <div className="mt-2">
+              <input
+                value={deleteConfirmText}
+                onChange={(event) => setDeleteConfirmText(event.target.value)}
+                placeholder='Type "DELETE" to confirm'
+                className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDeleteAccount();
+              }}
+              disabled={deletingAccount}
+              className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
+            >
+              {deletingAccount ? "Deleting account..." : "Delete account"}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <div className="flex justify-start">
       <section
