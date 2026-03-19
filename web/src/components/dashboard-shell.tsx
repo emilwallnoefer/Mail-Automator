@@ -526,9 +526,9 @@ export function DashboardShell({ email }: DashboardShellProps) {
                   }}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 >
-                  <option value="">Template Variant</option>
+                  <option value="">Training Location</option>
                   <option value="abroad">Abroad</option>
-                  <option value="lausanne">Lausanne</option>
+                  <option value="lausanne">In Lausanne</option>
                 </select>
               </div>
             </ProgressiveField>
