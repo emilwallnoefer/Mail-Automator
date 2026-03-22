@@ -176,7 +176,7 @@ def _markdown_block_to_html(chunk: str) -> str:
     c = re.sub(
         r"\*\*([^*]+)\*\*",
         lambda m: (
-            f'<strong style="font-size:14px;font-weight:600;">{_escape_html_text(m.group(1))}</strong>'
+            f'<span style="font-weight:600;color:#222;">{_escape_html_text(m.group(1))}</span>'
         ),
         c,
     )
@@ -193,7 +193,7 @@ def _markdown_block_to_html(chunk: str) -> str:
         else:
             merged.append(_escape_html_text(part))
     inner = "".join(merged).replace("\n", "<br>")
-    return f'<p style="margin:0 0 12px;">{inner}</p>'
+    return f'<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#222;">{inner}</p>'
 
 
 def markdown_to_html(text: str) -> str:

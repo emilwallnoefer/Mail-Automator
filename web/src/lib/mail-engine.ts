@@ -192,7 +192,7 @@ function markdownBlockToHtml(chunk: string): string {
     return `<img src="${src}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:10px;border:0;" />`;
   });
   c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
-    return `<strong style="font-size:14px;font-weight:600;">${escapeHtmlText(inner)}</strong>`;
+    return `<span style="font-weight:600;color:#222;">${escapeHtmlText(inner)}</span>`;
   });
   c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
     return `<a href="${url}">${escapeHtmlText(label)}</a>`;
@@ -204,7 +204,7 @@ function markdownBlockToHtml(chunk: string): string {
       return escapeHtmlText(part);
     })
     .join("");
-  return `<p style="margin:0 0 12px;">${merged.replaceAll("\n", "<br>")}</p>`;
+  return `<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#222;">${merged.replaceAll("\n", "<br>")}</p>`;
 }
 
 /** Minimal markdown: ## / ### headings, **bold**, links, images (https or cid:), --- horizontal rules. */
