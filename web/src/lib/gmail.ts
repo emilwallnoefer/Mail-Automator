@@ -43,6 +43,12 @@ export async function getConnectedGmailEmail(tokens: Credentials, redirectUri: s
   return profile.data.emailAddress ?? null;
 }
 
+type InlineAttachment = {
+  contentId: string;
+  mimeType: string;
+  base64: string;
+};
+
 type DraftPayload = {
   to?: string;
   cc?: string;
@@ -50,6 +56,7 @@ type DraftPayload = {
   subject: string;
   body: string;
   html_body?: string;
+  inline_attachments?: InlineAttachment[];
 };
 
 function base64urlEncode(input: string) {
@@ -60,34 +67,97 @@ function base64urlEncode(input: string) {
     .replace(/=+$/g, "");
 }
 
+/** Encode non-ASCII subjects (emoji, en dash, etc.) for RFC 5322 headers. */
+function encodeRfc2047Subject(subject: string) {
+  if (!/[^\x00-\x7F]/.test(subject)) return subject;
+  const b64 = Buffer.from(subject, "utf8").toString("base64");
+  return `=?UTF-8?B?${b64}?=`;
+}
+
+function foldBase64(b64: string) {
+  return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
+}
+
 function buildRawMessage(payload: DraftPayload) {
-  const boundary = "mail-automator-boundary";
-  const headers = [
+  const subject = encodeRfc2047Subject(payload.subject);
+  const plainB64 = foldBase64(Buffer.from(payload.body, "utf8").toString("base64"));
+  const htmlStr = payload.html_body ?? payload.body.replaceAll("\n", "<br>");
+  const htmlB64 = foldBase64(Buffer.from(htmlStr, "utf8").toString("base64"));
+
+  const headerLines = [
     payload.to ? `To: ${payload.to}` : "",
     payload.cc ? `Cc: ${payload.cc}` : "",
     payload.bcc ? `Bcc: ${payload.bcc}` : "",
-    `Subject: ${payload.subject}`,
+    `Subject: ${subject}`,
     "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    payload.body,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    payload.html_body ?? payload.body.replaceAll("\n", "<br>"),
-    "",
-    `--${boundary}--`,
-  ]
-    .filter(Boolean)
-    .join("\r\n");
+  ].filter(Boolean);
 
-  return base64urlEncode(headers);
+  const att = payload.inline_attachments?.[0];
+
+  if (!att) {
+    const boundaryAlt = "ma-alt-001";
+    const body = [
+      ...headerLines,
+      `Content-Type: multipart/alternative; boundary="${boundaryAlt}"`,
+      "",
+      `--${boundaryAlt}`,
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      plainB64,
+      "",
+      `--${boundaryAlt}`,
+      "Content-Type: text/html; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      htmlB64,
+      "",
+      `--${boundaryAlt}--`,
+    ].join("\r\n");
+    return base64urlEncode(body);
+  }
+
+  const boundaryRel = "ma-rel-001";
+  const boundaryAlt = "ma-alt-002";
+  const imgB64 = foldBase64(att.base64);
+
+  const relatedBody = [
+    `--${boundaryRel}`,
+    `Content-Type: multipart/alternative; boundary="${boundaryAlt}"`,
+    "",
+    `--${boundaryAlt}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    plainB64,
+    "",
+    `--${boundaryAlt}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    htmlB64,
+    "",
+    `--${boundaryAlt}--`,
+    "",
+    `--${boundaryRel}`,
+    `Content-Type: ${att.mimeType}`,
+    "Content-Transfer-Encoding: base64",
+    `Content-ID: <${att.contentId}>`,
+    'Content-Disposition: inline; filename="feedback.png"',
+    "",
+    imgB64,
+    "",
+    `--${boundaryRel}--`,
+  ].join("\r\n");
+
+  const full = [
+    ...headerLines,
+    `Content-Type: multipart/related; boundary="${boundaryRel}"; type="multipart/alternative"`,
+    "",
+    relatedBody,
+  ].join("\r\n");
+
+  return base64urlEncode(full);
 }
 
 export async function createGmailDraft(refreshToken: string, payload: DraftPayload) {

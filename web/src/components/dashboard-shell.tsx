@@ -45,6 +45,7 @@ type GenerateResponse = {
   body: string;
   html_body: string;
   selected_change_ids?: string[];
+  inline_attachments?: Array<{ contentId: string; mimeType: string; base64: string }>;
 };
 
 function isSameGeneratedDraft(previous: GenerateResponse | null, next: GenerateResponse) {
@@ -490,6 +491,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           subject: result.subject,
           body: result.body,
           html_body: result.html_body,
+          inline_attachments: result.inline_attachments,
         }),
       });
       const data = (await response.json()) as { draftId: string; messageId: string } | { error: string };

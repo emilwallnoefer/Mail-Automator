@@ -38,11 +38,19 @@ export type MailInput = {
   signature_name?: string;
 };
 
+export type MailInlineAttachment = {
+  contentId: string;
+  mimeType: string;
+  base64: string;
+};
+
 export type RenderResult = {
   template_id: string;
   subject: string;
   body: string;
   html_body: string;
+  /** For Gmail: inline PNG so <img src="cid:…"> resolves without a public URL. */
+  inline_attachments?: MailInlineAttachment[];
 };
 
 type Course = {
@@ -135,7 +143,7 @@ function normalize(text: string) {
 
 function stripMarkdownLinks(text: string) {
   return text
-    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, (_m, alt) => String(alt || "").trim() || "QR code")
+    .replace(/!\[([^\]]*)\]\((?:https?:\/\/[^)]+|cid:[^)]+)\)/g, (_m, alt) => String(alt || "").trim() || "QR code")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1");
 }
 
@@ -143,42 +151,75 @@ function escapeHtmlText(s: string) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+/** Gmail renders table/div borders more reliably than <hr> in some clients. */
 const EMAIL_HR =
-  '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0;" />';
+  '<div style="height:0;line-height:0;font-size:0;border-top:2px solid #ddd;margin:20px 0;clear:both;">&nbsp;</div>';
+
+const EMAIL_WRAPPER_OPEN =
+  '<div style="font-size:14px;line-height:1.55;color:#222;max-width:640px;font-family:Arial,Helvetica,sans-serif;">';
+const EMAIL_WRAPPER_CLOSE = "</div>";
 
 function isMarkdownHorizontalRule(line: string) {
   const t = line.trim();
   return /^(\*{3,}|_{3,}|-{3,})$/.test(t);
 }
 
-/** Minimal markdown: paragraphs, **bold**, [text](https://...), ![alt](https://...) images, --- / *** / ___ horizontal rules. */
+function formatHeading2(text: string) {
+  return `<h2 style="font-size:22px;font-weight:700;line-height:1.25;margin:22px 0 10px;color:#111;">${escapeHtmlText(text)}</h2>`;
+}
+
+function formatHeading3(text: string) {
+  return `<h3 style="font-size:20px;font-weight:700;line-height:1.3;margin:18px 0 8px;color:#111;">${escapeHtmlText(text)}</h3>`;
+}
+
+/** One markdown block (split on blank lines). */
+function markdownBlockToHtml(chunk: string): string {
+  const trimmed = chunk.trim();
+  if (!trimmed) return "";
+
+  if (isMarkdownHorizontalRule(trimmed)) return EMAIL_HR;
+
+  const h3 = trimmed.match(/^###\s+(.+)$/);
+  if (h3 && !trimmed.includes("\n")) return formatHeading3(h3[1]!.trim());
+
+  const h2 = trimmed.match(/^##\s+(.+)$/);
+  if (h2 && !trimmed.includes("\n")) return formatHeading2(h2[1]!.trim());
+
+  let c = trimmed;
+  c = c.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) => {
+    const safeAlt = escapeHtmlText(String(alt ?? ""));
+    const src = String(url).trim();
+    return `<img src="${src}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:10px;border:0;" />`;
+  });
+  c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
+    return `<strong style="font-size:14px;font-weight:600;">${escapeHtmlText(inner)}</strong>`;
+  });
+  c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
+    return `<a href="${url}">${escapeHtmlText(label)}</a>`;
+  });
+  const parts = c.split(/(<[^>]+>)/);
+  const merged = parts
+    .map((part) => {
+      if (part.startsWith("<")) return part;
+      return escapeHtmlText(part);
+    })
+    .join("");
+  return `<p style="margin:0 0 12px;">${merged.replaceAll("\n", "<br>")}</p>`;
+}
+
+/** Minimal markdown: ## / ### headings, **bold**, links, images (https or cid:), --- horizontal rules. */
 function markdownToHtml(text: string) {
-  const paragraphs = text
+  let inner = text
     .trim()
     .split(/\n\n+/)
     .filter(Boolean)
-    .map((p) => {
-      let chunk = p.trim();
-      if (isMarkdownHorizontalRule(chunk)) return EMAIL_HR;
-      chunk = chunk.replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, (_m, alt, url) => {
-        const safeAlt = escapeHtmlText(String(alt ?? ""));
-        return `<img src="${url}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:8px;" />`;
-      });
-      chunk = chunk.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => `<strong>${escapeHtmlText(inner)}</strong>`);
-      chunk = chunk.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
-        return `<a href="${url}">${escapeHtmlText(label)}</a>`;
-      });
-      const parts = chunk.split(/(<[^>]+>)/);
-      const merged = parts
-        .map((part) => {
-          if (part.startsWith("<")) return part;
-          return escapeHtmlText(part);
-        })
-        .join("");
-      return `<p>${merged.replaceAll("\n", "<br>")}</p>`;
-    })
+    .map((p) => markdownBlockToHtml(p))
     .join("\n");
-  return paragraphs.replace(/(?:<hr[^>]*>\s*){2,}/gi, EMAIL_HR);
+  const dup = `${EMAIL_HR}\n${EMAIL_HR}`;
+  while (inner.includes(dup)) {
+    inner = inner.replaceAll(dup, EMAIL_HR);
+  }
+  return EMAIL_WRAPPER_OPEN + inner + EMAIL_WRAPPER_CLOSE;
 }
 
 function resolvePublicAssetUrl(pathOrUrl: string): string {
@@ -192,6 +233,29 @@ function resolvePublicAssetUrl(pathOrUrl: string): string {
     if (base) return `${base}${raw}`;
   }
   return raw;
+}
+
+function resolveFeedbackQr(input: MailInput): { url: string; attachment?: MailInlineAttachment } {
+  const links = trainingLinks as Record<string, string>;
+  if (input.mail_type !== "post") {
+    return { url: resolvePublicAssetUrl(links.FEEDBACK_QR_IMAGE_URL ?? "") };
+  }
+  const qrPath = path.join(process.cwd(), "public", "feedback-training-qr.png");
+  try {
+    if (fs.existsSync(qrPath)) {
+      return {
+        url: "cid:flyability-feedback-qr",
+        attachment: {
+          contentId: "flyability-feedback-qr",
+          mimeType: "image/png",
+          base64: fs.readFileSync(qrPath).toString("base64"),
+        },
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { url: resolvePublicAssetUrl(links.FEEDBACK_QR_IMAGE_URL ?? "") };
 }
 
 function parseIndustryIds(raw: string | undefined) {
@@ -210,9 +274,9 @@ function resolveIncludedChangeIds(input: MailInput) {
 
 /** Canonical section titles (emoji + wording) aligned with internal recap style. */
 function trainingMaterialsHeading(lang: MailLanguage) {
-  if (lang === "de") return "📂 Trainingsunterlagen";
-  if (lang === "fr") return "📚 Supports de formation";
-  return "📂 Training materials";
+  if (lang === "de") return "## 📂 Trainingsunterlagen";
+  if (lang === "fr") return "## 📚 Supports de formation";
+  return "## 📂 Training materials";
 }
 
 function noMaterialsSelectedLine(lang: MailLanguage) {
@@ -266,9 +330,9 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
 }
 
 function industryTrainingBlockTitle(lang: MailLanguage) {
-  if (lang === "de") return "📋 Use-Case-spezifische Trainings und Unterlagen";
-  if (lang === "fr") return "📋 Formations et documents spécifiques au cas d'usage";
-  return "📋 Use-case specific trainings and docs";
+  if (lang === "de") return "## 📋 Use-Case-spezifische Trainings und Unterlagen";
+  if (lang === "fr") return "## 📋 Formations et documents spécifiques au cas d'usage";
+  return "## 📋 Use-case specific trainings and docs";
 }
 
 function courseDisplayLabel(course: Course, lang: MailLanguage) {
@@ -288,13 +352,13 @@ function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[
     const label = courseDisplayLabel(course, language);
     lines.push(`- [${label}](${course.url})`);
   }
-  return lines.length > 1 ? lines.join("\n") : "";
+  return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : "";
 }
 
 function usefulLinksMainHeader(lang: MailLanguage) {
-  if (lang === "de") return "🔗 Weitere nützliche Links";
-  if (lang === "fr") return "🔗 Autres liens utiles";
-  return "🔗 Software & learning resources";
+  if (lang === "de") return "## 🔗 Weitere nützliche Links";
+  if (lang === "fr") return "## 🔗 Autres liens utiles";
+  return "## 🔗 Software & learning resources";
 }
 
 function calloutPrefix(lang: MailLanguage): string {
@@ -330,7 +394,7 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
     conditional: Array<Record<string, unknown>>;
   };
   const links = trainingLinks as Record<string, string>;
-  const lines = [usefulLinksMainHeader(language)];
+  const lines: string[] = [usefulLinksMainHeader(language)];
 
   const addItem = (item: Record<string, unknown>) => {
     const linkKey = String(item.link_key ?? "");
@@ -349,7 +413,7 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
     if (includeByFlag || includeByIndustry) addItem(item);
   });
 
-  return lines.length > 1 ? lines.join("\n") : "";
+  return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : "";
 }
 
 function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChangeIds: string[]) {
@@ -380,7 +444,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       if (!withUrl.length) continue;
 
       if (!RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING.has(sectionId)) {
-        parts.push(resourceSectionLabel(sectionId, language));
+        parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
         parts.push("");
       }
 
@@ -403,7 +467,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
 
     if (!RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING.has(sectionId)) {
       const sectionTitle = resourceSectionLabel(sectionId, language);
-      parts.push(sectionTitle);
+      parts.push(`### ${sectionTitle}`);
       parts.push("");
     }
 
@@ -436,24 +500,24 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
 function certificationNote(language: MailLanguage, enabled?: boolean) {
   if (!enabled) return "";
   if (language === "de") {
-    return "Zertifizierungshinweis\nEs freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid.";
+    return "## Zertifizierungshinweis\n\nEs freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid.";
   }
   if (language === "fr") {
-    return "Note sur la certification\nJe suis heureux de vous confirmer que vous avez terminé la formation avec succès. Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés.";
+    return "## Note sur la certification\n\nJe suis heureux de vous confirmer que vous avez terminé la formation avec succès. Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés.";
   }
-  return "Certification note\nI am happy to confirm that you successfully completed the training. Your certificates act as official proof in our records that you are trained pilots.";
+  return "## Certification note\n\nI am happy to confirm that you successfully completed the training. Your certificates act as official proof in our records that you are trained pilots.";
 }
 
 function simulatorNote(language: MailLanguage, enabled?: boolean) {
   if (!enabled) return "";
   const course = "https://flyabilityacademy.thinkific.com/courses/Introductorytrainingcourse";
   if (language === "de") {
-    return `Hinweis für Kollegen ohne Trainingsteilnahme\nKollegen, die nicht teilnehmen konnten, können ihr Zertifikat über den Simulator erhalten. Nutzt dazu die Training App auf dem Tablet und absolviert den Kurs [Einführungstraining (Online-Kurs)](${course}).`;
+    return `## Hinweis für Kollegen ohne Trainingsteilnahme\n\nKollegen, die nicht teilnehmen konnten, können ihr Zertifikat über den Simulator erhalten. Nutzt dazu die Training App auf dem Tablet und absolviert den Kurs [Einführungstraining (Online-Kurs)](${course}).`;
   }
   if (language === "fr") {
-    return `Note pour les collègues n'ayant pas pu participer\nLes collègues absents peuvent tout de même obtenir leur certification via le simulateur dans l'application tablette. Ils peuvent suivre la [formation d'introduction (cours en ligne)](${course}).`;
+    return `## Note pour les collègues n'ayant pas pu participer\n\nLes collègues absents peuvent tout de même obtenir leur certification via le simulateur dans l'application tablette. Ils peuvent suivre la [formation d'introduction (cours en ligne)](${course}).`;
   }
-  return `Note for colleagues who missed the training\nColleagues who could not attend can still obtain certification through simulator training in the tablet app. They can complete the [Introductory Training Course](${course}).`;
+  return `## Note for colleagues who missed the training\n\nColleagues who could not attend can still obtain certification through simulator training in the tablet app. They can complete the [Introductory Training Course](${course}).`;
 }
 
 export function renderMail(input: MailInput): RenderResult {
@@ -470,9 +534,10 @@ export function renderMail(input: MailInput): RenderResult {
   const includedChangeIds = resolveIncludedChangeIds(input);
 
   const links = trainingLinks as Record<string, string>;
+  const feedbackQr = resolveFeedbackQr(input);
   const replacements: Record<string, string> = {
     ...links,
-    FEEDBACK_QR_IMAGE_URL: resolvePublicAssetUrl(links.FEEDBACK_QR_IMAGE_URL ?? ""),
+    FEEDBACK_QR_IMAGE_URL: feedbackQr.url,
     RECIPIENT_NAME: input.recipient_name || "",
     RECIPIENT_OPTIONAL: input.recipient_optional || "",
     COMPANY_NAME: input.company_name || "",
@@ -501,5 +566,6 @@ export function renderMail(input: MailInput): RenderResult {
     subject,
     body: normalize(stripMarkdownLinks(markdownBody)),
     html_body: markdownToHtml(markdownBody),
+    inline_attachments: feedbackQr.attachment ? [feedbackQr.attachment] : undefined,
   };
 }

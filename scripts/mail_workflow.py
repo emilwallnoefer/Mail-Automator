@@ -120,7 +120,7 @@ def strip_markdown_links(text: str) -> str:
         alt = (m.group(1) or "").strip()
         return alt or "QR code"
 
-    text = re.sub(r"!\[([^\]]*)\]\((https?://[^)]+)\)", img_alt, text)
+    text = re.sub(r"!\[([^\]]*)\]\((?:https?://[^)]+|cid:[^)]+)\)", img_alt, text)
     text = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", text)
     return text
 
@@ -129,7 +129,15 @@ def _escape_html_text(s: str) -> str:
     return html.escape(s, quote=False)
 
 
-_EMAIL_HR = '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0;" />'
+_EMAIL_HR = (
+    '<div style="height:0;line-height:0;font-size:0;border-top:2px solid #ddd;'
+    'margin:20px 0;clear:both;">&nbsp;</div>'
+)
+_EMAIL_WRAPPER_OPEN = (
+    '<div style="font-size:14px;line-height:1.55;color:#222;max-width:640px;'
+    'font-family:Arial,Helvetica,sans-serif;">'
+)
+_EMAIL_WRAPPER_CLOSE = "</div>"
 
 
 def _is_markdown_horizontal_rule(line: str) -> bool:
@@ -137,42 +145,64 @@ def _is_markdown_horizontal_rule(line: str) -> bool:
     return bool(re.match(r"^(\*{3,}|_{3,}|-{3,})$", t))
 
 
-def markdown_to_html(text: str) -> str:
-    def process_paragraph(p: str) -> str:
-        chunk = p.strip()
-        if _is_markdown_horizontal_rule(chunk):
-            return _EMAIL_HR
-        chunk = re.sub(
-            r"!\[([^\]]*)\]\((https?://[^)]+)\)",
-            lambda m: (
-                f'<img src="{m.group(2)}" alt="{_escape_html_text(m.group(1) or "")}" '
-                'style="max-width:240px;height:auto;display:block;margin-top:8px;" />'
-            ),
-            chunk,
+def _markdown_block_to_html(chunk: str) -> str:
+    trimmed = chunk.strip()
+    if not trimmed:
+        return ""
+    if _is_markdown_horizontal_rule(trimmed):
+        return _EMAIL_HR
+    m3 = re.match(r"^###\s+(.+)$", trimmed)
+    if m3 and "\n" not in trimmed:
+        t = m3.group(1).strip()
+        return (
+            '<h3 style="font-size:20px;font-weight:700;line-height:1.3;margin:18px 0 8px;color:#111;">'
+            f"{_escape_html_text(t)}</h3>"
         )
-        chunk = re.sub(
-            r"\*\*([^*]+)\*\*",
-            lambda m: f"<strong>{_escape_html_text(m.group(1))}</strong>",
-            chunk,
+    m2 = re.match(r"^##\s+(.+)$", trimmed)
+    if m2 and "\n" not in trimmed:
+        t = m2.group(1).strip()
+        return (
+            '<h2 style="font-size:22px;font-weight:700;line-height:1.25;margin:22px 0 10px;color:#111;">'
+            f"{_escape_html_text(t)}</h2>"
         )
-        chunk = re.sub(
-            r"\[([^\]]+)\]\((https?://[^)]+)\)",
-            lambda m: f'<a href="{m.group(2)}">{_escape_html_text(m.group(1))}</a>',
-            chunk,
-        )
-        parts = re.split(r"(<[^>]+>)", chunk)
-        merged: List[str] = []
-        for part in parts:
-            if part.startswith("<"):
-                merged.append(part)
-            else:
-                merged.append(_escape_html_text(part))
-        inner = "".join(merged).replace("\n", "<br>")
-        return f"<p>{inner}</p>"
+    c = re.sub(
+        r"!\[([^\]]*)\]\(([^)]+)\)",
+        lambda m: (
+            f'<img src="{m.group(2)}" alt="{_escape_html_text(m.group(1) or "")}" '
+            'style="max-width:240px;height:auto;display:block;margin-top:10px;border:0;" />'
+        ),
+        trimmed,
+    )
+    c = re.sub(
+        r"\*\*([^*]+)\*\*",
+        lambda m: (
+            f'<strong style="font-size:14px;font-weight:600;">{_escape_html_text(m.group(1))}</strong>'
+        ),
+        c,
+    )
+    c = re.sub(
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
+        lambda m: f'<a href="{m.group(2)}">{_escape_html_text(m.group(1))}</a>',
+        c,
+    )
+    parts = re.split(r"(<[^>]+>)", c)
+    merged: List[str] = []
+    for part in parts:
+        if part.startswith("<"):
+            merged.append(part)
+        else:
+            merged.append(_escape_html_text(part))
+    inner = "".join(merged).replace("\n", "<br>")
+    return f'<p style="margin:0 0 12px;">{inner}</p>'
 
+
+def markdown_to_html(text: str) -> str:
     paragraphs = [p for p in re.split(r"\n\n+", text.strip()) if p.strip()]
-    out = "\n".join(process_paragraph(p) for p in paragraphs)
-    return re.sub(r"(?:<hr[^>]*>\s*){2,}", _EMAIL_HR, out, flags=re.IGNORECASE)
+    inner = "\n".join(_markdown_block_to_html(p) for p in paragraphs)
+    dup = _EMAIL_HR + "\n" + _EMAIL_HR
+    while dup in inner:
+        inner = inner.replace(dup, _EMAIL_HR)
+    return _EMAIL_WRAPPER_OPEN + inner + _EMAIL_WRAPPER_CLOSE
 
 
 def parse_industry_ids(raw: Any) -> List[str]:
@@ -208,10 +238,10 @@ def with_callout(language: str, desc: str) -> str:
 
 def training_materials_heading(language: str) -> str:
     if language == "de":
-        return "📂 Trainingsunterlagen"
+        return "## 📂 Trainingsunterlagen"
     if language == "fr":
-        return "📚 Supports de formation"
-    return "📂 Training materials"
+        return "## 📚 Supports de formation"
+    return "## 📂 Training materials"
 
 
 def build_training_materials_block(links: Dict[str, str], language: str) -> str:
@@ -340,11 +370,11 @@ def build_industry_training_block(
     by_id = {course["id"]: course for course in industry_catalog}
     lines: List[str] = []
     if language == "de":
-        lines.append("📋 Use-Case-spezifische Trainings und Unterlagen")
+        lines.append("## 📋 Use-Case-spezifische Trainings und Unterlagen")
     elif language == "fr":
-        lines.append("📋 Formations et documents spécifiques au cas d'usage")
+        lines.append("## 📋 Formations et documents spécifiques au cas d'usage")
     else:
-        lines.append("📋 Use-case specific trainings and docs")
+        lines.append("## 📋 Use-case specific trainings and docs")
 
     for course_id in selected_ids:
         course = by_id.get(course_id)
@@ -360,7 +390,7 @@ def build_industry_training_block(
 
     if len(lines) == 1:
         return ""
-    return "\n".join(lines)
+    return f"{lines[0]}\n\n" + "\n".join(lines[1:])
 
 
 def build_useful_links_block(
@@ -371,11 +401,11 @@ def build_useful_links_block(
     payload: Dict[str, Any],
 ) -> str:
     if language == "de":
-        header = "🔗 Weitere nützliche Links"
+        header = "## 🔗 Weitere nützliche Links"
     elif language == "fr":
-        header = "🔗 Autres liens utiles"
+        header = "## 🔗 Autres liens utiles"
     else:
-        header = "🔗 Software & learning resources"
+        header = "## 🔗 Software & learning resources"
     lines: List[str] = [header]
 
     def append_item(item: Dict[str, Any]) -> None:
@@ -407,7 +437,7 @@ def build_useful_links_block(
 
     if len(lines) == 1:
         return ""
-    return "\n".join(lines)
+    return f"{lines[0]}\n\n" + "\n".join(lines[1:])
 
 
 def get_certification_note_block(payload: Dict[str, Any], language: str) -> str:
@@ -415,18 +445,18 @@ def get_certification_note_block(payload: Dict[str, Any], language: str) -> str:
         return ""
     if language == "de":
         return (
-            "Zertifizierungshinweis\n"
+            "## Zertifizierungshinweis\n\n"
             "Es freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. "
             "Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid."
         )
     if language == "fr":
         return (
-            "Note sur la certification\n"
+            "## Note sur la certification\n\n"
             "Je suis heureux de vous confirmer que vous avez terminé la formation avec succès. "
             "Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés."
         )
     return (
-        "Certification note\n"
+        "## Certification note\n\n"
         "I am happy to confirm that you successfully completed the training. "
         "Your certificates act as official proof in our records that you are trained pilots."
     )
@@ -438,19 +468,19 @@ def get_simulator_note_block(payload: Dict[str, Any], language: str) -> str:
     intro_course = "https://flyabilityacademy.thinkific.com/courses/Introductorytrainingcourse"
     if language == "de":
         return (
-            "Hinweis für Kollegen ohne Trainingsteilnahme\n"
+            "## Hinweis für Kollegen ohne Trainingsteilnahme\n\n"
             "Kollegen, die nicht teilnehmen konnten, können ihr Zertifikat über den Simulator erhalten. "
             "Nutzt dazu die Training App auf dem Tablet und absolviert den Kurs "
             f"[Einführungstraining (Online-Kurs)]({intro_course})."
         )
     if language == "fr":
         return (
-            "Note pour les collègues n'ayant pas pu participer\n"
+            "## Note pour les collègues n'ayant pas pu participer\n\n"
             "Les collègues absents peuvent tout de même obtenir leur certification via le simulateur dans l'application tablette. "
             f"Ils peuvent suivre la [formation d'introduction (cours en ligne)]({intro_course})."
         )
     return (
-        "Note for colleagues who missed the training\n"
+        "## Note for colleagues who missed the training\n\n"
         "Colleagues who could not attend can still obtain certification through simulator training in the tablet app. "
         f"They can complete the [Introductory Training Course]({intro_course})."
     )
@@ -507,7 +537,11 @@ def render_payload(
     )
     replacements["CERTIFICATION_NOTE_BLOCK"] = get_certification_note_block(payload, language=language)
     replacements["SIMULATOR_NOTE_BLOCK"] = get_simulator_note_block(payload, language=language)
-    replacements["FEEDBACK_QR_IMAGE_URL"] = resolve_public_asset_url(str(links.get("FEEDBACK_QR_IMAGE_URL", "")))
+    feedback_png = PROJECT_ROOT / "web" / "public" / "feedback-training-qr.png"
+    if str(template_id).startswith("post_") and feedback_png.is_file():
+        replacements["FEEDBACK_QR_IMAGE_URL"] = "cid:flyability-feedback-qr"
+    else:
+        replacements["FEEDBACK_QR_IMAGE_URL"] = resolve_public_asset_url(str(links.get("FEEDBACK_QR_IMAGE_URL", "")))
 
     subject = replace_placeholders(subject_template, replacements)
     body_markdown = replace_placeholders(body_template, replacements)

@@ -12,7 +12,14 @@ type RequestPayload = {
   subject: string;
   body: string;
   html_body?: string;
+  inline_attachments?: Array<{ contentId: string; mimeType: string; base64: string }>;
 };
+
+const inlineAttachmentSchema = z.object({
+  contentId: z.string().min(1).max(120).regex(/^[a-zA-Z0-9._-]+$/),
+  mimeType: z.string().min(1).max(80),
+  base64: z.string().min(1).max(800_000),
+});
 
 const draftPayloadSchema = z.object({
   to: z.string().optional(),
@@ -21,6 +28,7 @@ const draftPayloadSchema = z.object({
   subject: z.string().min(1).max(300),
   body: z.string().min(1).max(30000),
   html_body: z.string().max(60000).optional(),
+  inline_attachments: z.array(inlineAttachmentSchema).max(3).optional(),
 });
 
 export async function POST(request: Request) {
@@ -54,6 +62,7 @@ export async function POST(request: Request) {
     subject: sanitizeText(parsedPayload.data.subject, { maxLen: 300 }),
     body: sanitizeText(parsedPayload.data.body, { maxLen: 30000, allowNewlines: true }),
     html_body: parsedPayload.data.html_body,
+    inline_attachments: parsedPayload.data.inline_attachments,
   };
   if (!payload.subject || !payload.body) {
     return NextResponse.json({ error: "Missing required fields: subject, body" }, { status: 400 });
@@ -63,7 +72,14 @@ export async function POST(request: Request) {
   if (!refreshToken) return NextResponse.json({ error: "Gmail is not connected" }, { status: 400 });
 
   try {
-    const result = await createGmailDraft(refreshToken, payload);
+    const result = await createGmailDraft(refreshToken, {
+      ...payload,
+      inline_attachments: payload.inline_attachments?.map((a) => ({
+        contentId: a.contentId,
+        mimeType: a.mimeType,
+        base64: a.base64.replace(/\s+/g, ""),
+      })),
+    });
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Failed to create Gmail draft." }, { status: 500 });

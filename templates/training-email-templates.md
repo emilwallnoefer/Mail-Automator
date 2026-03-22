@@ -33,7 +33,7 @@ As I promised during our training, here is the recap email with links to all the
 
 ---
 
-If you enjoyed the training, I'd be super thankful if you could take 5 minutes to give me some quick feedback. I want to provide the best training on the planet—just like you're building the best cars!
+If you enjoyed the training, I'd be super thankful if you could take 5 minutes to give me some quick feedback.
 
 **Just scan the QR code below and tell me what you liked and what you didn't.**
 
@@ -81,7 +81,7 @@ wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zus
 
 ---
 
-Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in 5 Minuten kurz Feedback geben könnt. Ich möchte das beste Training der Welt bieten – genau wie ihr die besten Autos baut!
+Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in 5 Minuten kurz Feedback geben könnt.
 
 **Scannt einfach den QR-Code unten und sagt mir, was euch gefallen hat und was nicht.**
 
@@ -302,7 +302,7 @@ Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les lie
 
 ---
 
-Si la formation vous a plu, je vous serais très reconnaissant de prendre 5 minutes pour me donner un retour rapide. Je veux proposer la meilleure formation au monde – tout comme vous construisez les meilleures voitures !
+Si la formation vous a plu, je vous serais très reconnaissant de prendre 5 minutes pour me donner un retour rapide.
 
 **Scannez simplement le code QR ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.**
 
