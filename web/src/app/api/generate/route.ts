@@ -8,7 +8,7 @@ import { z } from "zod";
 const generateSchema = z.object({
   mail_type: z.enum(["pre", "post"]),
   template_variant: z.enum(["lausanne", "abroad"]).optional(),
-  language: z.enum(["en", "de"]),
+  language: z.enum(["en", "de", "fr"]),
   training_type: z.enum(["intro_1day", "aiim_3day"]).optional(),
   recipient_name: z.string().min(1).max(240),
   recipient_optional: z.string().optional(),
@@ -23,6 +23,7 @@ const generateSchema = z.object({
   include_customer_toolkit: z.boolean().optional(),
   company_research_text: z.string().optional(),
   included_change_ids: z.array(z.string().min(1).max(80)).max(200).optional(),
+  signature_name: z.string().max(120).optional(),
 });
 
 function sanitizeMailPayload(input: z.infer<typeof generateSchema>): MailInput {
@@ -38,6 +39,7 @@ function sanitizeMailPayload(input: z.infer<typeof generateSchema>): MailInput {
     industry_course_ids: sanitizeNullableText(input.industry_course_ids, { maxLen: 1000 }),
     company_research_text: sanitizeNullableText(input.company_research_text, { maxLen: 4000, allowNewlines: true }),
     included_change_ids: input.included_change_ids?.map((id) => sanitizeText(id, { maxLen: 80 })).filter(Boolean),
+    signature_name: sanitizeText(input.signature_name, { maxLen: 120 }) || undefined,
   };
 }
 

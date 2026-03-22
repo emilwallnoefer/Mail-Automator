@@ -19,6 +19,7 @@ USEFUL_LINKS_POLICY_FILE = PROJECT_ROOT / "config" / "useful-links-policy.json"
 DEFAULT_CREDENTIALS_FILE = PROJECT_ROOT / "scripts" / "credentials.json"
 DEFAULT_TOKEN_FILE = PROJECT_ROOT / "scripts" / "token.json"
 CONFIRM_PHRASE = "confirm draft"
+DEFAULT_SIGNATURE_NAME = "Emil Wallnöfer"
 
 
 def load_json(path: Path) -> Dict:
@@ -43,13 +44,13 @@ def choose_template_id(payload: Dict) -> str:
     variant = payload.get("template_variant")
 
     if mail_type == "post":
-        if language not in {"en", "de"}:
-            raise ValueError("For post mail_type, language must be 'en' or 'de'.")
+        if language not in {"en", "de", "fr"}:
+            raise ValueError("For post mail_type, language must be 'en', 'de', or 'fr'.")
         return f"post_{language}"
 
     if mail_type == "pre":
-        if language not in {"en", "de"}:
-            raise ValueError("For pre mail_type, language must be 'en' or 'de'.")
+        if language not in {"en", "de", "fr"}:
+            raise ValueError("For pre mail_type, language must be 'en', 'de', or 'fr'.")
         if variant not in {"lausanne", "abroad"}:
             raise ValueError("For pre mail_type, template_variant must be 'lausanne' or 'abroad'.")
         return f"pre_{variant}_{language}"
@@ -162,6 +163,8 @@ def build_industry_training_block(
     lines: List[str] = []
     if language == "de":
         lines.append("Branchenspezifische Academy-Kurse")
+    elif language == "fr":
+        lines.append("Cours Academy spécifiques au secteur")
     else:
         lines.append("Industry-specific Academy courses")
 
@@ -169,7 +172,12 @@ def build_industry_training_block(
         course = by_id.get(course_id)
         if not course:
             continue
-        label = course["label_de"] if language == "de" else course["label_en"]
+        if language == "de":
+            label = course["label_de"]
+        elif language == "fr":
+            label = course.get("label_fr") or course["label_en"]
+        else:
+            label = course["label_en"]
         lines.append(f"- [{label}]({course['url']})")
 
     if len(lines) == 1:
@@ -184,15 +192,25 @@ def build_useful_links_block(
     useful_links_policy: Dict[str, Any],
     payload: Dict[str, Any],
 ) -> str:
-    header = "Weitere nützliche Links" if language == "de" else "Other Useful Links"
+    if language == "de":
+        header = "Weitere nützliche Links"
+    elif language == "fr":
+        header = "Autres liens utiles"
+    else:
+        header = "Other Useful Links"
     lines: List[str] = [header]
 
     def append_item(item: Dict[str, Any]) -> None:
         url = links.get(item["link_key"], "")
         if not url:
             return
-        label = item["label_de"] if language == "de" else item["label_en"]
-        desc = item["desc_de"] if language == "de" else item["desc_en"]
+        if language == "de":
+            label, desc = str(item.get("label_de", "")), str(item.get("desc_de", ""))
+        elif language == "fr":
+            label = str(item.get("label_fr") or item.get("label_en", ""))
+            desc = str(item.get("desc_fr") or item.get("desc_en", ""))
+        else:
+            label, desc = str(item.get("label_en", "")), str(item.get("desc_en", ""))
         lines.append(f"[{label}]({url}) - {desc}")
 
     for item in useful_links_policy.get("common", []):
@@ -223,6 +241,12 @@ def get_certification_note_block(payload: Dict[str, Any], language: str) -> str:
             "Es freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. "
             "Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid."
         )
+    if language == "fr":
+        return (
+            "Note sur la certification\n"
+            "Je suis heureux de vous confirmer que vous avez terminé la formation avec succès. "
+            "Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés."
+        )
     return (
         "Certification note\n"
         "I am happy to confirm that you successfully completed the training. "
@@ -240,6 +264,12 @@ def get_simulator_note_block(payload: Dict[str, Any], language: str) -> str:
             "Kollegen, die nicht teilnehmen konnten, können ihr Zertifikat über den Simulator erhalten. "
             "Nutzt dazu die Training App auf dem Tablet und absolviert den Kurs "
             f"[Einführungstraining (Online-Kurs)]({intro_course})."
+        )
+    if language == "fr":
+        return (
+            "Note pour les collègues n'ayant pas pu participer\n"
+            "Les collègues absents peuvent tout de même obtenir leur certification via le simulateur dans l'application tablette. "
+            f"Ils peuvent suivre la [formation d'introduction (cours en ligne)]({intro_course})."
         )
     return (
         "Note for colleagues who missed the training\n"
@@ -268,6 +298,7 @@ def render_payload(
     if template_id.startswith("pre_"):
         body_template = trim_pretraining_days(body_template, payload.get("training_type", "aiim_3day"))
 
+    sig_name = str(payload.get("signature_name", "")).strip()
     replacements = {
         **links,
         "RECIPIENT_NAME": payload.get("recipient_name", ""),
@@ -280,6 +311,7 @@ def render_payload(
         "USEFUL_LINKS_BLOCK": "",
         "CERTIFICATION_NOTE_BLOCK": "",
         "SIMULATOR_NOTE_BLOCK": "",
+        "SIGNATURE_NAME": sig_name or DEFAULT_SIGNATURE_NAME,
     }
     language = payload.get("language", "en")
     selected_course_ids = infer_industry_course_ids(payload, industry_catalog)

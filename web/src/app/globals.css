@@ -3,6 +3,12 @@
 :root {
   --background: #020617;
   --foreground: #e2e8f0;
+  /* Sticky app nav (~top-3 + bar height); keeps scrollIntoView from tucking content under the header */
+  --app-sticky-offset: max(5.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
+}
+
+html {
+  scroll-padding-top: var(--app-sticky-offset);
 }
 
 @theme inline {
@@ -117,6 +123,23 @@ body {
 .glass-card > * {
   position: relative;
   z-index: 1;
+}
+
+/* Native <select> in mail composer: dark form chrome so open lists match the panel (not OS bright blue). */
+.mail-composer-select {
+  color-scheme: dark;
+  accent-color: rgb(34 211 238);
+  color: rgb(241 245 249);
+}
+
+.mail-composer-select option {
+  background-color: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
+.mail-composer-select:focus-visible {
+  outline: 2px solid rgb(34 211 238 / 0.45);
+  outline-offset: 2px;
 }
 
 .page-shell {

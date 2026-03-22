@@ -1,14 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
+import {
+  CHANGE_OPTIONS,
+  DEFAULT_INCLUDED_CHANGE_IDS,
+  RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING,
+  RESOURCE_SECTION_ORDER,
+  getChangeOptionLabelDesc,
+  getOnlineCoursesOptionsInOrder,
+  resourceSectionLabel,
+  type MailLanguage,
+  type ResourceSectionId,
+} from "@/lib/change-options";
 import industryLinks from "@/mail-config/industry-training-links.json";
 import trainingLinks from "@/mail-config/training-links.json";
 import usefulLinksPolicy from "@/mail-config/useful-links-policy.json";
+import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
 
 export type MailInput = {
   mail_type: "pre" | "post";
   template_variant?: "lausanne" | "abroad";
-  language: "en" | "de";
+  language: MailLanguage;
   training_type?: "intro_1day" | "aiim_3day";
   recipient_name: string;
   recipient_optional?: string;
@@ -23,6 +34,8 @@ export type MailInput = {
   include_customer_toolkit?: boolean;
   company_research_text?: string;
   included_change_ids?: string[];
+  /** Shown in the template closing; defaults in renderMail when omitted. */
+  signature_name?: string;
 };
 
 export type RenderResult = {
@@ -36,6 +49,7 @@ type Course = {
   id: string;
   label_en: string;
   label_de: string;
+  label_fr?: string;
   url: string;
   keywords: string[];
 };
@@ -156,7 +170,19 @@ function resolveIncludedChangeIds(input: MailInput) {
   return DEFAULT_INCLUDED_CHANGE_IDS;
 }
 
-function buildTrainingMaterialsBlock(language: "en" | "de", selectedChangeIds: string[]) {
+function trainingMaterialsHeading(lang: MailLanguage) {
+  if (lang === "de") return "Schulungsunterlagen";
+  if (lang === "fr") return "Supports de formation";
+  return "Training materials";
+}
+
+function noMaterialsSelectedLine(lang: MailLanguage) {
+  if (lang === "de") return "Keine Unterlagen ausgewählt.";
+  if (lang === "fr") return "Aucun support sélectionné.";
+  return "No materials selected.";
+}
+
+function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: string[]) {
   const selected = new Set(selectedChangeIds);
   const links = trainingLinks as Record<string, string>;
   const materialOptions = CHANGE_OPTIONS.filter((opt) => opt.category === "training_material");
@@ -168,17 +194,16 @@ function buildTrainingMaterialsBlock(language: "en" | "de", selectedChangeIds: s
     const linkKey = item.link_key ?? "";
     const url = links[linkKey];
     if (!url) continue;
-    const label = language === "de" ? item.label_de : item.label_en;
-    const desc = language === "de" ? item.desc_de : item.desc_en;
+    const { label, desc } = getChangeOptionLabelDesc(item, language);
     rows.push(`${index}. [${label}](${url})`);
     rows.push(desc);
     rows.push("");
     index += 1;
   }
 
-  const heading = language === "de" ? "Schulungsunterlagen" : "Training Materials";
+  const heading = trainingMaterialsHeading(language);
   if (rows.length === 0) {
-    return `${heading}\n\n${language === "de" ? "Keine Unterlagen ausgewählt." : "No materials selected."}`;
+    return `${heading}\n\n${noMaterialsSelectedLine(language)}`;
   }
   return `${heading}\n\n${rows.join("\n").trim()}`;
 }
@@ -201,36 +226,64 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
     .map((course) => course.id);
 }
 
-function buildIndustryTrainingBlock(language: "en" | "de", selectedIds: string[], catalog: Course[]) {
+function industryTrainingBlockTitle(lang: MailLanguage) {
+  if (lang === "de") return "Use-Case-spezifische Trainings und Unterlagen";
+  if (lang === "fr") return "Formations et documents spécifiques au cas d'usage";
+  return "Use-case specific trainings and docs";
+}
+
+function courseDisplayLabel(course: Course, lang: MailLanguage) {
+  if (lang === "de") return course.label_de;
+  if (lang === "fr") return course.label_fr ?? course.label_en;
+  return course.label_en;
+}
+
+function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[], catalog: Course[]) {
   if (!selectedIds.length) return "";
   const byId = new Map(catalog.map((course) => [course.id, course]));
-  const lines = [
-    language === "de" ? "Use-Case-spezifische Trainings und Unterlagen" : "Use-case specific trainings and docs",
-  ];
+  const lines = [industryTrainingBlockTitle(language)];
 
   for (const id of selectedIds) {
     const course = byId.get(id);
     if (!course) continue;
-    const label = language === "de" ? course.label_de : course.label_en;
+    const label = courseDisplayLabel(course, language);
     lines.push(`- [${label}](${course.url})`);
   }
   return lines.length > 1 ? lines.join("\n") : "";
 }
 
-function buildUsefulLinksBlock(language: "en" | "de", selectedIds: string[], input: MailInput) {
+function usefulLinksMainHeader(lang: MailLanguage) {
+  if (lang === "de") return "Weitere nützliche Links";
+  if (lang === "fr") return "Autres liens utiles";
+  return "Other Useful Links";
+}
+
+function policyItemLabelDesc(item: Record<string, unknown>, lang: MailLanguage) {
+  if (lang === "de") {
+    return { label: String(item.label_de ?? ""), desc: String(item.desc_de ?? "") };
+  }
+  if (lang === "fr") {
+    return {
+      label: String(item.label_fr ?? item.label_en ?? ""),
+      desc: String(item.desc_fr ?? item.desc_en ?? ""),
+    };
+  }
+  return { label: String(item.label_en ?? ""), desc: String(item.desc_en ?? "") };
+}
+
+function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], input: MailInput) {
   const policy = usefulLinksPolicy as {
     common: Array<Record<string, unknown>>;
     conditional: Array<Record<string, unknown>>;
   };
   const links = trainingLinks as Record<string, string>;
-  const lines = [language === "de" ? "Weitere nützliche Links" : "Other Useful Links"];
+  const lines = [usefulLinksMainHeader(language)];
 
   const addItem = (item: Record<string, unknown>) => {
     const linkKey = String(item.link_key ?? "");
     const url = links[linkKey];
     if (!url) return;
-    const label = language === "de" ? String(item.label_de ?? "") : String(item.label_en ?? "");
-    const desc = language === "de" ? String(item.desc_de ?? "") : String(item.desc_en ?? "");
+    const { label, desc } = policyItemLabelDesc(item, language);
     lines.push(`[${label}](${url}) - ${desc}`);
   };
 
@@ -246,54 +299,106 @@ function buildUsefulLinksBlock(language: "en" | "de", selectedIds: string[], inp
   return lines.length > 1 ? lines.join("\n") : "";
 }
 
-function buildUsefulLinksBlockFromChanges(language: "en" | "de", selectedChangeIds: string[]) {
+function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChangeIds: string[]) {
   const selected = new Set(selectedChangeIds);
   const catalog = (industryLinks.courses as Course[]) ?? [];
-  const options = CHANGE_OPTIONS.filter((opt) => opt.category === "useful_link");
-  const lines = [language === "de" ? "Weitere nützliche Links" : "Other Useful Links"];
+  const header = usefulLinksMainHeader(language);
 
-  for (const item of options) {
-    if (!selected.has(item.id)) continue;
-    const linkKey = item.link_key ?? "";
-    const url = resolveLinkUrl(linkKey, catalog);
-    if (!url) continue;
-    const label = language === "de" ? item.label_de : item.label_en;
-    const desc = language === "de" ? item.desc_de : item.desc_en;
-    lines.push(`[${label}](${url}) - ${desc}`);
+  const bySection = new Map<ResourceSectionId, typeof CHANGE_OPTIONS>();
+  for (const opt of CHANGE_OPTIONS) {
+    if (opt.category !== "useful_link" || !selected.has(opt.id)) continue;
+    const sec = opt.resourceSection;
+    if (!sec) continue;
+    if (!bySection.has(sec)) bySection.set(sec, []);
+    bySection.get(sec)!.push(opt);
   }
-  return lines.length > 1 ? lines.join("\n") : "";
+
+  const parts: string[] = [header, ""];
+
+  function resolveOnlineItemUrl(item: (typeof CHANGE_OPTIONS)[number]): string {
+    if (item.category === "thinkific") return item.url ?? "";
+    return resolveLinkUrl(item.link_key ?? "", catalog);
+  }
+
+  for (const sectionId of RESOURCE_SECTION_ORDER) {
+    if (sectionId === "online_courses") {
+      const ordered = getOnlineCoursesOptionsInOrder().filter((opt) => selected.has(opt.id));
+      const withUrl = ordered.filter((item) => resolveOnlineItemUrl(item));
+      if (!withUrl.length) continue;
+
+      if (!RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING.has(sectionId)) {
+        parts.push(resourceSectionLabel(sectionId, language));
+        parts.push("");
+      }
+
+      let n = 1;
+      for (const item of withUrl) {
+        const url = resolveOnlineItemUrl(item);
+        const { label, desc } = getChangeOptionLabelDesc(item, language);
+        parts.push(`${n}. [${label}](${url})`);
+        parts.push(desc);
+        parts.push("");
+        n += 1;
+      }
+      continue;
+    }
+
+    const items = bySection.get(sectionId);
+    const withUrl = items?.filter((item) => resolveLinkUrl(item.link_key ?? "", catalog)) ?? [];
+
+    if (!withUrl.length) continue;
+
+    if (!RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING.has(sectionId)) {
+      const sectionTitle = resourceSectionLabel(sectionId, language);
+      parts.push(sectionTitle);
+      parts.push("");
+    }
+
+    let n = 1;
+    for (const item of withUrl) {
+      const url = resolveLinkUrl(item.link_key ?? "", catalog);
+      const { label, desc } = getChangeOptionLabelDesc(item, language);
+      parts.push(`${n}. [${label}](${url})`);
+      parts.push(desc);
+      parts.push("");
+      n += 1;
+    }
+  }
+
+  const body = parts.join("\n").replace(/\n+$/, "");
+  const hasContent = RESOURCE_SECTION_ORDER.some((id) => {
+    if (id === "online_courses") {
+      return getOnlineCoursesOptionsInOrder().some((item) => {
+        if (!selected.has(item.id)) return false;
+        return Boolean(resolveOnlineItemUrl(item));
+      });
+    }
+    const items = bySection.get(id);
+    if (!items?.length) return false;
+    return items.some((item) => resolveLinkUrl(item.link_key ?? "", catalog));
+  });
+  return hasContent ? body : "";
 }
 
-function buildThinkificBlockFromChanges(language: "en" | "de", selectedChangeIds: string[]) {
-  const selected = new Set(selectedChangeIds);
-  const options = CHANGE_OPTIONS.filter((opt) => opt.category === "thinkific");
-  const lines = [
-    language === "de" ? "Use-Case-spezifische Trainings und Unterlagen" : "Use-case specific trainings and docs",
-  ];
-
-  for (const item of options) {
-    if (!selected.has(item.id)) continue;
-    if (!item.url) continue;
-    const label = language === "de" ? item.label_de : item.label_en;
-    const desc = language === "de" ? item.desc_de : item.desc_en;
-    lines.push(`[${label}](${item.url}) - ${desc}`);
-  }
-  return lines.length > 1 ? lines.join("\n") : "";
-}
-
-function certificationNote(language: "en" | "de", enabled?: boolean) {
+function certificationNote(language: MailLanguage, enabled?: boolean) {
   if (!enabled) return "";
   if (language === "de") {
     return "Zertifizierungshinweis\nEs freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid.";
   }
+  if (language === "fr") {
+    return "Note sur la certification\nJe suis heureux de vous confirmer que vous avez terminé la formation avec succès. Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés.";
+  }
   return "Certification note\nI am happy to confirm that you successfully completed the training. Your certificates act as official proof in our records that you are trained pilots.";
 }
 
-function simulatorNote(language: "en" | "de", enabled?: boolean) {
+function simulatorNote(language: MailLanguage, enabled?: boolean) {
   if (!enabled) return "";
   const course = "https://flyabilityacademy.thinkific.com/courses/Introductorytrainingcourse";
   if (language === "de") {
     return `Hinweis für Kollegen ohne Trainingsteilnahme\nKollegen, die nicht teilnehmen konnten, können ihr Zertifikat über den Simulator erhalten. Nutzt dazu die Training App auf dem Tablet und absolviert den Kurs [Einführungstraining (Online-Kurs)](${course}).`;
+  }
+  if (language === "fr") {
+    return `Note pour les collègues n'ayant pas pu participer\nLes collègues absents peuvent tout de même obtenir leur certification via le simulateur dans l'application tablette. Ils peuvent suivre la [formation d'introduction (cours en ligne)](${course}).`;
   }
   return `Note for colleagues who missed the training\nColleagues who could not attend can still obtain certification through simulator training in the tablet app. They can complete the [Introductory Training Course](${course}).`;
 }
@@ -326,11 +431,12 @@ export function renderMail(input: MailInput): RenderResult {
         : buildUsefulLinksBlock(input.language, selected, input),
     INDUSTRY_TRAINING_BLOCK:
       input.included_change_ids && input.included_change_ids.length > 0
-        ? buildThinkificBlockFromChanges(input.language, includedChangeIds)
+        ? ""
         : buildIndustryTrainingBlock(input.language, selected, catalog),
     CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note),
     SIMULATOR_NOTE_BLOCK: simulatorNote(input.language, input.include_simulator_note),
     COMPANY_CONTEXT_LINE: "",
+    SIGNATURE_NAME: (input.signature_name && input.signature_name.trim()) || MAIL_SIGNATURE_DEFAULT_NAME,
   };
 
   subject = normalize(replacePlaceholders(subject, replacements)).trim();

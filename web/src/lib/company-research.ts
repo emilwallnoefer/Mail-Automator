@@ -105,7 +105,7 @@ function applyCodewordAssetRules(source: string, included: Set<string>) {
     },
     {
       patterns: [/\b(ut|ultrasonic|thickness|ndt|corrosion)\b/],
-      ids: ["useful_intro_ut", "thinkific_elios3_ut"],
+      ids: ["useful_intro_ut"],
     },
     {
       patterns: [/\b(gas sensor|gas detection|methane|h2s|voc)\b/],
@@ -216,7 +216,7 @@ function inferCompanyActivityAssets(
       id: "ut-ndt",
       evidencePatterns: [/\b(ultrasonic|ndt|thickness|corrosion)\b/],
       droneUsePatterns: [/\b(inspection|asset integrity|thickness|corrosion)\b/],
-      assetIds: ["useful_intro_ut", "thinkific_elios3_ut"],
+      assetIds: ["useful_intro_ut"],
     },
   ];
 

@@ -44,7 +44,7 @@ Wishing you great success with your drone inspections.
 Do not hesitate to reach out if you have any questions.
 
 Best regards,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
 ---
@@ -87,7 +87,7 @@ Viel Erfolg beim Fliegen.
 Zögert nicht, euch bei Fragen jederzeit bei mir zu melden.
 
 Mit freundlichen Grüßen,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
 ---
@@ -132,7 +132,7 @@ Note on training materials: After the training, you will receive the complete tr
 If you have any further questions, please let me know.
 
 Best regards,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
 ---
@@ -176,7 +176,7 @@ Bitte vorbereiten:
 Hinweis zu Unterlagen: Nach der Schulung erhaltet ihr das komplette Trainingspaket, Beispieldatensätze sowie alle am Trainingstag erzeugten Dateien.
 
 Viele Grüße,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
 ---
@@ -217,7 +217,7 @@ Note on training materials: After the training, you will receive the complete tr
 If you have any further questions, please let me know.
 
 Best regards,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
 ---
@@ -260,5 +260,123 @@ Nach dem Training erhalten Sie das vollständige Trainingspaket, Beispieldatens�
 Falls Sie weitere Fragen haben, lassen Sie es mich gerne wissen.
 
 Freundliche Grüße,
-Emil Wallnöfer
+{{SIGNATURE_NAME}}
+Flyability Pilot & Trainer
+
+---
+
+## TEMPLATE_ID: post_fr
+
+SUBJECT: Compte rendu de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+
+Bonjour {{RECIPIENT_NAME}},
+
+{{CUSTOM_OPENER_NOTE}}
+
+Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers toutes les présentations utiles que nous avons utilisées. Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.
+
+{{TRAINING_MATERIALS_BLOCK}}
+
+{{USEFUL_LINKS_BLOCK}}
+
+{{INDUSTRY_TRAINING_BLOCK}}
+
+{{CERTIFICATION_NOTE_BLOCK}}
+{{SIMULATOR_NOTE_BLOCK}}
+
+Bons vols.
+
+Je vous souhaite beaucoup de succès dans vos inspections par drone.
+N'hésitez pas à me contacter pour toute question.
+
+Cordialement,
+{{SIGNATURE_NAME}}
+Flyability Pilot & Trainer
+
+---
+
+## TEMPLATE_ID: pre_abroad_fr
+
+SUBJECT: Programme de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+
+Bonjour {{RECIPIENT_NAME}},
+
+Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à {{LOCATION}}. Pour que tout se passe au mieux, vous trouverez ci-dessous le programme.
+
+<!-- DAY1_START -->
+Programme :
+Jour 1 - Fondamentaux & système
+* Sécurité et bonnes pratiques
+* Mise en route Elios 3, charges utiles, check-lists
+* Vols d'entraînement (navigation et stabilité)
+* Flux de données et première analyse
+<!-- DAY1_END -->
+
+<!-- DAY2_START -->
+Jour 2 - Avancé & mise en pratique
+* Planification de mission (y compris vol d'exploration)
+* Exercice pratique sur site / scénario
+* Traitement des données et reporting
+<!-- DAY2_END -->
+
+<!-- DAY3_START -->
+Jour 3 - AIIM : avancé
+* Traitement des données et reporting
+* Questions
+<!-- DAY3_END -->
+
+Merci de prévoir :
+* Une salle / espace pour la théorie et le traitement des données
+* L'accès à la zone de vol
+
+La formation commence à 9h.
+
+Note sur les supports : après la formation, vous recevrez le pack complet, des jeux de données d'exemple ainsi que tous les fichiers produits pendant les jours de formation.
+
+Pour toute question, n'hésitez pas à me contacter.
+
+Cordialement,
+{{SIGNATURE_NAME}}
+Flyability Pilot & Trainer
+
+---
+
+## TEMPLATE_ID: pre_lausanne_fr
+
+SUBJECT: Programme de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+
+Bonjour {{RECIPIENT_NAME}},
+
+Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à Lausanne. Pour que tout se passe au mieux, vous trouverez ci-dessous le programme.
+
+<!-- DAY1_START -->
+Programme :
+Jour 1 - Fondamentaux & système
+* Sécurité et bonnes pratiques
+* Mise en route Elios 3, charges utiles, check-lists
+* Vols d'entraînement (navigation et stabilité)
+* Flux de données et première analyse
+<!-- DAY1_END -->
+
+<!-- DAY2_START -->
+Jour 2 - Avancé & mise en pratique
+* Planification de mission (y compris vol d'exploration)
+* Exercice pratique sur site / scénario
+* Traitement des données et reporting
+<!-- DAY2_END -->
+
+<!-- DAY3_START -->
+Jour 3 - AIIM : avancé
+* Traitement des données et reporting
+* Questions
+<!-- DAY3_END -->
+
+La formation commence à 9h.
+
+Note sur les supports : après la formation, vous recevrez le pack complet, des jeux de données d'exemple ainsi que tous les fichiers produits pendant les jours de formation.
+
+Pour toute question, n'hésitez pas à me contacter.
+
+Cordialement,
+{{SIGNATURE_NAME}}
 Flyability Pilot & Trainer

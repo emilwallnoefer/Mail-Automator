@@ -2,13 +2,31 @@
 
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { CHANGE_OPTIONS, DEFAULT_INCLUDED_CHANGE_IDS } from "@/lib/change-options";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
+import {
+  CHANGE_OPTIONS,
+  DEFAULT_INCLUDED_CHANGE_IDS,
+  getChangeOptionLabelDesc,
+  getOnlineCoursesOptionsInOrder,
+  type MailLanguage,
+  resourceSectionLabel,
+  RESOURCE_SECTION_ORDER,
+} from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
+import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
 
 type DashboardShellProps = {
   email: string;
@@ -44,7 +62,7 @@ function isSameGeneratedDraft(previous: GenerateResponse | null, next: GenerateR
 type FormState = {
   mail_type: "" | "pre" | "post";
   template_variant: "" | "lausanne" | "abroad";
-  language: "" | "en" | "de";
+  language: "" | MailLanguage;
   training_type: "" | "intro_1day" | "aiim_3day";
   recipient_name: string;
   recipient_optional: string;
@@ -54,6 +72,8 @@ type FormState = {
   location: string;
   to: string;
   included_change_ids: string[];
+  /** Closing name in generated training emails; synced from Settings. */
+  signature_name: string;
 };
 
 const INITIAL_FORM_STATE: FormState = {
@@ -69,6 +89,7 @@ const INITIAL_FORM_STATE: FormState = {
   location: "",
   to: "",
   included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
+  signature_name: MAIL_SIGNATURE_DEFAULT_NAME,
 };
 
 function ProgressiveField({ show, children }: { show: boolean; children: ReactNode }) {
@@ -89,13 +110,39 @@ function ProgressiveField({ show, children }: { show: boolean; children: ReactNo
   );
 }
 
+function composerSegmentClass(active: boolean) {
+  return [
+    "rounded-lg border px-3 py-2.5 text-sm font-medium transition",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/90",
+    active
+      ? "border-cyan-400/80 bg-cyan-400/90 text-slate-900 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]"
+      : "border-white/15 bg-white/10 text-slate-200 hover:border-white/25 hover:bg-white/14",
+  ].join(" ");
+}
+
+function ComposerChoiceRow({
+  label,
+  children,
+  columns = 2,
+}: {
+  label: string;
+  children: ReactNode;
+  columns?: 2 | 3;
+}) {
+  return (
+    <div role="group" aria-label={label}>
+      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">{label}</p>
+      <div className={columns === 3 ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>{children}</div>
+    </div>
+  );
+}
+
 export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
-  const [showChanges, setShowChanges] = useState(false);
   const [showComposer, setShowComposer] = useState(initialRole === "sales");
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
@@ -126,6 +173,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const shouldShowChanges = form.mail_type === "post" ? shouldShowUseCase && Boolean(form.use_case) : false;
   const shouldShowRecipientOptional = form.mail_type === "post" ? shouldShowChanges : shouldShowRecipient;
 
+  const composerMailLang: MailLanguage =
+    form.language === "en" || form.language === "de" || form.language === "fr" ? form.language : "en";
+
   const generateDisabled =
     !form.mail_type ||
     !form.language ||
@@ -137,6 +187,57 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     connected: false,
   });
   const [draftInfo, setDraftInfo] = useState<{ draftId: string; messageId: string } | null>(null);
+
+  const groupedChangeOptions = useMemo(() => {
+    const materials = CHANGE_OPTIONS.filter((o) => o.category === "training_material");
+    const onlineOrdered = getOnlineCoursesOptionsInOrder(CHANGE_OPTIONS);
+    const usefulSections = RESOURCE_SECTION_ORDER.map((sectionId) => ({
+      sectionId,
+      options:
+        sectionId === "online_courses"
+          ? onlineOrdered
+          : CHANGE_OPTIONS.filter((o) => o.category === "useful_link" && o.resourceSection === sectionId),
+    })).filter((s) => s.options.length > 0);
+    return { materials, usefulSections };
+  }, []);
+
+  const selectTemplateVariant = useCallback((nextVariant: FormState["template_variant"]) => {
+    if (!nextVariant) return;
+    setForm((prev) => ({
+      ...prev,
+      template_variant: nextVariant,
+      location:
+        nextVariant === "lausanne"
+          ? "Lausanne"
+          : prev.location === "Lausanne"
+            ? ""
+            : prev.location,
+    }));
+    setChangesTouched(false);
+  }, []);
+
+  const selectTrainingType = useCallback((nextTrainingType: FormState["training_type"]) => {
+    if (!nextTrainingType) return;
+    setForm((prev) => {
+      const hasAiim = prev.included_change_ids.includes("material_aiim");
+      if (nextTrainingType === "intro_1day") {
+        return {
+          ...prev,
+          training_type: nextTrainingType,
+          included_change_ids: prev.included_change_ids.filter((id) => id !== "material_aiim"),
+        };
+      }
+      if (nextTrainingType === "aiim_3day" && !hasAiim) {
+        return {
+          ...prev,
+          training_type: nextTrainingType,
+          included_change_ids: [...prev.included_change_ids, "material_aiim"],
+        };
+      }
+      return { ...prev, training_type: nextTrainingType };
+    });
+    setChangesTouched(false);
+  }, []);
 
   const cards = useMemo(
     () => [
@@ -163,6 +264,29 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     () => (userRole === "sales" ? cards.filter((card) => card.title === "Time Tracker") : cards),
     [cards, userRole],
   );
+
+  useEffect(() => {
+    function onMailSignatureSaved(event: Event) {
+      const detail = (event as CustomEvent<{ signature_name?: string }>).detail;
+      const name = typeof detail?.signature_name === "string" ? detail.signature_name.trim() : "";
+      if (!name) return;
+      setForm((prev) => ({ ...prev, signature_name: name }));
+    }
+    window.addEventListener("mail-signature-saved", onMailSignatureSaved);
+    return () => window.removeEventListener("mail-signature-saved", onMailSignatureSaved);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (userRole === "sales") return;
+      const sigResponse = await fetch("/api/settings/mail-signature");
+      if (sigResponse.ok) {
+        const sigData = (await sigResponse.json()) as { signature_name?: string };
+        const name = (sigData.signature_name ?? "").trim() || MAIL_SIGNATURE_DEFAULT_NAME;
+        setForm((prev) => ({ ...prev, signature_name: name }));
+      }
+    })();
+  }, [userRole]);
 
   useEffect(() => {
     (async () => {
@@ -323,6 +447,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           to: form.to || form.recipient_optional || undefined,
           recipient_optional: form.recipient_optional || undefined,
           included_change_ids: changesTouched ? form.included_change_ids : undefined,
+          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
         }),
       });
       const data = (await response.json()) as GenerateResponse | { error: string };
@@ -388,13 +513,27 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   }
 
   function handleResetComposer() {
-    setForm({ ...INITIAL_FORM_STATE, included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS] });
+    setForm((prev) => ({
+      ...INITIAL_FORM_STATE,
+      included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
+      signature_name: prev.signature_name,
+    }));
     setResult(null);
     setError(null);
     setDraftInfo(null);
-    setShowChanges(false);
     setChangesTouched(false);
   }
+
+  const handleResourceDetailsToggle = useCallback((e: SyntheticEvent<HTMLDetailsElement>) => {
+    const el = e.currentTarget;
+    if (!el.open) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        /* nearest: only scroll enough to show expanded content; avoids hiding fields above the accordions. */
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      });
+    });
+  }, []);
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-white">
@@ -505,7 +644,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                       userRole={userRole ?? "pilot"}
                     />
                   ) : (
-                    <section className="underwater-panel grid items-start gap-6 rounded-2xl p-2 lg:grid-cols-[1.1fr_0.9fr]">
+                    <section className="underwater-panel grid items-start gap-6 rounded-2xl p-2 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
                   <div className="bubble-layer" aria-hidden="true">
                     {[
                       { left: "8%", size: "9px", duration: "9s", delay: "0s" },
@@ -529,101 +668,114 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                       />
                     ))}
                   </div>
-                  <div className="glass-card hourlogger-surface p-4 md:p-5">
+                  <div className="glass-card hourlogger-surface min-w-0 max-w-full p-4 md:p-5">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
-            <div className="mt-4">
-              <select
-                value={form.mail_type}
-                onChange={(e) => {
-                  setForm({ ...form, mail_type: e.target.value as FormState["mail_type"] });
-                  setChangesTouched(false);
-                }}
-                className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-              >
-                <option value="">Mail Type</option>
-                <option value="pre">Before Training</option>
-                <option value="post">After Training</option>
-              </select>
+            <div className="mt-4 space-y-3">
+              <ComposerChoiceRow label="Mail type">
+                <button
+                  type="button"
+                  aria-pressed={form.mail_type === "pre"}
+                  className={composerSegmentClass(form.mail_type === "pre")}
+                  onClick={() => {
+                    setForm({ ...form, mail_type: "pre" });
+                    setChangesTouched(false);
+                  }}
+                >
+                  Before training
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={form.mail_type === "post"}
+                  className={composerSegmentClass(form.mail_type === "post")}
+                  onClick={() => {
+                    setForm({ ...form, mail_type: "post" });
+                    setChangesTouched(false);
+                  }}
+                >
+                  After training
+                </button>
+              </ComposerChoiceRow>
+
+              <ProgressiveField show={shouldShowLanguage}>
+                <ComposerChoiceRow label="Language" columns={3}>
+                  <button
+                    type="button"
+                    aria-pressed={form.language === "de"}
+                    className={composerSegmentClass(form.language === "de")}
+                    onClick={() => {
+                      setForm({ ...form, language: "de" });
+                      setChangesTouched(false);
+                    }}
+                  >
+                    DE
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={form.language === "en"}
+                    className={composerSegmentClass(form.language === "en")}
+                    onClick={() => {
+                      setForm({ ...form, language: "en" });
+                      setChangesTouched(false);
+                    }}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={form.language === "fr"}
+                    className={composerSegmentClass(form.language === "fr")}
+                    onClick={() => {
+                      setForm({ ...form, language: "fr" });
+                      setChangesTouched(false);
+                    }}
+                  >
+                    FR
+                  </button>
+                </ComposerChoiceRow>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowVariant}>
+                <ComposerChoiceRow label="Training venue">
+                  <button
+                    type="button"
+                    aria-pressed={form.template_variant === "abroad"}
+                    className={composerSegmentClass(form.template_variant === "abroad")}
+                    onClick={() => selectTemplateVariant("abroad")}
+                  >
+                    Abroad
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={form.template_variant === "lausanne"}
+                    className={composerSegmentClass(form.template_variant === "lausanne")}
+                    onClick={() => selectTemplateVariant("lausanne")}
+                  >
+                    In Lausanne
+                  </button>
+                </ComposerChoiceRow>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowTrainingType}>
+                <ComposerChoiceRow label="Training type">
+                  <button
+                    type="button"
+                    aria-pressed={form.training_type === "intro_1day"}
+                    className={composerSegmentClass(form.training_type === "intro_1day")}
+                    onClick={() => selectTrainingType("intro_1day")}
+                  >
+                    Intro (1 day)
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={form.training_type === "aiim_3day"}
+                    className={composerSegmentClass(form.training_type === "aiim_3day")}
+                    onClick={() => selectTrainingType("aiim_3day")}
+                  >
+                    AIIM (3 days)
+                  </button>
+                </ComposerChoiceRow>
+              </ProgressiveField>
             </div>
-
-            <ProgressiveField show={shouldShowLanguage}>
-              <div className="mt-3">
-                <select
-                  value={form.language}
-                  onChange={(e) => {
-                    setForm({ ...form, language: e.target.value as FormState["language"] });
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                >
-                  <option value="">Language</option>
-                  <option value="de">German</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
-            </ProgressiveField>
-
-            <ProgressiveField show={shouldShowVariant}>
-              <div className="mt-3">
-                <select
-                  value={form.template_variant}
-                  onChange={(e) => {
-                    const nextVariant = e.target.value as FormState["template_variant"];
-                    setForm((prev) => ({
-                      ...prev,
-                      template_variant: nextVariant,
-                      location:
-                        nextVariant === "lausanne"
-                          ? "Lausanne"
-                          : prev.location === "Lausanne"
-                            ? ""
-                            : prev.location,
-                    }));
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                >
-                  <option value="">Training Location</option>
-                  <option value="abroad">Abroad</option>
-                  <option value="lausanne">In Lausanne</option>
-                </select>
-              </div>
-            </ProgressiveField>
-
-            <ProgressiveField show={shouldShowTrainingType}>
-              <div className="mt-3">
-                <select
-                  value={form.training_type}
-                  onChange={(e) => {
-                    const nextTrainingType = e.target.value as FormState["training_type"];
-                    setForm((prev) => {
-                      const hasAiim = prev.included_change_ids.includes("material_aiim");
-                      if (nextTrainingType === "intro_1day") {
-                        return {
-                          ...prev,
-                          training_type: nextTrainingType,
-                          included_change_ids: prev.included_change_ids.filter((id) => id !== "material_aiim"),
-                        };
-                      }
-                      if (nextTrainingType === "aiim_3day" && !hasAiim) {
-                        return {
-                          ...prev,
-                          training_type: nextTrainingType,
-                          included_change_ids: [...prev.included_change_ids, "material_aiim"],
-                        };
-                      }
-                      return { ...prev, training_type: nextTrainingType };
-                    });
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                >
-                  <option value="">Training Type</option>
-                  <option value="intro_1day">Intro (1 Day)</option>
-                  <option value="aiim_3day">AIIM (3 Days)</option>
-                </select>
-              </div>
-            </ProgressiveField>
 
             <div className="mt-3 grid gap-3">
               <ProgressiveField show={shouldShowRecipient}>
@@ -684,40 +836,37 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
-                <div className="rounded-lg border border-white/15 bg-white/5 p-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowChanges((prev) => !prev);
-                    }}
-                    className="flex w-full items-center justify-between rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                <div className="space-y-2 text-sm">
+                  <details
+                    className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+                    onToggle={handleResourceDetailsToggle}
                   >
-                    <span>Suggested Resources</span>
-                    <span>{showChanges ? "Hide" : "Show"}</span>
-                  </button>
-                  {showChanges && (
-                    <div className="mt-3 max-h-64 space-y-2 overflow-auto pr-1 text-sm">
-                      {CHANGE_OPTIONS.map((option) => {
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+                      <span>Core materials</span>
+                      <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+                    </summary>
+                    <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+                      {groupedChangeOptions.materials.map((option) => {
                         const checked = form.included_change_ids.includes(option.id);
-                        const label = form.language === "de" ? option.label_de : option.label_en;
-                        const desc = form.language === "de" ? option.desc_de : option.desc_en;
+                        const { label, desc } = getChangeOptionLabelDesc(option, composerMailLang);
                         return (
-                          <label key={option.id} className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2">
+                          <label
+                            key={option.id}
+                            className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2"
+                          >
                             <input
                               type="checkbox"
                               className="mt-1"
                               checked={checked}
-                              onChange={(e) =>
-                                {
-                                  setChangesTouched(true);
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    included_change_ids: e.target.checked
-                                      ? [...prev.included_change_ids, option.id]
-                                      : prev.included_change_ids.filter((id) => id !== option.id),
-                                  }));
-                                }
-                              }
+                              onChange={(e) => {
+                                setChangesTouched(true);
+                                setForm((prev) => ({
+                                  ...prev,
+                                  included_change_ids: e.target.checked
+                                    ? [...prev.included_change_ids, option.id]
+                                    : prev.included_change_ids.filter((id) => id !== option.id),
+                                }));
+                              }}
                             />
                             <span>
                               <span className="block">{label}</span>
@@ -727,7 +876,51 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                         );
                       })}
                     </div>
-                  )}
+                  </details>
+
+                  {groupedChangeOptions.usefulSections.map((section) => (
+                    <details
+                      key={section.sectionId}
+                      className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+                      onToggle={handleResourceDetailsToggle}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+                        <span>{resourceSectionLabel(section.sectionId, composerMailLang)}</span>
+                        <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+                      </summary>
+                      <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+                        {section.options.map((option) => {
+                          const checked = form.included_change_ids.includes(option.id);
+                          const { label, desc } = getChangeOptionLabelDesc(option, composerMailLang);
+                          return (
+                            <label
+                              key={option.id}
+                              className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2"
+                            >
+                              <input
+                                type="checkbox"
+                                className="mt-1"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setChangesTouched(true);
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    included_change_ids: e.target.checked
+                                      ? [...prev.included_change_ids, option.id]
+                                      : prev.included_change_ids.filter((id) => id !== option.id),
+                                  }));
+                                }}
+                              />
+                              <span>
+                                <span className="block">{label}</span>
+                                <span className="text-xs text-slate-300/80">{desc}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  ))}
                 </div>
               </ProgressiveField>
             </div>
@@ -771,7 +964,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
             )}
                   </div>
 
-                  <div className="glass-card hourlogger-surface self-start p-4 md:p-5">
+                  <div className="glass-card hourlogger-surface min-w-0 self-start p-4 md:p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (

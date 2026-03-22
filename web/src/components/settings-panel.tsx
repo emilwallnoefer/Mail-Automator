@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  MAIL_SIGNATURE_CUSTOM_VALUE,
+  MAIL_SIGNATURE_DEFAULT_NAME,
+  MAIL_SIGNATURE_NAME_PRESETS,
+  isPresetSignatureName,
+} from "@/lib/mail-signature-presets";
 
 type SettingsPanelProps = {
   email: string;
@@ -16,7 +22,7 @@ export function SettingsPanel({
   autoOpenProgramReadmeToken = 0,
   userRole = "pilot",
 }: SettingsPanelProps) {
-  const [openSetting, setOpenSetting] = useState<"gmail" | "mapping" | "import" | null>(null);
+  const [openSetting, setOpenSetting] = useState<"gmail" | "mapping" | "mail_signature" | "import" | null>(null);
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -39,11 +45,18 @@ export function SettingsPanel({
   const [deletingAccount, setDeletingAccount] = useState(false);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const isSalesOnly = userRole === "sales";
+  const [mailSigPreset, setMailSigPreset] = useState<string>(MAIL_SIGNATURE_NAME_PRESETS[0]);
+  const [mailSigCustom, setMailSigCustom] = useState("");
+  const [mailSigSaving, setMailSigSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (isSalesOnly) return;
-      const [gmailResponse, mappingResponse] = await Promise.all([fetch("/api/gmail/status"), fetch("/api/settings/travel-mapping")]);
+      const [gmailResponse, mappingResponse, sigResponse] = await Promise.all([
+        fetch("/api/gmail/status"),
+        fetch("/api/settings/travel-mapping"),
+        fetch("/api/settings/mail-signature"),
+      ]);
       if (gmailResponse.ok) {
         const data = (await gmailResponse.json()) as { connected: boolean; gmail_email?: string | null };
         setGmailStatus(data);
@@ -59,6 +72,17 @@ export function SettingsPanel({
           locationColumn: String(mapping.locationColumn ?? ""),
           responsibleColumn: String(mapping.responsibleColumn ?? ""),
         });
+      }
+      if (sigResponse.ok) {
+        const sig = (await sigResponse.json()) as { signature_name?: string };
+        const name = (sig.signature_name ?? "").trim() || MAIL_SIGNATURE_DEFAULT_NAME;
+        if (isPresetSignatureName(name)) {
+          setMailSigPreset(name);
+          setMailSigCustom("");
+        } else {
+          setMailSigPreset(MAIL_SIGNATURE_CUSTOM_VALUE);
+          setMailSigCustom(name);
+        }
       }
     })();
   }, [isSalesOnly]);
@@ -84,6 +108,36 @@ export function SettingsPanel({
       setError((err as Error).message);
     } finally {
       setMappingSaving(false);
+    }
+  }
+
+  async function handleSaveMailSignature() {
+    const effective =
+      mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? mailSigCustom.trim() : mailSigPreset.trim();
+    if (!effective) {
+      setError("Enter a name for the email signature.");
+      setMessage(null);
+      return;
+    }
+    setMailSigSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/settings/mail-signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signature_name: effective }),
+      });
+      const data = (await response.json()) as { error?: string; signature_name?: string };
+      if (!response.ok) throw new Error(data.error || "Could not save signature name.");
+      setMessage("Mail signature name saved.");
+      window.dispatchEvent(
+        new CustomEvent("mail-signature-saved", { detail: { signature_name: data.signature_name ?? effective } }),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMailSigSaving(false);
     }
   }
 
@@ -259,7 +313,7 @@ export function SettingsPanel({
 
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Overview</h2>
-        <div className={`mt-3 grid gap-3 ${isSalesOnly ? "md:grid-cols-1" : "md:grid-cols-3"}`}>
+        <div className={`mt-3 grid gap-3 ${isSalesOnly ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-4"}`}>
           {!isSalesOnly ? (
             <div className="rounded-xl border border-white/15 bg-white/5 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Gmail</p>
@@ -292,6 +346,24 @@ export function SettingsPanel({
                 className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
               >
                 {openSetting === "mapping" ? "Hide mapping settings" : "Open mapping settings"}
+              </button>
+            </div>
+          ) : null}
+          {!isSalesOnly ? (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Mail signature</p>
+              <p className="mt-1 text-sm">
+                {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE
+                  ? mailSigCustom.trim() || "Custom name"
+                  : mailSigPreset}
+              </p>
+              <p className="mt-1 text-xs text-slate-300/80">Name shown at the end of generated training emails.</p>
+              <button
+                type="button"
+                onClick={() => setOpenSetting((prev) => (prev === "mail_signature" ? null : "mail_signature"))}
+                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
+              >
+                {openSetting === "mail_signature" ? "Hide signature settings" : "Open signature settings"}
               </button>
             </div>
           ) : null}
@@ -340,6 +412,52 @@ export function SettingsPanel({
           </div>
         </div>
       </section>
+      ) : null}
+
+      {!isSalesOnly && openSetting === "mail_signature" ? (
+        <section className="glass-card hourlogger-surface p-4 md:p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Mail signature name</h2>
+          <p className="mt-2 text-xs text-slate-300/90">
+            This name appears in the closing of generated training emails (e.g. “Best regards, …”).
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="block min-w-0 flex-1">
+              <span className="mb-1 block text-xs text-slate-200/90">Preset</span>
+              <select
+                value={mailSigPreset}
+                onChange={(event) => setMailSigPreset(event.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+              >
+                {MAIL_SIGNATURE_NAME_PRESETS.map((preset) => (
+                  <option key={preset} value={preset}>
+                    {preset}
+                  </option>
+                ))}
+                <option value={MAIL_SIGNATURE_CUSTOM_VALUE}>Custom name…</option>
+              </select>
+            </label>
+            {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? (
+              <label className="block min-w-0 flex-1">
+                <span className="mb-1 block text-xs text-slate-200/90">Custom name</span>
+                <input
+                  value={mailSigCustom}
+                  onChange={(event) => setMailSigCustom(event.target.value)}
+                  placeholder="Your name"
+                  maxLength={120}
+                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                />
+              </label>
+            ) : null}
+            <button
+              type="button"
+              disabled={mailSigSaving}
+              onClick={() => void handleSaveMailSignature()}
+              className="rounded-lg bg-cyan-400/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:bg-cyan-300 disabled:opacity-50"
+            >
+              {mailSigSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {!isSalesOnly && openSetting === "mapping" ? (
