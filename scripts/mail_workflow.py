@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -97,20 +98,81 @@ def normalize_spacing(text: str) -> str:
     return compact + "\n"
 
 
+def resolve_public_asset_url(path_or_url: str) -> str:
+    raw = (path_or_url or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    if raw.startswith("/"):
+        base = (os.environ.get("NEXT_PUBLIC_SITE_URL") or "").rstrip("/")
+        if not base:
+            vercel = (os.environ.get("VERCEL_URL") or "").strip()
+            if vercel:
+                base = f"https://{vercel}".rstrip("/")
+        if base:
+            return f"{base}{raw}"
+    return raw
+
+
 def strip_markdown_links(text: str) -> str:
-    return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", text)
+    def img_alt(m: re.Match) -> str:
+        alt = (m.group(1) or "").strip()
+        return alt or "QR code"
+
+    text = re.sub(r"!\[([^\]]*)\]\((https?://[^)]+)\)", img_alt, text)
+    text = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", text)
+    return text
+
+
+def _escape_html_text(s: str) -> str:
+    return html.escape(s, quote=False)
+
+
+_EMAIL_HR = '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0;" />'
+
+
+def _is_markdown_horizontal_rule(line: str) -> bool:
+    t = line.strip()
+    return bool(re.match(r"^(\*{3,}|_{3,}|-{3,})$", t))
 
 
 def markdown_to_html(text: str) -> str:
-    escaped = html.escape(text)
-    linked = re.sub(
-        r"\[([^\]]+)\]\((https?://[^)]+)\)",
-        lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>',
-        escaped,
-    )
-    paragraphs = linked.strip().split("\n\n")
-    html_paragraphs = [f"<p>{p.replace('\n', '<br>')}</p>" for p in paragraphs if p.strip()]
-    return "\n".join(html_paragraphs)
+    def process_paragraph(p: str) -> str:
+        chunk = p.strip()
+        if _is_markdown_horizontal_rule(chunk):
+            return _EMAIL_HR
+        chunk = re.sub(
+            r"!\[([^\]]*)\]\((https?://[^)]+)\)",
+            lambda m: (
+                f'<img src="{m.group(2)}" alt="{_escape_html_text(m.group(1) or "")}" '
+                'style="max-width:240px;height:auto;display:block;margin-top:8px;" />'
+            ),
+            chunk,
+        )
+        chunk = re.sub(
+            r"\*\*([^*]+)\*\*",
+            lambda m: f"<strong>{_escape_html_text(m.group(1))}</strong>",
+            chunk,
+        )
+        chunk = re.sub(
+            r"\[([^\]]+)\]\((https?://[^)]+)\)",
+            lambda m: f'<a href="{m.group(2)}">{_escape_html_text(m.group(1))}</a>',
+            chunk,
+        )
+        parts = re.split(r"(<[^>]+>)", chunk)
+        merged: List[str] = []
+        for part in parts:
+            if part.startswith("<"):
+                merged.append(part)
+            else:
+                merged.append(_escape_html_text(part))
+        inner = "".join(merged).replace("\n", "<br>")
+        return f"<p>{inner}</p>"
+
+    paragraphs = [p for p in re.split(r"\n\n+", text.strip()) if p.strip()]
+    out = "\n".join(process_paragraph(p) for p in paragraphs)
+    return re.sub(r"(?:<hr[^>]*>\s*){2,}", _EMAIL_HR, out, flags=re.IGNORECASE)
 
 
 def parse_industry_ids(raw: Any) -> List[str]:
@@ -127,6 +189,122 @@ def is_truthy(value: Any) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "y", "ja"}
+
+
+def callout_prefix(language: str) -> str:
+    if language == "de":
+        return "Empfehlung: "
+    if language == "fr":
+        return "Recommandation : "
+    return "Recommendation: "
+
+
+def with_callout(language: str, desc: str) -> str:
+    t = desc.strip()
+    if not t:
+        return ""
+    return f"{callout_prefix(language)}{t}"
+
+
+def training_materials_heading(language: str) -> str:
+    if language == "de":
+        return "📂 Trainingsunterlagen"
+    if language == "fr":
+        return "📚 Supports de formation"
+    return "📂 Training materials"
+
+
+def build_training_materials_block(links: Dict[str, str], language: str) -> str:
+    """Default five core training materials (parity with web mail-engine)."""
+    specs: List[Tuple[str, Dict[str, str], Dict[str, str]]] = [
+        (
+            "INTRO_TRAINING_URL",
+            {
+                "en": "Introductory Training for Elios 3",
+                "de": "Einführungstraining für den Elios 3",
+                "fr": "Formation d'introduction Elios 3",
+            },
+            {
+                "en": "Everything covered on day one and drone operation basics.",
+                "de": "Alles vom ersten Tag und die Grundlagen der Drohnenbedienung.",
+                "fr": "Contenu du premier jour et bases du pilotage du drone.",
+            },
+        ),
+        (
+            "AIIM_TRAINING_URL",
+            {
+                "en": "Indoor Aerial Inspection Methodology (AIIM) Training",
+                "de": "Indoor Aerial Inspection Methodology (AIIM) Training",
+                "fr": "Formation Indoor Aerial Inspection Methodology (AIIM)",
+            },
+            {
+                "en": "Step-by-step preparation for inspection missions and reco flights.",
+                "de": "Schritt-für-Schritt-Vorbereitung von Inspektionsmissionen inklusive Erkundungsflügen.",
+                "fr": "Préparation pas à pas des missions d'inspection et des vols de reconnaissance.",
+            },
+        ),
+        (
+            "METHOD_STATEMENT_URL",
+            {
+                "en": "Method Statement Template",
+                "de": "Method Statement Vorlage",
+                "fr": "Modèle de méthodologie (Method Statement)",
+            },
+            {
+                "en": "Collect customer details and document mission requirements clearly.",
+                "de": "Sammelt Kundendetails und dokumentiert Missionsanforderungen klar.",
+                "fr": "Recueillir les informations client et documenter clairement les exigences de mission.",
+            },
+        ),
+        (
+            "RISK_ASSESSMENT_URL",
+            {
+                "en": "Risk Assessment Guide",
+                "de": "Leitfaden zur Risikobewertung",
+                "fr": "Guide d'évaluation des risques",
+            },
+            {
+                "en": "Classify mission risk and align preparation to required experience.",
+                "de": "Klassifiziert Missionsrisiken und hilft bei der passenden Vorbereitung.",
+                "fr": "Classer le risque de mission et adapter la préparation au niveau requis.",
+            },
+        ),
+        (
+            "SOP_URL",
+            {
+                "en": "SOP (Standard Operating Procedure)",
+                "de": "SOP (Standard Operating Procedure)",
+                "fr": "SOP (Standard Operating Procedure)",
+            },
+            {
+                "en": "Current pre- and post-inspection workflow reference.",
+                "de": "Aktuelles Referenzdokument für Schritte vor und nach der Inspektion.",
+                "fr": "Référence pour le déroulement avant et après inspection.",
+            },
+        ),
+    ]
+    lang = language if language in {"en", "de", "fr"} else "en"
+    out: List[str] = []
+    n = 1
+    for link_key, labels, descs in specs:
+        url = links.get(link_key, "")
+        if not url:
+            continue
+        label = labels[lang]
+        desc = with_callout(lang, descs[lang])
+        out.append(f"{n}. [{label}]({url})")
+        out.append(desc)
+        out.append("")
+        n += 1
+    heading = training_materials_heading(lang)
+    if not out:
+        empty = (
+            "No materials selected."
+            if lang == "en"
+            else ("Keine Unterlagen ausgewählt." if lang == "de" else "Aucun support sélectionné.")
+        )
+        return f"{heading}\n\n{empty}"
+    return f"{heading}\n\n" + "\n".join(out).rstrip()
 
 
 def infer_industry_course_ids(payload: Dict[str, Any], industry_catalog: List[Dict[str, Any]]) -> List[str]:
@@ -162,11 +340,11 @@ def build_industry_training_block(
     by_id = {course["id"]: course for course in industry_catalog}
     lines: List[str] = []
     if language == "de":
-        lines.append("Branchenspezifische Academy-Kurse")
+        lines.append("📋 Use-Case-spezifische Trainings und Unterlagen")
     elif language == "fr":
-        lines.append("Cours Academy spécifiques au secteur")
+        lines.append("📋 Formations et documents spécifiques au cas d'usage")
     else:
-        lines.append("Industry-specific Academy courses")
+        lines.append("📋 Use-case specific trainings and docs")
 
     for course_id in selected_ids:
         course = by_id.get(course_id)
@@ -193,11 +371,11 @@ def build_useful_links_block(
     payload: Dict[str, Any],
 ) -> str:
     if language == "de":
-        header = "Weitere nützliche Links"
+        header = "🔗 Weitere nützliche Links"
     elif language == "fr":
-        header = "Autres liens utiles"
+        header = "🔗 Autres liens utiles"
     else:
-        header = "Other Useful Links"
+        header = "🔗 Software & learning resources"
     lines: List[str] = [header]
 
     def append_item(item: Dict[str, Any]) -> None:
@@ -211,7 +389,7 @@ def build_useful_links_block(
             desc = str(item.get("desc_fr") or item.get("desc_en", ""))
         else:
             label, desc = str(item.get("label_en", "")), str(item.get("desc_en", ""))
-        lines.append(f"[{label}]({url}) - {desc}")
+        lines.append(f"[{label}]({url}) - {with_callout(language, desc)}")
 
     for item in useful_links_policy.get("common", []):
         append_item(item)
@@ -307,6 +485,7 @@ def render_payload(
         "LOCATION": payload.get("location", ""),
         "CUSTOM_OPENER_NOTE": payload.get("custom_opener_note", ""),
         "COMPANY_CONTEXT_LINE": "",
+        "TRAINING_MATERIALS_BLOCK": "",
         "INDUSTRY_TRAINING_BLOCK": "",
         "USEFUL_LINKS_BLOCK": "",
         "CERTIFICATION_NOTE_BLOCK": "",
@@ -314,6 +493,7 @@ def render_payload(
         "SIGNATURE_NAME": sig_name or DEFAULT_SIGNATURE_NAME,
     }
     language = payload.get("language", "en")
+    replacements["TRAINING_MATERIALS_BLOCK"] = build_training_materials_block(links, str(language))
     selected_course_ids = infer_industry_course_ids(payload, industry_catalog)
     replacements["INDUSTRY_TRAINING_BLOCK"] = build_industry_training_block(
         language=language, selected_ids=selected_course_ids, industry_catalog=industry_catalog
@@ -327,6 +507,7 @@ def render_payload(
     )
     replacements["CERTIFICATION_NOTE_BLOCK"] = get_certification_note_block(payload, language=language)
     replacements["SIMULATOR_NOTE_BLOCK"] = get_simulator_note_block(payload, language=language)
+    replacements["FEEDBACK_QR_IMAGE_URL"] = resolve_public_asset_url(str(links.get("FEEDBACK_QR_IMAGE_URL", "")))
 
     subject = replace_placeholders(subject_template, replacements)
     body_markdown = replace_placeholders(body_template, replacements)

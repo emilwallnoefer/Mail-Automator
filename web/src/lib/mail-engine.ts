@@ -134,26 +134,64 @@ function normalize(text: string) {
 }
 
 function stripMarkdownLinks(text: string) {
-  return text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1");
+  return text
+    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, (_m, alt) => String(alt || "").trim() || "QR code")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1");
 }
 
+function escapeHtmlText(s: string) {
+  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+const EMAIL_HR =
+  '<hr style="border:none;border-top:1px solid #ccc;margin:16px 0;" />';
+
+function isMarkdownHorizontalRule(line: string) {
+  const t = line.trim();
+  return /^(\*{3,}|_{3,}|-{3,})$/.test(t);
+}
+
+/** Minimal markdown: paragraphs, **bold**, [text](https://...), ![alt](https://...) images, --- / *** / ___ horizontal rules. */
 function markdownToHtml(text: string) {
-  const escaped = text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-
-  const linked = escaped.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    (_match, label, url) => `<a href="${url}">${label}</a>`,
-  );
-
-  return linked
+  const paragraphs = text
     .trim()
-    .split("\n\n")
+    .split(/\n\n+/)
     .filter(Boolean)
-    .map((p) => `<p>${p.replaceAll("\n", "<br>")}</p>`)
+    .map((p) => {
+      let chunk = p.trim();
+      if (isMarkdownHorizontalRule(chunk)) return EMAIL_HR;
+      chunk = chunk.replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, (_m, alt, url) => {
+        const safeAlt = escapeHtmlText(String(alt ?? ""));
+        return `<img src="${url}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:8px;" />`;
+      });
+      chunk = chunk.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => `<strong>${escapeHtmlText(inner)}</strong>`);
+      chunk = chunk.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
+        return `<a href="${url}">${escapeHtmlText(label)}</a>`;
+      });
+      const parts = chunk.split(/(<[^>]+>)/);
+      const merged = parts
+        .map((part) => {
+          if (part.startsWith("<")) return part;
+          return escapeHtmlText(part);
+        })
+        .join("");
+      return `<p>${merged.replaceAll("\n", "<br>")}</p>`;
+    })
     .join("\n");
+  return paragraphs.replace(/(?:<hr[^>]*>\s*){2,}/gi, EMAIL_HR);
+}
+
+function resolvePublicAssetUrl(pathOrUrl: string): string {
+  const raw = pathOrUrl.trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) {
+    const base =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+    if (base) return `${base}${raw}`;
+  }
+  return raw;
 }
 
 function parseIndustryIds(raw: string | undefined) {
@@ -170,10 +208,11 @@ function resolveIncludedChangeIds(input: MailInput) {
   return DEFAULT_INCLUDED_CHANGE_IDS;
 }
 
+/** Canonical section titles (emoji + wording) aligned with internal recap style. */
 function trainingMaterialsHeading(lang: MailLanguage) {
-  if (lang === "de") return "Schulungsunterlagen";
-  if (lang === "fr") return "Supports de formation";
-  return "Training materials";
+  if (lang === "de") return "📂 Trainingsunterlagen";
+  if (lang === "fr") return "📚 Supports de formation";
+  return "📂 Training materials";
 }
 
 function noMaterialsSelectedLine(lang: MailLanguage) {
@@ -196,7 +235,7 @@ function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: 
     if (!url) continue;
     const { label, desc } = getChangeOptionLabelDesc(item, language);
     rows.push(`${index}. [${label}](${url})`);
-    rows.push(desc);
+    rows.push(withCallout(language, desc, "callout"));
     rows.push("");
     index += 1;
   }
@@ -227,9 +266,9 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
 }
 
 function industryTrainingBlockTitle(lang: MailLanguage) {
-  if (lang === "de") return "Use-Case-spezifische Trainings und Unterlagen";
-  if (lang === "fr") return "Formations et documents spécifiques au cas d'usage";
-  return "Use-case specific trainings and docs";
+  if (lang === "de") return "📋 Use-Case-spezifische Trainings und Unterlagen";
+  if (lang === "fr") return "📋 Formations et documents spécifiques au cas d'usage";
+  return "📋 Use-case specific trainings and docs";
 }
 
 function courseDisplayLabel(course: Course, lang: MailLanguage) {
@@ -253,9 +292,23 @@ function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[
 }
 
 function usefulLinksMainHeader(lang: MailLanguage) {
-  if (lang === "de") return "Weitere nützliche Links";
-  if (lang === "fr") return "Autres liens utiles";
-  return "Other Useful Links";
+  if (lang === "de") return "🔗 Weitere nützliche Links";
+  if (lang === "fr") return "🔗 Autres liens utiles";
+  return "🔗 Software & learning resources";
+}
+
+function calloutPrefix(lang: MailLanguage): string {
+  if (lang === "de") return "Empfehlung: ";
+  if (lang === "fr") return "Recommandation : ";
+  return "Recommendation: ";
+}
+
+/** Tips after materials / useful links; Thinkific industry lines stay without a callout label to limit noise. */
+function withCallout(lang: MailLanguage, desc: string, kind: "callout" | "plain"): string {
+  const t = desc.trim();
+  if (!t) return "";
+  if (kind === "plain") return t;
+  return `${calloutPrefix(lang)}${t}`;
 }
 
 function policyItemLabelDesc(item: Record<string, unknown>, lang: MailLanguage) {
@@ -284,7 +337,7 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
     const url = links[linkKey];
     if (!url) return;
     const { label, desc } = policyItemLabelDesc(item, language);
-    lines.push(`[${label}](${url}) - ${desc}`);
+    lines.push(`[${label}](${url}) - ${withCallout(language, desc, "callout")}`);
   };
 
   policy.common.forEach(addItem);
@@ -336,7 +389,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
         const url = resolveOnlineItemUrl(item);
         const { label, desc } = getChangeOptionLabelDesc(item, language);
         parts.push(`${n}. [${label}](${url})`);
-        parts.push(desc);
+        parts.push(withCallout(language, desc, item.category === "thinkific" ? "plain" : "callout"));
         parts.push("");
         n += 1;
       }
@@ -359,7 +412,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       const url = resolveLinkUrl(item.link_key ?? "", catalog);
       const { label, desc } = getChangeOptionLabelDesc(item, language);
       parts.push(`${n}. [${label}](${url})`);
-      parts.push(desc);
+      parts.push(withCallout(language, desc, "callout"));
       parts.push("");
       n += 1;
     }
@@ -416,8 +469,10 @@ export function renderMail(input: MailInput): RenderResult {
   const selected = inferIndustryCourseIds(input, catalog);
   const includedChangeIds = resolveIncludedChangeIds(input);
 
+  const links = trainingLinks as Record<string, string>;
   const replacements: Record<string, string> = {
-    ...(trainingLinks as Record<string, string>),
+    ...links,
+    FEEDBACK_QR_IMAGE_URL: resolvePublicAssetUrl(links.FEEDBACK_QR_IMAGE_URL ?? ""),
     RECIPIENT_NAME: input.recipient_name || "",
     RECIPIENT_OPTIONAL: input.recipient_optional || "",
     COMPANY_NAME: input.company_name || "",

@@ -17,8 +17,8 @@ export const RESOURCE_SECTION_ORDER: ResourceSectionId[] = [
 /** UI + email subsection titles (main “Other Useful Links” block is separate in the template). */
 export const RESOURCE_SECTION_LABELS: Record<ResourceSectionId, { en: string; de: string; fr: string }> = {
   other_useful_links: { en: "Other useful links", de: "Weitere nützliche Links", fr: "Autres liens utiles" },
-  online_courses: { en: "Online courses", de: "Online-Schulungen", fr: "Cours en ligne" },
-  videos: { en: "Training videos", de: "Schulungsvideos", fr: "Vidéos de formation" },
+  online_courses: { en: "💻 Online courses", de: "💻 Online-Schulungen", fr: "💻 Cours en ligne" },
+  videos: { en: "🎬 Training videos", de: "🎬 Schulungsvideos", fr: "🎬 Vidéos de formation" },
 };
 
 export function resourceSectionLabel(sectionId: ResourceSectionId, lang: MailLanguage): string {

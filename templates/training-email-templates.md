@@ -6,7 +6,7 @@ Use placeholder syntax like `{{PLACEHOLDER}}`.
 
 ## TEMPLATE_ID: post_en
 
-SUBJECT: Training recap - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability Recap – {{COMPANY_NAME}} – {{TRAINING_DATE}}
 
 Hello {{RECIPIENT_NAME}},
 
@@ -14,31 +14,34 @@ Hello {{RECIPIENT_NAME}},
 
 As I promised during our training, here is the recap email with links to all the useful training slide decks we used. Please save this email somewhere and keep it accessible so you can come back to it whenever you need any information.
 
-Training Materials
+---
 
-1. [Introductory Training for Elios 3]({{INTRO_TRAINING_URL}})
-This covers everything we went through on the first day. It is your go-to guide if you ever forget how a function works or need a refresher on drone operation.
+{{TRAINING_MATERIALS_BLOCK}}
 
-2. [Indoor Aerial Inspection Methodology (AIIM) Training]({{AIIM_TRAINING_URL}})
-This is from our second day and includes step-by-step preparation for inspection missions, including the important reco flights. It is especially useful when preparing for complex missions.
-
-3. [Method Statement Template]({{METHOD_STATEMENT_URL}})
-Use this to collect important information from your client. It ensures all mission details are clearly documented.
-
-4. [Risk Assessment Guide]({{RISK_ASSESSMENT_URL}})
-This helps classify missions based on their difficulty and risk level. It is a great tool for understanding the experience required and preparing accordingly.
-
-5. [SOP (Standard Operating Procedure)]({{SOP_URL}})
-Our most up-to-date manual with all pre- and post-inspection steps. I recommend printing it and using it for every mission to maintain high-quality standards.
+---
 
 {{USEFUL_LINKS_BLOCK}}
 
+---
+
 {{INDUSTRY_TRAINING_BLOCK}}
+
+---
 
 {{CERTIFICATION_NOTE_BLOCK}}
 {{SIMULATOR_NOTE_BLOCK}}
 
-Happy flying.
+---
+
+If you enjoyed the training, I'd be super thankful if you could take 5 minutes to give me some quick feedback. I want to provide the best training on the planet—just like you're building the best cars!
+
+**Just scan the QR code below and tell me what you liked and what you didn't.**
+
+![Training feedback]({{FEEDBACK_QR_IMAGE_URL}})
+
+---
+
+🚀 Happy flying.
 
 Wishing you great success with your drone inspections.
 Do not hesitate to reach out if you have any questions.
@@ -51,7 +54,7 @@ Flyability Pilot & Trainer
 
 ## TEMPLATE_ID: post_de
 
-SUBJECT: Zusammenfassung Schulung - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability Recap – {{COMPANY_NAME}} – {{TRAINING_DATE}}
 
 Hallo {{RECIPIENT_NAME}},
 
@@ -59,31 +62,36 @@ Hallo {{RECIPIENT_NAME}},
 
 wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainingsunterlagen, die wir verwendet haben. Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.
 
-Schulungsunterlagen
+---
 
-1. [Einführungstraining für den Elios 3]({{INTRO_TRAINING_URL}})
-Enthält alles, was wir am ersten Tag durchgegangen sind. Es ist euer Nachschlagewerk, falls ihr jemals eine Funktion vergesst oder eine Auffrischung zur Drohnenbedienung braucht.
+{{TRAINING_MATERIALS_BLOCK}}
 
-2. [Indoor Aerial Inspection Methodology (AIIM) Training]({{AIIM_TRAINING_URL}})
-Stammt aus unserem zweiten Schulungstag und beinhaltet die schrittweise Vorbereitung von Inspektionsmissionen inklusive der wichtigen Erkundungsflüge. Besonders hilfreich bei der Planung komplexerer Einsätze.
-
-3. [Method Statement Vorlage]({{METHOD_STATEMENT_URL}})
-Verwendet dieses Dokument, um wichtige Informationen vom Kunden zu sammeln. Es stellt sicher, dass alle Missionsdetails klar dokumentiert sind.
-
-4. [Leitfaden zur Risikobewertung]({{RISK_ASSESSMENT_URL}})
-Hilft dabei, Missionen anhand ihres Schwierigkeits- und Risikograds zu klassifizieren. Ein großartiges Werkzeug, um den erforderlichen Erfahrungsstand zu verstehen und sich entsprechend vorzubereiten.
-
-5. [SOP (Standard Operating Procedure)]({{SOP_URL}})
-Unser aktuellstes Handbuch mit allen Schritten vor und nach der Inspektion. Ich empfehle, es auszudrucken und bei jeder Mission zu verwenden, um eine gleichbleibend hohe Qualität sicherzustellen.
+---
 
 {{USEFUL_LINKS_BLOCK}}
 
+---
+
 {{INDUSTRY_TRAINING_BLOCK}}
+
+---
 
 {{CERTIFICATION_NOTE_BLOCK}}
 {{SIMULATOR_NOTE_BLOCK}}
 
-Viel Erfolg beim Fliegen.
+---
+
+Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in 5 Minuten kurz Feedback geben könnt. Ich möchte das beste Training der Welt bieten – genau wie ihr die besten Autos baut!
+
+**Scannt einfach den QR-Code unten und sagt mir, was euch gefallen hat und was nicht.**
+
+![Feedback Schulung]({{FEEDBACK_QR_IMAGE_URL}})
+
+---
+
+🚀 Viel Erfolg beim Fliegen!
+
+Ich wünsche euch viel Erfolg bei euren Drohneninspektionen.
 Zögert nicht, euch bei Fragen jederzeit bei mir zu melden.
 
 Mit freundlichen Grüßen,
@@ -267,7 +275,7 @@ Flyability Pilot & Trainer
 
 ## TEMPLATE_ID: post_fr
 
-SUBJECT: Compte rendu de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability – Compte rendu de formation – {{COMPANY_NAME}} – {{TRAINING_DATE}}
 
 Bonjour {{RECIPIENT_NAME}},
 
@@ -275,16 +283,34 @@ Bonjour {{RECIPIENT_NAME}},
 
 Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers toutes les présentations utiles que nous avons utilisées. Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.
 
+---
+
 {{TRAINING_MATERIALS_BLOCK}}
+
+---
 
 {{USEFUL_LINKS_BLOCK}}
 
+---
+
 {{INDUSTRY_TRAINING_BLOCK}}
+
+---
 
 {{CERTIFICATION_NOTE_BLOCK}}
 {{SIMULATOR_NOTE_BLOCK}}
 
-Bons vols.
+---
+
+Si la formation vous a plu, je vous serais très reconnaissant de prendre 5 minutes pour me donner un retour rapide. Je veux proposer la meilleure formation au monde – tout comme vous construisez les meilleures voitures !
+
+**Scannez simplement le code QR ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.**
+
+![Retour formation]({{FEEDBACK_QR_IMAGE_URL}})
+
+---
+
+🚀 Bons vols.
 
 Je vous souhaite beaucoup de succès dans vos inspections par drone.
 N'hésitez pas à me contacter pour toute question.

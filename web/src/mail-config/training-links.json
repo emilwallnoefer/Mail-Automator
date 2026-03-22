@@ -23,5 +23,6 @@
   "INSPECTOR_URL": "https://www.flyability.com/inspector",
   "KNOWLEDGE_BASE_URL": "https://knowledge.flyability.com/?hsLang=en",
   "NUBIGON_URL": "https://www.nubigon.com/downloads",
-  "CUSTOMER_TOOLKIT_URL": "https://www.flyability.com/customer-toolkit/elios-3"
+  "CUSTOMER_TOOLKIT_URL": "https://www.flyability.com/customer-toolkit/elios-3",
+  "FEEDBACK_QR_IMAGE_URL": "/feedback-training-qr.png"
 }
