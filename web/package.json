@@ -15,7 +15,7 @@
     "framer-motion": "^12.35.2",
     "googleapis": "^171.4.0",
     "next": "16.1.6",
-    "react": "19.2.3",
+    "react": "19.2.4",
     "react-dom": "19.2.3",
     "zod": "^4.3.6"
   },
