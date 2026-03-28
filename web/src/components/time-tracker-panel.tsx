@@ -261,27 +261,27 @@ function DayEditorBody({
 
   const formFields = (
     <>
-      <label className="block">
+      <label className="block min-w-0">
         <span className="mb-1 block text-xs text-slate-200/90">Start</span>
         <input
           type="time"
           value={formStart}
           disabled={formHoliday || !selectedDay}
           onChange={(event) => setFormStart(event.target.value)}
-          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
         />
       </label>
-      <label className="block">
+      <label className="block min-w-0">
         <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
         <input
           type="time"
           value={formStop}
           disabled={formHoliday || !selectedDay}
           onChange={(event) => setFormStop(event.target.value)}
-          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
         />
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-w-0 items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={formHoliday}
@@ -291,94 +291,97 @@ function DayEditorBody({
         Public holiday (full day)
       </label>
 
-      {selectedDaySupportsBreaks ? (
-        <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-          <div className="mb-2.5 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-            </div>
-          </div>
-          {selectedDayUsesBreakCounter ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                  className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                >
-                  -15
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                  className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                >
-                  +15
-                </button>
-              </div>
-              <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
-                Break {formTotalBreakMins} min
+        {selectedDaySupportsBreaks ? (
+          <div className="min-w-0 overflow-hidden rounded-xl border border-white/15 bg-white/5 p-3">
+            <div className="mb-2.5 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
               </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {formBreaks.length === 0 ? (
-                <p className="text-xs text-slate-300/80">No breaks added.</p>
-              ) : (
-                formBreaks.map((item, index) => (
-                  <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
-                    <input
-                      placeholder="Name"
-                      value={item.name}
-                      onChange={(event) => {
-                        const name = event.target.value;
-                        setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
-                      }}
-                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="mins"
-                      value={item.mins}
-                      onChange={(event) => {
-                        const mins = Number.parseInt(event.target.value || "0", 10) || 0;
-                        setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
-                      }}
-                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                      className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+            {selectedDayUsesBreakCounter ? (
+              <div className="space-y-2">
+                <div className="grid min-w-0 grid-cols-2 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
+                    className="min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base font-semibold tabular-nums transition hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
+                  >
+                    -15
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
+                    className="min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base font-semibold tabular-nums transition hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
+                  >
+                    +15
+                  </button>
+                </div>
+                <div className="flex w-full min-w-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base font-semibold text-slate-100 tabular-nums lg:py-2 lg:text-sm">
+                  Break {formTotalBreakMins} min
+                </div>
+              </div>
+            ) : (
+              <div className="min-w-0 space-y-2">
+                {formBreaks.length === 0 ? (
+                  <p className="text-xs text-slate-300/80">No breaks added.</p>
+                ) : (
+                  formBreaks.map((item, index) => (
+                    <div
+                      key={`${index}-${item.name}`}
+                      className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-center"
                     >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              )}
-              <button
-                type="button"
-                onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-              >
-                Add break
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
+                      <input
+                        placeholder="Name"
+                        value={item.name}
+                        onChange={(event) => {
+                          const name = event.target.value;
+                          setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
+                        }}
+                        className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base leading-normal lg:py-1.5 lg:text-xs"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="mins"
+                        value={item.mins}
+                        onChange={(event) => {
+                          const mins = Number.parseInt(event.target.value || "0", 10) || 0;
+                          setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
+                        }}
+                        className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base leading-normal tabular-nums lg:py-1.5 lg:text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
+                        className="min-h-11 shrink-0 rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 text-base text-rose-200 sm:min-h-0 lg:py-1.5 lg:text-xs"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
+                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-base hover:bg-white/15 lg:py-1 lg:text-xs"
+                >
+                  Add break
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
 
       <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={() => {
             onSaveDay();
           }}
           disabled={saving || !selectedDay}
-          className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
+          className="min-h-11 flex-1 rounded-lg bg-cyan-400/90 px-3 py-2.5 text-base font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70 lg:min-h-0 lg:py-2 lg:text-sm"
         >
           {saving ? "Saving..." : "Save day"}
         </button>
@@ -389,7 +392,7 @@ function DayEditorBody({
             void onResetDay();
           }}
           disabled={saving || !selectedDay}
-          className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+          className="min-h-11 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base hover:bg-white/15 disabled:opacity-70 lg:min-h-0 lg:py-2 lg:text-sm"
         >
           Reset day
         </button>
@@ -399,12 +402,14 @@ function DayEditorBody({
 
   const toastLine =
     toast != null ? (
-      <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
+      <p className={`mt-4 break-words text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
+        {toast.message}
+      </p>
     ) : null;
 
   return (
-    <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
-      <div>
+    <div className="grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <div className="min-w-0">
         {showPanelHeading ? (
           <>
             <div className="flex items-center justify-between gap-2">
@@ -424,7 +429,7 @@ function DayEditorBody({
         )}
       </div>
 
-      <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
+      <aside className="h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 p-4 lg:w-auto">
         <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
         <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
         {!selectedDay ? (
@@ -433,7 +438,7 @@ function DayEditorBody({
           <>
             <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
             {travelDebug ? (
-              <p className="mt-3 text-xs text-slate-400/90">
+              <p className="mt-3 break-words text-xs text-slate-400/90">
                 Debug: {travelDebug.status} - {travelDebug.message}
                 {"  "}
                 ({travelDebug.fetched_dates} loaded, {travelDebug.week_matches} in week)
@@ -442,17 +447,17 @@ function DayEditorBody({
           </>
         ) : (
           <div className="mt-4 space-y-3 text-sm">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
-              <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
+              <p className="mt-1 break-words">{selectedTravelInfo.client || "-"}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
-              <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
+              <p className="mt-1 break-words">{selectedTravelInfo.location || "-"}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
-              <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
+              <p className="mt-1 break-words">{selectedTravelInfo.responsible || "-"}</p>
             </div>
           </div>
         )}
@@ -483,10 +488,12 @@ export function TimeTrackerPanel() {
   const [weekLoadTick, setWeekLoadTick] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [mobileSheetEntered, setMobileSheetEntered] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
   const mobileSheetTitleRef = useRef<HTMLHeadingElement>(null);
+  const mobileSheetBackRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const prevEditorOpenForFocusRef = useRef(false);
 
@@ -651,6 +658,16 @@ export function TimeTrackerPanel() {
   }, [editorOpen]);
 
   useEffect(() => {
+    if (!editorOpen) {
+      setMobileSheetEntered(false);
+      return;
+    }
+    setMobileSheetEntered(false);
+    const enterTimer = window.setTimeout(() => setMobileSheetEntered(true), 30);
+    return () => clearTimeout(enterTimer);
+  }, [editorOpen]);
+
+  useEffect(() => {
     if (!editorOpen) return;
     const mq = window.matchMedia("(max-width: 1023px)");
     function applyBodyLock() {
@@ -666,7 +683,7 @@ export function TimeTrackerPanel() {
     window.addEventListener("keydown", onKeyDown);
     let raf = 0;
     if (mq.matches) {
-      raf = requestAnimationFrame(() => mobileSheetTitleRef.current?.focus());
+      raf = requestAnimationFrame(() => mobileSheetBackRef.current?.focus());
     }
     return () => {
       mq.removeEventListener("change", applyBodyLock);
@@ -1005,7 +1022,7 @@ export function TimeTrackerPanel() {
         ))}
       </div>
       <div
-        className={`glass-card hourlogger-surface min-w-0 w-full rounded-2xl p-4 transition-all duration-500 ease-out md:p-5 ${
+        className={`glass-card hourlogger-surface min-w-0 w-full max-w-full overflow-x-hidden rounded-2xl p-4 transition-all duration-500 ease-out md:p-5 ${
           isEditorVisible ? "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20" : "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20"
         }`}
       >
@@ -1052,10 +1069,10 @@ export function TimeTrackerPanel() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
-            <span>Weekly hours:</span>
-            <span className="ml-2 inline-block min-w-[8ch] text-right">
+        <div className="mt-4 flex w-full min-w-0 max-w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <span className="flex w-full min-w-0 max-w-full items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs tabular-nums sm:w-auto sm:min-w-[16.5rem] sm:max-w-none">
+            <span className="shrink-0">Weekly hours:</span>
+            <span className="ml-2 inline-block min-w-[8ch] shrink-0 text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={760}>
                   {(value) => fmtHM(Math.round(value))}
@@ -1065,9 +1082,9 @@ export function TimeTrackerPanel() {
               )}
             </span>
           </span>
-          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
-            <span>Overtime bank:</span>
-            <span className="ml-2 inline-block min-w-[9ch] text-right">
+          <span className="flex w-full min-w-0 max-w-full items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs tabular-nums sm:w-auto sm:min-w-[16.5rem] sm:max-w-none">
+            <span className="shrink-0">Overtime bank:</span>
+            <span className="ml-2 inline-block min-w-[9ch] shrink-0 text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={760}>
                   {(value) => fmtSignedHM(Math.round(value))}
@@ -1079,7 +1096,7 @@ export function TimeTrackerPanel() {
           </span>
         </div>
 
-        <div className="scroll-mt-24 mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="scroll-mt-24 mt-5 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
           {hasActiveWeekData &&
             (activeWeekData?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
@@ -1108,7 +1125,7 @@ export function TimeTrackerPanel() {
               return (
                 <article
                   key={day.date}
-                  className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
+                  className={`liquid-day-card min-w-0 max-w-full overflow-hidden rounded-xl p-3 transition-all duration-300 ease-out ${
                     isSelected ? "day-card-selected" : ""
                   }`}
                 >
@@ -1117,12 +1134,14 @@ export function TimeTrackerPanel() {
                     onClick={() => {
                       handleEditDay(day.date);
                     }}
-                    className="w-full text-left"
+                    className="w-full min-w-0 text-left"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+                    <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
+                      <p className="min-w-0 truncate text-xs text-slate-300/80">{dayLabel(day.date)}</p>
                       <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={donePct}>
-                        {(value) => <p className="text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
+                        {(value) => (
+                          <p className="shrink-0 text-xs font-medium tabular-nums text-cyan-100/90">{Math.round(value)}%</p>
+                        )}
                       </AnimatedNumber>
                     </div>
                     <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
@@ -1132,7 +1151,7 @@ export function TimeTrackerPanel() {
                         </p>
                       )}
                     </AnimatedNumber>
-                    <div className="day-progress mt-3" aria-label="Day progress bar">
+                    <div className="day-progress mt-3 max-w-full overflow-hidden" aria-label="Day progress bar">
                       <AnimatedNumber key={`day-topdown-${day.date}-${weekLoadTick}`} value={Math.max(0, Math.min(100, donePct))}>
                         {(value) => (
                           <span
@@ -1181,7 +1200,7 @@ export function TimeTrackerPanel() {
                         )}
                       </AnimatedNumber>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400/90">
+                    <div className="mt-2 flex min-w-0 max-w-full flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400/90">
                       <span className="inline-flex items-center gap-1.5">
                         <span className="day-progress-sand h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
                         Core
@@ -1201,21 +1220,21 @@ export function TimeTrackerPanel() {
                           {(overtimeValue) => (
                             <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
                               {(compValue) => (
-                                <div className="mt-2 space-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300/80">
-                                  <div className="flex justify-between gap-2 tabular-nums">
-                                    <span>Target {fmtHM(TARGET_MINS)}</span>
-                                    <span className="font-medium text-slate-200/95">{fmtHM(Math.round(coreValue))}</span>
+                                <div className="mt-2 min-w-0 space-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300/80">
+                                  <div className="flex min-w-0 justify-between gap-2 tabular-nums">
+                                    <span className="min-w-0 shrink pr-1">Target {fmtHM(TARGET_MINS)}</span>
+                                    <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(coreValue))}</span>
                                   </div>
                                   {Math.round(overtimeValue) > 0 ? (
-                                    <div className="flex justify-between gap-2 tabular-nums">
-                                      <span>Overtime worked</span>
-                                      <span className="font-medium text-slate-200/95">{fmtHM(Math.round(overtimeValue))}</span>
+                                    <div className="flex min-w-0 justify-between gap-2 tabular-nums">
+                                      <span className="min-w-0 shrink pr-1">Overtime worked</span>
+                                      <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(overtimeValue))}</span>
                                     </div>
                                   ) : null}
                                   {Math.round(compValue) > 0 ? (
-                                    <div className="flex justify-between gap-2 tabular-nums">
-                                      <span>Overtime compensated</span>
-                                      <span className="font-medium text-slate-200/95">{fmtHM(Math.round(compValue))}</span>
+                                    <div className="flex min-w-0 justify-between gap-2 tabular-nums">
+                                      <span className="min-w-0 shrink pr-1">Overtime compensated</span>
+                                      <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(compValue))}</span>
                                     </div>
                                   ) : null}
                                 </div>
@@ -1226,13 +1245,13 @@ export function TimeTrackerPanel() {
                       )}
                     </AnimatedNumber>
                   </button>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => {
                         void handleFillMissing(day.date);
                       }}
-                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+                      className="min-h-10 min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs hover:bg-white/15 sm:min-h-0 sm:py-1.5"
                     >
                       Fill missing
                     </button>
@@ -1241,7 +1260,7 @@ export function TimeTrackerPanel() {
                       onClick={() => {
                         void handleFillDay(day.date);
                       }}
-                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+                      className="min-h-10 min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs hover:bg-white/15 sm:min-h-0 sm:py-1.5"
                     >
                       Fill Day
                     </button>
@@ -1251,7 +1270,7 @@ export function TimeTrackerPanel() {
             })}
           {!hasActiveWeekData &&
             placeholderDayKeys.map((dateKey, index) => (
-              <article key={dateKey} className="liquid-day-card rounded-xl p-3">
+              <article key={dateKey} className="liquid-day-card min-w-0 max-w-full overflow-hidden rounded-xl p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-medium text-slate-200">{dayLabel(dateKey)}</p>
                   <span className="inline-block h-5 w-12 animate-pulse rounded-full bg-white/10" aria-hidden="true" />
@@ -1282,34 +1301,50 @@ export function TimeTrackerPanel() {
 
       {isEditorVisible ? (
         <div
-          className="fixed inset-0 z-[100] flex min-h-0 flex-col lg:hidden"
+          className="fixed inset-0 z-[100] w-full max-w-[100vw] overflow-hidden lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="day-editor-sheet-title"
         >
           <button
             type="button"
-            className="min-h-0 w-full flex-1 cursor-default border-0 bg-gradient-to-b from-slate-950/88 via-slate-950/68 to-slate-950/45 p-0 text-left shadow-[inset_0_-1px_0_rgba(255,255,255,0.06)] backdrop-blur-md transition-[filter,opacity] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35"
+            className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/90 via-slate-950/75 to-slate-950/60 p-0 backdrop-blur-md transition-opacity duration-500 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 ${
+              mobileSheetEntered ? "opacity-100" : "opacity-0"
+            }`}
             aria-label="Close day editor and return to week"
             onClick={closeDayEditorSheet}
           />
-          <div className="relative flex max-h-[min(92dvh,100dvh)] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-t-2xl border border-white/18 border-b-0 border-t-cyan-400/25 bg-slate-950/94 shadow-[0_-20px_50px_rgba(0,0,0,0.55),0_-1px_0_rgba(103,232,249,0.12)] backdrop-blur-xl">
-            <div className="flex shrink-0 flex-col items-center border-b border-white/[0.08] px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
-              <span className="mb-3 h-1 w-11 shrink-0 rounded-full bg-white/20" aria-hidden />
-              <header className="w-full pb-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
-                <h2
-                  id="day-editor-sheet-title"
-                  ref={mobileSheetTitleRef}
-                  tabIndex={-1}
-                  className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
+          <div
+            className={`absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/30 bg-slate-950/97 shadow-[0_-24px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+              mobileSheetEntered ? "translate-y-0" : "translate-y-full"
+            }`}
+          >
+            <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+              <div className="flex items-start gap-3">
+                <button
+                  ref={mobileSheetBackRef}
+                  type="button"
+                  onClick={closeDayEditorSheet}
+                  className="mt-1 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
+                  aria-label="Back to week"
                 >
-                  Day Logger
-                </h2>
-                <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
-              </header>
+                  ←
+                </button>
+                <header className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
+                  <h2
+                    id="day-editor-sheet-title"
+                    ref={mobileSheetTitleRef}
+                    tabIndex={-1}
+                    className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
+                  >
+                    Day Logger
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
+                </header>
+              </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/[0.04] bg-slate-950/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
               <DayEditorBody {...dayEditorProps} layout="sheet" />
             </div>
           </div>
@@ -1317,7 +1352,7 @@ export function TimeTrackerPanel() {
       ) : null}
 
       <div
-        className={`scroll-mt-24 h-fit min-w-0 self-start rounded-2xl glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
+        className={`scroll-mt-24 h-fit min-w-0 max-w-full self-start overflow-x-hidden rounded-2xl glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
           isEditorVisible ? "hidden opacity-100 lg:block lg:translate-x-0" : "hidden pointer-events-none"
         } ${isEditorVisible ? "lg:pointer-events-auto" : ""}`}
       >
