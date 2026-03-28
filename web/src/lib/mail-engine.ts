@@ -6,7 +6,9 @@ import {
   RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING,
   RESOURCE_SECTION_ORDER,
   getChangeOptionLabelDesc,
-  getOnlineCoursesOptionsInOrder,
+  getOtherTrainingsOptionsInOrder,
+  getThinkificOnlineCoursesInOrder,
+  resourceSectionEmailIntro,
   resourceSectionLabel,
   type MailLanguage,
   type ResourceSectionId,
@@ -279,12 +281,6 @@ function trainingMaterialsHeading(lang: MailLanguage) {
   return "## 📂 Training materials";
 }
 
-function noMaterialsSelectedLine(lang: MailLanguage) {
-  if (lang === "de") return "Keine Unterlagen ausgewählt.";
-  if (lang === "fr") return "Aucun support sélectionné.";
-  return "No materials selected.";
-}
-
 function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: string[]) {
   const selected = new Set(selectedChangeIds);
   const links = trainingLinks as Record<string, string>;
@@ -304,11 +300,10 @@ function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: 
     index += 1;
   }
 
-  const heading = trainingMaterialsHeading(language);
   if (rows.length === 0) {
-    return `${heading}\n\n${noMaterialsSelectedLine(language)}`;
+    return "";
   }
-  return `${heading}\n\n${rows.join("\n").trim()}`;
+  return `${trainingMaterialsHeading(language)}\n\n${rows.join("\n").trim()}`;
 }
 
 function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
@@ -438,15 +433,33 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
   }
 
   for (const sectionId of RESOURCE_SECTION_ORDER) {
+    if (sectionId === "other_trainings") {
+      const ordered = getOtherTrainingsOptionsInOrder().filter((opt) => selected.has(opt.id));
+      const withUrl = ordered.filter((item) => resolveLinkUrl(item.link_key ?? "", catalog));
+      if (!withUrl.length) continue;
+
+      parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
+      parts.push("");
+
+      let n = 1;
+      for (const item of withUrl) {
+        const url = resolveLinkUrl(item.link_key ?? "", catalog);
+        const { label, desc } = getChangeOptionLabelDesc(item, language);
+        parts.push(`${n}. [${label}](${url})`);
+        parts.push(withCallout(language, desc, "callout"));
+        parts.push("");
+        n += 1;
+      }
+      continue;
+    }
+
     if (sectionId === "online_courses") {
-      const ordered = getOnlineCoursesOptionsInOrder().filter((opt) => selected.has(opt.id));
+      const ordered = getThinkificOnlineCoursesInOrder().filter((opt) => selected.has(opt.id));
       const withUrl = ordered.filter((item) => resolveOnlineItemUrl(item));
       if (!withUrl.length) continue;
 
-      if (!RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING.has(sectionId)) {
-        parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
-        parts.push("");
-      }
+      parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
+      parts.push("");
 
       let n = 1;
       for (const item of withUrl) {
@@ -469,14 +482,20 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       const sectionTitle = resourceSectionLabel(sectionId, language);
       parts.push(`### ${sectionTitle}`);
       parts.push("");
+      const sectionIntro = resourceSectionEmailIntro(sectionId, language);
+      if (sectionIntro) {
+        parts.push(sectionIntro);
+        parts.push("");
+      }
     }
 
+    const videoSection = sectionId === "videos";
     let n = 1;
     for (const item of withUrl) {
       const url = resolveLinkUrl(item.link_key ?? "", catalog);
       const { label, desc } = getChangeOptionLabelDesc(item, language);
       parts.push(`${n}. [${label}](${url})`);
-      parts.push(withCallout(language, desc, "callout"));
+      parts.push(withCallout(language, desc, videoSection ? "plain" : "callout"));
       parts.push("");
       n += 1;
     }
@@ -485,9 +504,15 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
   const body = parts.join("\n").replace(/\n+$/, "");
   const hasContent = RESOURCE_SECTION_ORDER.some((id) => {
     if (id === "online_courses") {
-      return getOnlineCoursesOptionsInOrder().some((item) => {
+      return getThinkificOnlineCoursesInOrder().some((item) => {
         if (!selected.has(item.id)) return false;
         return Boolean(resolveOnlineItemUrl(item));
+      });
+    }
+    if (id === "other_trainings") {
+      return getOtherTrainingsOptionsInOrder().some((item) => {
+        if (!selected.has(item.id)) return false;
+        return Boolean(resolveLinkUrl(item.link_key ?? "", catalog));
       });
     }
     const items = bySection.get(id);

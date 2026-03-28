@@ -16,7 +16,8 @@ import {
   CHANGE_OPTIONS,
   DEFAULT_INCLUDED_CHANGE_IDS,
   getChangeOptionLabelDesc,
-  getOnlineCoursesOptionsInOrder,
+  getOtherTrainingsOptionsInOrder,
+  getThinkificOnlineCoursesInOrder,
   type MailLanguage,
   resourceSectionLabel,
   RESOURCE_SECTION_ORDER,
@@ -191,13 +192,14 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
 
   const groupedChangeOptions = useMemo(() => {
     const materials = CHANGE_OPTIONS.filter((o) => o.category === "training_material");
-    const onlineOrdered = getOnlineCoursesOptionsInOrder(CHANGE_OPTIONS);
     const usefulSections = RESOURCE_SECTION_ORDER.map((sectionId) => ({
       sectionId,
       options:
         sectionId === "online_courses"
-          ? onlineOrdered
-          : CHANGE_OPTIONS.filter((o) => o.category === "useful_link" && o.resourceSection === sectionId),
+          ? getThinkificOnlineCoursesInOrder(CHANGE_OPTIONS)
+          : sectionId === "other_trainings"
+            ? getOtherTrainingsOptionsInOrder(CHANGE_OPTIONS)
+            : CHANGE_OPTIONS.filter((o) => o.category === "useful_link" && o.resourceSection === sectionId),
     })).filter((s) => s.options.length > 0);
     return { materials, usefulSections };
   }, []);

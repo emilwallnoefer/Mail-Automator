@@ -6,10 +6,11 @@ export type ChangeOptionCategory = "training_material" | "useful_link" | "thinki
 export type MailLanguage = "en" | "de" | "fr";
 
 /** Group headings for suggested links (UI + email subsections). */
-export type ResourceSectionId = "other_useful_links" | "online_courses" | "videos";
+export type ResourceSectionId = "other_useful_links" | "other_trainings" | "online_courses" | "videos";
 
 export const RESOURCE_SECTION_ORDER: ResourceSectionId[] = [
   "other_useful_links",
+  "other_trainings",
   "online_courses",
   "videos",
 ];
@@ -17,6 +18,11 @@ export const RESOURCE_SECTION_ORDER: ResourceSectionId[] = [
 /** UI + email subsection titles (main “Other Useful Links” block is separate in the template). */
 export const RESOURCE_SECTION_LABELS: Record<ResourceSectionId, { en: string; de: string; fr: string }> = {
   other_useful_links: { en: "Other useful links", de: "Weitere nützliche Links", fr: "Autres liens utiles" },
+  other_trainings: {
+    en: "📚 Other trainings",
+    de: "📚 Weitere Trainings",
+    fr: "📚 Autres formations",
+  },
   online_courses: { en: "💻 Online courses", de: "💻 Online-Schulungen", fr: "💻 Cours en ligne" },
   videos: { en: "🎬 Training videos", de: "🎬 Schulungsvideos", fr: "🎬 Vidéos de formation" },
 };
@@ -28,16 +34,43 @@ export function resourceSectionLabel(sectionId: ResourceSectionId, lang: MailLan
   return row.en;
 }
 
+/** Optional intro paragraph after a ### subsection heading (post-mail useful-links HTML only). */
+export const RESOURCE_SECTION_EMAIL_INTRO: Partial<
+  Record<ResourceSectionId, { en: string; de: string; fr: string }>
+> = {
+  videos: {
+    en: "These walkthroughs and quick guides focus on specific payloads, power options, and field accessories. Share them with pilots and anyone supporting inspections on site so the team knows what to prepare and how to handle kit safely.",
+    de: "Die folgenden Videos und Kurzanleitungen betreffen konkrete Payloads, Energieversorgung und Feldzubehör. Teilt sie mit Piloten und allen, die Inspektionen vor Ort unterstützen, damit klar ist, was vorbereitet werden muss und wie ihr das Material sicher handhabt.",
+    fr: "Ces vidéos et guides courts portent sur des charges utiles précises, l’alimentation et le matériel de terrain. Partagez-les avec les pilotes et toute personne qui soutient les inspections sur place, pour préparer les missions et manipuler le matériel en toute sécurité.",
+  },
+};
+
+export function resourceSectionEmailIntro(sectionId: ResourceSectionId, lang: MailLanguage): string | undefined {
+  const row = RESOURCE_SECTION_EMAIL_INTRO[sectionId];
+  if (!row) return undefined;
+  if (lang === "de") return row.de;
+  if (lang === "fr") return row.fr;
+  return row.en;
+}
+
 /** Subsections listed here do not repeat a sub-heading in the email (the block title already matches). */
 export const RESOURCE_SECTION_OMIT_EMAIL_SUBHEADING: ReadonlySet<ResourceSectionId> = new Set([
   "other_useful_links",
 ]);
 
-/** Online courses dropdown + email: UT → FARO → regulation (Thinkific) → industry courses → decks / hub. */
-export const ONLINE_COURSES_DISPLAY_ORDER: string[] = [
+/** Decks, slide packs, UT materials, Academy hub (under “Other trainings” in composer + email). */
+export const OTHER_TRAININGS_DISPLAY_ORDER: string[] = [
   "useful_intro_ut",
   "useful_ut_advanced",
+  "useful_ut_probe",
   "useful_faro_deck",
+  "useful_water_wastewater_deck",
+  "useful_cement_deck",
+  "useful_academy_hub",
+];
+
+/** Thinkific academy courses only (plus explicit Thinkific URLs that mirror catalog entries). */
+export const THINKIFIC_ONLINE_COURSES_ORDER: string[] = [
   "useful_faro_online",
   "thinkific_regulation",
   "thinkific_gas_sensor",
@@ -45,10 +78,13 @@ export const ONLINE_COURSES_DISPLAY_ORDER: string[] = [
   "thinkific_mining",
   "thinkific_wastewater",
   "thinkific_faro_connect",
-  "useful_water_wastewater_deck",
-  "useful_cement_deck",
   "useful_wastewater_course",
-  "useful_academy_hub",
+];
+
+/** @deprecated Use OTHER_TRAININGS_DISPLAY_ORDER + THINKIFIC_ONLINE_COURSES_ORDER */
+export const ONLINE_COURSES_DISPLAY_ORDER: string[] = [
+  ...OTHER_TRAININGS_DISPLAY_ORDER,
+  ...THINKIFIC_ONLINE_COURSES_ORDER,
 ];
 
 export type ChangeOption = {
@@ -219,7 +255,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_intro_ut",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "UT Intro Training Elios 3",
     label_de: "UT Einführungstraining Elios 3",
     label_fr: "Formation intro UT Elios 3",
@@ -232,7 +268,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_ut_advanced",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "UT Advanced Training Elios 3",
     label_de: "UT Fortgeschrittenentraining Elios 3",
     label_fr: "Formation UT avancée Elios 3",
@@ -245,7 +281,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_faro_deck",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "FARO Connect Training",
     label_de: "FARO Connect Training",
     label_fr: "Formation FARO Connect",
@@ -271,7 +307,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_water_wastewater_deck",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "Water & Wastewater Training",
     label_de: "Water & Wastewater Training",
     label_fr: "Formation eau & eaux usées",
@@ -284,7 +320,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_cement_deck",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "Cement Online Course",
     label_de: "Cement Online-Kurs",
     label_fr: "Cours en ligne ciment",
@@ -310,7 +346,7 @@ const usefulOptions: ChangeOption[] = [
   {
     id: "useful_academy_hub",
     category: "useful_link",
-    resourceSection: "online_courses",
+    resourceSection: "other_trainings",
     label_en: "Flyability Academy",
     label_de: "Flyability Academy",
     label_fr: "Flyability Academy",
@@ -327,9 +363,12 @@ const usefulOptions: ChangeOption[] = [
     label_en: "Gas Sensor Quick Start Guide",
     label_de: "Gas Sensor Quick-Start-Guide",
     label_fr: "Guide de démarrage capteur de gaz",
-    desc_en: "Quick start for the flammable gas sensor payload.",
-    desc_de: "Quick Start für den brennbaren Gas-Sensor.",
-    desc_fr: "Démarrage rapide pour la charge utile capteur de gaz inflammable.",
+    desc_en:
+      "Covers mounting, pre-flight checks, and how to interpret flammable gas readings during operations. Use it as a refresher before the first mission with this payload so everyone knows the safety basics and what the data means.",
+    desc_de:
+      "Zeigt Montage, Checks vor dem Flug und wie ihr brennbare Gas-Messwerte im Einsatz einordnet. Nutzt es als Auffrischung vor der ersten Mission mit diesem Payload, damit alle Sicherheitsgrundlagen und die Bedeutung der Daten kennen.",
+    desc_fr:
+      "Aborde la mise en place, les vérifications avant vol et l’interprétation des mesures de gaz inflammables en opération. À revoir avant la première mission avec cette charge utile pour rappeler les fondamentaux sécurité et la lecture des données.",
     default_checked: false,
     link_key: "GAS_SENSOR_QUICKSTART_URL",
   },
@@ -340,9 +379,12 @@ const usefulOptions: ChangeOption[] = [
     label_en: "Elios 3 RAD Sensor Training Video",
     label_de: "Elios 3 RAD-Sensor Schulungsvideo",
     label_fr: "Vidéo de formation capteur RAD Elios 3",
-    desc_en: "Video walkthrough for the RAD sensor on Elios 3.",
-    desc_de: "Video-Anleitung zum RAD-Sensor am Elios 3.",
-    desc_fr: "Vidéo pas à pas du capteur RAD sur Elios 3.",
+    desc_en:
+      "Explains how the RAD payload behaves in flight, what to watch in the data, and practical tips for Elios 3. Helpful for the team before flying so expectations for acquisition and reporting stay aligned.",
+    desc_de:
+      "Erklärt das Flugverhalten des RAD-Payloads, worauf ihr in den Daten achten sollt und praktische Tipps für den Elios 3. Hilft dem Team vor dem Einsatz, damit Erwartungen zu Erfassung und Auswertung klar sind.",
+    desc_fr:
+      "Présente le comportement en vol du capteur RAD, les points à surveiller dans les données et des conseils pratiques sur Elios 3. Utile avant les vols pour aligner l’équipe sur l’acquisition et le traitement.",
     default_checked: false,
     link_key: "RAD_SENSOR_VIDEO_URL",
   },
@@ -353,9 +395,12 @@ const usefulOptions: ChangeOption[] = [
     label_en: "High Capacity Battery Start Guide",
     label_de: "High-Capacity-Akku Start-Guide",
     label_fr: "Guide de démarrage batterie grande capacité",
-    desc_en: "Getting started with the high capacity battery.",
-    desc_de: "Erste Schritte mit dem High-Capacity-Akku.",
-    desc_fr: "Premiers pas avec la batterie grande capacité.",
+    desc_en:
+      "Walks through charging habits, installing and removing the pack, and realistic runtime expectations. Reduces ground delays caused by mishandling or uncertainty about the high capacity battery.",
+    desc_de:
+      "Geht auf Ladegewohnheiten, Ein- und Ausbau des Packs und realistische Laufzeiterwartungen ein. Reduziert Verzögerungen am Boden durch unsichere Handhabung oder Missverständnisse zum High-Capacity-Akku.",
+    desc_fr:
+      "Décrit les bonnes pratiques de charge, la pose et le retrait de la batterie, ainsi que l’autonomie attendue. Limite les retours au sol dus à une manipulation hésitante ou à des attentes floues sur la grande capacité.",
     default_checked: false,
     link_key: "HIGH_CAP_BATTERY_GUIDE_URL",
   },
@@ -366,9 +411,12 @@ const usefulOptions: ChangeOption[] = [
     label_en: "Tether Unit Start Guide",
     label_de: "Tether-Einheit Start-Guide",
     label_fr: "Guide de démarrage unité d'attache",
-    desc_en: "Setup and use of the tether unit.",
-    desc_de: "Aufbau und Nutzung der Tether-Einheit.",
-    desc_fr: "Installation et utilisation de l'unité d'attache.",
+    desc_en:
+      "Shows how to rig the tether, operate it during flight, and pack it away without tangling or damaging leads. Review as a crew before jobs where continuous power or long hovers matter.",
+    desc_de:
+      "Zeigt, wie ihr das Tether montiert, im Flug nutzt und ohne Verknoten oder Beschädigung wieder verstaut. Besprecht es als Team vor Einsätzen, bei denen Dauerstrom oder langes Schweben wichtig sind.",
+    desc_fr:
+      "Montre comment installer le filin, l’utiliser en vol et le ranger sans nœuds ni dommages. À regarder en équipe avant les missions où l’alimentation continue ou de longues phases de vol stationnaire comptent.",
     default_checked: false,
     link_key: "TETHER_UNIT_GUIDE_URL",
   },
@@ -379,16 +427,19 @@ const usefulOptions: ChangeOption[] = [
     label_en: "Flyability Tent Folding Tutorial",
     label_de: "Flyability-Zelt Falt-Tutorial",
     label_fr: "Tutoriel pliage tente Flyability",
-    desc_en: "How to fold and pack the Flyability tent.",
-    desc_de: "So faltet und verpacket ihr das Flyability-Zelt.",
-    desc_fr: "Comment plier et ranger la tente Flyability.",
+    desc_en:
+      "Step-by-step folding and packing so the tent fits cleanly in its bag and survives transport. Saves time on site and helps avoid torn fabric or bent poles when you work outdoors often.",
+    desc_de:
+      "Schritt für Schritt Falten und Verpacken, damit das Zelt sauber in die Tasche passt und den Transport übersteht. Spart Zeit vor Ort und schützt vor Rissen im Stoff oder verbogenen Stangen bei häufigem Außeneinsatz.",
+    desc_fr:
+      "Plier et ranger la tente pas à pas pour un sac bien rempli et un transport sans casse. Gagne du temps sur le terrain et limite déchirures ou arceaux pliés si vous travaillez souvent en extérieur.",
     default_checked: false,
     link_key: "TENT_FOLDING_TUTORIAL_URL",
   },
   {
     id: "useful_ut_probe",
     category: "useful_link",
-    resourceSection: "videos",
+    resourceSection: "other_trainings",
     label_en: "Flyability Guide to UT Probe Selection",
     label_de: "Leitfaden zur UT-Sondenauswahl",
     label_fr: "Guide Flyability — choix des sondes UT",
@@ -447,6 +498,7 @@ const thinkificOptions: ChangeOption[] = ((industryLinks.courses as Array<Record
     return {
       id: `thinkific_${id}`,
       category: "thinkific" as const,
+      resourceSection: "online_courses" as const,
       label_en,
       label_de,
       label_fr,
@@ -462,9 +514,19 @@ const thinkificOptions: ChangeOption[] = ((industryLinks.courses as Array<Record
 
 export const CHANGE_OPTIONS: ChangeOption[] = [...coreOptions, ...usefulOptions, ...thinkificOptions];
 
-export function getOnlineCoursesOptionsInOrder(catalog: ChangeOption[] = CHANGE_OPTIONS): ChangeOption[] {
+export function getOtherTrainingsOptionsInOrder(catalog: ChangeOption[] = CHANGE_OPTIONS): ChangeOption[] {
   const byId = new Map(catalog.map((o) => [o.id, o]));
-  return ONLINE_COURSES_DISPLAY_ORDER.map((id) => byId.get(id)).filter((o): o is ChangeOption => o != null);
+  return OTHER_TRAININGS_DISPLAY_ORDER.map((id) => byId.get(id)).filter((o): o is ChangeOption => o != null);
+}
+
+export function getThinkificOnlineCoursesInOrder(catalog: ChangeOption[] = CHANGE_OPTIONS): ChangeOption[] {
+  const byId = new Map(catalog.map((o) => [o.id, o]));
+  return THINKIFIC_ONLINE_COURSES_ORDER.map((id) => byId.get(id)).filter((o): o is ChangeOption => o != null);
+}
+
+/** Full legacy ordering (other trainings + Thinkific) for callers that need one combined list. */
+export function getOnlineCoursesOptionsInOrder(catalog: ChangeOption[] = CHANGE_OPTIONS): ChangeOption[] {
+  return [...getOtherTrainingsOptionsInOrder(catalog), ...getThinkificOnlineCoursesInOrder(catalog)];
 }
 
 export const DEFAULT_INCLUDED_CHANGE_IDS = CHANGE_OPTIONS.filter((opt) => opt.default_checked).map((opt) => opt.id);

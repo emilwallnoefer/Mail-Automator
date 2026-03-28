@@ -326,15 +326,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
         out.append(desc)
         out.append("")
         n += 1
-    heading = training_materials_heading(lang)
     if not out:
-        empty = (
-            "No materials selected."
-            if lang == "en"
-            else ("Keine Unterlagen ausgewählt." if lang == "de" else "Aucun support sélectionné.")
-        )
-        return f"{heading}\n\n{empty}"
-    return f"{heading}\n\n" + "\n".join(out).rstrip()
+        return ""
+    return f"{training_materials_heading(lang)}\n\n" + "\n".join(out).rstrip()
 
 
 def infer_industry_course_ids(payload: Dict[str, Any], industry_catalog: List[Dict[str, Any]]) -> List[str]:
