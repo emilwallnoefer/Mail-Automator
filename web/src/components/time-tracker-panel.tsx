@@ -266,30 +266,62 @@ function DayEditorBody({
   toast,
 }: DayEditorBodyProps) {
   const showPanelHeading = layout === "panel";
+  const sheet = layout === "sheet";
+  const stackY = sheet ? "space-y-2" : "space-y-3";
+  const timeInputClass = sheet
+    ? "box-border w-full min-w-0 max-w-full rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-base leading-normal [font-variant-numeric:tabular-nums]"
+    : "w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm";
 
   const formFields = (
     <>
-      <label className="block min-w-0">
-        <span className="mb-1 block text-xs text-slate-200/90">Start</span>
-        <input
-          type="time"
-          value={formStart}
-          disabled={formHoliday || !selectedDay}
-          onChange={(event) => setFormStart(event.target.value)}
-          className="w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
-        />
-      </label>
-      <label className="block min-w-0">
-        <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
-        <input
-          type="time"
-          value={formStop}
-          disabled={formHoliday || !selectedDay}
-          onChange={(event) => setFormStop(event.target.value)}
-          className="w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
-        />
-      </label>
-      <label className="flex min-w-0 items-center gap-2 text-sm">
+      {sheet ? (
+        <div className="grid min-w-0 max-w-full grid-cols-2 gap-2">
+          <label className="min-w-0 max-w-full overflow-hidden">
+            <span className="mb-0.5 block text-xs text-slate-200/90">Start</span>
+            <input
+              type="time"
+              value={formStart}
+              disabled={formHoliday || !selectedDay}
+              onChange={(event) => setFormStart(event.target.value)}
+              className={timeInputClass}
+            />
+          </label>
+          <label className="min-w-0 max-w-full overflow-hidden">
+            <span className="mb-0.5 block text-xs text-slate-200/90">Stop</span>
+            <input
+              type="time"
+              value={formStop}
+              disabled={formHoliday || !selectedDay}
+              onChange={(event) => setFormStop(event.target.value)}
+              className={timeInputClass}
+            />
+          </label>
+        </div>
+      ) : (
+        <>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs text-slate-200/90">Start</span>
+            <input
+              type="time"
+              value={formStart}
+              disabled={formHoliday || !selectedDay}
+              onChange={(event) => setFormStart(event.target.value)}
+              className={timeInputClass}
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
+            <input
+              type="time"
+              value={formStop}
+              disabled={formHoliday || !selectedDay}
+              onChange={(event) => setFormStop(event.target.value)}
+              className={timeInputClass}
+            />
+          </label>
+        </>
+      )}
+      <label className={`flex min-w-0 items-center gap-2 ${sheet ? "text-xs" : "text-sm"}`}>
         <input
           type="checkbox"
           checked={formHoliday}
@@ -300,31 +332,47 @@ function DayEditorBody({
       </label>
 
         {selectedDaySupportsBreaks ? (
-          <div className="min-w-0 overflow-hidden rounded-xl border border-white/15 bg-white/5 p-3">
-            <div className="mb-2.5 flex items-end justify-between gap-3">
+          <div
+            className={`min-w-0 max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/5 ${
+              sheet ? "p-2" : "p-3"
+            }`}
+          >
+            <div className={`flex items-end justify-between gap-3 ${sheet ? "mb-1" : "mb-2.5"}`}>
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
               </div>
             </div>
             {selectedDayUsesBreakCounter ? (
-              <div className="space-y-2">
+              <div className={sheet ? "space-y-1.5" : "space-y-2"}>
                 <div className="grid min-w-0 grid-cols-2 items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                    className="min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base font-semibold tabular-nums transition hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
+                    className={`rounded-lg border border-white/20 bg-white/10 px-2 font-semibold tabular-nums transition hover:bg-white/15 ${
+                      sheet
+                        ? "min-h-10 py-2 text-sm"
+                        : "min-h-11 text-base lg:h-9 lg:min-h-0 lg:text-sm"
+                    }`}
                   >
                     -15
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                    className="min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base font-semibold tabular-nums transition hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
+                    className={`rounded-lg border border-white/20 bg-white/10 px-2 font-semibold tabular-nums transition hover:bg-white/15 ${
+                      sheet
+                        ? "min-h-10 py-2 text-sm"
+                        : "min-h-11 text-base lg:h-9 lg:min-h-0 lg:text-sm"
+                    }`}
                   >
                     +15
                   </button>
                 </div>
-                <div className="flex w-full min-w-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base font-semibold text-slate-100 tabular-nums lg:py-2 lg:text-sm">
+                <div
+                  className={`flex w-full min-w-0 max-w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 font-semibold text-slate-100 tabular-nums ${
+                    sheet ? "py-2 text-sm" : "py-2.5 text-base lg:py-2 lg:text-sm"
+                  }`}
+                >
                   Break {formTotalBreakMins} min
                 </div>
               </div>
@@ -380,16 +428,22 @@ function DayEditorBody({
           </div>
         ) : null}
 
-      <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
+      <p className={`text-slate-300/80 ${sheet ? "text-[11px] leading-tight" : "text-xs"}`}>
+        Computed total: {fmtHM(computedNet)}
+      </p>
 
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+      <div className={`flex min-w-0 max-w-full flex-col sm:flex-row ${sheet ? "gap-1.5" : "gap-2"}`}>
         <button
           type="button"
           onClick={() => {
             onSaveDay();
           }}
           disabled={saving || !selectedDay}
-          className="min-h-11 flex-1 rounded-lg bg-cyan-400/90 px-3 py-2.5 text-base font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70 lg:min-h-0 lg:py-2 lg:text-sm"
+          className={`flex-1 rounded-lg bg-cyan-400/90 font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70 ${
+            sheet
+              ? "min-h-10 px-2 py-2 text-sm"
+              : "min-h-11 px-3 py-2.5 text-base lg:min-h-0 lg:py-2 lg:text-sm"
+          }`}
         >
           {saving ? "Saving..." : "Save day"}
         </button>
@@ -400,7 +454,11 @@ function DayEditorBody({
             void onResetDay();
           }}
           disabled={saving || !selectedDay}
-          className="min-h-11 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base hover:bg-white/15 disabled:opacity-70 lg:min-h-0 lg:py-2 lg:text-sm"
+          className={`flex-1 rounded-lg border border-white/20 bg-white/10 hover:bg-white/15 disabled:opacity-70 ${
+            sheet
+              ? "min-h-10 px-2 py-2 text-sm"
+              : "min-h-11 px-3 py-2.5 text-base lg:min-h-0 lg:py-2 lg:text-sm"
+          }`}
         >
           Reset day
         </button>
@@ -410,14 +468,22 @@ function DayEditorBody({
 
   const toastLine =
     toast != null ? (
-      <p className={`mt-4 break-words text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
+      <p
+        className={`break-words ${sheet ? "mt-2 text-xs" : "mt-4 text-sm"} ${
+          toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"
+        }`}
+      >
         {toast.message}
       </p>
     ) : null;
 
   return (
-    <div className="grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start gap-4 lg:grid-cols-2">
-      <div className="min-w-0">
+    <div
+      className={`grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start overflow-x-hidden lg:grid-cols-2 ${
+        sheet ? "gap-2" : "gap-4"
+      }`}
+    >
+      <div className="min-w-0 max-w-full">
         {showPanelHeading ? (
           <>
             <div className="flex items-center justify-between gap-2">
@@ -430,29 +496,52 @@ function DayEditorBody({
             </div>
           </>
         ) : (
-          <div className="space-y-3">
+          <div className={stackY}>
             {formFields}
             {toastLine}
           </div>
         )}
       </div>
 
-      <aside className="h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 p-4 lg:w-auto">
+      <aside
+        className={`h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 lg:w-auto ${
+          sheet ? "p-2.5" : "p-4"
+        }`}
+      >
         <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-        <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+        <p className={`text-slate-300/80 ${sheet ? "mt-1 text-[11px]" : "mt-2 text-xs"}`}>{panelDateLabel}</p>
         {!selectedDay ? (
-          <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+          <p className={`text-slate-300/80 ${sheet ? "mt-2 text-xs" : "mt-4 text-sm"}`}>
+            Select a day to edit details.
+          </p>
         ) : !selectedTravelInfo ? (
           <>
-            <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+            <p className={`text-slate-300/80 ${sheet ? "mt-2 text-xs leading-snug" : "mt-4 text-sm"}`}>
+              No travel info found for this date.
+            </p>
             {travelDebug ? (
-              <p className="mt-3 break-words text-xs text-slate-400/90">
+              <p className={`break-words text-slate-400/90 ${sheet ? "mt-2 text-[10px] leading-snug" : "mt-3 text-xs"}`}>
                 Debug: {travelDebug.status} - {travelDebug.message}
                 {"  "}
                 ({travelDebug.fetched_dates} loaded, {travelDebug.week_matches} in week)
               </p>
             ) : null}
           </>
+        ) : sheet ? (
+          <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Client</p>
+              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.client || "-"}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Location</p>
+              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.location || "-"}</p>
+            </div>
+            <div className="col-span-2 min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
+              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.responsible || "-"}</p>
+            </div>
+          </div>
         ) : (
           <div className="mt-4 space-y-3 text-sm">
             <div className="min-w-0">
@@ -1387,32 +1476,32 @@ export function TimeTrackerPanel() {
                     !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
                 }}
               >
-                <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-                  <div className="flex items-start gap-3">
+                <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
+                  <div className="flex items-start gap-2">
                     <button
                       ref={mobileSheetBackRef}
                       type="button"
                       onClick={closeDayEditorSheet}
-                      className="mt-1 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
+                      className="mt-0.5 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
                       aria-label="Back to week"
                     >
                       ←
                     </button>
                     <header className="min-w-0 flex-1 pt-0.5">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
+                      <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-cyan-200/75">Time Tracker</p>
                       <h2
                         id="day-editor-sheet-title"
                         ref={mobileSheetTitleRef}
                         tabIndex={-1}
-                        className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
+                        className="mt-0.5 text-base font-semibold leading-tight tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
                       >
                         Day Logger
                       </h2>
-                      <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">{panelDateLabel}</p>
                     </header>
                   </div>
                 </div>
-                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
                   <DayEditorBody {...dayEditorProps} layout="sheet" />
                 </div>
               </div>

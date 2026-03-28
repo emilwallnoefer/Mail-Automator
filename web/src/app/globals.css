@@ -24,6 +24,12 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Native <input type="time"> can ignore parent width on WebKit; keep inside layout */
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .aurora-bg {
   position: relative;
   overflow: hidden;
