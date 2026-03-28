@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   MAIL_SIGNATURE_CUSTOM_VALUE,
   MAIL_SIGNATURE_DEFAULT_NAME,
@@ -9,6 +8,31 @@ import {
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
+
+export type SettingsSectionId =
+  | "gmail"
+  | "travel_mapping"
+  | "mail_signature"
+  | "time_data"
+  | "interface_sounds"
+  | "security"
+  | "readme";
+
+const SETTINGS_NAV: { id: SettingsSectionId; label: string; pilotOnly?: boolean }[] = [
+  { id: "gmail", label: "Gmail", pilotOnly: true },
+  { id: "travel_mapping", label: "Travel mapping", pilotOnly: true },
+  { id: "mail_signature", label: "Mail signature", pilotOnly: true },
+  { id: "time_data", label: "Time data" },
+  { id: "interface_sounds", label: "Interface sounds" },
+  { id: "security", label: "Account & security" },
+  { id: "readme", label: "Help & README" },
+];
+
+function filterSettingsNav(isSalesOnly: boolean, navFilter: string) {
+  const visible = SETTINGS_NAV.filter((item) => !item.pilotOnly || !isSalesOnly);
+  const q = navFilter.trim().toLowerCase();
+  return q === "" ? visible : visible.filter((item) => item.label.toLowerCase().includes(q));
+}
 
 type SettingsPanelProps = {
   email: string;
@@ -18,12 +42,15 @@ type SettingsPanelProps = {
 };
 
 export function SettingsPanel({
-  email,
+  email: _email,
   showStandaloneActions = false,
   autoOpenProgramReadmeToken = 0,
   userRole = "pilot",
 }: SettingsPanelProps) {
-  const [openSetting, setOpenSetting] = useState<"gmail" | "mapping" | "mail_signature" | "import" | null>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
+    userRole === "sales" ? "time_data" : "gmail",
+  );
+  const [navFilter, setNavFilter] = useState("");
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -33,16 +60,12 @@ export function SettingsPanel({
     responsibleColumn: "",
   });
   const [mappingSaving, setMappingSaving] = useState(false);
-  const [showReadmeSection, setShowReadmeSection] = useState(false);
   const [openReadme, setOpenReadme] = useState<"program" | "gmail" | "mapping" | "import" | null>(null);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const isSalesOnly = userRole === "sales";
@@ -224,34 +247,6 @@ export function SettingsPanel({
     }
   }
 
-  async function handleChangePassword() {
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
-      setMessage(null);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
-      setMessage(null);
-      return;
-    }
-    setPasswordSaving(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) throw updateError;
-      setMessage("Password updated.");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err) {
-      setError((err as Error).message || "Could not update password.");
-    } finally {
-      setPasswordSaving(false);
-    }
-  }
-
   async function handleDeleteAccount() {
     if (deleteConfirmText !== "DELETE") {
       setError("Type DELETE to confirm account deletion.");
@@ -278,12 +273,24 @@ export function SettingsPanel({
 
   useEffect(() => {
     if (autoOpenProgramReadmeToken <= 0) return;
-    setShowReadmeSection(true);
+    setActiveSection("readme");
     setOpenReadme("program");
   }, [autoOpenProgramReadmeToken]);
 
+  const filteredNavItems = useMemo(
+    () => filterSettingsNav(isSalesOnly, navFilter),
+    [isSalesOnly, navFilter],
+  );
+
+  useEffect(() => {
+    if (filteredNavItems.length === 0) return;
+    if (!filteredNavItems.some((item) => item.id === activeSection)) {
+      setActiveSection(filteredNavItems[0].id);
+    }
+  }, [filteredNavItems, activeSection]);
+
   return (
-    <section className="underwater-panel space-y-4 rounded-2xl p-2">
+    <section className="underwater-panel rounded-2xl">
       <div className="bubble-layer" aria-hidden="true">
         {[
           { left: "7%", size: "8px", duration: "9.5s", delay: "0s" },
@@ -307,520 +314,455 @@ export function SettingsPanel({
           />
         ))}
       </div>
-      <header className="glass-card hourlogger-surface flex flex-wrap items-center justify-between gap-3 p-4 md:p-5">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Flyability Internal</p>
-          <h1 className="text-lg font-semibold md:text-xl">Settings</h1>
-          <p className="text-xs text-slate-300/85">{email}</p>
-        </div>
-        {showStandaloneActions ? (
-          <a
-            href="/dashboard"
-            className="rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-xs transition hover:bg-white/12"
+
+      <section className="relative z-10 min-w-0 w-full overflow-hidden rounded-2xl glass-card hourlogger-surface">
+        <div className="flex min-h-[min(70vh,560px)] flex-col md:flex-row">
+          <nav
+            className="shrink-0 border-b border-white/10 bg-slate-950/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-white/10"
+            aria-label="Settings categories"
           >
-            Back to dashboard
-          </a>
-        ) : null}
-      </header>
-
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Overview</h2>
-        <div
-          className={`mt-3 grid gap-3 ${isSalesOnly ? "sm:grid-cols-2" : "md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5"}`}
-        >
-          {!isSalesOnly ? (
-            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Gmail</p>
-              <p className="mt-1 text-sm">{gmailStatus.connected ? "Connected" : "Disconnected"}</p>
-              <p className="mt-1 truncate text-xs text-slate-300/80">{gmailStatus.gmail_email ?? "No account connected"}</p>
-              <button
-                type="button"
-                onClick={() => setOpenSetting((prev) => (prev === "gmail" ? null : "gmail"))}
-                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-              >
-                {openSetting === "gmail" ? "Hide Gmail settings" : "Open Gmail settings"}
-              </button>
+            <div className="border-b border-white/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
+              <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-slate-100 md:text-lg">
+                Settings
+              </h1>
+              {showStandaloneActions ? (
+                <a
+                  href="/dashboard"
+                  className="mt-2 inline-block rounded-md border border-white/15 bg-white/8 px-2.5 py-1.5 text-[11px] text-slate-200 transition hover:bg-white/12"
+                >
+                  Back to dashboard
+                </a>
+              ) : null}
             </div>
-          ) : null}
-          {!isSalesOnly ? (
-            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Travel Mapping</p>
-              <p className="mt-1 text-sm">
-                {travelMapping.clientColumn && travelMapping.locationColumn && travelMapping.responsibleColumn
-                  ? "Configured"
-                  : "Using defaults"}
-              </p>
-              <p className="mt-1 text-xs text-slate-300/80">
-                Client {travelMapping.clientColumn || "-"} · Location {travelMapping.locationColumn || "-"} · Responsible{" "}
-                {travelMapping.responsibleColumn || "-"}
-              </p>
-              <button
-                type="button"
-                onClick={() => setOpenSetting((prev) => (prev === "mapping" ? null : "mapping"))}
-                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-              >
-                {openSetting === "mapping" ? "Hide mapping settings" : "Open mapping settings"}
-              </button>
-            </div>
-          ) : null}
-          {!isSalesOnly ? (
-            <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Mail signature</p>
-              <p className="mt-1 text-sm">
-                {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE
-                  ? mailSigCustom.trim() || "Custom name"
-                  : mailSigPreset}
-              </p>
-              <p className="mt-1 text-xs text-slate-300/80">Name shown at the end of generated training emails.</p>
-              <button
-                type="button"
-                onClick={() => setOpenSetting((prev) => (prev === "mail_signature" ? null : "mail_signature"))}
-                className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-              >
-                {openSetting === "mail_signature" ? "Hide signature settings" : "Open signature settings"}
-              </button>
-            </div>
-          ) : null}
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Time Import</p>
-            <p className="mt-1 text-sm">One-time migration</p>
-            <p className="mt-1 text-xs text-slate-300/80">Upload your legacy `hourlogger-data.json` when needed.</p>
-            <button
-              type="button"
-              onClick={() => setOpenSetting((prev) => (prev === "import" ? null : "import"))}
-              className="mt-3 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-[11px] transition hover:bg-white/15"
-            >
-              {openSetting === "import" ? "Hide import settings" : "Open import settings"}
-            </button>
-          </div>
-          <div className="rounded-xl border border-white/15 bg-slate-950/40 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 pr-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">
-                  Interface sounds
-                </p>
-                <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
-                  {uiSoundsOn ? "On" : "Off"}
-                </p>
-                <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
-                  Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={uiSoundsOn}
-                aria-label={uiSoundsOn ? "Turn interface sounds off" : "Turn interface sounds on"}
-                onClick={() => {
-                  const next = !uiSoundsOn;
-                  setUiSoundsOn(next);
-                  persistUiSoundsEnabled(next);
-                }}
-                className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
-                  uiSoundsOn
-                    ? "border-cyan-500/25 bg-[rgb(22_58_68)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                    : "border-white/15 bg-white/[0.07]"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
-                    uiSoundsOn ? "translate-x-[22px]" : "translate-x-0"
-                  }`}
-                  aria-hidden
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {!isSalesOnly && openSetting === "gmail" ? (
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Integrations</h2>
-        <div className="mt-3 rounded-xl border border-white/15 bg-white/5 p-3">
-          <p className="text-xs text-slate-200/90">
-            Gmail status: <span className="font-medium">{gmailStatus.connected ? "Connected" : "Disconnected"}</span>
-            {gmailStatus.gmail_email ? ` (${gmailStatus.gmail_email})` : ""}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {gmailStatus.connected ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleDisconnectGmail();
-                }}
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 sm:w-auto"
-              >
-                Disconnect Gmail
-              </button>
-            ) : (
-              <a
-                href="/api/gmail/connect"
-                className="w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:bg-cyan-300 sm:w-auto"
-              >
-                Connect Gmail
-              </a>
-            )}
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {!isSalesOnly && openSetting === "mail_signature" ? (
-        <section className="glass-card hourlogger-surface p-4 md:p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Mail signature name</h2>
-          <p className="mt-2 text-xs text-slate-300/90">
-            This name appears in the closing of generated training emails (e.g. “Best regards, …”).
-          </p>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="block min-w-0 flex-1">
-              <span className="mb-1 block text-xs text-slate-200/90">Preset</span>
-              <select
-                value={mailSigPreset}
-                onChange={(event) => setMailSigPreset(event.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-              >
-                {MAIL_SIGNATURE_NAME_PRESETS.map((preset) => (
-                  <option key={preset} value={preset}>
-                    {preset}
-                  </option>
-                ))}
-                <option value={MAIL_SIGNATURE_CUSTOM_VALUE}>Custom name…</option>
-              </select>
-            </label>
-            {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? (
-              <label className="block min-w-0 flex-1">
-                <span className="mb-1 block text-xs text-slate-200/90">Custom name</span>
-                <input
-                  value={mailSigCustom}
-                  onChange={(event) => setMailSigCustom(event.target.value)}
-                  placeholder="Your name"
-                  maxLength={120}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-                />
+            <div className="p-3 pb-2 md:px-4">
+              <label className="sr-only" htmlFor="settings-find">
+                Find a setting
               </label>
-            ) : null}
-            <button
-              type="button"
-              disabled={mailSigSaving}
-              onClick={() => void handleSaveMailSignature()}
-              className="rounded-lg bg-cyan-400/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:bg-cyan-300 disabled:opacity-50"
-            >
-              {mailSigSaving ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {!isSalesOnly && openSetting === "mapping" ? (
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Travel Column Mapping</h2>
-        <p className="mt-2 text-xs text-slate-300/90">
-          Configure per-user columns for travel import. Date columns stay unchanged.
-        </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="block">
-            <span className="mb-1 block text-xs text-slate-200/90">Client column</span>
-            <input
-              value={travelMapping.clientColumn}
-              onChange={(event) => {
-                const value = normalizeColumnInput(event.target.value);
-                setTravelMapping((prev) => ({ ...prev, clientColumn: value }));
-              }}
-              placeholder="P"
-              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-slate-200/90">Location column</span>
-            <input
-              value={travelMapping.locationColumn}
-              onChange={(event) => {
-                const value = normalizeColumnInput(event.target.value);
-                setTravelMapping((prev) => ({ ...prev, locationColumn: value }));
-              }}
-              placeholder="Q"
-              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-slate-200/90">Responsible column</span>
-            <input
-              value={travelMapping.responsibleColumn}
-              onChange={(event) => {
-                const value = normalizeColumnInput(event.target.value);
-                setTravelMapping((prev) => ({ ...prev, responsibleColumn: value }));
-              }}
-              placeholder="R"
-              className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            void handleSaveTravelMapping();
-          }}
-          disabled={mappingSaving}
-          className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
-        >
-          {mappingSaving ? "Saving..." : "Save travel mapping"}
-        </button>
-      </section>
-      ) : null}
-
-      {openSetting === "import" ? (
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Data</h2>
-        <p className="mt-2 text-xs text-slate-300/90">
-          One-time import: upload your previous <code>hourlogger-data.json</code> file to migrate old tracking history
-          into this account.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              importFileRef.current?.click();
-            }}
-            disabled={importing}
-            className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
-          >
-            {importing ? "Importing..." : "Upload old time tracking data"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void handleExportData();
-            }}
-            disabled={exporting}
-            className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
-          >
-            {exporting ? "Exporting..." : "Export time tracking data"}
-          </button>
-        </div>
-        <input
-          ref={importFileRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void handleImportFile(file);
-            event.currentTarget.value = "";
-          }}
-        />
-      </section>
-      ) : null}
-
-      <section className="glass-card hourlogger-surface p-4 md:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Security and Access</h2>
-        <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <p className="text-xs font-medium text-slate-100">Change password</p>
-            <div className="mt-2 space-y-2">
               <input
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="New password"
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Confirm new password"
-                className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                id="settings-find"
+                type="search"
+                value={navFilter}
+                onChange={(e) => setNavFilter(e.target.value)}
+                placeholder="Find a setting"
+                autoComplete="off"
+                className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-3 pr-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                void handleChangePassword();
-              }}
-              disabled={passwordSaving}
-              className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
-            >
-              {passwordSaving ? "Saving..." : "Update password"}
-            </button>
-          </div>
-
-          <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-3">
-            <p className="text-xs font-medium text-rose-200">Delete account</p>
-            <p className="mt-1 text-xs text-rose-100/80">
-              This permanently removes your account and all app access for this login.
-            </p>
-            <div className="mt-2">
-              <input
-                value={deleteConfirmText}
-                onChange={(event) => setDeleteConfirmText(event.target.value)}
-                placeholder='Type "DELETE" to confirm'
-                className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                void handleDeleteAccount();
-              }}
-              disabled={deletingAccount}
-              className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
-            >
-              {deletingAccount ? "Deleting account..." : "Delete account"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="flex justify-start">
-      <section
-        className={`glass-card hourlogger-surface transition-all duration-300 ease-out ${
-          showReadmeSection ? "w-full p-4 md:p-5" : "w-fit p-3"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => setShowReadmeSection((prev) => !prev)}
-          className={`rounded-lg border border-white/15 bg-white/8 text-xs font-medium transition hover:bg-white/12 ${
-            showReadmeSection
-              ? "flex w-full items-center justify-between px-3 py-2 text-left"
-              : "inline-flex items-center gap-3 px-3 py-2"
-          }`}
-        >
-          <span>README</span>
-          <span>{showReadmeSection ? "Hide" : "Show"}</span>
-        </button>
-        {showReadmeSection ? (
-        <div className="mt-3 space-y-2">
-          <button
-            type="button"
-            onClick={() => toggleReadme("program")}
-            className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-          >
-            <span>Program functionality README</span>
-            <span>{openReadme === "program" ? "Hide" : "Show"}</span>
-          </button>
-          {openReadme === "program" ? (
-            <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-              <p className="font-medium text-cyan-200">What this program does</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4">
-                {!isSalesOnly ? (
-                  <li>
-                    <strong>Mail Automator</strong> creates pre/post training mails from structured inputs (language,
-                    context, materials, and custom notes).
-                  </li>
-                ) : null}
-                {!isSalesOnly ? (
-                  <li>
-                    <strong>Gmail Draft Mode</strong> allows generated mails to be saved as drafts directly in the
-                    connected Gmail account.
-                  </li>
-                ) : null}
-                <li>
-                  <strong>Time Tracker</strong> records work logs, compensation, and overtime bank per authenticated
-                  user.
-                </li>
-                {!isSalesOnly ? (
-                  <li>
-                    <strong>Travel Integration</strong> enriches tracker days with travel context from Google Sheets using
-                    per-user mapping.
-                  </li>
-                ) : null}
-                <li>
-                  <strong>Settings</strong> provides integration setup, mapping control, and legacy time-data import.
-                </li>
+            {filteredNavItems.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-slate-500 md:px-4">No settings match your search.</p>
+            ) : (
+              <ul className="max-h-[42vh] overflow-y-auto px-0 pb-3 md:max-h-[calc(70vh-120px)] md:pb-4" role="list">
+                {filteredNavItems.map((item) => {
+                  const active = activeSection === item.id;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(item.id)}
+                        className={`flex w-full items-center border-l-[3px] px-3 py-2.5 text-left text-sm transition ${
+                          active
+                            ? "border-cyan-400 bg-cyan-500/15 font-medium text-white"
+                            : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                        }`}
+                      >
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
-            </div>
-          ) : null}
+            )}
+          </nav>
 
-          {!isSalesOnly ? (
-            <button
-              type="button"
-              onClick={() => toggleReadme("gmail")}
-              className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-            >
-              <span>Gmail setup README</span>
-              <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
-            </button>
-          ) : null}
-          {!isSalesOnly && openReadme === "gmail" ? (
-            <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-              <p className="font-medium text-cyan-200">What it does</p>
-              <p className="mt-1 text-slate-300/90">
-                Gmail setup enables draft creation from generated mails so users can review and send from Gmail.
-              </p>
-              <p className="mt-2 font-medium text-cyan-200">Steps</p>
-              <ol className="mt-1 list-decimal space-y-1 pl-4">
-                <li>Open <strong>Gmail settings</strong> above.</li>
-                <li>Click <strong>Connect Gmail</strong>.</li>
-                <li>Select the correct Google account.</li>
-                <li>Approve required permissions for draft creation.</li>
-                <li>Return to app and confirm status is <strong>Connected</strong>.</li>
-                <li>Generate a mail draft and run <strong>Create Gmail draft</strong> as final verification.</li>
-              </ol>
-            </div>
-          ) : null}
+          <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-white/5 bg-slate-950/20 p-4 md:border-t-0 md:p-6">
+            <div className="mx-auto max-w-2xl">
+              <h2 className="text-xl font-semibold tracking-tight text-slate-50 md:text-2xl">
+                {SETTINGS_NAV.find((n) => n.id === activeSection)?.label ?? "Settings"}
+              </h2>
 
-          {!isSalesOnly ? (
-            <button
-              type="button"
-              onClick={() => toggleReadme("mapping")}
-              className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-            >
-              <span>Travel mapping setup README</span>
-              <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
-            </button>
-          ) : null}
-          {!isSalesOnly && openReadme === "mapping" ? (
-            <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-              <p className="font-medium text-cyan-200">What it does</p>
-              <p className="mt-1 text-slate-300/90">
-                Mapping defines where Client/Location/Responsible values are read in your travel sheet.
-              </p>
-              <p className="mt-2 font-medium text-cyan-200">Steps</p>
-              <ol className="mt-1 list-decimal space-y-1 pl-4">
-                <li>Open <strong>Mapping settings</strong>.</li>
-                <li>Enter sheet column letters for Client, Location, and Responsible.</li>
-                <li>Use letters only (examples: <code>P</code>, <code>Q</code>, <code>R</code>, <code>AA</code>).</li>
-                <li>Click <strong>Save travel mapping</strong>.</li>
-                <li>Open Time Tracker and verify travel info appears for expected dates.</li>
-                <li>If values are missing, adjust letters and save again.</li>
-              </ol>
-            </div>
-          ) : null}
+              {!isSalesOnly && activeSection === "gmail" ? (
+                <div className="mt-5">
+                  <p className="text-sm text-slate-400">Connect Google so generated training mails can be saved as Gmail drafts.</p>
+                  <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-4">
+                    <p className="text-sm text-slate-200/90">
+                      Status: <span className="font-medium">{gmailStatus.connected ? "Connected" : "Disconnected"}</span>
+                      {gmailStatus.gmail_email ? ` (${gmailStatus.gmail_email})` : ""}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {gmailStatus.connected ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleDisconnectGmail();
+                          }}
+                          className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15"
+                        >
+                          Disconnect Gmail
+                        </button>
+                      ) : (
+                        <a
+                          href="/api/gmail/connect"
+                          className="rounded-lg bg-cyan-400/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:bg-cyan-300"
+                        >
+                          Connect Gmail
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
-          <button
-            type="button"
-            onClick={() => toggleReadme("import")}
-            className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
-          >
-            <span>Time import setup README</span>
-            <span>{openReadme === "import" ? "Hide" : "Show"}</span>
-          </button>
-          {openReadme === "import" ? (
-            <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-              <p className="font-medium text-cyan-200">What it does</p>
-              <p className="mt-1 text-slate-300/90">
-                Import migrates old `hourlogger-data.json` records into this account&apos;s time tracker history.
-              </p>
-              <p className="mt-2 font-medium text-cyan-200">Steps</p>
-              <ol className="mt-1 list-decimal space-y-1 pl-4">
-                <li>Open <strong>Import settings</strong>.</li>
-                <li>Prepare a valid <code>hourlogger-data.json</code> export file.</li>
-                <li>Upload the file using <strong>Upload old time tracking data</strong>.</li>
-                <li>Wait until the success message confirms imported days.</li>
-                <li>Open Time Tracker and navigate weeks to verify imported entries.</li>
-                <li>If needed, rerun with corrected data file.</li>
-              </ol>
+              {!isSalesOnly && activeSection === "mail_signature" ? (
+                <div className="mt-5">
+                  <p className="text-sm text-slate-400">
+                    This name appears in the closing of generated training emails (e.g. &ldquo;Best regards, …&rdquo;).
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <label className="block min-w-0 flex-1">
+                      <span className="mb-1 block text-xs text-slate-200/90">Preset</span>
+                      <select
+                        value={mailSigPreset}
+                        onChange={(event) => setMailSigPreset(event.target.value)}
+                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      >
+                        {MAIL_SIGNATURE_NAME_PRESETS.map((preset) => (
+                          <option key={preset} value={preset}>
+                            {preset}
+                          </option>
+                        ))}
+                        <option value={MAIL_SIGNATURE_CUSTOM_VALUE}>Custom name…</option>
+                      </select>
+                    </label>
+                    {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? (
+                      <label className="block min-w-0 flex-1">
+                        <span className="mb-1 block text-xs text-slate-200/90">Custom name</span>
+                        <input
+                          value={mailSigCustom}
+                          onChange={(event) => setMailSigCustom(event.target.value)}
+                          placeholder="Your name"
+                          maxLength={120}
+                          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                        />
+                      </label>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={mailSigSaving}
+                      onClick={() => void handleSaveMailSignature()}
+                      className="rounded-lg bg-cyan-400/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:bg-cyan-300 disabled:opacity-50"
+                    >
+                      {mailSigSaving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {!isSalesOnly && activeSection === "travel_mapping" ? (
+                <div className="mt-5">
+                  <p className="text-sm text-slate-400">Configure per-user columns for travel import. Date columns stay unchanged.</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-slate-200/90">Client column</span>
+                      <input
+                        value={travelMapping.clientColumn}
+                        onChange={(event) => {
+                          const value = normalizeColumnInput(event.target.value);
+                          setTravelMapping((prev) => ({ ...prev, clientColumn: value }));
+                        }}
+                        placeholder="P"
+                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-slate-200/90">Location column</span>
+                      <input
+                        value={travelMapping.locationColumn}
+                        onChange={(event) => {
+                          const value = normalizeColumnInput(event.target.value);
+                          setTravelMapping((prev) => ({ ...prev, locationColumn: value }));
+                        }}
+                        placeholder="Q"
+                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-slate-200/90">Responsible column</span>
+                      <input
+                        value={travelMapping.responsibleColumn}
+                        onChange={(event) => {
+                          const value = normalizeColumnInput(event.target.value);
+                          setTravelMapping((prev) => ({ ...prev, responsibleColumn: value }));
+                        }}
+                        placeholder="R"
+                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSaveTravelMapping();
+                    }}
+                    disabled={mappingSaving}
+                    className="mt-4 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                  >
+                    {mappingSaving ? "Saving..." : "Save travel mapping"}
+                  </button>
+                </div>
+              ) : null}
+
+              {activeSection === "time_data" ? (
+                <div className="mt-5">
+                  <p className="text-sm text-slate-400">
+                    One-time import: upload your previous <code className="rounded bg-white/10 px-1">hourlogger-data.json</code> file to
+                    migrate old tracking history into this account. You can also export your current data.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        importFileRef.current?.click();
+                      }}
+                      disabled={importing}
+                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                    >
+                      {importing ? "Importing..." : "Upload old time tracking data"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleExportData();
+                      }}
+                      disabled={exporting}
+                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                    >
+                      {exporting ? "Exporting..." : "Export time tracking data"}
+                    </button>
+                  </div>
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void handleImportFile(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              {activeSection === "interface_sounds" ? (
+                <div className="mt-5">
+                  <div className="rounded-xl border border-white/15 bg-slate-950/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Interface sounds</p>
+                        <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">{uiSoundsOn ? "On" : "Off"}</p>
+                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                          Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={uiSoundsOn}
+                        aria-label={uiSoundsOn ? "Turn interface sounds off" : "Turn interface sounds on"}
+                        onClick={() => {
+                          const next = !uiSoundsOn;
+                          setUiSoundsOn(next);
+                          persistUiSoundsEnabled(next);
+                        }}
+                        className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
+                          uiSoundsOn
+                            ? "border-cyan-500/25 bg-[rgb(22_58_68)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "border-white/15 bg-white/[0.07]"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                            uiSoundsOn ? "translate-x-[22px]" : "translate-x-0"
+                          }`}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeSection === "security" ? (
+                <div className="mt-5">
+                  <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-4">
+                    <p className="text-sm font-medium text-rose-200">Delete account</p>
+                    <p className="mt-1 text-xs text-rose-100/80">
+                      This permanently removes your account and all app access for this login.
+                    </p>
+                    <div className="mt-2">
+                      <input
+                        value={deleteConfirmText}
+                        onChange={(event) => setDeleteConfirmText(event.target.value)}
+                        placeholder='Type "DELETE" to confirm'
+                        className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleDeleteAccount();
+                      }}
+                      disabled={deletingAccount}
+                      className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
+                    >
+                      {deletingAccount ? "Deleting account..." : "Delete account"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeSection === "readme" ? (
+                <div className="mt-5 space-y-2">
+                  <p className="text-sm text-slate-400">In-app guides for integrations and workflows.</p>
+                  <button
+                    type="button"
+                    onClick={() => toggleReadme("program")}
+                    className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                  >
+                    <span>Program functionality README</span>
+                    <span>{openReadme === "program" ? "Hide" : "Show"}</span>
+                  </button>
+                  {openReadme === "program" ? (
+                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
+                      <p className="font-medium text-cyan-200">What this program does</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-4">
+                        {!isSalesOnly ? (
+                          <li>
+                            <strong>Mail Automator</strong> creates pre/post training mails from structured inputs (language,
+                            context, materials, and custom notes).
+                          </li>
+                        ) : null}
+                        {!isSalesOnly ? (
+                          <li>
+                            <strong>Gmail Draft Mode</strong> allows generated mails to be saved as drafts directly in the
+                            connected Gmail account.
+                          </li>
+                        ) : null}
+                        <li>
+                          <strong>Time Tracker</strong> records work logs, compensation, and overtime bank per authenticated
+                          user.
+                        </li>
+                        {!isSalesOnly ? (
+                          <li>
+                            <strong>Travel Integration</strong> enriches tracker days with travel context from Google Sheets using
+                            per-user mapping.
+                          </li>
+                        ) : null}
+                        <li>
+                          <strong>Settings</strong> provides integration setup, mapping control, and legacy time-data import.
+                        </li>
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {!isSalesOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleReadme("gmail")}
+                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                    >
+                      <span>Gmail setup README</span>
+                      <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
+                    </button>
+                  ) : null}
+                  {!isSalesOnly && openReadme === "gmail" ? (
+                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
+                      <p className="font-medium text-cyan-200">What it does</p>
+                      <p className="mt-1 text-slate-300/90">
+                        Gmail setup enables draft creation from generated mails so users can review and send from Gmail.
+                      </p>
+                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <ol className="mt-1 list-decimal space-y-1 pl-4">
+                        <li>
+                          Open <strong>Gmail</strong> in the settings list on the left.
+                        </li>
+                        <li>Click <strong>Connect Gmail</strong>.</li>
+                        <li>Select the correct Google account.</li>
+                        <li>Approve required permissions for draft creation.</li>
+                        <li>Return to app and confirm status is <strong>Connected</strong>.</li>
+                        <li>Generate a mail draft and run <strong>Create Gmail draft</strong> as final verification.</li>
+                      </ol>
+                    </div>
+                  ) : null}
+
+                  {!isSalesOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleReadme("mapping")}
+                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                    >
+                      <span>Travel mapping setup README</span>
+                      <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
+                    </button>
+                  ) : null}
+                  {!isSalesOnly && openReadme === "mapping" ? (
+                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
+                      <p className="font-medium text-cyan-200">What it does</p>
+                      <p className="mt-1 text-slate-300/90">
+                        Mapping defines where Client/Location/Responsible values are read in your travel sheet.
+                      </p>
+                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <ol className="mt-1 list-decimal space-y-1 pl-4">
+                        <li>
+                          Open <strong>Travel mapping</strong> in the settings list.
+                        </li>
+                        <li>Enter sheet column letters for Client, Location, and Responsible.</li>
+                        <li>Use letters only (examples: <code>P</code>, <code>Q</code>, <code>R</code>, <code>AA</code>).</li>
+                        <li>Click <strong>Save travel mapping</strong>.</li>
+                        <li>Open Time Tracker and verify travel info appears for expected dates.</li>
+                        <li>If values are missing, adjust letters and save again.</li>
+                      </ol>
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => toggleReadme("import")}
+                    className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                  >
+                    <span>Time import setup README</span>
+                    <span>{openReadme === "import" ? "Hide" : "Show"}</span>
+                  </button>
+                  {openReadme === "import" ? (
+                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
+                      <p className="font-medium text-cyan-200">What it does</p>
+                      <p className="mt-1 text-slate-300/90">
+                        Import migrates old `hourlogger-data.json` records into this account&apos;s time tracker history.
+                      </p>
+                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <ol className="mt-1 list-decimal space-y-1 pl-4">
+                        <li>
+                          Open <strong>Time data</strong> in the settings list.
+                        </li>
+                        <li>Prepare a valid <code>hourlogger-data.json</code> export file.</li>
+                        <li>Upload the file using <strong>Upload old time tracking data</strong>.</li>
+                        <li>Wait until the success message confirms imported days.</li>
+                        <li>Open Time Tracker and navigate weeks to verify imported entries.</li>
+                        <li>If needed, rerun with corrected data file.</li>
+                      </ol>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {message ? <p className="mt-8 text-sm text-emerald-300">{message}</p> : null}
+              {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
             </div>
-          ) : null}
+          </div>
         </div>
-        ) : null}
       </section>
-      </div>
 
-      {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
-      {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+
     </section>
   );
 }

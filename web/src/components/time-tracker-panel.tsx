@@ -1,7 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
 const PREFETCH_WEEKS_EACH_SIDE = 4;
@@ -117,6 +127,17 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function weekRangeLabel(weekStartKey: string) {
+  const mon = getMonday(weekStartKey);
+  const sun = addDays(mon, 6);
+  const sameYear = mon.getFullYear() === sun.getFullYear();
+  const optsShort: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" };
+  const optsEnd: Intl.DateTimeFormatOptions = sameYear
+    ? optsShort
+    : { ...optsShort, year: "numeric" };
+  return `${mon.toLocaleDateString(undefined, { ...optsShort, year: "numeric" })} → ${sun.toLocaleDateString(undefined, optsEnd)}`;
+}
+
 function isWeekendDate(dateKey: string) {
   const date = fromDateKey(dateKey);
   const day = date.getDay();
@@ -187,6 +208,259 @@ function getDayOvertimeContributionMins(date: string, netMins: number, holiday: 
   return overtime - compMins;
 }
 
+type DayEditorBodyProps = {
+  layout: "panel" | "sheet";
+  panelDateLabel: string;
+  selectedDay: DayData | null;
+  selectedTravelInfo: { client: string; location: string; responsible: string } | null;
+  travelDebug: WeekResponse["travel_debug"] | undefined;
+  formStart: string;
+  formStop: string;
+  formHoliday: boolean;
+  formBreaks: DayBreak[];
+  setFormStart: (v: string) => void;
+  setFormStop: (v: string) => void;
+  setFormHoliday: (v: boolean) => void;
+  setFormBreaks: Dispatch<SetStateAction<DayBreak[]>>;
+  selectedDaySupportsBreaks: boolean;
+  selectedDayUsesBreakCounter: boolean;
+  formTotalBreakMins: number;
+  setFormBreakCounter: (totalMins: number) => void;
+  computedNet: number;
+  saving: boolean;
+  onSaveDay: () => void;
+  onResetDay: () => void;
+  toast: ToastState;
+};
+
+function DayEditorBody({
+  layout,
+  panelDateLabel,
+  selectedDay,
+  selectedTravelInfo,
+  travelDebug,
+  formStart,
+  formStop,
+  formHoliday,
+  formBreaks,
+  setFormStart,
+  setFormStop,
+  setFormHoliday,
+  setFormBreaks,
+  selectedDaySupportsBreaks,
+  selectedDayUsesBreakCounter,
+  formTotalBreakMins,
+  setFormBreakCounter,
+  computedNet,
+  saving,
+  onSaveDay,
+  onResetDay,
+  toast,
+}: DayEditorBodyProps) {
+  const showPanelHeading = layout === "panel";
+
+  const formFields = (
+    <>
+      <label className="block">
+        <span className="mb-1 block text-xs text-slate-200/90">Start</span>
+        <input
+          type="time"
+          value={formStart}
+          disabled={formHoliday || !selectedDay}
+          onChange={(event) => setFormStart(event.target.value)}
+          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
+        <input
+          type="time"
+          value={formStop}
+          disabled={formHoliday || !selectedDay}
+          onChange={(event) => setFormStop(event.target.value)}
+          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={formHoliday}
+          disabled={!selectedDay}
+          onChange={(event) => setFormHoliday(event.target.checked)}
+        />
+        Public holiday (full day)
+      </label>
+
+      {selectedDaySupportsBreaks ? (
+        <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+          <div className="mb-2.5 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+            </div>
+          </div>
+          {selectedDayUsesBreakCounter ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
+                  className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                >
+                  -15
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
+                  className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                >
+                  +15
+                </button>
+              </div>
+              <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
+                Break {formTotalBreakMins} min
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {formBreaks.length === 0 ? (
+                <p className="text-xs text-slate-300/80">No breaks added.</p>
+              ) : (
+                formBreaks.map((item, index) => (
+                  <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
+                    <input
+                      placeholder="Name"
+                      value={item.name}
+                      onChange={(event) => {
+                        const name = event.target.value;
+                        setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
+                      }}
+                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="mins"
+                      value={item.mins}
+                      onChange={(event) => {
+                        const mins = Number.parseInt(event.target.value || "0", 10) || 0;
+                        setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
+                      }}
+                      className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
+                      className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
+                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+              >
+                Add break
+              </button>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            onSaveDay();
+          }}
+          disabled={saving || !selectedDay}
+          className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
+        >
+          {saving ? "Saving..." : "Save day"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            playUiSound("resetTap");
+            void onResetDay();
+          }}
+          disabled={saving || !selectedDay}
+          className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+        >
+          Reset day
+        </button>
+      </div>
+    </>
+  );
+
+  const toastLine =
+    toast != null ? (
+      <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
+    ) : null;
+
+  return (
+    <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
+      <div>
+        {showPanelHeading ? (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-semibold">Day Logger</h3>
+            </div>
+            <div className="mt-4 space-y-3">
+              <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
+              {formFields}
+              {toastLine}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            {formFields}
+            {toastLine}
+          </div>
+        )}
+      </div>
+
+      <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
+        <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
+        <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+        {!selectedDay ? (
+          <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+        ) : !selectedTravelInfo ? (
+          <>
+            <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+            {travelDebug ? (
+              <p className="mt-3 text-xs text-slate-400/90">
+                Debug: {travelDebug.status} - {travelDebug.message}
+                {"  "}
+                ({travelDebug.fetched_dates} loaded, {travelDebug.week_matches} in week)
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="mt-4 space-y-3 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
+              <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
+              <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
+              <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
+            </div>
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}
+
 export function TimeTrackerPanel() {
   const bubbles = [
     { left: "6%", size: "10px", duration: "9s", delay: "0s" },
@@ -207,13 +481,14 @@ export function TimeTrackerPanel() {
   const [toast, setToast] = useState<ToastState>(null);
   const [data, setData] = useState<WeekResponse | null>(null);
   const [weekLoadTick, setWeekLoadTick] = useState(0);
-  const [revealedDayCount, setRevealedDayCount] = useState(7);
-  const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
+  const mobileSheetTitleRef = useRef<HTMLHeadingElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const prevEditorOpenForFocusRef = useRef(false);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -361,38 +636,44 @@ export function TimeTrackerPanel() {
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   useEffect(() => {
-    const total = data?.days?.length ?? 0;
-    if (total === 0) return;
-    playUiSound("daysAppearStart");
-    setRevealedDayCount(0);
-    setShowUpToDateSweep(false);
-    let current = 0;
-    const intervalId = window.setInterval(() => {
-      current += 1;
-      setRevealedDayCount(current);
-      if (current >= total) {
-        window.clearInterval(intervalId);
-        setShowUpToDateSweep(true);
-        window.setTimeout(() => setShowUpToDateSweep(false), 980);
-      }
-    }, 85);
-    return () => window.clearInterval(intervalId);
-  }, [weekLoadTick, data?.days?.length]);
-
-  useEffect(() => {
-    if (showUpToDateSweep) {
-      playUiSound("weekReadyGlow");
-      return () => stopUiSound("weekReadyGlow");
-    }
-    stopUiSound("weekReadyGlow");
-    return undefined;
-  }, [showUpToDateSweep]);
-
-  useEffect(() => {
     const previous = previousEditorOpenRef.current;
     previousEditorOpenRef.current = editorOpen;
     if (previous == null || previous === editorOpen) return;
     playUiSound("dayLoggerSlide");
+  }, [editorOpen]);
+
+  useEffect(() => {
+    if (prevEditorOpenForFocusRef.current && !editorOpen && restoreFocusRef.current) {
+      restoreFocusRef.current.focus({ preventScroll: true });
+      restoreFocusRef.current = null;
+    }
+    prevEditorOpenForFocusRef.current = editorOpen;
+  }, [editorOpen]);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    function applyBodyLock() {
+      document.body.style.overflow = mq.matches ? "hidden" : "";
+    }
+    applyBodyLock();
+    mq.addEventListener("change", applyBodyLock);
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && mq.matches) {
+        setEditorOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    let raf = 0;
+    if (mq.matches) {
+      raf = requestAnimationFrame(() => mobileSheetTitleRef.current?.focus());
+    }
+    return () => {
+      mq.removeEventListener("change", applyBodyLock);
+      window.removeEventListener("keydown", onKeyDown);
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = "";
+    };
   }, [editorOpen]);
 
   const refreshWeek = useCallback(async () => {
@@ -639,7 +920,17 @@ export function TimeTrackerPanel() {
     return () => window.removeEventListener("time-tracker-imported", onImported as EventListener);
   }, [refreshWeek]);
 
+  function closeDayEditorSheet() {
+    setEditorOpen(false);
+  }
+
   function handleEditDay(date: string) {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      const active = document.activeElement;
+      restoreFocusRef.current = active instanceof HTMLElement ? active : null;
+    } else {
+      restoreFocusRef.current = null;
+    }
     setSelectedDate(date);
     setEditorOpen(true);
   }
@@ -663,11 +954,38 @@ export function TimeTrackerPanel() {
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
+  const viewingThisWeek = weekStart === toDateKey(getMonday());
+
+  const dayEditorProps = {
+    panelDateLabel,
+    selectedDay,
+    selectedTravelInfo,
+    travelDebug: data?.travel_debug,
+    formStart,
+    formStop,
+    formHoliday,
+    formBreaks,
+    setFormStart,
+    setFormStop,
+    setFormHoliday,
+    setFormBreaks,
+    selectedDaySupportsBreaks,
+    selectedDayUsesBreakCounter,
+    formTotalBreakMins,
+    setFormBreakCounter,
+    computedNet,
+    saving,
+    onSaveDay: handleSaveDay,
+    onResetDay: handleResetDay,
+    toast,
+  } satisfies Omit<DayEditorBodyProps, "layout">;
 
   return (
     <section
-      className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
-        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-[1fr_0fr] lg:items-start"
+      className={`underwater-panel grid rounded-2xl transition-all duration-500 ease-out ${
+        isEditorVisible
+          ? "gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start"
+          : "gap-6 lg:grid-cols-1 lg:items-start"
       }`}
     >
       <div className="bubble-layer" aria-hidden="true">
@@ -687,16 +1005,17 @@ export function TimeTrackerPanel() {
         ))}
       </div>
       <div
-        className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
+        className={`glass-card hourlogger-surface min-w-0 w-full rounded-2xl p-4 transition-all duration-500 ease-out md:p-5 ${
           isEditorVisible ? "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20" : "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20"
         }`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
+            <p className="mt-1 text-xs text-slate-300/85">{weekRangeLabel(weekStart)}</p>
           </div>
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap" role="group" aria-label="Week navigation">
             <button
               type="button"
               onClick={() => {
@@ -712,7 +1031,11 @@ export function TimeTrackerPanel() {
               onClick={() => {
                 setWeekStart(toDateKey(getMonday()));
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm sm:flex-none ${
+                viewingThisWeek
+                  ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-50 hover:bg-cyan-400/25"
+                  : "border-white/20 bg-white/10 hover:bg-white/15"
+              }`}
             >
               Today
             </button>
@@ -756,12 +1079,11 @@ export function TimeTrackerPanel() {
           </span>
         </div>
 
-        <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
+        <div className="scroll-mt-24 mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
           {hasActiveWeekData &&
             (activeWeekData?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
-              const revealed = index < revealedDayCount;
               const todayKey = toDateKey(new Date());
               const weekendRuleApplies = isWeekendDate(day.date) && day.date >= todayKey;
               const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
@@ -788,10 +1110,8 @@ export function TimeTrackerPanel() {
                   key={day.date}
                   className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
                     isSelected ? "day-card-selected" : ""
-                  } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
-                  style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
+                  }`}
                 >
-                  {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -861,17 +1181,44 @@ export function TimeTrackerPanel() {
                         )}
                       </AnimatedNumber>
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400/90">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="day-progress-sand h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
+                        Core
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="day-progress-algae h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
+                        OT worked
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="day-progress-comp h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
+                        OT comp
+                      </span>
+                    </div>
                     <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={weekendRuleApplies ? 0 : workedBaseMins}>
                       {(coreValue) => (
                         <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMins}>
                           {(overtimeValue) => (
                             <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
                               {(compValue) => (
-                                <p className="mt-2 text-[11px] text-slate-300/80">
-                                  Core hours {fmtHM(Math.round(coreValue))}
-                                  {Math.round(overtimeValue) > 0 ? ` · Overtime worked ${fmtHM(Math.round(overtimeValue))}` : ""}
-                                  {Math.round(compValue) > 0 ? ` · Overtime compensated ${fmtHM(Math.round(compValue))}` : ""}
-                                </p>
+                                <div className="mt-2 space-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300/80">
+                                  <div className="flex justify-between gap-2 tabular-nums">
+                                    <span>Target {fmtHM(TARGET_MINS)}</span>
+                                    <span className="font-medium text-slate-200/95">{fmtHM(Math.round(coreValue))}</span>
+                                  </div>
+                                  {Math.round(overtimeValue) > 0 ? (
+                                    <div className="flex justify-between gap-2 tabular-nums">
+                                      <span>Overtime worked</span>
+                                      <span className="font-medium text-slate-200/95">{fmtHM(Math.round(overtimeValue))}</span>
+                                    </div>
+                                  ) : null}
+                                  {Math.round(compValue) > 0 ? (
+                                    <div className="flex justify-between gap-2 tabular-nums">
+                                      <span>Overtime compensated</span>
+                                      <span className="font-medium text-slate-200/95">{fmtHM(Math.round(compValue))}</span>
+                                    </div>
+                                  ) : null}
+                                </div>
                               )}
                             </AnimatedNumber>
                           )}
@@ -905,220 +1252,76 @@ export function TimeTrackerPanel() {
           {!hasActiveWeekData &&
             placeholderDayKeys.map((dateKey, index) => (
               <article key={dateKey} className="liquid-day-card rounded-xl p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
-                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-slate-200">{dayLabel(dateKey)}</p>
+                  <span className="inline-block h-5 w-12 animate-pulse rounded-full bg-white/10" aria-hidden="true" />
                 </div>
-                <p className="mt-1">
-                  <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                <p className="mt-2">
+                  <span className="inline-block h-6 w-32 animate-pulse rounded bg-white/10" aria-hidden="true" />
                 </p>
-                <div className="day-progress mt-3" aria-label="Loading day progress">
+                <div className="day-progress mt-3.5" aria-label="Loading day progress">
                   <span
                     className="day-progress-segment day-progress-sand animate-pulse"
                     style={{ width: `${18 + (index % 5) * 9}%` }}
                     aria-hidden="true"
                   />
                 </div>
-                <p className="mt-2">
-                  <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
-                </p>
+                <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                  <span className="block h-3 w-full animate-pulse rounded bg-white/10" aria-hidden="true" />
+                  <span className="block h-3 w-[80%] max-w-[12rem] animate-pulse rounded bg-white/10" aria-hidden="true" />
+                </div>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
-                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                  <span className="h-9 flex-1 animate-pulse rounded-lg border border-white/20 bg-white/10" aria-hidden="true" />
+                  <span className="h-9 flex-1 animate-pulse rounded-lg border border-white/20 bg-white/10" aria-hidden="true" />
                 </div>
               </article>
             ))}
-        </div>
+          </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
       </div>
 
-      <div
-        className={`scroll-mt-24 h-fit self-start glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
-          isEditorVisible ? "block opacity-100 lg:translate-x-0" : "hidden opacity-0 lg:block lg:translate-x-6"
-        } ${isEditorVisible ? "pointer-events-auto" : "pointer-events-none"}`}
-      >
-          <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-semibold">Day Logger</h3>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-slate-200/90">Start</span>
-                  <input
-                    type="time"
-                    value={formStart}
-                    disabled={formHoliday || !selectedDay}
-                    onChange={(event) => setFormStart(event.target.value)}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
-                  <input
-                    type="time"
-                    value={formStop}
-                    disabled={formHoliday || !selectedDay}
-                    onChange={(event) => setFormStop(event.target.value)}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formHoliday}
-                    disabled={!selectedDay}
-                    onChange={(event) => setFormHoliday(event.target.checked)}
-                  />
-                  Public holiday (full day)
-                </label>
-
-                {selectedDaySupportsBreaks ? (
-                  <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                    <div className="mb-2.5 flex items-end justify-between gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-                      </div>
-                    </div>
-                    {selectedDayUsesBreakCounter ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                          >
-                            -15
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                          >
-                            +15
-                          </button>
-                        </div>
-                        <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
-                          Break {formTotalBreakMins} min
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {formBreaks.length === 0 ? (
-                          <p className="text-xs text-slate-300/80">No breaks added.</p>
-                        ) : (
-                          formBreaks.map((item, index) => (
-                            <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
-                              <input
-                                placeholder="Name"
-                                value={item.name}
-                                onChange={(event) => {
-                                  const name = event.target.value;
-                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
-                                }}
-                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                              />
-                              <input
-                                type="number"
-                                min={0}
-                                placeholder="mins"
-                                value={item.mins}
-                                onChange={(event) => {
-                                  const mins = Number.parseInt(event.target.value || "0", 10) || 0;
-                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
-                                }}
-                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                                className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-                        >
-                          Add break
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleSaveDay();
-                    }}
-                    disabled={saving || !selectedDay}
-                    className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
-                  >
-                    {saving ? "Saving..." : "Save day"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playUiSound("resetTap");
-                      void handleResetDay();
-                    }}
-                    disabled={saving || !selectedDay}
-                    className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
-                  >
-                    Reset day
-                  </button>
-                </div>
-              </div>
-
-              {toast && (
-                <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
-              )}
+      {isEditorVisible ? (
+        <div
+          className="fixed inset-0 z-[100] flex min-h-0 flex-col lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="day-editor-sheet-title"
+        >
+          <button
+            type="button"
+            className="min-h-0 w-full flex-1 cursor-default border-0 bg-gradient-to-b from-slate-950/88 via-slate-950/68 to-slate-950/45 p-0 text-left shadow-[inset_0_-1px_0_rgba(255,255,255,0.06)] backdrop-blur-md transition-[filter,opacity] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35"
+            aria-label="Close day editor and return to week"
+            onClick={closeDayEditorSheet}
+          />
+          <div className="relative flex max-h-[min(92dvh,100dvh)] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-t-2xl border border-white/18 border-b-0 border-t-cyan-400/25 bg-slate-950/94 shadow-[0_-20px_50px_rgba(0,0,0,0.55),0_-1px_0_rgba(103,232,249,0.12)] backdrop-blur-xl">
+            <div className="flex shrink-0 flex-col items-center border-b border-white/[0.08] px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+              <span className="mb-3 h-1 w-11 shrink-0 rounded-full bg-white/20" aria-hidden />
+              <header className="w-full pb-2">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
+                <h2
+                  id="day-editor-sheet-title"
+                  ref={mobileSheetTitleRef}
+                  tabIndex={-1}
+                  className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
+                >
+                  Day Logger
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
+              </header>
             </div>
-
-            <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-              <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
-              {!selectedDay ? (
-                <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
-              ) : !selectedTravelInfo ? (
-                <>
-                  <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
-                  {data?.travel_debug ? (
-                    <p className="mt-3 text-xs text-slate-400/90">
-                      Debug: {data.travel_debug.status} - {data.travel_debug.message}
-                      {"  "}
-                      ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="mt-4 space-y-3 text-sm">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
-                    <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
-                    <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
-                    <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
-                  </div>
-                </div>
-              )}
-            </aside>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/[0.04] bg-slate-950/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+              <DayEditorBody {...dayEditorProps} layout="sheet" />
+            </div>
           </div>
+        </div>
+      ) : null}
+
+      <div
+        className={`scroll-mt-24 h-fit min-w-0 self-start rounded-2xl glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
+          isEditorVisible ? "hidden opacity-100 lg:block lg:translate-x-0" : "hidden pointer-events-none"
+        } ${isEditorVisible ? "lg:pointer-events-auto" : ""}`}
+      >
+        <DayEditorBody {...dayEditorProps} layout="panel" />
       </div>
     </section>
   );
