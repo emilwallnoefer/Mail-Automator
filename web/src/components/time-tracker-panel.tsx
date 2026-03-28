@@ -1,19 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-} from "react";
-import { createPortal } from "react-dom";
-import { playUiSound } from "@/lib/ui-sounds";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
 const PREFETCH_WEEKS_EACH_SIDE = 4;
@@ -129,17 +117,6 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function weekRangeLabel(weekStartKey: string) {
-  const mon = getMonday(weekStartKey);
-  const sun = addDays(mon, 6);
-  const sameYear = mon.getFullYear() === sun.getFullYear();
-  const optsShort: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" };
-  const optsEnd: Intl.DateTimeFormatOptions = sameYear
-    ? optsShort
-    : { ...optsShort, year: "numeric" };
-  return `${mon.toLocaleDateString(undefined, { ...optsShort, year: "numeric" })} → ${sun.toLocaleDateString(undefined, optsEnd)}`;
-}
-
 function isWeekendDate(dateKey: string) {
   const date = fromDateKey(dateKey);
   const day = date.getDay();
@@ -210,368 +187,6 @@ function getDayOvertimeContributionMins(date: string, netMins: number, holiday: 
   return overtime - compMins;
 }
 
-type DayEditorBodyProps = {
-  layout: "panel" | "sheet";
-  panelDateLabel: string;
-  selectedDay: DayData | null;
-  selectedTravelInfo: { client: string; location: string; responsible: string } | null;
-  travelDebug: WeekResponse["travel_debug"] | undefined;
-  formStart: string;
-  formStop: string;
-  formHoliday: boolean;
-  formBreaks: DayBreak[];
-  setFormStart: (v: string) => void;
-  setFormStop: (v: string) => void;
-  setFormHoliday: (v: boolean) => void;
-  setFormBreaks: Dispatch<SetStateAction<DayBreak[]>>;
-  selectedDaySupportsBreaks: boolean;
-  selectedDayUsesBreakCounter: boolean;
-  formTotalBreakMins: number;
-  setFormBreakCounter: (totalMins: number) => void;
-  computedNet: number;
-  saving: boolean;
-  onSaveDay: () => void;
-  onResetDay: () => void;
-  toast: ToastState;
-};
-
-function DayEditorBody({
-  layout,
-  panelDateLabel,
-  selectedDay,
-  selectedTravelInfo,
-  travelDebug,
-  formStart,
-  formStop,
-  formHoliday,
-  formBreaks,
-  setFormStart,
-  setFormStop,
-  setFormHoliday,
-  setFormBreaks,
-  selectedDaySupportsBreaks,
-  selectedDayUsesBreakCounter,
-  formTotalBreakMins,
-  setFormBreakCounter,
-  computedNet,
-  saving,
-  onSaveDay,
-  onResetDay,
-  toast,
-}: DayEditorBodyProps) {
-  const showPanelHeading = layout === "panel";
-  const sheet = layout === "sheet";
-  const stackY = sheet ? "space-y-4" : "space-y-3";
-  const timeInputClass = sheet
-    ? "box-border min-h-11 w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-base leading-normal text-slate-100 [font-variant-numeric:tabular-nums]"
-    : "w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm";
-
-  const formFields = (
-    <>
-      {sheet ? (
-        <div className="grid min-w-0 max-w-full grid-cols-2 gap-3">
-          <label className="min-w-0 max-w-full">
-            <span className="mb-1.5 block text-[11px] font-medium text-slate-500">Start</span>
-            <input
-              type="time"
-              value={formStart}
-              disabled={formHoliday || !selectedDay}
-              onChange={(event) => setFormStart(event.target.value)}
-              className={timeInputClass}
-            />
-          </label>
-          <label className="min-w-0 max-w-full">
-            <span className="mb-1.5 block text-[11px] font-medium text-slate-500">Stop</span>
-            <input
-              type="time"
-              value={formStop}
-              disabled={formHoliday || !selectedDay}
-              onChange={(event) => setFormStop(event.target.value)}
-              className={timeInputClass}
-            />
-          </label>
-        </div>
-      ) : (
-        <>
-          <label className="block min-w-0">
-            <span className="mb-1 block text-xs text-slate-200/90">Start</span>
-            <input
-              type="time"
-              value={formStart}
-              disabled={formHoliday || !selectedDay}
-              onChange={(event) => setFormStart(event.target.value)}
-              className={timeInputClass}
-            />
-          </label>
-          <label className="block min-w-0">
-            <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
-            <input
-              type="time"
-              value={formStop}
-              disabled={formHoliday || !selectedDay}
-              onChange={(event) => setFormStop(event.target.value)}
-              className={timeInputClass}
-            />
-          </label>
-        </>
-      )}
-      <label
-        className={`flex min-w-0 cursor-pointer items-center gap-3 ${sheet ? "text-sm text-slate-300" : "text-sm"}`}
-      >
-        <input
-          type="checkbox"
-          checked={formHoliday}
-          disabled={!selectedDay}
-          onChange={(event) => setFormHoliday(event.target.checked)}
-          className={sheet ? "size-4 rounded border-white/20" : ""}
-        />
-        Public holiday (full day)
-      </label>
-
-        {selectedDaySupportsBreaks ? (
-          <div
-            className={
-              sheet
-                ? "min-w-0 max-w-full space-y-2"
-                : "min-w-0 max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/5 p-3"
-            }
-          >
-            {!sheet ? (
-              <div className="mb-2.5 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-[11px] font-medium text-slate-500">Breaks</p>
-            )}
-            {selectedDayUsesBreakCounter ? (
-              <div className={sheet ? "space-y-2" : "space-y-2"}>
-                <div className="grid min-w-0 grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                    className={`font-semibold tabular-nums transition ${
-                      sheet
-                        ? "h-11 rounded-xl bg-white/10 text-sm text-white hover:bg-white/15"
-                        : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
-                    }`}
-                  >
-                    −15
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                    className={`font-semibold tabular-nums transition ${
-                      sheet
-                        ? "h-11 rounded-xl bg-white/10 text-sm text-white hover:bg-white/15"
-                        : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
-                    }`}
-                  >
-                    +15
-                  </button>
-                </div>
-                <div
-                  className={`flex w-full min-w-0 max-w-full items-center justify-center rounded-xl font-medium text-slate-200 tabular-nums ${
-                    sheet ? "bg-white/5 py-2.5 text-sm" : "rounded-lg border border-white/20 bg-white/10 py-2.5 text-base lg:py-2 lg:text-sm"
-                  }`}
-                >
-                  {formTotalBreakMins} min break
-                </div>
-              </div>
-            ) : (
-              <div className="min-w-0 space-y-2">
-                {formBreaks.length === 0 ? (
-                  <p className="text-xs text-slate-300/80">No breaks added.</p>
-                ) : (
-                  formBreaks.map((item, index) => (
-                    <div
-                      key={`${index}-${item.name}`}
-                      className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_5.5rem_auto] sm:items-center"
-                    >
-                      <input
-                        placeholder="Name"
-                        value={item.name}
-                        onChange={(event) => {
-                          const name = event.target.value;
-                          setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
-                        }}
-                        className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base leading-normal lg:py-1.5 lg:text-xs"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="mins"
-                        value={item.mins}
-                        onChange={(event) => {
-                          const mins = Number.parseInt(event.target.value || "0", 10) || 0;
-                          setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
-                        }}
-                        className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2 py-2.5 text-base leading-normal tabular-nums lg:py-1.5 lg:text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                        className="min-h-11 shrink-0 rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 text-base text-rose-200 sm:min-h-0 lg:py-1.5 lg:text-xs"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
-                <button
-                  type="button"
-                  onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-base hover:bg-white/15 lg:py-1 lg:text-xs"
-                >
-                  Add break
-                </button>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-      <p className={`text-slate-500 ${sheet ? "text-xs" : "text-xs text-slate-300/80"}`}>
-        Total {fmtHM(computedNet)}
-      </p>
-
-      <div className={`flex min-w-0 max-w-full flex-col sm:flex-row ${sheet ? "gap-2" : "gap-2"}`}>
-        <button
-          type="button"
-          onClick={() => {
-            onSaveDay();
-          }}
-          disabled={saving || !selectedDay}
-          className={`flex-1 font-semibold transition disabled:opacity-50 ${
-            sheet
-              ? "h-12 rounded-xl bg-cyan-400 text-[15px] text-slate-950 hover:bg-cyan-300"
-              : "min-h-11 rounded-lg bg-cyan-400/90 px-3 py-2.5 text-base text-slate-900 hover:bg-cyan-300 lg:min-h-0 lg:py-2 lg:text-sm"
-          }`}
-        >
-          {saving ? "Saving…" : "Save day"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            playUiSound("resetTap");
-            void onResetDay();
-          }}
-          disabled={saving || !selectedDay}
-          className={`flex-1 font-medium transition disabled:opacity-50 ${
-            sheet
-              ? "h-12 rounded-xl border border-white/10 bg-transparent text-sm text-slate-300 hover:bg-white/5"
-              : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base hover:bg-white/15 lg:min-h-0 lg:py-2 lg:text-sm"
-          }`}
-        >
-          Reset day
-        </button>
-      </div>
-    </>
-  );
-
-  const toastLine =
-    toast != null ? (
-      <p
-        className={`break-words ${sheet ? "mt-2 text-xs" : "mt-4 text-sm"} ${
-          toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"
-        }`}
-      >
-        {toast.message}
-      </p>
-    ) : null;
-
-  return (
-    <div
-      className={
-        sheet
-          ? "flex min-w-0 w-full max-w-full flex-col gap-6 overflow-x-hidden"
-          : "grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start gap-4 overflow-x-hidden lg:grid-cols-2"
-      }
-    >
-      <div className="min-w-0 max-w-full">
-        {showPanelHeading ? (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-base font-semibold">Day Logger</h3>
-            </div>
-            <div className="mt-4 space-y-3">
-              <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
-              {formFields}
-              {toastLine}
-            </div>
-          </>
-        ) : (
-          <div className={stackY}>
-            {formFields}
-            {toastLine}
-          </div>
-        )}
-      </div>
-
-      <aside
-        className={
-          sheet
-            ? "h-fit min-w-0 w-full max-w-full border-t border-white/10 pt-5 break-words"
-            : "h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 p-4 lg:w-auto"
-        }
-      >
-        <p className={sheet ? "text-[11px] font-medium text-slate-500" : "text-xs uppercase tracking-[0.16em] text-cyan-200/80"}>
-          {sheet ? "Travel" : "Travel info"}
-        </p>
-        {!sheet ? <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p> : null}
-        {!selectedDay ? (
-          <p className={`text-slate-400 ${sheet ? "mt-2 text-sm" : "mt-4 text-sm text-slate-300/80"}`}>
-            Select a day to edit details.
-          </p>
-        ) : !selectedTravelInfo ? (
-          <>
-            <p className={`text-slate-400 ${sheet ? "mt-2 text-sm" : "mt-4 text-sm text-slate-300/80"}`}>
-              No travel info for this date.
-            </p>
-            {travelDebug ? (
-              <p className={`break-words text-slate-500 ${sheet ? "mt-2 text-xs" : "mt-3 text-xs text-slate-400/90"}`}>
-                Debug: {travelDebug.status} - {travelDebug.message}
-                {"  "}
-                ({travelDebug.fetched_dates} loaded, {travelDebug.week_matches} in week)
-              </p>
-            ) : null}
-          </>
-        ) : sheet ? (
-          <div className="mt-3 space-y-3 text-sm text-slate-200">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium text-slate-500">Client</p>
-              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.client || "—"}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium text-slate-500">Location</p>
-              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.location || "—"}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium text-slate-500">Responsible</p>
-              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.responsible || "—"}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
-              <p className="mt-1 break-words">{selectedTravelInfo.client || "-"}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
-              <p className="mt-1 break-words">{selectedTravelInfo.location || "-"}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
-              <p className="mt-1 break-words">{selectedTravelInfo.responsible || "-"}</p>
-            </div>
-          </div>
-        )}
-      </aside>
-    </div>
-  );
-}
-
 export function TimeTrackerPanel() {
   const bubbles = [
     { left: "6%", size: "10px", duration: "9s", delay: "0s" },
@@ -592,15 +207,13 @@ export function TimeTrackerPanel() {
   const [toast, setToast] = useState<ToastState>(null);
   const [data, setData] = useState<WeekResponse | null>(null);
   const [weekLoadTick, setWeekLoadTick] = useState(0);
+  const [revealedDayCount, setRevealedDayCount] = useState(7);
+  const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
-  const mobileSheetTitleRef = useRef<HTMLHeadingElement>(null);
-  const mobileSheetBackRef = useRef<HTMLButtonElement>(null);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
-  const prevEditorOpenForFocusRef = useRef(false);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -748,71 +361,39 @@ export function TimeTrackerPanel() {
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   useEffect(() => {
+    const total = data?.days?.length ?? 0;
+    if (total === 0) return;
+    playUiSound("daysAppearStart");
+    setRevealedDayCount(0);
+    setShowUpToDateSweep(false);
+    let current = 0;
+    const intervalId = window.setInterval(() => {
+      current += 1;
+      setRevealedDayCount(current);
+      if (current >= total) {
+        window.clearInterval(intervalId);
+        setShowUpToDateSweep(true);
+        window.setTimeout(() => setShowUpToDateSweep(false), 980);
+      }
+    }, 85);
+    return () => window.clearInterval(intervalId);
+  }, [weekLoadTick, data?.days?.length]);
+
+  useEffect(() => {
+    if (showUpToDateSweep) {
+      playUiSound("weekReadyGlow");
+      return () => stopUiSound("weekReadyGlow");
+    }
+    stopUiSound("weekReadyGlow");
+    return undefined;
+  }, [showUpToDateSweep]);
+
+  useEffect(() => {
     const previous = previousEditorOpenRef.current;
     previousEditorOpenRef.current = editorOpen;
     if (previous == null || previous === editorOpen) return;
     playUiSound("dayLoggerSlide");
   }, [editorOpen]);
-
-  useEffect(() => {
-    if (prevEditorOpenForFocusRef.current && !editorOpen && restoreFocusRef.current) {
-      restoreFocusRef.current.focus({ preventScroll: true });
-      restoreFocusRef.current = null;
-    }
-    prevEditorOpenForFocusRef.current = editorOpen;
-  }, [editorOpen]);
-
-  const closeDayEditorSheet = useCallback(() => {
-    setEditorOpen(false);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!editorOpen) {
-      document.documentElement.style.overflow = "";
-      document.documentElement.style.paddingRight = "";
-      return;
-    }
-
-    const mq = window.matchMedia("(max-width: 1023px)");
-    const applyScrollLock = () => {
-      if (!mq.matches) {
-        document.documentElement.style.overflow = "";
-        document.documentElement.style.paddingRight = "";
-        return;
-      }
-      const gap = window.innerWidth - document.documentElement.clientWidth;
-      document.documentElement.style.overflow = "hidden";
-      document.documentElement.style.paddingRight = gap > 0 ? `${gap}px` : "";
-    };
-    applyScrollLock();
-    mq.addEventListener("change", applyScrollLock);
-
-    return () => {
-      mq.removeEventListener("change", applyScrollLock);
-      document.documentElement.style.overflow = "";
-      document.documentElement.style.paddingRight = "";
-    };
-  }, [editorOpen]);
-
-  useEffect(() => {
-    if (!editorOpen) return;
-    const mq = window.matchMedia("(max-width: 1023px)");
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && mq.matches) {
-        event.preventDefault();
-        closeDayEditorSheet();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    let raf = 0;
-    if (mq.matches) {
-      raf = requestAnimationFrame(() => mobileSheetBackRef.current?.focus());
-    }
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      cancelAnimationFrame(raf);
-    };
-  }, [editorOpen, closeDayEditorSheet]);
 
   const refreshWeek = useCallback(async () => {
     const weekData = await fetchWeekData(weekStart, { force: true });
@@ -1059,12 +640,6 @@ export function TimeTrackerPanel() {
   }, [refreshWeek]);
 
   function handleEditDay(date: string) {
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-      const active = document.activeElement;
-      restoreFocusRef.current = active instanceof HTMLElement ? active : null;
-    } else {
-      restoreFocusRef.current = null;
-    }
     setSelectedDate(date);
     setEditorOpen(true);
   }
@@ -1088,38 +663,11 @@ export function TimeTrackerPanel() {
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
-  const viewingThisWeek = weekStart === toDateKey(getMonday());
-
-  const dayEditorProps = {
-    panelDateLabel,
-    selectedDay,
-    selectedTravelInfo,
-    travelDebug: data?.travel_debug,
-    formStart,
-    formStop,
-    formHoliday,
-    formBreaks,
-    setFormStart,
-    setFormStop,
-    setFormHoliday,
-    setFormBreaks,
-    selectedDaySupportsBreaks,
-    selectedDayUsesBreakCounter,
-    formTotalBreakMins,
-    setFormBreakCounter,
-    computedNet,
-    saving,
-    onSaveDay: handleSaveDay,
-    onResetDay: handleResetDay,
-    toast,
-  } satisfies Omit<DayEditorBodyProps, "layout">;
 
   return (
     <section
-      className={`underwater-panel grid rounded-2xl transition-all duration-500 ease-out ${
-        isEditorVisible
-          ? "gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start"
-          : "gap-6 lg:grid-cols-1 lg:items-start"
+      className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
+        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-[1fr_0fr] lg:items-start"
       }`}
     >
       <div className="bubble-layer" aria-hidden="true">
@@ -1139,17 +687,16 @@ export function TimeTrackerPanel() {
         ))}
       </div>
       <div
-        className={`glass-card hourlogger-surface min-w-0 w-full max-w-full overflow-x-hidden rounded-2xl p-4 transition-all duration-500 ease-out md:p-5 ${
+        className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
           isEditorVisible ? "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20" : "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20"
         }`}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
-            <p className="mt-1 text-xs text-slate-300/85">{weekRangeLabel(weekStart)}</p>
           </div>
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap" role="group" aria-label="Week navigation">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
             <button
               type="button"
               onClick={() => {
@@ -1165,11 +712,7 @@ export function TimeTrackerPanel() {
               onClick={() => {
                 setWeekStart(toDateKey(getMonday()));
               }}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm sm:flex-none ${
-                viewingThisWeek
-                  ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-50 hover:bg-cyan-400/25"
-                  : "border-white/20 bg-white/10 hover:bg-white/15"
-              }`}
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
             >
               Today
             </button>
@@ -1186,10 +729,10 @@ export function TimeTrackerPanel() {
           </div>
         </div>
 
-        <div className="mt-4 flex w-full min-w-0 max-w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <span className="flex w-full min-w-0 max-w-full items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs tabular-nums sm:w-auto sm:min-w-[16.5rem] sm:max-w-none">
-            <span className="shrink-0">Weekly hours:</span>
-            <span className="ml-2 inline-block min-w-[8ch] shrink-0 text-right">
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+            <span>Weekly hours:</span>
+            <span className="ml-2 inline-block min-w-[8ch] text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={760}>
                   {(value) => fmtHM(Math.round(value))}
@@ -1199,9 +742,9 @@ export function TimeTrackerPanel() {
               )}
             </span>
           </span>
-          <span className="flex w-full min-w-0 max-w-full items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs tabular-nums sm:w-auto sm:min-w-[16.5rem] sm:max-w-none">
-            <span className="shrink-0">Overtime bank:</span>
-            <span className="ml-2 inline-block min-w-[9ch] shrink-0 text-right">
+          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+            <span>Overtime bank:</span>
+            <span className="ml-2 inline-block min-w-[9ch] text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={760}>
                   {(value) => fmtSignedHM(Math.round(value))}
@@ -1213,11 +756,12 @@ export function TimeTrackerPanel() {
           </span>
         </div>
 
-        <div className="scroll-mt-24 mt-5 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
+        <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
           {hasActiveWeekData &&
             (activeWeekData?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
               const isSelected = selectedDay?.date === day.date;
+              const revealed = index < revealedDayCount;
               const todayKey = toDateKey(new Date());
               const weekendRuleApplies = isWeekendDate(day.date) && day.date >= todayKey;
               const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
@@ -1242,23 +786,23 @@ export function TimeTrackerPanel() {
               return (
                 <article
                   key={day.date}
-                  className={`liquid-day-card min-w-0 max-w-full overflow-hidden rounded-xl p-3 transition-all duration-300 ease-out ${
+                  className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
                     isSelected ? "day-card-selected" : ""
-                  }`}
+                  } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
+                  style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
                 >
+                  {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
                   <button
                     type="button"
                     onClick={() => {
                       handleEditDay(day.date);
                     }}
-                    className="w-full min-w-0 text-left"
+                    className="w-full text-left"
                   >
-                    <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
-                      <p className="min-w-0 truncate text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
                       <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={donePct}>
-                        {(value) => (
-                          <p className="shrink-0 text-xs font-medium tabular-nums text-cyan-100/90">{Math.round(value)}%</p>
-                        )}
+                        {(value) => <p className="text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
                       </AnimatedNumber>
                     </div>
                     <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
@@ -1268,7 +812,7 @@ export function TimeTrackerPanel() {
                         </p>
                       )}
                     </AnimatedNumber>
-                    <div className="day-progress mt-3 max-w-full overflow-hidden" aria-label="Day progress bar">
+                    <div className="day-progress mt-3" aria-label="Day progress bar">
                       <AnimatedNumber key={`day-topdown-${day.date}-${weekLoadTick}`} value={Math.max(0, Math.min(100, donePct))}>
                         {(value) => (
                           <span
@@ -1317,42 +861,19 @@ export function TimeTrackerPanel() {
                         )}
                       </AnimatedNumber>
                     </div>
-                    <div className="mt-2 flex min-w-0 max-w-full flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400/90">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="day-progress-sand h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
-                        Core
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="day-progress-algae h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
-                        OT worked
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="day-progress-comp h-1.5 w-1.5 shrink-0 rounded-full opacity-90" aria-hidden />
-                        OT comp
-                      </span>
-                    </div>
                     <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={weekendRuleApplies ? 0 : workedBaseMins}>
                       {(coreValue) => (
                         <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMins}>
                           {(overtimeValue) => (
                             <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
                               {(compValue) => (
-                                <div className="mt-2 min-w-0 space-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300/80">
-                                  <div className="flex min-w-0 justify-between gap-2 tabular-nums">
-                                    <span className="min-w-0 shrink pr-1">Target {fmtHM(TARGET_MINS)}</span>
-                                    <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(coreValue))}</span>
-                                  </div>
+                                <div className="mt-2 space-y-0.5 text-[11px] text-slate-300/80">
+                                  <span className="block">Core hours {fmtHM(Math.round(coreValue))}</span>
                                   {Math.round(overtimeValue) > 0 ? (
-                                    <div className="flex min-w-0 justify-between gap-2 tabular-nums">
-                                      <span className="min-w-0 shrink pr-1">Overtime worked</span>
-                                      <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(overtimeValue))}</span>
-                                    </div>
+                                    <span className="block">Overtime worked {fmtHM(Math.round(overtimeValue))}</span>
                                   ) : null}
                                   {Math.round(compValue) > 0 ? (
-                                    <div className="flex min-w-0 justify-between gap-2 tabular-nums">
-                                      <span className="min-w-0 shrink pr-1">Overtime compensated</span>
-                                      <span className="shrink-0 font-medium text-slate-200/95">{fmtHM(Math.round(compValue))}</span>
-                                    </div>
+                                    <span className="block">Overtime compensated {fmtHM(Math.round(compValue))}</span>
                                   ) : null}
                                 </div>
                               )}
@@ -1362,13 +883,13 @@ export function TimeTrackerPanel() {
                       )}
                     </AnimatedNumber>
                   </button>
-                  <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row">
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => {
                         void handleFillMissing(day.date);
                       }}
-                      className="min-h-10 min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs hover:bg-white/15 sm:min-h-0 sm:py-1.5"
+                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
                     >
                       Fill missing
                     </button>
@@ -1377,7 +898,7 @@ export function TimeTrackerPanel() {
                       onClick={() => {
                         void handleFillDay(day.date);
                       }}
-                      className="min-h-10 min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs hover:bg-white/15 sm:min-h-0 sm:py-1.5"
+                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
                     >
                       Fill Day
                     </button>
@@ -1387,88 +908,221 @@ export function TimeTrackerPanel() {
             })}
           {!hasActiveWeekData &&
             placeholderDayKeys.map((dateKey, index) => (
-              <article key={dateKey} className="liquid-day-card min-w-0 max-w-full overflow-hidden rounded-xl p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-200">{dayLabel(dateKey)}</p>
-                  <span className="inline-block h-5 w-12 animate-pulse rounded-full bg-white/10" aria-hidden="true" />
+              <article key={dateKey} className="liquid-day-card rounded-xl p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
+                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
                 </div>
-                <p className="mt-2">
-                  <span className="inline-block h-6 w-32 animate-pulse rounded bg-white/10" aria-hidden="true" />
+                <p className="mt-1">
+                  <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
                 </p>
-                <div className="day-progress mt-3.5" aria-label="Loading day progress">
+                <div className="day-progress mt-3" aria-label="Loading day progress">
                   <span
                     className="day-progress-segment day-progress-sand animate-pulse"
                     style={{ width: `${18 + (index % 5) * 9}%` }}
                     aria-hidden="true"
                   />
                 </div>
-                <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                  <span className="block h-3 w-full animate-pulse rounded bg-white/10" aria-hidden="true" />
-                  <span className="block h-3 w-[80%] max-w-[12rem] animate-pulse rounded bg-white/10" aria-hidden="true" />
-                </div>
+                <p className="mt-2">
+                  <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                </p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <span className="h-9 flex-1 animate-pulse rounded-lg border border-white/20 bg-white/10" aria-hidden="true" />
-                  <span className="h-9 flex-1 animate-pulse rounded-lg border border-white/20 bg-white/10" aria-hidden="true" />
+                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
                 </div>
               </article>
             ))}
-          </div>
+        </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
       </div>
 
-      {isEditorVisible && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[100] h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden lg:hidden"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="day-editor-sheet-title"
-            >
-              <button
-                type="button"
-                className="absolute inset-0 z-0 cursor-default border-0 bg-slate-950/75 p-0 backdrop-blur-[2px] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
-                aria-label="Close day editor and return to week"
-                onClick={closeDayEditorSheet}
-              />
-              <div className="mobile-day-sheet-pop absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-950">
-                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div
+        className={`scroll-mt-24 h-fit self-start glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
+          isEditorVisible ? "block opacity-100 lg:translate-x-0" : "hidden opacity-0 lg:block lg:translate-x-6"
+        } ${isEditorVisible ? "pointer-events-auto" : "pointer-events-none"}`}
+      >
+          <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-base font-semibold">Day Logger</h3>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-slate-200/90">Start</span>
+                  <input
+                    type="time"
+                    value={formStart}
+                    disabled={formHoliday || !selectedDay}
+                    onChange={(event) => setFormStart(event.target.value)}
+                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
+                  <input
+                    type="time"
+                    value={formStop}
+                    disabled={formHoliday || !selectedDay}
+                    onChange={(event) => setFormStop(event.target.value)}
+                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formHoliday}
+                    disabled={!selectedDay}
+                    onChange={(event) => setFormHoliday(event.target.checked)}
+                  />
+                  Public holiday (full day)
+                </label>
+
+                {selectedDaySupportsBreaks ? (
+                  <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                    <div className="mb-2.5 flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+                      </div>
+                    </div>
+                    {selectedDayUsesBreakCounter ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
+                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                          >
+                            -15
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
+                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                          >
+                            +15
+                          </button>
+                        </div>
+                        <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
+                          Break {formTotalBreakMins} min
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {formBreaks.length === 0 ? (
+                          <p className="text-xs text-slate-300/80">No breaks added.</p>
+                        ) : (
+                          formBreaks.map((item, index) => (
+                            <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
+                              <input
+                                placeholder="Name"
+                                value={item.name}
+                                onChange={(event) => {
+                                  const name = event.target.value;
+                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
+                                }}
+                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                              />
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="mins"
+                                value={item.mins}
+                                onChange={(event) => {
+                                  const mins = Number.parseInt(event.target.value || "0", 10) || 0;
+                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
+                                }}
+                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
+                                className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
+                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                        >
+                          Add break
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <button
-                    ref={mobileSheetBackRef}
                     type="button"
-                    onClick={closeDayEditorSheet}
-                    className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2 text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40"
-                    aria-label="Back to week"
+                    onClick={() => {
+                      void handleSaveDay();
+                    }}
+                    disabled={saving || !selectedDay}
+                    className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
                   >
-                    <span className="block text-lg leading-none">←</span>
+                    {saving ? "Saving..." : "Save day"}
                   </button>
-                  <header className="min-w-0 flex-1">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">Time tracker</p>
-                    <h2
-                      id="day-editor-sheet-title"
-                      ref={mobileSheetTitleRef}
-                      tabIndex={-1}
-                      className="text-lg font-semibold tracking-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
-                    >
-                      Day Logger
-                    </h2>
-                    <p className="text-sm text-slate-400">{panelDateLabel}</p>
-                  </header>
-                </div>
-                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-                  <DayEditorBody {...dayEditorProps} layout="sheet" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playUiSound("resetTap");
+                      void handleResetDay();
+                    }}
+                    disabled={saving || !selectedDay}
+                    className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+                  >
+                    Reset day
+                  </button>
                 </div>
               </div>
-            </div>,
-            document.body,
-          )
-        : null}
 
-      <div
-        className={`scroll-mt-24 h-fit min-w-0 max-w-full self-start overflow-x-hidden rounded-2xl glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
-          isEditorVisible ? "hidden opacity-100 lg:block lg:translate-x-0" : "hidden pointer-events-none"
-        } ${isEditorVisible ? "lg:pointer-events-auto" : ""}`}
-      >
-        <DayEditorBody {...dayEditorProps} layout="panel" />
+              {toast && (
+                <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
+              )}
+            </div>
+
+            <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
+              <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+              {!selectedDay ? (
+                <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+              ) : !selectedTravelInfo ? (
+                <>
+                  <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+                  {data?.travel_debug ? (
+                    <p className="mt-3 text-xs text-slate-400/90">
+                      Debug: {data.travel_debug.status} - {data.travel_debug.message}
+                      {"  "}
+                      ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="mt-4 space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
+                    <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
+                    <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
+                    <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
       </div>
     </section>
   );

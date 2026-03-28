@@ -24,37 +24,6 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Native <input type="time"> can ignore parent width on WebKit; keep inside layout */
-input[type="time"] {
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* WebKit time control: avoid vertical clipping inside short fields */
-input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  padding-block: 0.2em;
-}
-
-@keyframes mobile-sheet-pop {
-  from {
-    transform: scale(0.98);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
-.mobile-day-sheet-pop {
-  animation: mobile-sheet-pop 0.16s cubic-bezier(0.2, 0.85, 0.25, 1) both;
-  transform-origin: center bottom;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mobile-day-sheet-pop {
-    animation: none;
-  }
-}
-
 .aurora-bg {
   position: relative;
   overflow: hidden;

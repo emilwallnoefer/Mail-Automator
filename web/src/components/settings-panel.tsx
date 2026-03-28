@@ -290,7 +290,7 @@ export function SettingsPanel({
   }, [filteredNavItems, activeSection]);
 
   return (
-    <section className="underwater-panel rounded-2xl">
+    <section className="underwater-panel space-y-4 rounded-2xl p-2">
       <div className="bubble-layer" aria-hidden="true">
         {[
           { left: "7%", size: "8px", duration: "9.5s", delay: "0s" },
@@ -315,7 +315,7 @@ export function SettingsPanel({
         ))}
       </div>
 
-      <section className="relative z-10 min-w-0 w-full overflow-hidden rounded-2xl glass-card hourlogger-surface">
+      <section className="glass-card hourlogger-surface overflow-hidden">
         <div className="flex min-h-[min(70vh,560px)] flex-col md:flex-row">
           <nav
             className="shrink-0 border-b border-white/10 bg-slate-950/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-white/10"
