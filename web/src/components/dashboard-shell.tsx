@@ -790,7 +790,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     setForm({ ...form, recipient_name: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowCompany}>
@@ -801,7 +801,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     setForm({ ...form, company_name: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowUseCase}>
@@ -812,7 +812,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     setForm({ ...form, use_case: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowDate}>
@@ -820,7 +820,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                   placeholder={form.mail_type === "pre" ? "Training Date (Required)" : "Training Date (Optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowLocation}>
@@ -828,7 +828,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                   placeholder={form.mail_type === "pre" ? "Location (Required)" : "Location (Optional)"}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowRecipientOptional}>
@@ -836,7 +836,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                   placeholder="Additional Recipients (Optional, comma-separated emails)"
                   value={form.recipient_optional}
                   onChange={(e) => setForm({ ...form, recipient_optional: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
