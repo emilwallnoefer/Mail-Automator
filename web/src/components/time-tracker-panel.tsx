@@ -13,12 +13,10 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import {
   MOBILE_SHEET_EASE_IN,
-  MOBILE_SHEET_EASE_IN_BEZIER,
   MOBILE_SHEET_EASE_OUT,
-  MOBILE_SHEET_EASE_OUT_BEZIER,
   MOBILE_SHEET_MS,
 } from "@/config/mobile-sheet-easing";
 import { playUiSound } from "@/lib/ui-sounds";
@@ -669,35 +667,8 @@ export function TimeTrackerPanel() {
   }, [editorOpen]);
 
   const [mobileSheetExiting, setMobileSheetExiting] = useState(false);
-  const [mobileSheetSlidePx, setMobileSheetSlidePx] = useState(() =>
-    typeof window !== "undefined"
-      ? Math.round(window.visualViewport?.height ?? window.innerHeight)
-      : 800,
-  );
   const reduceMotion = useReducedMotion() ?? false;
-
-  const mobileSheetVariants = useMemo(
-    () => {
-      const slide = Math.max(1, mobileSheetSlidePx);
-      return {
-        off: {
-          y: slide,
-          transition: {
-            duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
-            ease: MOBILE_SHEET_EASE_OUT_BEZIER,
-          },
-        },
-        on: {
-          y: 0,
-          transition: {
-            duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
-            ease: MOBILE_SHEET_EASE_IN_BEZIER,
-          },
-        },
-      };
-    },
-    [reduceMotion, mobileSheetSlidePx],
-  );
+  const mobileFadeMs = reduceMotion ? 0 : MOBILE_SHEET_MS;
 
   const closeDayEditorSheet = useCallback(() => {
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 1023px)").matches) {
@@ -751,9 +722,6 @@ export function TimeTrackerPanel() {
     };
     applyScrollLock();
     mq.addEventListener("change", applyScrollLock);
-
-    const h = Math.round(window.visualViewport?.height ?? window.innerHeight);
-    if (h > 0) setMobileSheetSlidePx(h);
 
     setMobileSheetEntered(false);
     const enterRaf = requestAnimationFrame(() => setMobileSheetEntered(true));
@@ -1398,22 +1366,26 @@ export function TimeTrackerPanel() {
             >
               <button
                 type="button"
-                className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-[opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
+                className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
                   mobileSheetEntered ? "opacity-100" : "opacity-0"
                 }`}
                 style={{
-                  transitionDuration: `${MOBILE_SHEET_MS}ms`,
+                  transitionDuration: `${mobileFadeMs}ms`,
                   transitionTimingFunction:
                     !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
                 }}
                 aria-label="Close day editor and return to week"
                 onClick={closeDayEditorSheet}
               />
-              <motion.div
-                className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md [backface-visibility:hidden]"
-                initial={false}
-                animate={mobileSheetEntered ? "on" : "off"}
-                variants={mobileSheetVariants}
+              <div
+                className={`absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md transition-opacity motion-reduce:transition-none ${
+                  mobileSheetEntered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+                }`}
+                style={{
+                  transitionDuration: `${mobileFadeMs}ms`,
+                  transitionTimingFunction:
+                    !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
+                }}
               >
                 <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
                   <div className="flex items-start gap-3">
@@ -1443,7 +1415,7 @@ export function TimeTrackerPanel() {
                 <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
                   <DayEditorBody {...dayEditorProps} layout="sheet" />
                 </div>
-              </motion.div>
+              </div>
             </div>,
             document.body,
           )
