@@ -11,6 +11,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   MOBILE_SHEET_EASE_IN,
@@ -1365,63 +1366,66 @@ export function TimeTrackerPanel() {
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
       </div>
 
-      {isEditorVisible ? (
-        <div
-          className="fixed inset-0 z-[100] w-full max-w-[100vw] overflow-hidden lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="day-editor-sheet-title"
-        >
-          <button
-            type="button"
-            className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-[opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
-              mobileSheetEntered ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transitionDuration: `${MOBILE_SHEET_MS}ms`,
-              transitionTimingFunction:
-                !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
-            }}
-            aria-label="Close day editor and return to week"
-            onClick={closeDayEditorSheet}
-          />
-          <motion.div
-            className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md"
-            initial="off"
-            animate={mobileSheetEntered ? "on" : "off"}
-            variants={mobileSheetVariants}
-          >
-            <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-              <div className="flex items-start gap-3">
-                <button
-                  ref={mobileSheetBackRef}
-                  type="button"
-                  onClick={closeDayEditorSheet}
-                  className="mt-1 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
-                  aria-label="Back to week"
-                >
-                  ←
-                </button>
-                <header className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
-                  <h2
-                    id="day-editor-sheet-title"
-                    ref={mobileSheetTitleRef}
-                    tabIndex={-1}
-                    className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
-                  >
-                    Day Logger
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
-                </header>
-              </div>
-            </div>
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-              <DayEditorBody {...dayEditorProps} layout="sheet" />
-            </div>
-          </motion.div>
-        </div>
-      ) : null}
+      {isEditorVisible && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[100] w-full max-w-[100vw] overflow-hidden lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="day-editor-sheet-title"
+            >
+              <button
+                type="button"
+                className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-[opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
+                  mobileSheetEntered ? "opacity-100" : "opacity-0"
+                }`}
+                style={{
+                  transitionDuration: `${MOBILE_SHEET_MS}ms`,
+                  transitionTimingFunction:
+                    !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
+                }}
+                aria-label="Close day editor and return to week"
+                onClick={closeDayEditorSheet}
+              />
+              <motion.div
+                className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md [backface-visibility:hidden]"
+                initial="off"
+                animate={mobileSheetEntered ? "on" : "off"}
+                variants={mobileSheetVariants}
+              >
+                <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+                  <div className="flex items-start gap-3">
+                    <button
+                      ref={mobileSheetBackRef}
+                      type="button"
+                      onClick={closeDayEditorSheet}
+                      className="mt-1 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
+                      aria-label="Back to week"
+                    >
+                      ←
+                    </button>
+                    <header className="min-w-0 flex-1 pt-0.5">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Time Tracker</p>
+                      <h2
+                        id="day-editor-sheet-title"
+                        ref={mobileSheetTitleRef}
+                        tabIndex={-1}
+                        className="mt-1 text-lg font-semibold tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
+                      >
+                        Day Logger
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-400">{panelDateLabel}</p>
+                    </header>
+                  </div>
+                </div>
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+                  <DayEditorBody {...dayEditorProps} layout="sheet" />
+                </div>
+              </motion.div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       <div
         className={`scroll-mt-24 h-fit min-w-0 max-w-full self-start overflow-x-hidden rounded-2xl glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
