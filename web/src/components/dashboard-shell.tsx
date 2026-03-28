@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -24,10 +25,34 @@ import {
 } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
-import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
+
+function TimeTrackerPanelSkeleton() {
+  return (
+    <section
+      className="underwater-panel grid min-h-[min(70vh,28rem)] place-content-center rounded-2xl border border-cyan-400/15 bg-slate-950/40 p-6"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="h-10 w-10 animate-pulse rounded-full bg-cyan-400/20" aria-hidden="true" />
+        <p className="text-sm text-slate-400">Loading time tracker…</p>
+      </div>
+    </section>
+  );
+}
+
+function prefetchTimeTrackerPanel() {
+  if (typeof window === "undefined") return;
+  void import("@/components/time-tracker-panel");
+}
+
+const TimeTrackerPanel = dynamic(
+  () => import("@/components/time-tracker-panel").then((mod) => ({ default: mod.TimeTrackerPanel })),
+  { loading: TimeTrackerPanelSkeleton, ssr: true },
+);
 
 type DashboardShellProps = {
   email: string;
@@ -399,6 +424,17 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const run = () => prefetchTimeTrackerPanel();
+    if (typeof window === "undefined") return;
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(run, { timeout: 2500 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(run, 500);
+    return () => clearTimeout(t);
+  }, []);
+
   function renderNeonWriteText(text: string) {
     return text.split("").map((char, index) => (
       <span key={`${index}-${char === "\n" ? "nl" : char}`} className="write-char-neon">
@@ -426,6 +462,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
       if (updateError) throw updateError;
       setUserRole(nextRole);
       if (nextRole === "sales") {
+        prefetchTimeTrackerPanel();
         setActiveModule("time");
         setShowComposer(true);
       }
@@ -551,8 +588,12 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           availableModules={availableModules}
           showGmailStatus={userRole !== "sales"}
           userRole={userRole}
+          onWorkspaceModulePointerEnter={(module) => {
+            if (module === "time") prefetchTimeTrackerPanel();
+          }}
           onSelectModule={(module) => {
             if (!availableModules.includes(module)) return;
+            if (module === "time") prefetchTimeTrackerPanel();
             if (module !== activeModule) playUiSound("switchWhoosh");
             setActiveModule(module);
             setShowComposer(true);
@@ -594,6 +635,8 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 </button>
               ) : null}
               <button
+                onPointerEnter={() => prefetchTimeTrackerPanel()}
+                onFocus={() => prefetchTimeTrackerPanel()}
                 onClick={() => {
                   if (activeModule !== "time") playUiSound("switchWhoosh");
                   setActiveModule("time");

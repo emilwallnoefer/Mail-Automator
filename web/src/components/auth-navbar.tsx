@@ -14,6 +14,8 @@ type AuthNavbarProps = {
   showGmailStatus?: boolean;
   userRole?: "pilot" | "sales" | null;
   onSelectModule: (module: ModuleKey) => void;
+  /** Warm routes / heavy chunks before the user commits (e.g. Time Tracker). */
+  onWorkspaceModulePointerEnter?: (module: ModuleKey) => void;
 };
 
 export function AuthNavbar({
@@ -25,6 +27,7 @@ export function AuthNavbar({
   showGmailStatus = true,
   userRole = null,
   onSelectModule,
+  onWorkspaceModulePointerEnter,
 }: AuthNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -75,6 +78,7 @@ export function AuthNavbar({
                 {availableModules.includes("mail") ? (
                   <button
                     type="button"
+                    onPointerEnter={() => onWorkspaceModulePointerEnter?.("mail")}
                     onClick={() => {
                       if (activeModule !== "mail") playUiSound("switchWhoosh");
                       onSelectModule("mail");
@@ -93,6 +97,7 @@ export function AuthNavbar({
                 {availableModules.includes("time") ? (
                   <button
                     type="button"
+                    onPointerEnter={() => onWorkspaceModulePointerEnter?.("time")}
                     onClick={() => {
                       if (activeModule !== "time") playUiSound("switchWhoosh");
                       onSelectModule("time");
@@ -111,6 +116,7 @@ export function AuthNavbar({
                 {availableModules.includes("settings") ? (
                   <button
                     type="button"
+                    onPointerEnter={() => onWorkspaceModulePointerEnter?.("settings")}
                     onClick={() => {
                       if (activeModule !== "settings") playUiSound("switchWhoosh");
                       onSelectModule("settings");

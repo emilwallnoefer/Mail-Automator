@@ -11,6 +11,14 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  MOBILE_SHEET_EASE_IN,
+  MOBILE_SHEET_EASE_IN_BEZIER,
+  MOBILE_SHEET_EASE_OUT,
+  MOBILE_SHEET_EASE_OUT_BEZIER,
+  MOBILE_SHEET_MS,
+} from "@/config/mobile-sheet-easing";
 import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
@@ -494,6 +502,7 @@ export function TimeTrackerPanel() {
   const previousEditorOpenRef = useRef<boolean | null>(null);
   const mobileSheetTitleRef = useRef<HTMLHeadingElement>(null);
   const mobileSheetBackRef = useRef<HTMLButtonElement>(null);
+  const mobileSheetCloseTimerRef = useRef<number | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const prevEditorOpenForFocusRef = useRef(false);
 
@@ -657,14 +666,74 @@ export function TimeTrackerPanel() {
     prevEditorOpenForFocusRef.current = editorOpen;
   }, [editorOpen]);
 
+  const [mobileSheetExiting, setMobileSheetExiting] = useState(false);
+  const reduceMotion = useReducedMotion() ?? false;
+
+  const mobileSheetVariants = useMemo(
+    () => ({
+      off: {
+        y: "100%",
+        transition: {
+          duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
+          ease: MOBILE_SHEET_EASE_OUT_BEZIER,
+        },
+      },
+      on: {
+        y: 0,
+        transition: {
+          duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
+          ease: MOBILE_SHEET_EASE_IN_BEZIER,
+        },
+      },
+    }),
+    [reduceMotion],
+  );
+
+  const closeDayEditorSheet = useCallback(() => {
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 1023px)").matches) {
+      if (mobileSheetCloseTimerRef.current != null) {
+        clearTimeout(mobileSheetCloseTimerRef.current);
+        mobileSheetCloseTimerRef.current = null;
+      }
+      setMobileSheetExiting(false);
+      setEditorOpen(false);
+      return;
+    }
+    if (mobileSheetCloseTimerRef.current != null) return;
+    setMobileSheetExiting(true);
+    setMobileSheetEntered(false);
+    mobileSheetCloseTimerRef.current = window.setTimeout(() => {
+      mobileSheetCloseTimerRef.current = null;
+      setMobileSheetExiting(false);
+      setEditorOpen(false);
+    }, MOBILE_SHEET_MS);
+  }, []);
+
   useEffect(() => {
     if (!editorOpen) {
       setMobileSheetEntered(false);
+      setMobileSheetExiting(false);
+      if (mobileSheetCloseTimerRef.current != null) {
+        clearTimeout(mobileSheetCloseTimerRef.current);
+        mobileSheetCloseTimerRef.current = null;
+      }
       return;
     }
+    setMobileSheetExiting(false);
+    if (mobileSheetCloseTimerRef.current != null) {
+      clearTimeout(mobileSheetCloseTimerRef.current);
+      mobileSheetCloseTimerRef.current = null;
+    }
     setMobileSheetEntered(false);
-    const enterTimer = window.setTimeout(() => setMobileSheetEntered(true), 30);
-    return () => clearTimeout(enterTimer);
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setMobileSheetEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
   }, [editorOpen]);
 
   useEffect(() => {
@@ -677,7 +746,8 @@ export function TimeTrackerPanel() {
     mq.addEventListener("change", applyBodyLock);
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && mq.matches) {
-        setEditorOpen(false);
+        event.preventDefault();
+        closeDayEditorSheet();
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -691,7 +761,7 @@ export function TimeTrackerPanel() {
       cancelAnimationFrame(raf);
       document.body.style.overflow = "";
     };
-  }, [editorOpen]);
+  }, [editorOpen, closeDayEditorSheet]);
 
   const refreshWeek = useCallback(async () => {
     const weekData = await fetchWeekData(weekStart, { force: true });
@@ -936,10 +1006,6 @@ export function TimeTrackerPanel() {
     window.addEventListener("time-tracker-imported", onImported as EventListener);
     return () => window.removeEventListener("time-tracker-imported", onImported as EventListener);
   }, [refreshWeek]);
-
-  function closeDayEditorSheet() {
-    setEditorOpen(false);
-  }
 
   function handleEditDay(date: string) {
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
@@ -1308,16 +1374,22 @@ export function TimeTrackerPanel() {
         >
           <button
             type="button"
-            className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/90 via-slate-950/75 to-slate-950/60 p-0 backdrop-blur-md transition-opacity duration-500 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 ${
+            className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-[opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
               mobileSheetEntered ? "opacity-100" : "opacity-0"
             }`}
+            style={{
+              transitionDuration: `${MOBILE_SHEET_MS}ms`,
+              transitionTimingFunction:
+                !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
+            }}
             aria-label="Close day editor and return to week"
             onClick={closeDayEditorSheet}
           />
-          <div
-            className={`absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/30 bg-slate-950/97 shadow-[0_-24px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
-              mobileSheetEntered ? "translate-y-0" : "translate-y-full"
-            }`}
+          <motion.div
+            className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md"
+            initial="off"
+            animate={mobileSheetEntered ? "on" : "off"}
+            variants={mobileSheetVariants}
           >
             <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
               <div className="flex items-start gap-3">
@@ -1347,7 +1419,7 @@ export function TimeTrackerPanel() {
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
               <DayEditorBody {...dayEditorProps} layout="sheet" />
             </div>
-          </div>
+          </motion.div>
         </div>
       ) : null}
 
