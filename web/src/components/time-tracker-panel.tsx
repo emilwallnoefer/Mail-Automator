@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -668,26 +669,34 @@ export function TimeTrackerPanel() {
   }, [editorOpen]);
 
   const [mobileSheetExiting, setMobileSheetExiting] = useState(false);
+  const [mobileSheetSlidePx, setMobileSheetSlidePx] = useState(() =>
+    typeof window !== "undefined"
+      ? Math.round(window.visualViewport?.height ?? window.innerHeight)
+      : 800,
+  );
   const reduceMotion = useReducedMotion() ?? false;
 
   const mobileSheetVariants = useMemo(
-    () => ({
-      off: {
-        y: "100%",
-        transition: {
-          duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
-          ease: MOBILE_SHEET_EASE_OUT_BEZIER,
+    () => {
+      const slide = Math.max(1, mobileSheetSlidePx);
+      return {
+        off: {
+          y: slide,
+          transition: {
+            duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
+            ease: MOBILE_SHEET_EASE_OUT_BEZIER,
+          },
         },
-      },
-      on: {
-        y: 0,
-        transition: {
-          duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
-          ease: MOBILE_SHEET_EASE_IN_BEZIER,
+        on: {
+          y: 0,
+          transition: {
+            duration: reduceMotion ? 0 : MOBILE_SHEET_MS / 1000,
+            ease: MOBILE_SHEET_EASE_IN_BEZIER,
+          },
         },
-      },
-    }),
-    [reduceMotion],
+      };
+    },
+    [reduceMotion, mobileSheetSlidePx],
   );
 
   const closeDayEditorSheet = useCallback(() => {
@@ -710,7 +719,7 @@ export function TimeTrackerPanel() {
     }, MOBILE_SHEET_MS);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!editorOpen) {
       setMobileSheetEntered(false);
       setMobileSheetExiting(false);
@@ -718,33 +727,48 @@ export function TimeTrackerPanel() {
         clearTimeout(mobileSheetCloseTimerRef.current);
         mobileSheetCloseTimerRef.current = null;
       }
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.paddingRight = "";
       return;
     }
-    setMobileSheetExiting(false);
+
     if (mobileSheetCloseTimerRef.current != null) {
       clearTimeout(mobileSheetCloseTimerRef.current);
       mobileSheetCloseTimerRef.current = null;
     }
+    setMobileSheetExiting(false);
+
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const applyScrollLock = () => {
+      if (!mq.matches) {
+        document.documentElement.style.overflow = "";
+        document.documentElement.style.paddingRight = "";
+        return;
+      }
+      const gap = window.innerWidth - document.documentElement.clientWidth;
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.paddingRight = gap > 0 ? `${gap}px` : "";
+    };
+    applyScrollLock();
+    mq.addEventListener("change", applyScrollLock);
+
+    const h = Math.round(window.visualViewport?.height ?? window.innerHeight);
+    if (h > 0) setMobileSheetSlidePx(h);
+
     setMobileSheetEntered(false);
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setMobileSheetEntered(true));
-    });
+    const enterRaf = requestAnimationFrame(() => setMobileSheetEntered(true));
+
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelAnimationFrame(enterRaf);
+      mq.removeEventListener("change", applyScrollLock);
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.paddingRight = "";
     };
   }, [editorOpen]);
 
   useEffect(() => {
     if (!editorOpen) return;
     const mq = window.matchMedia("(max-width: 1023px)");
-    function applyBodyLock() {
-      document.body.style.overflow = mq.matches ? "hidden" : "";
-    }
-    applyBodyLock();
-    mq.addEventListener("change", applyBodyLock);
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && mq.matches) {
         event.preventDefault();
@@ -757,10 +781,8 @@ export function TimeTrackerPanel() {
       raf = requestAnimationFrame(() => mobileSheetBackRef.current?.focus());
     }
     return () => {
-      mq.removeEventListener("change", applyBodyLock);
       window.removeEventListener("keydown", onKeyDown);
       cancelAnimationFrame(raf);
-      document.body.style.overflow = "";
     };
   }, [editorOpen, closeDayEditorSheet]);
 
@@ -1369,7 +1391,7 @@ export function TimeTrackerPanel() {
       {isEditorVisible && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[100] w-full max-w-[100vw] overflow-hidden lg:hidden"
+              className="fixed inset-0 z-[100] h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden lg:hidden"
               role="dialog"
               aria-modal="true"
               aria-labelledby="day-editor-sheet-title"
@@ -1389,7 +1411,7 @@ export function TimeTrackerPanel() {
               />
               <motion.div
                 className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md [backface-visibility:hidden]"
-                initial="off"
+                initial={false}
                 animate={mobileSheetEntered ? "on" : "off"}
                 variants={mobileSheetVariants}
               >
