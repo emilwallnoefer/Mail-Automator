@@ -13,12 +13,6 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { useReducedMotion } from "framer-motion";
-import {
-  MOBILE_SHEET_EASE_IN,
-  MOBILE_SHEET_EASE_OUT,
-  MOBILE_SHEET_MS,
-} from "@/config/mobile-sheet-easing";
 import { playUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
@@ -267,17 +261,17 @@ function DayEditorBody({
 }: DayEditorBodyProps) {
   const showPanelHeading = layout === "panel";
   const sheet = layout === "sheet";
-  const stackY = sheet ? "space-y-2" : "space-y-3";
+  const stackY = sheet ? "space-y-4" : "space-y-3";
   const timeInputClass = sheet
-    ? "box-border w-full min-w-0 max-w-full rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-base leading-normal [font-variant-numeric:tabular-nums]"
+    ? "box-border min-h-11 w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2.5 text-base leading-normal text-slate-100 [font-variant-numeric:tabular-nums]"
     : "w-full min-w-0 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base leading-normal lg:py-2 lg:text-sm";
 
   const formFields = (
     <>
       {sheet ? (
-        <div className="grid min-w-0 max-w-full grid-cols-2 gap-2">
-          <label className="min-w-0 max-w-full overflow-hidden">
-            <span className="mb-0.5 block text-xs text-slate-200/90">Start</span>
+        <div className="grid min-w-0 max-w-full grid-cols-2 gap-3">
+          <label className="min-w-0 max-w-full">
+            <span className="mb-1.5 block text-[11px] font-medium text-slate-500">Start</span>
             <input
               type="time"
               value={formStart}
@@ -286,8 +280,8 @@ function DayEditorBody({
               className={timeInputClass}
             />
           </label>
-          <label className="min-w-0 max-w-full overflow-hidden">
-            <span className="mb-0.5 block text-xs text-slate-200/90">Stop</span>
+          <label className="min-w-0 max-w-full">
+            <span className="mb-1.5 block text-[11px] font-medium text-slate-500">Stop</span>
             <input
               type="time"
               value={formStop}
@@ -321,59 +315,68 @@ function DayEditorBody({
           </label>
         </>
       )}
-      <label className={`flex min-w-0 items-center gap-2 ${sheet ? "text-xs" : "text-sm"}`}>
+      <label
+        className={`flex min-w-0 cursor-pointer items-center gap-3 ${sheet ? "text-sm text-slate-300" : "text-sm"}`}
+      >
         <input
           type="checkbox"
           checked={formHoliday}
           disabled={!selectedDay}
           onChange={(event) => setFormHoliday(event.target.checked)}
+          className={sheet ? "size-4 rounded border-white/20" : ""}
         />
         Public holiday (full day)
       </label>
 
         {selectedDaySupportsBreaks ? (
           <div
-            className={`min-w-0 max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/5 ${
-              sheet ? "p-2" : "p-3"
-            }`}
+            className={
+              sheet
+                ? "min-w-0 max-w-full space-y-2"
+                : "min-w-0 max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/5 p-3"
+            }
           >
-            <div className={`flex items-end justify-between gap-3 ${sheet ? "mb-1" : "mb-2.5"}`}>
-              <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+            {!sheet ? (
+              <div className="mb-2.5 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-[11px] font-medium text-slate-500">Breaks</p>
+            )}
             {selectedDayUsesBreakCounter ? (
-              <div className={sheet ? "space-y-1.5" : "space-y-2"}>
-                <div className="grid min-w-0 grid-cols-2 items-center gap-2">
+              <div className={sheet ? "space-y-2" : "space-y-2"}>
+                <div className="grid min-w-0 grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                    className={`rounded-lg border border-white/20 bg-white/10 px-2 font-semibold tabular-nums transition hover:bg-white/15 ${
+                    className={`font-semibold tabular-nums transition ${
                       sheet
-                        ? "min-h-10 py-2 text-sm"
-                        : "min-h-11 text-base lg:h-9 lg:min-h-0 lg:text-sm"
+                        ? "h-11 rounded-xl bg-white/10 text-sm text-white hover:bg-white/15"
+                        : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
                     }`}
                   >
-                    -15
+                    −15
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                    className={`rounded-lg border border-white/20 bg-white/10 px-2 font-semibold tabular-nums transition hover:bg-white/15 ${
+                    className={`font-semibold tabular-nums transition ${
                       sheet
-                        ? "min-h-10 py-2 text-sm"
-                        : "min-h-11 text-base lg:h-9 lg:min-h-0 lg:text-sm"
+                        ? "h-11 rounded-xl bg-white/10 text-sm text-white hover:bg-white/15"
+                        : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-2 text-base hover:bg-white/15 lg:h-9 lg:min-h-0 lg:text-sm"
                     }`}
                   >
                     +15
                   </button>
                 </div>
                 <div
-                  className={`flex w-full min-w-0 max-w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 font-semibold text-slate-100 tabular-nums ${
-                    sheet ? "py-2 text-sm" : "py-2.5 text-base lg:py-2 lg:text-sm"
+                  className={`flex w-full min-w-0 max-w-full items-center justify-center rounded-xl font-medium text-slate-200 tabular-nums ${
+                    sheet ? "bg-white/5 py-2.5 text-sm" : "rounded-lg border border-white/20 bg-white/10 py-2.5 text-base lg:py-2 lg:text-sm"
                   }`}
                 >
-                  Break {formTotalBreakMins} min
+                  {formTotalBreakMins} min break
                 </div>
               </div>
             ) : (
@@ -428,24 +431,24 @@ function DayEditorBody({
           </div>
         ) : null}
 
-      <p className={`text-slate-300/80 ${sheet ? "text-[11px] leading-tight" : "text-xs"}`}>
-        Computed total: {fmtHM(computedNet)}
+      <p className={`text-slate-500 ${sheet ? "text-xs" : "text-xs text-slate-300/80"}`}>
+        Total {fmtHM(computedNet)}
       </p>
 
-      <div className={`flex min-w-0 max-w-full flex-col sm:flex-row ${sheet ? "gap-1.5" : "gap-2"}`}>
+      <div className={`flex min-w-0 max-w-full flex-col sm:flex-row ${sheet ? "gap-2" : "gap-2"}`}>
         <button
           type="button"
           onClick={() => {
             onSaveDay();
           }}
           disabled={saving || !selectedDay}
-          className={`flex-1 rounded-lg bg-cyan-400/90 font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70 ${
+          className={`flex-1 font-semibold transition disabled:opacity-50 ${
             sheet
-              ? "min-h-10 px-2 py-2 text-sm"
-              : "min-h-11 px-3 py-2.5 text-base lg:min-h-0 lg:py-2 lg:text-sm"
+              ? "h-12 rounded-xl bg-cyan-400 text-[15px] text-slate-950 hover:bg-cyan-300"
+              : "min-h-11 rounded-lg bg-cyan-400/90 px-3 py-2.5 text-base text-slate-900 hover:bg-cyan-300 lg:min-h-0 lg:py-2 lg:text-sm"
           }`}
         >
-          {saving ? "Saving..." : "Save day"}
+          {saving ? "Saving…" : "Save day"}
         </button>
         <button
           type="button"
@@ -454,10 +457,10 @@ function DayEditorBody({
             void onResetDay();
           }}
           disabled={saving || !selectedDay}
-          className={`flex-1 rounded-lg border border-white/20 bg-white/10 hover:bg-white/15 disabled:opacity-70 ${
+          className={`flex-1 font-medium transition disabled:opacity-50 ${
             sheet
-              ? "min-h-10 px-2 py-2 text-sm"
-              : "min-h-11 px-3 py-2.5 text-base lg:min-h-0 lg:py-2 lg:text-sm"
+              ? "h-12 rounded-xl border border-white/10 bg-transparent text-sm text-slate-300 hover:bg-white/5"
+              : "min-h-11 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-base hover:bg-white/15 lg:min-h-0 lg:py-2 lg:text-sm"
           }`}
         >
           Reset day
@@ -479,9 +482,11 @@ function DayEditorBody({
 
   return (
     <div
-      className={`grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start overflow-x-hidden lg:grid-cols-2 ${
-        sheet ? "gap-2" : "gap-4"
-      }`}
+      className={
+        sheet
+          ? "flex min-w-0 w-full max-w-full flex-col gap-6 overflow-x-hidden"
+          : "grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 items-start gap-4 overflow-x-hidden lg:grid-cols-2"
+      }
     >
       <div className="min-w-0 max-w-full">
         {showPanelHeading ? (
@@ -504,23 +509,27 @@ function DayEditorBody({
       </div>
 
       <aside
-        className={`h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 lg:w-auto ${
-          sheet ? "p-2.5" : "p-4"
-        }`}
+        className={
+          sheet
+            ? "h-fit min-w-0 w-full max-w-full border-t border-white/10 pt-5 break-words"
+            : "h-fit min-w-0 w-full max-w-full overflow-hidden break-words rounded-xl border border-white/15 bg-white/5 p-4 lg:w-auto"
+        }
       >
-        <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-        <p className={`text-slate-300/80 ${sheet ? "mt-1 text-[11px]" : "mt-2 text-xs"}`}>{panelDateLabel}</p>
+        <p className={sheet ? "text-[11px] font-medium text-slate-500" : "text-xs uppercase tracking-[0.16em] text-cyan-200/80"}>
+          {sheet ? "Travel" : "Travel info"}
+        </p>
+        {!sheet ? <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p> : null}
         {!selectedDay ? (
-          <p className={`text-slate-300/80 ${sheet ? "mt-2 text-xs" : "mt-4 text-sm"}`}>
+          <p className={`text-slate-400 ${sheet ? "mt-2 text-sm" : "mt-4 text-sm text-slate-300/80"}`}>
             Select a day to edit details.
           </p>
         ) : !selectedTravelInfo ? (
           <>
-            <p className={`text-slate-300/80 ${sheet ? "mt-2 text-xs leading-snug" : "mt-4 text-sm"}`}>
-              No travel info found for this date.
+            <p className={`text-slate-400 ${sheet ? "mt-2 text-sm" : "mt-4 text-sm text-slate-300/80"}`}>
+              No travel info for this date.
             </p>
             {travelDebug ? (
-              <p className={`break-words text-slate-400/90 ${sheet ? "mt-2 text-[10px] leading-snug" : "mt-3 text-xs"}`}>
+              <p className={`break-words text-slate-500 ${sheet ? "mt-2 text-xs" : "mt-3 text-xs text-slate-400/90"}`}>
                 Debug: {travelDebug.status} - {travelDebug.message}
                 {"  "}
                 ({travelDebug.fetched_dates} loaded, {travelDebug.week_matches} in week)
@@ -528,18 +537,18 @@ function DayEditorBody({
             ) : null}
           </>
         ) : sheet ? (
-          <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs">
+          <div className="mt-3 space-y-3 text-sm text-slate-200">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Client</p>
-              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.client || "-"}</p>
+              <p className="text-[11px] font-medium text-slate-500">Client</p>
+              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.client || "—"}</p>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Location</p>
-              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.location || "-"}</p>
+              <p className="text-[11px] font-medium text-slate-500">Location</p>
+              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.location || "—"}</p>
             </div>
-            <div className="col-span-2 min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
-              <p className="mt-0.5 break-words leading-snug">{selectedTravelInfo.responsible || "-"}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium text-slate-500">Responsible</p>
+              <p className="mt-1 break-words leading-snug">{selectedTravelInfo.responsible || "—"}</p>
             </div>
           </div>
         ) : (
@@ -585,13 +594,11 @@ export function TimeTrackerPanel() {
   const [weekLoadTick, setWeekLoadTick] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [mobileSheetEntered, setMobileSheetEntered] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
   const mobileSheetTitleRef = useRef<HTMLHeadingElement>(null);
   const mobileSheetBackRef = useRef<HTMLButtonElement>(null);
-  const mobileSheetCloseTimerRef = useRef<number | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const prevEditorOpenForFocusRef = useRef(false);
 
@@ -755,48 +762,16 @@ export function TimeTrackerPanel() {
     prevEditorOpenForFocusRef.current = editorOpen;
   }, [editorOpen]);
 
-  const [mobileSheetExiting, setMobileSheetExiting] = useState(false);
-  const reduceMotion = useReducedMotion() ?? false;
-  const mobileFadeMs = reduceMotion ? 0 : MOBILE_SHEET_MS;
-
   const closeDayEditorSheet = useCallback(() => {
-    if (typeof window === "undefined" || !window.matchMedia("(max-width: 1023px)").matches) {
-      if (mobileSheetCloseTimerRef.current != null) {
-        clearTimeout(mobileSheetCloseTimerRef.current);
-        mobileSheetCloseTimerRef.current = null;
-      }
-      setMobileSheetExiting(false);
-      setEditorOpen(false);
-      return;
-    }
-    if (mobileSheetCloseTimerRef.current != null) return;
-    setMobileSheetExiting(true);
-    setMobileSheetEntered(false);
-    mobileSheetCloseTimerRef.current = window.setTimeout(() => {
-      mobileSheetCloseTimerRef.current = null;
-      setMobileSheetExiting(false);
-      setEditorOpen(false);
-    }, MOBILE_SHEET_MS);
+    setEditorOpen(false);
   }, []);
 
   useLayoutEffect(() => {
     if (!editorOpen) {
-      setMobileSheetEntered(false);
-      setMobileSheetExiting(false);
-      if (mobileSheetCloseTimerRef.current != null) {
-        clearTimeout(mobileSheetCloseTimerRef.current);
-        mobileSheetCloseTimerRef.current = null;
-      }
       document.documentElement.style.overflow = "";
       document.documentElement.style.paddingRight = "";
       return;
     }
-
-    if (mobileSheetCloseTimerRef.current != null) {
-      clearTimeout(mobileSheetCloseTimerRef.current);
-      mobileSheetCloseTimerRef.current = null;
-    }
-    setMobileSheetExiting(false);
 
     const mq = window.matchMedia("(max-width: 1023px)");
     const applyScrollLock = () => {
@@ -812,11 +787,7 @@ export function TimeTrackerPanel() {
     applyScrollLock();
     mq.addEventListener("change", applyScrollLock);
 
-    setMobileSheetEntered(false);
-    const enterRaf = requestAnimationFrame(() => setMobileSheetEntered(true));
-
     return () => {
-      cancelAnimationFrame(enterRaf);
       mq.removeEventListener("change", applyScrollLock);
       document.documentElement.style.overflow = "";
       document.documentElement.style.paddingRight = "";
@@ -1455,53 +1426,35 @@ export function TimeTrackerPanel() {
             >
               <button
                 type="button"
-                className={`absolute inset-0 z-0 cursor-default border-0 bg-gradient-to-b from-slate-950/78 via-slate-950/58 to-slate-950/42 p-0 backdrop-blur-sm transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/35 motion-reduce:transition-none ${
-                  mobileSheetEntered ? "opacity-100" : "opacity-0"
-                }`}
-                style={{
-                  transitionDuration: `${mobileFadeMs}ms`,
-                  transitionTimingFunction:
-                    !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
-                }}
+                className="absolute inset-0 z-0 cursor-default border-0 bg-slate-950/75 p-0 backdrop-blur-[2px] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
                 aria-label="Close day editor and return to week"
                 onClick={closeDayEditorSheet}
               />
-              <div
-                className={`absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-cyan-400/25 bg-slate-950/[0.96] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md transition-opacity motion-reduce:transition-none ${
-                  mobileSheetEntered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-                }`}
-                style={{
-                  transitionDuration: `${mobileFadeMs}ms`,
-                  transitionTimingFunction:
-                    !mobileSheetEntered && mobileSheetExiting ? MOBILE_SHEET_EASE_OUT : MOBILE_SHEET_EASE_IN,
-                }}
-              >
-                <div className="flex shrink-0 flex-col border-b border-white/[0.08] px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
-                  <div className="flex items-start gap-2">
-                    <button
-                      ref={mobileSheetBackRef}
-                      type="button"
-                      onClick={closeDayEditorSheet}
-                      className="mt-0.5 shrink-0 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45"
-                      aria-label="Back to week"
+              <div className="mobile-day-sheet-pop absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-950">
+                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+                  <button
+                    ref={mobileSheetBackRef}
+                    type="button"
+                    onClick={closeDayEditorSheet}
+                    className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2 text-slate-200 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40"
+                    aria-label="Back to week"
+                  >
+                    <span className="block text-lg leading-none">←</span>
+                  </button>
+                  <header className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">Time tracker</p>
+                    <h2
+                      id="day-editor-sheet-title"
+                      ref={mobileSheetTitleRef}
+                      tabIndex={-1}
+                      className="text-lg font-semibold tracking-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
                     >
-                      ←
-                    </button>
-                    <header className="min-w-0 flex-1 pt-0.5">
-                      <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-cyan-200/75">Time Tracker</p>
-                      <h2
-                        id="day-editor-sheet-title"
-                        ref={mobileSheetTitleRef}
-                        tabIndex={-1}
-                        className="mt-0.5 text-base font-semibold leading-tight tracking-tight text-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
-                      >
-                        Day Logger
-                      </h2>
-                      <p className="mt-0.5 text-xs text-slate-400">{panelDateLabel}</p>
-                    </header>
-                  </div>
+                      Day Logger
+                    </h2>
+                    <p className="text-sm text-slate-400">{panelDateLabel}</p>
+                  </header>
                 </div>
-                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-950/50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
                   <DayEditorBody {...dayEditorProps} layout="sheet" />
                 </div>
               </div>
