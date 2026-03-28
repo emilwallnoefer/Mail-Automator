@@ -238,10 +238,10 @@ def with_callout(language: str, desc: str) -> str:
 
 def training_materials_heading(language: str) -> str:
     if language == "de":
-        return "## 📂 Trainingsunterlagen"
+        return "## 📂 Trainings-Folien"
     if language == "fr":
-        return "## 📚 Supports de formation"
-    return "## 📂 Training materials"
+        return "## 📂 Diaporamas de formation"
+    return "## 📂 Training slide decks"
 
 
 def build_training_materials_block(links: Dict[str, str], language: str) -> str:
@@ -255,9 +255,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
                 "fr": "Formation d'introduction Elios 3",
             },
             {
-                "en": "Everything covered on day one and drone operation basics.",
-                "de": "Alles vom ersten Tag und die Grundlagen der Drohnenbedienung.",
-                "fr": "Contenu du premier jour et bases du pilotage du drone.",
+                "en": "Covers day-one Elios 3 topics: setup, basic flying, and data workflow from training. Use it as a refresher before missions.",
+                "de": "Deckt Themen von Tag eins ab: Aufbau, Grundflug und Datenworkflow aus der Schulung. Nutzt es als Auffrischung vor Einsätzen.",
+                "fr": "Couvre le jour 1 Elios 3 : mise en place, vol de base et workflow données vus en formation. Servez-vous-en pour réviser avant les missions.",
             },
         ),
         (
@@ -268,9 +268,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
                 "fr": "Formation Indoor Aerial Inspection Methodology (AIIM)",
             },
             {
-                "en": "Step-by-step preparation for inspection missions and reco flights.",
-                "de": "Schritt-für-Schritt-Vorbereitung von Inspektionsmissionen inklusive Erkundungsflügen.",
-                "fr": "Préparation pas à pas des missions d'inspection et des vols de reconnaissance.",
+                "en": "Steps through mission planning, recon flights, and AIIM methodology for indoor inspections. Use it when planning complex jobs.",
+                "de": "Führt durch Missionsplanung, Erkundungsflüge und AIIM-Methodik für Indoor-Inspektionen. Nutzt es bei komplexeren Aufträgen.",
+                "fr": "Parcourt planification, vols de reco et méthodologie AIIM pour inspections indoor. Utilisez-le pour préparer les missions complexes.",
             },
         ),
         (
@@ -281,9 +281,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
                 "fr": "Modèle de méthodologie (Method Statement)",
             },
             {
-                "en": "Collect customer details and document mission requirements clearly.",
-                "de": "Sammelt Kundendetails und dokumentiert Missionsanforderungen klar.",
-                "fr": "Recueillir les informations client et documenter clairement les exigences de mission.",
+                "en": "Captures customer scope, hazards, and mission requirements in one method statement template. Use it when scoping new work.",
+                "de": "Erfasst Kundenumfang, Gefahren und Missionsanforderungen in einer Method-Statement-Vorlage. Nutzt es bei der Scope-Kläre neuer Jobs.",
+                "fr": "Structure périmètre client, risques et exigences dans un modèle de méthodologie. Servez-vous-en pour cadrer de nouveaux projets.",
             },
         ),
         (
@@ -294,9 +294,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
                 "fr": "Guide d'évaluation des risques",
             },
             {
-                "en": "Classify mission risk and align preparation to required experience.",
-                "de": "Klassifiziert Missionsrisiken und hilft bei der passenden Vorbereitung.",
-                "fr": "Classer le risque de mission et adapter la préparation au niveau requis.",
+                "en": "Explains risk classes, mitigations, and matching crew skill to mission difficulty. Use it before demanding or unfamiliar flights.",
+                "de": "Erklärt Risikoklassen, Maßnahmen und Abgleich der Crew-Fähigkeiten mit der Missionshärte. Nutzt es vor anspruchsvollen oder neuen Flügen.",
+                "fr": "Présente classes de risque, atténuations et adéquation équipe / difficulté. Utilisez-le avant vols exigeants ou peu familiers.",
             },
         ),
         (
@@ -307,9 +307,9 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
                 "fr": "SOP (Standard Operating Procedure)",
             },
             {
-                "en": "Current pre- and post-inspection workflow reference.",
-                "de": "Aktuelles Referenzdokument für Schritte vor und nach der Inspektion.",
-                "fr": "Référence pour le déroulement avant et après inspection.",
+                "en": "Lists standard pre- and post-inspection steps for consistent operations every time. Use it to onboard crew or audit your process.",
+                "de": "Listet Standard-Schritte vor und nach der Inspektion für gleichbleibende Abläufe. Nutzt es zum Einarbeiten der Crew oder für Audits.",
+                "fr": "Décrit les étapes standard avant et après inspection pour des opérations homogènes. Servez-vous-en pour former l'équipe ou auditer le process.",
             },
         ),
     ]

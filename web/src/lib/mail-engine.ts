@@ -276,9 +276,9 @@ function resolveIncludedChangeIds(input: MailInput) {
 
 /** Canonical section titles (emoji + wording) aligned with internal recap style. */
 function trainingMaterialsHeading(lang: MailLanguage) {
-  if (lang === "de") return "## 📂 Trainingsunterlagen";
-  if (lang === "fr") return "## 📚 Supports de formation";
-  return "## 📂 Training materials";
+  if (lang === "de") return "## 📂 Trainings-Folien";
+  if (lang === "fr") return "## 📂 Diaporamas de formation";
+  return "## 📂 Training slide decks";
 }
 
 function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: string[]) {

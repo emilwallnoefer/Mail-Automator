@@ -846,7 +846,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     onToggle={handleResourceDetailsToggle}
                   >
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
-                      <span>Core materials</span>
+                      <span>Training slide decks</span>
                       <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
                     </summary>
                     <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">

@@ -33,9 +33,7 @@ As I promised during our training, here is the recap email with links to all the
 
 ---
 
-If you enjoyed the training, I'd be super thankful if you could take 5 minutes to give me some quick feedback.
-
-**Just scan the QR code below and tell me what you liked and what you didn't.**
+If you enjoyed the training, I'd be super thankful if you could take 5 minutes to give me some quick feedback. Just scan the QR code below and tell me what you liked and what you didn't.
 
 ![Training feedback]({{FEEDBACK_QR_IMAGE_URL}})
 
@@ -60,7 +58,7 @@ Hallo {{RECIPIENT_NAME}},
 
 {{CUSTOM_OPENER_NOTE}}
 
-wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainingsunterlagen, die wir verwendet haben. Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.
+wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainings-Folien, die wir verwendet haben. Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.
 
 ---
 
@@ -81,9 +79,7 @@ wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zus
 
 ---
 
-Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in 5 Minuten kurz Feedback geben könnt.
-
-**Scannt einfach den QR-Code unten und sagt mir, was euch gefallen hat und was nicht.**
+Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in 5 Minuten kurz Feedback geben könnt. Scannt einfach den QR-Code unten und sagt mir, was euch gefallen hat und was nicht.
 
 ![Feedback Schulung]({{FEEDBACK_QR_IMAGE_URL}})
 
@@ -262,7 +258,7 @@ Tag 3 - AIIM: Advanced
 
 Das Training beginnt um 09:00 Uhr.
 
-Hinweis zu den Trainingsunterlagen:
+Hinweis zu den Trainings-Folien:
 Nach dem Training erhalten Sie das vollständige Trainingspaket, Beispieldatensätze sowie alle Dateien, die während der Trainingstage erstellt wurden.
 
 Falls Sie weitere Fragen haben, lassen Sie es mich gerne wissen.
@@ -281,7 +277,7 @@ Bonjour {{RECIPIENT_NAME}},
 
 {{CUSTOM_OPENER_NOTE}}
 
-Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers toutes les présentations utiles que nous avons utilisées. Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.
+Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers tous les diaporamas de formation utiles que nous avons utilisés. Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.
 
 ---
 
@@ -302,9 +298,7 @@ Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les lie
 
 ---
 
-Si la formation vous a plu, je vous serais très reconnaissant de prendre 5 minutes pour me donner un retour rapide.
-
-**Scannez simplement le code QR ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.**
+Si la formation vous a plu, je vous serais très reconnaissant de prendre 5 minutes pour me donner un retour rapide. Scannez simplement le code QR ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.
 
 ![Retour formation]({{FEEDBACK_QR_IMAGE_URL}})
 

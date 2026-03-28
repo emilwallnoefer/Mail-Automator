@@ -393,12 +393,16 @@ export function SettingsPanel({
               {openSetting === "import" ? "Hide import settings" : "Open import settings"}
             </button>
           </div>
-          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Interface sounds</p>
-                <p className="mt-1 text-sm">{uiSoundsOn ? "On" : "Off"}</p>
-                <p className="mt-1 text-xs text-slate-300/80">
+          <div className="rounded-xl border border-white/15 bg-slate-950/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 pr-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">
+                  Interface sounds
+                </p>
+                <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                  {uiSoundsOn ? "On" : "Off"}
+                </p>
+                <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
                   Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
                 </p>
               </div>
@@ -412,13 +416,15 @@ export function SettingsPanel({
                   setUiSoundsOn(next);
                   persistUiSoundsEnabled(next);
                 }}
-                className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
-                  uiSoundsOn ? "border-cyan-300/40 bg-cyan-400/25" : "border-white/20 bg-white/10"
+                className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
+                  uiSoundsOn
+                    ? "border-cyan-500/25 bg-[rgb(22_58_68)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    : "border-white/15 bg-white/[0.07]"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ease-out ${
-                    uiSoundsOn ? "translate-x-6" : "translate-x-0.5"
+                  className={`absolute top-1 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                    uiSoundsOn ? "translate-x-[22px]" : "translate-x-0"
                   }`}
                   aria-hidden
                 />
