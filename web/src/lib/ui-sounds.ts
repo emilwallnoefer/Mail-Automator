@@ -1,5 +1,59 @@
 "use client";
 
+const UI_SOUNDS_STORAGE_KEY = "ma_ui_sounds_enabled";
+
+function readStoredUiSoundsEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const v = window.localStorage.getItem(UI_SOUNDS_STORAGE_KEY);
+    if (v === null) return true;
+    return v === "1" || v === "true";
+  } catch {
+    return true;
+  }
+}
+
+let soundsEnabledCache: boolean | null = null;
+
+/** Whether UI sounds are allowed (default on). Synced with localStorage. */
+export function getUiSoundsEnabled(): boolean {
+  if (soundsEnabledCache === null && typeof window !== "undefined") {
+    soundsEnabledCache = readStoredUiSoundsEnabled();
+  }
+  if (soundsEnabledCache === null) return true;
+  return soundsEnabledCache;
+}
+
+/** Persist preference and stop active sounds when turning off. */
+export function setUiSoundsEnabled(enabled: boolean): void {
+  soundsEnabledCache = enabled;
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(UI_SOUNDS_STORAGE_KEY, enabled ? "1" : "0");
+    }
+  } catch {
+    // Ignore quota / private mode.
+  }
+  if (!enabled && typeof window !== "undefined") {
+    for (const key of Object.keys(SOUND_CONFIG) as UiSoundKey[]) {
+      stopUiSound(key, { fadeOutMs: 100 });
+    }
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ma-ui-sounds-changed", { detail: { enabled } }));
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key !== UI_SOUNDS_STORAGE_KEY) return;
+    soundsEnabledCache = readStoredUiSoundsEnabled();
+    window.dispatchEvent(
+      new CustomEvent("ma-ui-sounds-changed", { detail: { enabled: soundsEnabledCache } }),
+    );
+  });
+}
+
 export type UiSoundKey =
   | "switchWhoosh"
   | "generateReady"
@@ -152,7 +206,7 @@ function fadeAudioVolume(
 }
 
 export function playUiSound(sound: UiSoundKey) {
-  if (!canPlay()) return;
+  if (!canPlay() || !getUiSoundsEnabled()) return;
   const now = Date.now();
   const cooldown = SOUND_CONFIG[sound].cooldownMs ?? 0;
   const prev = lastPlayedAt.get(sound) ?? 0;
@@ -171,7 +225,7 @@ export function playUiSound(sound: UiSoundKey) {
 }
 
 export function startUiSound(sound: UiSoundKey, options?: { fadeInMs?: number; restart?: boolean }) {
-  if (!canPlay()) return;
+  if (!canPlay() || !getUiSoundsEnabled()) return;
   try {
     clearLayeredTimers(sound);
     clearLayeredAudios(sound);
@@ -265,7 +319,7 @@ export function playUiSoundWithCrossfadeFill(
   durationMs: number,
   options?: { fadeInMs?: number; fadeOutMs?: number; crossfadeMs?: number },
 ) {
-  if (!canPlay()) return;
+  if (!canPlay() || !getUiSoundsEnabled()) return;
   const totalMs = Math.max(0, Math.round(durationMs));
   if (totalMs <= 0) return;
 

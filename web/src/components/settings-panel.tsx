@@ -8,6 +8,7 @@ import {
   MAIL_SIGNATURE_NAME_PRESETS,
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
+import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
 
 type SettingsPanelProps = {
   email: string;
@@ -48,6 +49,17 @@ export function SettingsPanel({
   const [mailSigPreset, setMailSigPreset] = useState<string>(MAIL_SIGNATURE_NAME_PRESETS[0]);
   const [mailSigCustom, setMailSigCustom] = useState("");
   const [mailSigSaving, setMailSigSaving] = useState(false);
+  const [uiSoundsOn, setUiSoundsOn] = useState(true);
+
+  useEffect(() => {
+    setUiSoundsOn(getUiSoundsEnabled());
+    function onUiSoundsChanged(e: Event) {
+      const d = (e as CustomEvent<{ enabled?: boolean }>).detail;
+      if (typeof d?.enabled === "boolean") setUiSoundsOn(d.enabled);
+    }
+    window.addEventListener("ma-ui-sounds-changed", onUiSoundsChanged);
+    return () => window.removeEventListener("ma-ui-sounds-changed", onUiSoundsChanged);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -313,7 +325,9 @@ export function SettingsPanel({
 
       <section className="glass-card hourlogger-surface p-4 md:p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan-200/75">Overview</h2>
-        <div className={`mt-3 grid gap-3 ${isSalesOnly ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-4"}`}>
+        <div
+          className={`mt-3 grid gap-3 ${isSalesOnly ? "sm:grid-cols-2" : "md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5"}`}
+        >
           {!isSalesOnly ? (
             <div className="rounded-xl border border-white/15 bg-white/5 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Gmail</p>
@@ -378,6 +392,38 @@ export function SettingsPanel({
             >
               {openSetting === "import" ? "Hide import settings" : "Open import settings"}
             </button>
+          </div>
+          <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/80">Interface sounds</p>
+                <p className="mt-1 text-sm">{uiSoundsOn ? "On" : "Off"}</p>
+                <p className="mt-1 text-xs text-slate-300/80">
+                  Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={uiSoundsOn}
+                aria-label={uiSoundsOn ? "Turn interface sounds off" : "Turn interface sounds on"}
+                onClick={() => {
+                  const next = !uiSoundsOn;
+                  setUiSoundsOn(next);
+                  persistUiSoundsEnabled(next);
+                }}
+                className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
+                  uiSoundsOn ? "border-cyan-300/40 bg-cyan-400/25" : "border-white/20 bg-white/10"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ease-out ${
+                    uiSoundsOn ? "translate-x-6" : "translate-x-0.5"
+                  }`}
+                  aria-hidden
+                />
+              </button>
+            </div>
           </div>
         </div>
       </section>
