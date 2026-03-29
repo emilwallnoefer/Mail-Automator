@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 
 const TARGET_MINS = 504;
@@ -211,6 +212,7 @@ export function TimeTrackerPanel() {
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editorPortalReady, setEditorPortalReady] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
@@ -389,6 +391,10 @@ export function TimeTrackerPanel() {
   }, [showUpToDateSweep]);
 
   useEffect(() => {
+    setEditorPortalReady(true);
+  }, []);
+
+  useEffect(() => {
     const previous = previousEditorOpenRef.current;
     previousEditorOpenRef.current = editorOpen;
     if (previous == null || previous === editorOpen) return;
@@ -401,10 +407,28 @@ export function TimeTrackerPanel() {
     prefetchNearbyWeeks(weekStart);
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
-  function returnToWeekdays() {
+  const returnToWeekdays = useCallback(() => {
     setEditorOpen(false);
     setSelectedDate(null);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [editorOpen]);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") returnToWeekdays();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editorOpen, returnToWeekdays]);
 
   const patchDayInCurrentWeek = useCallback(
     (date: string, updater: (day: DayData) => DayData) => {
@@ -658,45 +682,252 @@ export function TimeTrackerPanel() {
     setFormBreaks(safeTotal > 0 ? [{ name: "Break", mins: safeTotal }] : []);
   }
   const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
-  const isEditorVisible = editorOpen;
   const panelDateLabel = selectedDay ? dayLabel(selectedDay.date) : "Select a day";
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
 
+  const dayLoggerOverlay =
+    editorPortalReady && editorOpen ? (
+      <>
+        <div
+          className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md"
+          aria-hidden="true"
+          onClick={() => returnToWeekdays()}
+        />
+        <div className="fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6">
+          <div
+            className="glass-card my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92vh,880px)] overflow-y-auto scroll-mt-24"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="day-logger-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 id="day-logger-title" className="text-base font-semibold">
+                    Day Logger
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => returnToWeekdays()}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
+                    aria-label="Close day editor"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-slate-200/90">Start</span>
+                    <input
+                      type="time"
+                      value={formStart}
+                      disabled={formHoliday || !selectedDay}
+                      onChange={(event) => setFormStart(event.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
+                    <input
+                      type="time"
+                      value={formStop}
+                      disabled={formHoliday || !selectedDay}
+                      onChange={(event) => setFormStop(event.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={formHoliday}
+                      disabled={!selectedDay}
+                      onChange={(event) => setFormHoliday(event.target.checked)}
+                    />
+                    Public holiday (full day)
+                  </label>
+
+                  {selectedDaySupportsBreaks ? (
+                    <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                      <div className="mb-2.5 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+                        </div>
+                      </div>
+                      {selectedDayUsesBreakCounter ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
+                              className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                            >
+                              -15
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
+                              className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                            >
+                              +15
+                            </button>
+                          </div>
+                          <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
+                            Break {formTotalBreakMins} min
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {formBreaks.length === 0 ? (
+                            <p className="text-xs text-slate-300/80">No breaks added.</p>
+                          ) : (
+                            formBreaks.map((item, index) => (
+                              <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
+                                <input
+                                  placeholder="Name"
+                                  value={item.name}
+                                  onChange={(event) => {
+                                    const name = event.target.value;
+                                    setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
+                                  }}
+                                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                                />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  placeholder="mins"
+                                  value={item.mins}
+                                  onChange={(event) => {
+                                    const mins = Number.parseInt(event.target.value || "0", 10) || 0;
+                                    setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
+                                  }}
+                                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
+                                  className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
+                            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                          >
+                            Add break
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleSaveDay();
+                      }}
+                      disabled={saving || !selectedDay}
+                      className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
+                    >
+                      {saving ? "Saving..." : "Save day"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playUiSound("resetTap");
+                        void handleResetDay();
+                      }}
+                      disabled={saving || !selectedDay}
+                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+                    >
+                      Reset day
+                    </button>
+                  </div>
+                </div>
+
+                {toast && (
+                  <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
+                )}
+              </div>
+
+              <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
+                <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+                {!selectedDay ? (
+                  <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+                ) : !selectedTravelInfo ? (
+                  <>
+                    <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+                    {data?.travel_debug ? (
+                      <p className="mt-3 text-xs text-slate-400/90">
+                        Debug: {data.travel_debug.status} - {data.travel_debug.message}
+                        {"  "}
+                        ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
+                      <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
+                      <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
+                      <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null;
+
   return (
-    <section
-      className={`underwater-panel grid gap-6 rounded-2xl p-2 transition-all duration-500 ease-out ${
-        isEditorVisible ? "lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : "lg:grid-cols-[1fr_0fr] lg:items-start"
-      }`}
-    >
-      <div className="bubble-layer" aria-hidden="true">
-        {bubbles.map((bubble, idx) => (
-          <span
-            key={`${bubble.left}-${idx}`}
-            className="bubble"
-            style={
-              {
-                "--bubble-left": bubble.left,
-                "--bubble-size": bubble.size,
-                "--bubble-duration": bubble.duration,
-                "--bubble-delay": bubble.delay,
-              } as CSSProperties
-            }
-          />
-        ))}
-      </div>
-      <div
-        className={`glass-card hourlogger-surface w-full p-4 transition-all duration-500 ease-out md:p-5 ${
-          isEditorVisible ? "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20" : "justify-self-stretch lg:col-start-1 lg:row-start-1 lg:z-20"
-        }`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+    <>
+    <section className="underwater-panel relative grid overflow-hidden rounded-2xl transition-all duration-500 ease-out gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0fr)] lg:items-start">
+      {/* One grid cell for bubbles + main card so the card stays in the wide column (not the 0fr track). */}
+      <div className="relative min-h-0 min-w-0 w-full lg:col-start-1 lg:row-start-1">
+        <div className="bubble-layer pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+          {bubbles.map((bubble, idx) => (
+            <span
+              key={`${bubble.left}-${idx}`}
+              className="bubble"
+              style={
+                {
+                  "--bubble-left": bubble.left,
+                  "--bubble-size": bubble.size,
+                  "--bubble-duration": bubble.duration,
+                  "--bubble-delay": bubble.delay,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+        <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 transition-all duration-500 ease-out md:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
           </div>
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+          <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end sm:gap-2">
             <button
               type="button"
               onClick={() => {
@@ -729,10 +960,10 @@ export function TimeTrackerPanel() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
-            <span>Weekly hours:</span>
-            <span className="ml-2 inline-block min-w-[8ch] text-right">
+        <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 sm:gap-3">
+          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+            <span className="shrink-0">Weekly hours:</span>
+            <span className="inline-block min-w-[8ch] text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={760}>
                   {(value) => fmtHM(Math.round(value))}
@@ -742,9 +973,9 @@ export function TimeTrackerPanel() {
               )}
             </span>
           </span>
-          <span className="flex min-w-[16.5rem] items-center justify-between rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
-            <span>Overtime bank:</span>
-            <span className="ml-2 inline-block min-w-[9ch] text-right">
+          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+            <span className="shrink-0">Overtime bank:</span>
+            <span className="inline-block min-w-[9ch] text-right">
               {hasActiveWeekData ? (
                 <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={760}>
                   {(value) => fmtSignedHM(Math.round(value))}
@@ -756,7 +987,7 @@ export function TimeTrackerPanel() {
           </span>
         </div>
 
-        <div className={`scroll-mt-24 mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
+        <div className={`scroll-mt-24 mt-5 grid grid-cols-1 gap-3 md:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
           {hasActiveWeekData &&
             (activeWeekData?.days ?? []).map((day, index) => {
               const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
@@ -863,23 +1094,32 @@ export function TimeTrackerPanel() {
                     </div>
                     <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={weekendRuleApplies ? 0 : workedBaseMins}>
                       {(coreValue) => (
-                        <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMins}>
-                          {(overtimeValue) => (
-                            <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
-                              {(compValue) => (
-                                <div className="mt-2 space-y-0.5 text-[11px] text-slate-300/80">
-                                  <span className="block">Core hours {fmtHM(Math.round(coreValue))}</span>
-                                  {Math.round(overtimeValue) > 0 ? (
-                                    <span className="block">Overtime worked {fmtHM(Math.round(overtimeValue))}</span>
-                                  ) : null}
-                                  {Math.round(compValue) > 0 ? (
-                                    <span className="block">Overtime compensated {fmtHM(Math.round(compValue))}</span>
-                                  ) : null}
+                        <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
+                          <div className="flex w-full items-baseline justify-between gap-3">
+                            <span className="shrink-0 text-left font-normal">Core hours</span>
+                            <span className="tabular-nums text-right">{fmtHM(Math.round(coreValue))}</span>
+                          </div>
+                          {overtimeWorkedMins > 0 ? (
+                            <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMins}>
+                              {(overtimeValue) => (
+                                <div className="flex w-full items-baseline justify-between gap-3">
+                                  <span className="shrink-0 text-left font-normal">Overtime worked</span>
+                                  <span className="tabular-nums text-right">{fmtHM(Math.round(overtimeValue))}</span>
                                 </div>
                               )}
                             </AnimatedNumber>
-                          )}
-                        </AnimatedNumber>
+                          ) : null}
+                          {overtimeCompMins > 0 ? (
+                            <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
+                              {(compValue) => (
+                                <div className="flex w-full items-baseline justify-between gap-3">
+                                  <span className="shrink-0 text-left font-normal">Overtime compensated</span>
+                                  <span className="tabular-nums text-right">{fmtHM(Math.round(compValue))}</span>
+                                </div>
+                              )}
+                            </AnimatedNumber>
+                          ) : null}
+                        </div>
                       )}
                     </AnimatedNumber>
                   </button>
@@ -934,196 +1174,10 @@ export function TimeTrackerPanel() {
             ))}
         </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
-      </div>
-
-      <div
-        className={`scroll-mt-24 h-fit self-start glass-card p-4 transition-all duration-500 ease-out md:p-5 lg:col-start-2 lg:row-start-1 lg:z-10 ${
-          isEditorVisible ? "block opacity-100 lg:translate-x-0" : "hidden opacity-0 lg:block lg:translate-x-6"
-        } ${isEditorVisible ? "pointer-events-auto" : "pointer-events-none"}`}
-      >
-          <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-semibold">Day Logger</h3>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-slate-200/90">Start</span>
-                  <input
-                    type="time"
-                    value={formStart}
-                    disabled={formHoliday || !selectedDay}
-                    onChange={(event) => setFormStart(event.target.value)}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
-                  <input
-                    type="time"
-                    value={formStop}
-                    disabled={formHoliday || !selectedDay}
-                    onChange={(event) => setFormStop(event.target.value)}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formHoliday}
-                    disabled={!selectedDay}
-                    onChange={(event) => setFormHoliday(event.target.checked)}
-                  />
-                  Public holiday (full day)
-                </label>
-
-                {selectedDaySupportsBreaks ? (
-                  <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                    <div className="mb-2.5 flex items-end justify-between gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
-                      </div>
-                    </div>
-                    {selectedDayUsesBreakCounter ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                          >
-                            -15
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                            className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
-                          >
-                            +15
-                          </button>
-                        </div>
-                        <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
-                          Break {formTotalBreakMins} min
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {formBreaks.length === 0 ? (
-                          <p className="text-xs text-slate-300/80">No breaks added.</p>
-                        ) : (
-                          formBreaks.map((item, index) => (
-                            <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
-                              <input
-                                placeholder="Name"
-                                value={item.name}
-                                onChange={(event) => {
-                                  const name = event.target.value;
-                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
-                                }}
-                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                              />
-                              <input
-                                type="number"
-                                min={0}
-                                placeholder="mins"
-                                value={item.mins}
-                                onChange={(event) => {
-                                  const mins = Number.parseInt(event.target.value || "0", 10) || 0;
-                                  setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
-                                }}
-                                className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                                className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-                        >
-                          Add break
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleSaveDay();
-                    }}
-                    disabled={saving || !selectedDay}
-                    className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
-                  >
-                    {saving ? "Saving..." : "Save day"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playUiSound("resetTap");
-                      void handleResetDay();
-                    }}
-                    disabled={saving || !selectedDay}
-                    className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
-                  >
-                    Reset day
-                  </button>
-                </div>
-              </div>
-
-              {toast && (
-                <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
-              )}
-            </div>
-
-            <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-              <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
-              {!selectedDay ? (
-                <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
-              ) : !selectedTravelInfo ? (
-                <>
-                  <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
-                  {data?.travel_debug ? (
-                    <p className="mt-3 text-xs text-slate-400/90">
-                      Debug: {data.travel_debug.status} - {data.travel_debug.message}
-                      {"  "}
-                      ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="mt-4 space-y-3 text-sm">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
-                    <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
-                    <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
-                    <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
-                  </div>
-                </div>
-              )}
-            </aside>
-          </div>
+        </div>
       </div>
     </section>
+    {dayLoggerOverlay ? createPortal(dayLoggerOverlay, document.body) : null}
+    </>
   );
 }

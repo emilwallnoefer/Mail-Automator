@@ -648,31 +648,32 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                       userRole={userRole ?? "pilot"}
                     />
                   ) : (
-                    <section className="underwater-panel grid items-start gap-6 rounded-2xl p-2 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-                  <div className="bubble-layer" aria-hidden="true">
-                    {[
-                      { left: "8%", size: "9px", duration: "9s", delay: "0s" },
-                      { left: "20%", size: "7px", duration: "11s", delay: "-2.5s" },
-                      { left: "36%", size: "10px", duration: "10s", delay: "-1.5s" },
-                      { left: "52%", size: "8px", duration: "12s", delay: "-4s" },
-                      { left: "68%", size: "9px", duration: "9.5s", delay: "-3s" },
-                      { left: "84%", size: "11px", duration: "13s", delay: "-5s" },
-                    ].map((bubble, idx) => (
-                      <span
-                        key={`${bubble.left}-${idx}`}
-                        className="bubble"
-                        style={
-                          {
-                            "--bubble-left": bubble.left,
-                            "--bubble-size": bubble.size,
-                            "--bubble-duration": bubble.duration,
-                            "--bubble-delay": bubble.delay,
-                          } as CSSProperties
-                        }
-                      />
-                    ))}
-                  </div>
-                  <div className="glass-card hourlogger-surface min-w-0 max-w-full p-4 md:p-5">
+                    <section className="underwater-panel relative grid items-start gap-6 overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+                  <div className="relative min-h-0 min-w-0 w-full lg:col-start-1 lg:row-start-1">
+                    <div className="bubble-layer pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+                      {[
+                        { left: "8%", size: "9px", duration: "9s", delay: "0s" },
+                        { left: "20%", size: "7px", duration: "11s", delay: "-2.5s" },
+                        { left: "36%", size: "10px", duration: "10s", delay: "-1.5s" },
+                        { left: "52%", size: "8px", duration: "12s", delay: "-4s" },
+                        { left: "68%", size: "9px", duration: "9.5s", delay: "-3s" },
+                        { left: "84%", size: "11px", duration: "13s", delay: "-5s" },
+                      ].map((bubble, idx) => (
+                        <span
+                          key={`${bubble.left}-${idx}`}
+                          className="bubble"
+                          style={
+                            {
+                              "--bubble-left": bubble.left,
+                              "--bubble-size": bubble.size,
+                              "--bubble-duration": bubble.duration,
+                              "--bubble-delay": bubble.delay,
+                            } as CSSProperties
+                          }
+                        />
+                      ))}
+                    </div>
+                    <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 md:p-5">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
             <div className="mt-4 space-y-3">
               <ComposerChoiceRow label="Mail type">
@@ -966,9 +967,11 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 Draft created: {draftInfo.draftId} ({draftInfo.messageId})
               </p>
             )}
+                    </div>
                   </div>
 
-                  <div className="glass-card hourlogger-surface min-w-0 self-start p-4 md:p-5">
+                  <div className="relative min-h-0 min-w-0 w-full lg:col-start-2 lg:row-start-1">
+                    <div className="glass-card hourlogger-surface min-w-0 w-full self-stretch rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (
@@ -997,6 +1000,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 </div>
               </div>
             )}
+                    </div>
                   </div>
                     </section>
                   )}
