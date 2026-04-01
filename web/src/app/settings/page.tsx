@@ -1,4 +1,5 @@
 import { SettingsShell } from "@/components/settings-shell";
+import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { redirect } from "next/navigation";
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
     "role" in user.user_metadata
       ? (user.user_metadata as Record<string, unknown>).role
       : null;
-  const userRole = userRoleRaw === "pilot" || userRoleRaw === "sales" ? userRoleRaw : null;
+  const userRole = normalizeUserRole(userRoleRaw);
 
   return <SettingsShell email={user.email ?? "Signed in"} userRole={userRole} />;
 }

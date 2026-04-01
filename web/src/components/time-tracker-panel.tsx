@@ -3,8 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
+import {
+  getDayOvertimeContributionMins,
+  isPremiumOvertimeDay,
+  isSaturdayDate,
+  isSundayDate,
+  isWeekendDate,
+  TIME_TRACKER_TARGET_MINS,
+} from "@/lib/time-tracker-rules";
 
-const TARGET_MINS = 504;
+const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 const PREFETCH_WEEKS_EACH_SIDE = 4;
 
 type DayBreak = {
@@ -118,12 +126,6 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function isWeekendDate(dateKey: string) {
-  const date = fromDateKey(dateKey);
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
-
 function getWeekDayKeys(weekStart: string) {
   const start = getMonday(weekStart);
   return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(start, index)));
@@ -178,14 +180,6 @@ function AnimatedNumber({
 }) {
   const animated = useAnimatedNumber(value, durationMs);
   return <>{children(animated)}</>;
-}
-
-function getDayOvertimeContributionMins(date: string, netMins: number, holiday: boolean, compMins: number) {
-  if (holiday) return 0;
-  const todayKey = toDateKey(new Date());
-  const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
-  const overtime = weekendRuleApplies ? Math.max(0, netMins) : Math.max(0, netMins - TARGET_MINS);
-  return overtime - compMins;
 }
 
 export function TimeTrackerPanel() {
@@ -443,8 +437,8 @@ export function TimeTrackerPanel() {
 
         const weekHoursDelta = nextDay.net_mins - prevDay.net_mins;
         const overtimeDelta =
-          getDayOvertimeContributionMins(nextDay.date, nextDay.net_mins, nextDay.holiday, nextDay.comp_mins) -
-          getDayOvertimeContributionMins(prevDay.date, prevDay.net_mins, prevDay.holiday, prevDay.comp_mins);
+          getDayOvertimeContributionMins(nextDay.date, nextDay.net_mins, nextDay.holiday, nextDay.comp_mins, todayKey) -
+          getDayOvertimeContributionMins(prevDay.date, prevDay.net_mins, prevDay.holiday, prevDay.comp_mins, todayKey);
 
         const nextWeek: WeekResponse = {
           ...prev,
@@ -456,7 +450,7 @@ export function TimeTrackerPanel() {
         return nextWeek;
       });
     },
-    [weekStart],
+    [weekStart, todayKey],
   );
 
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
@@ -474,7 +468,7 @@ export function TimeTrackerPanel() {
     if (!selectedDay) return;
     const date = selectedDay.date;
     const nextBreaks = formBreaks.map((item) => ({ ...item }));
-    const netMins = formHoliday ? 0 : computeNetMins(formStart, formStop, nextBreaks);
+    const netMins = computeNetMins(formStart, formStop, nextBreaks);
     const breaksChanged =
       selectedDay.breaks.length !== nextBreaks.length ||
       selectedDay.breaks.some((item, index) => {
@@ -681,11 +675,13 @@ export function TimeTrackerPanel() {
     const safeTotal = Math.max(0, totalMins);
     setFormBreaks(safeTotal > 0 ? [{ name: "Break", mins: safeTotal }] : []);
   }
-  const computedNet = formHoliday ? 0 : computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
+  const computedNet = computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
   const panelDateLabel = selectedDay ? dayLabel(selectedDay.date) : "Select a day";
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
+  const weekdayDays = useMemo(() => (activeWeekData?.days ?? []).slice(0, 5), [activeWeekData?.days]);
+  const weekendDays = useMemo(() => (activeWeekData?.days ?? []).slice(5, 7), [activeWeekData?.days]);
 
   const dayLoggerOverlay =
     editorPortalReady && editorOpen ? (
@@ -726,7 +722,7 @@ export function TimeTrackerPanel() {
                     <input
                       type="time"
                       value={formStart}
-                      disabled={formHoliday || !selectedDay}
+                      disabled={!selectedDay}
                       onChange={(event) => setFormStart(event.target.value)}
                       className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                     />
@@ -736,19 +732,25 @@ export function TimeTrackerPanel() {
                     <input
                       type="time"
                       value={formStop}
-                      disabled={formHoliday || !selectedDay}
+                      disabled={!selectedDay}
                       onChange={(event) => setFormStop(event.target.value)}
                       className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className="flex items-start gap-2.5 text-sm">
                     <input
                       type="checkbox"
+                      className="mt-0.5"
                       checked={formHoliday}
                       disabled={!selectedDay}
                       onChange={(event) => setFormHoliday(event.target.checked)}
                     />
-                    Public holiday (full day)
+                    <span>
+                      <span className="block font-medium text-slate-100">Public holiday</span>
+                      <span className="mt-1 block text-xs font-normal leading-snug text-slate-400">
+                        Mark the day as a public holiday. If you log hours, they count as overtime (same rule as weekend).
+                      </span>
+                    </span>
                   </label>
 
                   {selectedDaySupportsBreaks ? (
@@ -900,6 +902,272 @@ export function TimeTrackerPanel() {
       </>
     ) : null;
 
+  function renderDayCard(day: DayData, index: number) {
+    const isSelected = selectedDay?.date === day.date;
+    const revealed = index < revealedDayCount;
+    const isRelaxDay = isWeekendDate(day.date) || day.holiday;
+    const premiumOvertimeDay = isPremiumOvertimeDay(day.date, day.net_mins, day.holiday, todayKey);
+    const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
+    const overtimeWorkedMinsWeekday = premiumOvertimeDay
+      ? Math.max(0, day.net_mins)
+      : Math.max(0, day.net_mins - TARGET_MINS);
+    const overtimeCompMins = Math.max(0, day.comp_mins);
+
+    const displayDonePct = isRelaxDay
+      ? 100
+      : Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
+
+    let restPct = 0;
+    let sandPct = 0;
+    let algaePct = 0;
+    let compPct = 0;
+    let restDelayMs = 0;
+    let restDurMs = 0;
+    let sandDelayMs = 0;
+    let sandDurMs = 0;
+    let algaeDelayMs = 0;
+    let algaeDurMs = 0;
+    let compDelayMs = 0;
+    let compDurMs = 0;
+
+    const baseDelay = index * 80 + 65;
+    const minDurMs = 80;
+    const msPerPct = 6;
+    const dur = (pct: number) => (pct > 0 ? Math.max(minDurMs, Math.round(pct * msPerPct)) : 0);
+
+    if (isRelaxDay) {
+      const otWork = Math.max(0, day.net_mins);
+      const barTotalMins = TARGET_MINS + otWork + overtimeCompMins;
+      restPct = (TARGET_MINS / barTotalMins) * 100;
+      algaePct = (otWork / barTotalMins) * 100;
+      compPct = (overtimeCompMins / barTotalMins) * 100;
+      restDelayMs = baseDelay;
+      restDurMs = dur(restPct);
+      algaeDurMs = dur(algaePct);
+      compDurMs = dur(compPct);
+      algaeDelayMs = restDelayMs + restDurMs;
+      compDelayMs = algaeDelayMs + algaeDurMs;
+    } else {
+      const barTotalMins = Math.max(
+        TARGET_MINS,
+        (premiumOvertimeDay ? 0 : workedBaseMins) + overtimeWorkedMinsWeekday + overtimeCompMins,
+      );
+      sandPct = ((premiumOvertimeDay ? 0 : workedBaseMins) / barTotalMins) * 100;
+      algaePct = (overtimeWorkedMinsWeekday / barTotalMins) * 100;
+      compPct = (overtimeCompMins / barTotalMins) * 100;
+      sandDelayMs = baseDelay;
+      sandDurMs = dur(sandPct);
+      algaeDurMs = dur(algaePct);
+      compDurMs = dur(compPct);
+      algaeDelayMs = sandDelayMs + sandDurMs;
+      compDelayMs = algaeDelayMs + algaeDurMs;
+    }
+
+    const isSat = isSaturdayDate(day.date);
+    const isSun = isSundayDate(day.date);
+    const isPh = day.holiday;
+
+    return (
+      <article
+        key={day.date}
+        className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
+          isSat ? "liquid-day-card--sat" : ""
+        } ${isSun ? "liquid-day-card--sun" : ""} ${isPh ? "liquid-day-card--ph" : ""} ${
+          isSelected ? "day-card-selected" : ""
+        } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
+        style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
+      >
+        {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
+        <button
+          type="button"
+          onClick={() => {
+            handleEditDay(day.date);
+          }}
+          className="w-full text-left"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+              {isSat ? (
+                <span className="shrink-0 rounded border border-indigo-400/35 bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-indigo-100/95">
+                  Sat
+                </span>
+              ) : null}
+              {isSun ? (
+                <span className="shrink-0 rounded border border-rose-400/35 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-rose-100/95">
+                  Sun
+                </span>
+              ) : null}
+              {isPh ? (
+                <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-100/95">
+                  PH
+                </span>
+              ) : null}
+            </div>
+            <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={displayDonePct}>
+              {(value) => <p className="shrink-0 text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
+            </AnimatedNumber>
+          </div>
+          <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
+            {(value) => (
+              <p className="mt-1 text-sm font-medium">
+                {day.holiday
+                  ? day.net_mins > 0
+                    ? `Public holiday · ${fmtHM(Math.round(value))} worked`
+                    : "Public holiday"
+                  : `${fmtHM(Math.round(value))} worked`}
+              </p>
+            )}
+          </AnimatedNumber>
+          <div className="day-progress mt-3" aria-label="Day progress bar">
+            <AnimatedNumber key={`day-topdown-${day.date}-${weekLoadTick}`} value={Math.max(0, Math.min(100, displayDonePct))}>
+              {(value) => (
+                <span
+                  className="day-progress-topdown"
+                  style={{ height: `${value}%`, animationDelay: `${index * 80}ms` }}
+                />
+              )}
+            </AnimatedNumber>
+            {isRelaxDay ? (
+              <AnimatedNumber key={`day-rest-${day.date}-${weekLoadTick}`} value={restPct}>
+                {(value) => (
+                  <span
+                    className="day-progress-segment day-progress-rest"
+                    style={{
+                      width: `${Math.max(0, value)}%`,
+                      animationDelay: `${restDelayMs}ms`,
+                      animationDuration: `${restDurMs || minDurMs}ms`,
+                      animationTimingFunction: "linear",
+                    }}
+                  />
+                )}
+              </AnimatedNumber>
+            ) : (
+              <AnimatedNumber key={`day-sand-${day.date}-${weekLoadTick}`} value={sandPct}>
+                {(value) => (
+                  <span
+                    className="day-progress-segment day-progress-sand"
+                    style={{
+                      width: `${Math.max(0, value)}%`,
+                      animationDelay: `${sandDelayMs}ms`,
+                      animationDuration: `${sandDurMs || minDurMs}ms`,
+                      animationTimingFunction: "linear",
+                    }}
+                  />
+                )}
+              </AnimatedNumber>
+            )}
+            <AnimatedNumber key={`day-algae-${day.date}-${weekLoadTick}`} value={algaePct}>
+              {(value) => (
+                <span
+                  className="day-progress-segment day-progress-algae"
+                  style={{
+                    width: `${Math.max(0, value)}%`,
+                    animationDelay: `${algaeDelayMs}ms`,
+                    animationDuration: `${algaeDurMs || minDurMs}ms`,
+                    animationTimingFunction: "linear",
+                  }}
+                />
+              )}
+            </AnimatedNumber>
+            <AnimatedNumber key={`day-comp-${day.date}-${weekLoadTick}`} value={compPct}>
+              {(value) => (
+                <span
+                  className="day-progress-segment day-progress-comp"
+                  style={{
+                    width: `${Math.max(0, value)}%`,
+                    animationDelay: `${compDelayMs}ms`,
+                    animationDuration: `${compDurMs || minDurMs}ms`,
+                    animationTimingFunction: "linear",
+                  }}
+                />
+              )}
+            </AnimatedNumber>
+          </div>
+          {isRelaxDay ? (
+            <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
+              <div className="flex w-full items-baseline justify-between gap-3">
+                <span className="shrink-0 text-left font-normal text-slate-300/95">Core target</span>
+                <span className="text-right text-slate-300/95">None (no work required)</span>
+              </div>
+              {day.net_mins > 0 ? (
+                <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
+                  {(overtimeValue) => (
+                    <div className="flex w-full items-baseline justify-between gap-3">
+                      <span className="shrink-0 text-left font-normal">Overtime worked</span>
+                      <span className="tabular-nums text-right text-emerald-200/95">{fmtHM(Math.round(overtimeValue))}</span>
+                    </div>
+                  )}
+                </AnimatedNumber>
+              ) : null}
+              {overtimeCompMins > 0 ? (
+                <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
+                  {(compValue) => (
+                    <div className="flex w-full items-baseline justify-between gap-3">
+                      <span className="shrink-0 text-left font-normal">Overtime compensated</span>
+                      <span className="tabular-nums text-right">{fmtHM(Math.round(compValue))}</span>
+                    </div>
+                  )}
+                </AnimatedNumber>
+              ) : null}
+            </div>
+          ) : (
+            <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={premiumOvertimeDay ? 0 : workedBaseMins}>
+              {(coreValue) => (
+                <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
+                  <div className="flex w-full items-baseline justify-between gap-3">
+                    <span className="shrink-0 text-left font-normal">Core hours</span>
+                    <span className="tabular-nums text-right">{fmtHM(Math.round(coreValue))}</span>
+                  </div>
+                  {overtimeWorkedMinsWeekday > 0 ? (
+                    <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMinsWeekday}>
+                      {(overtimeValue) => (
+                        <div className="flex w-full items-baseline justify-between gap-3">
+                          <span className="shrink-0 text-left font-normal">Overtime worked</span>
+                          <span className="tabular-nums text-right">{fmtHM(Math.round(overtimeValue))}</span>
+                        </div>
+                      )}
+                    </AnimatedNumber>
+                  ) : null}
+                  {overtimeCompMins > 0 ? (
+                    <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
+                      {(compValue) => (
+                        <div className="flex w-full items-baseline justify-between gap-3">
+                          <span className="shrink-0 text-left font-normal">Overtime compensated</span>
+                          <span className="tabular-nums text-right">{fmtHM(Math.round(compValue))}</span>
+                        </div>
+                      )}
+                    </AnimatedNumber>
+                  ) : null}
+                </div>
+              )}
+            </AnimatedNumber>
+          )}
+        </button>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              void handleFillMissing(day.date);
+            }}
+            className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+          >
+            Fill missing
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void handleFillDay(day.date);
+            }}
+            className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+          >
+            Fill Day
+          </button>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <>
     <section className="underwater-panel relative grid overflow-hidden rounded-2xl transition-all duration-500 ease-out gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0fr)] lg:items-start">
@@ -987,191 +1255,101 @@ export function TimeTrackerPanel() {
           </span>
         </div>
 
-        <div className={`scroll-mt-24 mt-5 grid grid-cols-1 gap-3 md:grid-cols-3 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
-          {hasActiveWeekData &&
-            (activeWeekData?.days ?? []).map((day, index) => {
-              const donePct = Math.round(((day.net_mins + day.comp_mins) / TARGET_MINS) * 100);
-              const isSelected = selectedDay?.date === day.date;
-              const revealed = index < revealedDayCount;
-              const todayKey = toDateKey(new Date());
-              const weekendRuleApplies = isWeekendDate(day.date) && day.date >= todayKey;
-              const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
-              const overtimeWorkedMins = weekendRuleApplies ? Math.max(0, day.net_mins) : Math.max(0, day.net_mins - TARGET_MINS);
-              const overtimeCompMins = Math.max(0, day.comp_mins);
-              const barTotalMins = Math.max(
-                TARGET_MINS,
-                (weekendRuleApplies ? 0 : workedBaseMins) + overtimeWorkedMins + overtimeCompMins,
-              );
-              const sandPct = ((weekendRuleApplies ? 0 : workedBaseMins) / barTotalMins) * 100;
-              const algaePct = (overtimeWorkedMins / barTotalMins) * 100;
-              const compPct = (overtimeCompMins / barTotalMins) * 100;
-              const baseDelay = index * 80 + 65;
-              const sandDelayMs = baseDelay;
-              const minDurMs = 80;
-              const msPerPct = 6;
-              const sandDurMs = sandPct > 0 ? Math.max(minDurMs, Math.round(sandPct * msPerPct)) : 0;
-              const algaeDurMs = algaePct > 0 ? Math.max(minDurMs, Math.round(algaePct * msPerPct)) : 0;
-              const compDurMs = compPct > 0 ? Math.max(minDurMs, Math.round(compPct * msPerPct)) : 0;
-              const algaeDelayMs = sandDelayMs + sandDurMs;
-              const compDelayMs = algaeDelayMs + algaeDurMs;
-              return (
-                <article
-                  key={day.date}
-                  className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
-                    isSelected ? "day-card-selected" : ""
-                  } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
-                  style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
-                >
-                  {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleEditDay(day.date);
-                    }}
-                    className="w-full text-left"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
-                      <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={donePct}>
-                        {(value) => <p className="text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
-                      </AnimatedNumber>
-                    </div>
-                    <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
-                      {(value) => (
-                        <p className="mt-1 text-sm font-medium">
-                          {day.holiday ? "Public holiday" : `${fmtHM(Math.round(value))} worked`}
-                        </p>
-                      )}
-                    </AnimatedNumber>
-                    <div className="day-progress mt-3" aria-label="Day progress bar">
-                      <AnimatedNumber key={`day-topdown-${day.date}-${weekLoadTick}`} value={Math.max(0, Math.min(100, donePct))}>
-                        {(value) => (
-                          <span
-                            className="day-progress-topdown"
-                            style={{ height: `${value}%`, animationDelay: `${index * 80}ms` }}
-                          />
-                        )}
-                      </AnimatedNumber>
-                      <AnimatedNumber key={`day-sand-${day.date}-${weekLoadTick}`} value={sandPct}>
-                        {(value) => (
-                          <span
-                            className="day-progress-segment day-progress-sand"
-                            style={{
-                              width: `${Math.max(0, value)}%`,
-                              animationDelay: `${sandDelayMs}ms`,
-                              animationDuration: `${sandDurMs || minDurMs}ms`,
-                              animationTimingFunction: "linear",
-                            }}
-                          />
-                        )}
-                      </AnimatedNumber>
-                      <AnimatedNumber key={`day-algae-${day.date}-${weekLoadTick}`} value={algaePct}>
-                        {(value) => (
-                          <span
-                            className="day-progress-segment day-progress-algae"
-                            style={{
-                              width: `${Math.max(0, value)}%`,
-                              animationDelay: `${algaeDelayMs}ms`,
-                              animationDuration: `${algaeDurMs || minDurMs}ms`,
-                              animationTimingFunction: "linear",
-                            }}
-                          />
-                        )}
-                      </AnimatedNumber>
-                      <AnimatedNumber key={`day-comp-${day.date}-${weekLoadTick}`} value={compPct}>
-                        {(value) => (
-                          <span
-                            className="day-progress-segment day-progress-comp"
-                            style={{
-                              width: `${Math.max(0, value)}%`,
-                              animationDelay: `${compDelayMs}ms`,
-                              animationDuration: `${compDurMs || minDurMs}ms`,
-                              animationTimingFunction: "linear",
-                            }}
-                          />
-                        )}
-                      </AnimatedNumber>
-                    </div>
-                    <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={weekendRuleApplies ? 0 : workedBaseMins}>
-                      {(coreValue) => (
-                        <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
-                          <div className="flex w-full items-baseline justify-between gap-3">
-                            <span className="shrink-0 text-left font-normal">Core hours</span>
-                            <span className="tabular-nums text-right">{fmtHM(Math.round(coreValue))}</span>
-                          </div>
-                          {overtimeWorkedMins > 0 ? (
-                            <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={overtimeWorkedMins}>
-                              {(overtimeValue) => (
-                                <div className="flex w-full items-baseline justify-between gap-3">
-                                  <span className="shrink-0 text-left font-normal">Overtime worked</span>
-                                  <span className="tabular-nums text-right">{fmtHM(Math.round(overtimeValue))}</span>
-                                </div>
-                              )}
-                            </AnimatedNumber>
-                          ) : null}
-                          {overtimeCompMins > 0 ? (
-                            <AnimatedNumber key={`day-ot-comp-${day.date}-${weekLoadTick}`} value={overtimeCompMins}>
-                              {(compValue) => (
-                                <div className="flex w-full items-baseline justify-between gap-3">
-                                  <span className="shrink-0 text-left font-normal">Overtime compensated</span>
-                                  <span className="tabular-nums text-right">{fmtHM(Math.round(compValue))}</span>
-                                </div>
-                              )}
-                            </AnimatedNumber>
-                          ) : null}
-                        </div>
-                      )}
-                    </AnimatedNumber>
-                  </button>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleFillMissing(day.date);
-                      }}
-                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
-                    >
-                      Fill missing
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleFillDay(day.date);
-                      }}
-                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
-                    >
-                      Fill Day
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          {!hasActiveWeekData &&
-            placeholderDayKeys.map((dateKey, index) => (
-              <article key={dateKey} className="liquid-day-card rounded-xl p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
-                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+        <div className={`scroll-mt-24 mt-5 space-y-8 ${showUpToDateSweep ? "day-grid-ready" : ""}`}>
+          {hasActiveWeekData ? (
+            <>
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/20" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Mon – Fri</span>
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/20" aria-hidden />
                 </div>
-                <p className="mt-1">
-                  <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
-                </p>
-                <div className="day-progress mt-3" aria-label="Loading day progress">
-                  <span
-                    className="day-progress-segment day-progress-sand animate-pulse"
-                    style={{ width: `${18 + (index % 5) * 9}%` }}
-                    aria-hidden="true"
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">{weekdayDays.map((day, i) => renderDayCard(day, i))}</div>
+              </div>
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/20" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Weekend</span>
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/20" aria-hidden />
                 </div>
-                <p className="mt-2">
-                  <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
-                </p>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
-                  <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {weekendDays.map((day, i) => renderDayCard(day, 5 + i))}
                 </div>
-              </article>
-            ))}
+              </div>
+            </>
+          ) : null}
+          {!hasActiveWeekData ? (
+            <>
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/15" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Mon – Fri</span>
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/15" aria-hidden />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {placeholderDayKeys.slice(0, 5).map((dateKey, index) => (
+                    <article key={dateKey} className="liquid-day-card rounded-xl p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
+                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </div>
+                      <p className="mt-1">
+                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </p>
+                      <div className="day-progress mt-3" aria-label="Loading day progress">
+                        <span
+                          className="day-progress-segment day-progress-sand animate-pulse"
+                          style={{ width: `${18 + (index % 5) * 9}%` }}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <p className="mt-2">
+                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/15" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Weekend</span>
+                  <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/15" aria-hidden />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {placeholderDayKeys.slice(5, 7).map((dateKey, index) => (
+                    <article key={dateKey} className="liquid-day-card rounded-xl p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
+                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </div>
+                      <p className="mt-1">
+                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </p>
+                      <div className="day-progress mt-3" aria-label="Loading day progress">
+                        <span
+                          className="day-progress-segment day-progress-sand animate-pulse"
+                          style={{ width: `${18 + (index % 2) * 12}%` }}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <p className="mt-2">
+                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
         </div>

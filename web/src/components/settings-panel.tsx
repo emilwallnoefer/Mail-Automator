@@ -8,6 +8,7 @@ import {
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
+import type { UserRole } from "@/lib/user-role";
 
 export type SettingsSectionId =
   | "gmail"
@@ -38,14 +39,14 @@ type SettingsPanelProps = {
   email: string;
   showStandaloneActions?: boolean;
   autoOpenProgramReadmeToken?: number;
-  userRole?: "pilot" | "sales";
+  userRole?: UserRole;
 };
 
 export function SettingsPanel({
   email: _email,
   showStandaloneActions = false,
   autoOpenProgramReadmeToken = 0,
-  userRole = "pilot",
+  userRole = "eu_pilot",
 }: SettingsPanelProps) {
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
     userRole === "sales" ? "time_data" : "gmail",

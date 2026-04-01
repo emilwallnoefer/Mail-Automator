@@ -163,6 +163,26 @@ body {
   }
 }
 
+/* Dashboard home: soft grid + vignette over aurora */
+.dashboard-mesh {
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% -10%, black 45%, transparent 78%);
+  opacity: 0.85;
+}
+
+.dashboard-mesh-fade {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgba(2, 6, 23, 0.55), transparent 65%);
+}
+
 .underwater-panel {
   position: relative;
   overflow: hidden;
@@ -297,6 +317,26 @@ body {
   background: linear-gradient(180deg, rgba(245, 208, 120, 0.95), rgba(194, 146, 78, 0.92));
 }
 
+/* Weekend / public holiday: no core target — full bar is “off”; extra work is algae OT */
+.day-progress-rest {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.55), rgba(71, 85, 105, 0.75));
+  position: relative;
+}
+
+.day-progress-rest::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -28deg,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  opacity: 0.85;
+}
+
 .day-progress-algae {
   background: linear-gradient(180deg, rgba(52, 211, 153, 0.95), rgba(20, 122, 107, 0.92));
   position: relative;
@@ -362,6 +402,26 @@ body {
 .liquid-day-card > * {
   position: relative;
   z-index: 1;
+}
+
+/* Time tracker: weekday vs weekend vs public holiday */
+.liquid-day-card.liquid-day-card--sat {
+  border-left: 3px solid rgba(129, 140, 248, 0.72);
+  background: linear-gradient(145deg, rgba(49, 46, 129, 0.32), rgba(255, 255, 255, 0.06));
+}
+
+.liquid-day-card.liquid-day-card--sun {
+  border-left: 3px solid rgba(244, 114, 182, 0.72);
+  background: linear-gradient(145deg, rgba(131, 24, 67, 0.26), rgba(255, 255, 255, 0.05));
+}
+
+.liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(251, 191, 36, 0.82);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 4px 0 rgba(251, 191, 36, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .day-ready-sweep-beam {

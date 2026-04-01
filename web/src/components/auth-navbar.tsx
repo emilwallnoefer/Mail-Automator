@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { playUiSound } from "@/lib/ui-sounds";
+import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type ModuleKey = "mail" | "time" | "settings";
 
@@ -12,7 +13,7 @@ type AuthNavbarProps = {
   activeModule: ModuleKey;
   availableModules?: ModuleKey[];
   showGmailStatus?: boolean;
-  userRole?: "pilot" | "sales" | null;
+  userRole?: UserRole | null;
   onSelectModule: (module: ModuleKey) => void;
 };
 
@@ -158,7 +159,7 @@ export function AuthNavbar({
               <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
                 <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Logged in as</p>
                 <p className="mt-1 text-xs font-medium text-slate-100">
-                  {userRole === "pilot" ? "Pilot" : userRole === "sales" ? "Sales" : "Not selected"}
+                  {userRoleLabel(userRole ?? null)}
                 </p>
               </div>
 

@@ -4,8 +4,9 @@ import { sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getDayOvertimeContributionMins, TIME_TRACKER_TARGET_MINS } from "@/lib/time-tracker-rules";
 
-const TARGET_MINS = 504;
+const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 
 type ImportPayload = {
   work?: Record<
@@ -97,13 +98,6 @@ function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
-}
-
-function isWeekendDate(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map((value) => Number.parseInt(value, 10));
-  const date = new Date(year, (month || 1) - 1, day || 1);
-  const weekday = date.getDay();
-  return weekday === 0 || weekday === 6;
 }
 
 function normalizeColumnLetter(value: unknown) {
@@ -244,10 +238,9 @@ export async function GET(request: Request) {
     for (const date of allDates) {
       const work = allWorkByDate.get(date);
       const comp = allCompByDate.get(date) ?? 0;
-      if (work?.holiday) continue;
-      const weekendRuleApplies = isWeekendDate(date) && date >= todayKey;
-      const overtime = weekendRuleApplies ? Math.max(0, work?.net ?? 0) : Math.max(0, (work?.net ?? 0) - TARGET_MINS);
-      overtimeBankMins += overtime - comp;
+      const net = work?.net ?? 0;
+      const holiday = work?.holiday ?? false;
+      overtimeBankMins += getDayOvertimeContributionMins(date, net, holiday, comp, todayKey);
     }
   }
 

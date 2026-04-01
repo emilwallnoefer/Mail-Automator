@@ -28,10 +28,11 @@ import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
+import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type DashboardShellProps = {
   email: string;
-  initialRole: "pilot" | "sales" | null;
+  initialRole: UserRole | null;
 };
 
 const PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY = "ma_program_readme_prompt_seen_deploy_v1";
@@ -139,17 +140,72 @@ function ComposerChoiceRow({
   );
 }
 
+function greetingFromEmail(addr: string): string {
+  const local = addr.split("@")[0]?.trim() ?? "";
+  const first = local.split(/[._-]/)[0] ?? local;
+  if (!first) return "there";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+function timeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function IconMail({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+      />
+    </svg>
+  );
+}
+
+function IconClock({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function IconCog({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.37.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function IconArrow({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+    </svg>
+  );
+}
+
 export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
-  const [showComposer, setShowComposer] = useState(initialRole === "sales");
+  const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
   const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">(initialRole === "sales" ? "time" : "mail");
-  const [userRole, setUserRole] = useState<"pilot" | "sales" | null>(initialRole);
+  const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
   const [roleSaving, setRoleSaving] = useState(false);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
@@ -176,11 +232,17 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const shouldShowRecipientOptional = form.mail_type === "post" ? shouldShowChanges : shouldShowRecipient;
 
   const composerMailLang: MailLanguage =
-    form.language === "en" || form.language === "de" || form.language === "fr" ? form.language : "en";
+    userRole === "us_pilot"
+      ? "en"
+      : form.language === "en" || form.language === "de" || form.language === "fr"
+        ? form.language
+        : "en";
+
+  const languageReady = userRole === "us_pilot" || Boolean(form.language);
 
   const generateDisabled =
     !form.mail_type ||
-    !form.language ||
+    !languageReady ||
     !form.recipient_name ||
     (form.mail_type === "post" && (!form.training_type || !form.company_name || !form.use_case)) ||
     (form.mail_type === "pre" &&
@@ -242,30 +304,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     setChangesTouched(false);
   }, []);
 
-  const cards = useMemo(
-    () => [
-      {
-        title: "Mail Automator",
-        description: "Generate training emails and create Gmail drafts with one guided flow.",
-      },
-      {
-        title: "Time Tracker",
-        description: "Track workdays, breaks, compensation time, and overtime bank in one place.",
-      },
-      {
-        title: "Allround Workspace",
-        description: "Switch between tools depending on what you need today.",
-      },
-    ],
-    [],
-  );
   const availableModules = useMemo<Array<"mail" | "time" | "settings">>(
     () => (userRole === "sales" ? ["time", "settings"] : ["mail", "time", "settings"]),
     [userRole],
-  );
-  const visibleCards = useMemo(
-    () => (userRole === "sales" ? cards.filter((card) => card.title === "Time Tracker") : cards),
-    [cards, userRole],
   );
 
   useEffect(() => {
@@ -416,7 +457,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     }
   }
 
-  async function handleSelectRole(nextRole: "pilot" | "sales") {
+  async function handleSelectRole(nextRole: UserRole) {
     if (roleSaving) return;
     setRoleSaving(true);
     setError(null);
@@ -427,7 +468,6 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
       setUserRole(nextRole);
       if (nextRole === "sales") {
         setActiveModule("time");
-        setShowComposer(true);
       }
     } catch (err) {
       setError((err as Error).message || "Could not save role.");
@@ -445,6 +485,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          language: userRole === "us_pilot" ? "en" : form.language,
           template_variant: form.template_variant || undefined,
           training_type: form.training_type || undefined,
           to: form.to || form.recipient_optional || undefined,
@@ -559,66 +600,143 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           }}
         />
 
-        {!showComposer && (
-          <>
-            <div className="grid gap-4 md:grid-cols-3">
-              {visibleCards.map((card, index) => (
-                <motion.article
-                  key={card.title}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.08, duration: 0.35 }}
-                  className="glass-card p-4 md:p-5"
-                >
-                  <h2 className="text-base font-semibold md:text-lg">{card.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-200/80">{card.description}</p>
-                </motion.article>
-              ))}
-            </div>
-            <motion.div
-              animate={beginAnimating ? { scale: 1.1, opacity: 0 } : { scale: 1, opacity: 1 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="mt-1 flex flex-wrap justify-center gap-3"
+        {showComposer ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-4">
+            <button
+              type="button"
+              onClick={() => {
+                playUiSound("switchWhoosh");
+                setShowComposer(false);
+              }}
+              className="group inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-3.5 py-2 text-xs font-medium text-slate-300 shadow-sm shadow-black/20 backdrop-blur-sm transition hover:border-cyan-400/25 hover:bg-white/[0.06] hover:text-white"
             >
-              {availableModules.includes("mail") ? (
-                <button
-                  onClick={() => {
-                    if (activeModule !== "mail") playUiSound("switchWhoosh");
-                    setActiveModule("mail");
-                    handleBeginAutomating();
-                  }}
-                  type="button"
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
-                >
-                  Open Mail Automator
-                </button>
-              ) : null}
-              <button
-                onClick={() => {
-                  if (activeModule !== "time") playUiSound("switchWhoosh");
-                  setActiveModule("time");
-                  handleBeginAutomating();
-                }}
-                type="button"
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
+              <span className="transition group-hover:-translate-x-0.5" aria-hidden>
+                ←
+              </span>
+              Workspace overview
+            </button>
+            <p className="text-[11px] text-slate-500">
+              {activeModule === "mail"
+                ? "Mail Automator"
+                : activeModule === "time"
+                  ? "Time Tracker"
+                  : "Settings"}
+            </p>
+          </div>
+        ) : null}
+
+        {!showComposer && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={beginAnimating ? { opacity: 0, scale: 0.98, y: -8 } : { opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="relative flex min-h-[min(72vh,640px)] flex-col justify-center"
+          >
+            <div className="dashboard-mesh" aria-hidden />
+            <div className="dashboard-mesh-fade" aria-hidden />
+            <div className="relative z-[1] mx-auto w-full max-w-5xl">
+              <div className="mb-10 md:mb-14">
+                <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-cyan-200/65">Workspace</p>
+                <h1 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+                  {timeGreeting()}, {greetingFromEmail(email)}
+                </h1>
+                <p className="mt-4 max-w-lg text-pretty text-sm leading-relaxed text-slate-400 md:text-base">
+                  Open a module below. Everything runs in your browser—pick up where you left off anytime.
+                </p>
+                {userRole ? (
+                  <span className="mt-5 inline-flex items-center rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-300">
+                    {userRoleLabel(userRole)}
+                  </span>
+                ) : null}
+              </div>
+
+              <div
+                className={`grid gap-4 ${availableModules.length >= 3 ? "md:grid-cols-3" : "sm:mx-auto sm:max-w-2xl sm:grid-cols-2"}`}
               >
-                Open Time Tracker
-              </button>
-              {availableModules.includes("settings") ? (
-                <button
+                {availableModules.includes("mail") ? (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05, duration: 0.35 }}
+                    onClick={() => {
+                      if (activeModule !== "mail") playUiSound("switchWhoosh");
+                      setActiveModule("mail");
+                      handleBeginAutomating();
+                    }}
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-cyan-400/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80"
+                  >
+                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/15 blur-2xl transition group-hover:bg-cyan-400/25" aria-hidden />
+                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
+                      <IconMail className="h-5 w-5" />
+                    </span>
+                    <span className="text-lg font-semibold text-white">Mail Automator</span>
+                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                      Training email drafts and Gmail handoff in one flow.
+                    </span>
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-200/90">
+                      Continue
+                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    </span>
+                  </motion.button>
+                ) : null}
+
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.35 }}
                   onClick={() => {
-                    if (activeModule !== "settings") playUiSound("switchWhoosh");
-                    setActiveModule("settings");
+                    if (activeModule !== "time") playUiSound("switchWhoosh");
+                    setActiveModule("time");
                     handleBeginAutomating();
                   }}
-                  type="button"
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-8 py-3 text-base font-semibold text-slate-100 transition hover:scale-[1.01] hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 sm:w-auto"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
                 >
-                  Open Settings
-                </button>
-              ) : null}
-            </motion.div>
-          </>
+                  <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
+                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
+                    <IconClock className="h-5 w-5" />
+                  </span>
+                  <span className="text-lg font-semibold text-white">Time Tracker</span>
+                  <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Workdays, breaks, compensation time, and overtime in one place.
+                  </span>
+                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-200/90">
+                    Continue
+                    <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  </span>
+                </motion.button>
+
+                {availableModules.includes("settings") ? (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15, duration: 0.35 }}
+                    onClick={() => {
+                      if (activeModule !== "settings") playUiSound("switchWhoosh");
+                      setActiveModule("settings");
+                      handleBeginAutomating();
+                    }}
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/80"
+                  >
+                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/12 blur-2xl transition group-hover:bg-violet-400/22" aria-hidden />
+                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-violet-400/10 text-violet-200">
+                      <IconCog className="h-5 w-5" />
+                    </span>
+                    <span className="text-lg font-semibold text-white">Settings</span>
+                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                      Gmail, signatures, travel mapping, sounds, and account tools.
+                    </span>
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-200/90">
+                      Continue
+                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    </span>
+                  </motion.button>
+                ) : null}
+              </div>
+            </div>
+          </motion.div>
         )}
 
         <AnimatePresence initial={false}>
@@ -645,7 +763,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     <SettingsPanel
                       email={email}
                       autoOpenProgramReadmeToken={settingsReadmeOpenToken}
-                      userRole={userRole ?? "pilot"}
+                      userRole={userRole ?? "eu_pilot"}
                     />
                   ) : (
                     <section className="underwater-panel relative grid items-start gap-6 overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
@@ -701,7 +819,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 </button>
               </ComposerChoiceRow>
 
-              <ProgressiveField show={shouldShowLanguage}>
+              <ProgressiveField show={shouldShowLanguage && userRole !== "us_pilot"}>
                 <ComposerChoiceRow label="Language" columns={3}>
                   <button
                     type="button"
@@ -1049,16 +1167,26 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
             <p className="mt-2 text-sm text-slate-300/85">
               This controls which modules and settings you see.
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => {
-                  void handleSelectRole("pilot");
+                  void handleSelectRole("eu_pilot");
                 }}
                 disabled={roleSaving}
                 className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/15 disabled:opacity-60"
               >
-                Pilot
+                EU Pilot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSelectRole("us_pilot");
+                }}
+                disabled={roleSaving}
+                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/15 disabled:opacity-60"
+              >
+                US Pilot
               </button>
               <button
                 type="button"
