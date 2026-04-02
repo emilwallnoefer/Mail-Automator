@@ -106,24 +106,28 @@ I am looking forward to the training with you on {{TRAINING_DATE}} in {{LOCATION
 
 <!-- DAY1_START -->
 Agenda:
-Day 1 - Fundamentals & System
-* Safety & best practices
-* Elios 3 setup, payloads, checklists
-* Practice flights (navigation and stability exercises)
-* Data workflow & initial analysis
+Day 1 - Fundamentals
+* Safety, limits, and best practices
+* Elios 3 setup (payloads, batteries, RC, cockpit checks)
+* Core flight exercises (LOS/FPV, stability, ATTI recovery)
+* Intro to data workflow in Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Day 2 - Advanced & Application
-* Mission planning (including exploratory flight)
-* Practical exercise on site / scenario
-* Data processing & reporting
+Day 2 - AIIM Method & First Application
+* AIIM process: plan, prepare, execute, post-process
+* Recon/local/systematic inspection methodology
+* Mission planning and risk mitigation
+* Practice flight in asset (guided scenario)
+* Data download and first reporting in Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Day 3 - AIIM: Advanced
-* Data processing & reporting
-* Questions
+Day 3 - Advanced Application
+* Use-case planning workshop (stack/boiler/sewer/mining)
+* Full mission prep (flight sequence, timing, contingencies)
+* Practice flight in asset (advanced scenario)
+* Final reporting, maintenance checklist, and wrap-up
 <!-- DAY3_END -->
 
 Please prepare:
@@ -151,25 +155,28 @@ ich freue mich auf die Schulung mit euch am {{TRAINING_DATE}} in {{LOCATION}}. D
 
 <!-- DAY1_START -->
 Agenda:
-Tag 1 - Grundlagen & System
-* Sicherheit & Best Practices
-* Elios 3 Setup, Payloads, Checklisten
-* Übungsflüge (Navigations- und Stabilitätsübungen)
-* Daten-Workflow & erste Auswertung
+Tag 1 - Grundlagen
+* Sicherheit, Grenzen und Best Practices
+* Elios 3 Setup (Payloads, Batterien, RC, Cockpit-Checks)
+* Fluggrundlagen (LOS/FPV, Stabilität, ATTI-Recovery)
+* Einführung in den Datenworkflow in Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Tag 2 - Methodik & Anwendung
-* AIIM: Indoor-Inspektions-Methodik Schritt für Schritt
-* Missionsplanung (inkl. Erkundungsflug)
-* Praxisübung im Objekt / Szenario
-* Datenverarbeitung & Reporting
+Tag 2 - AIIM-Methodik & erste Anwendung
+* AIIM-Prozess: planen, vorbereiten, durchführen, nachbearbeiten
+* Methodik für Reco-, lokale und systematische Inspektionen
+* Missionsplanung und Risikominderung
+* Praxisflug im Objekt (geführtes Szenario)
+* Daten-Download und erstes Reporting in Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Tag 3 - AIIM: Fortgeschritten
-* Datenauswertung
-* Praxisuebung im Objekt
+Tag 3 - Fortgeschrittene Anwendung
+* Use-Case-Workshop (Stack/Kessel/Kanal/Mining)
+* Vollständige Missionsvorbereitung (Flugfolge, Timing, Notfallplan)
+* Praxisflug im Objekt (fortgeschrittenes Szenario)
+* Abschlussreporting, Maintenance-Checkliste und Wrap-up
 <!-- DAY3_END -->
 
 Bitte vorbereiten:
@@ -195,24 +202,28 @@ I am looking forward to the training with you on {{TRAINING_DATE}} in Lausanne. 
 
 <!-- DAY1_START -->
 Agenda:
-Day 1 - Fundamentals & System
-* Safety & best practices
-* Elios 3 setup, payloads, checklists
-* Practice flights (navigation and stability exercises)
-* Data workflow & initial analysis
+Day 1 - Fundamentals
+* Safety, limits, and best practices
+* Elios 3 setup (payloads, batteries, RC, cockpit checks)
+* Core flight exercises (LOS/FPV, stability, ATTI recovery)
+* Intro to data workflow in Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Day 2 - Advanced & Application
-* Mission planning (including exploratory flight)
-* Practical exercise on site / scenario
-* Data processing & reporting
+Day 2 - AIIM Method & First Application
+* AIIM process: plan, prepare, execute, post-process
+* Recon/local/systematic inspection methodology
+* Mission planning and risk mitigation
+* Practice flight in asset (guided scenario)
+* Data download and first reporting in Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Day 3 - AIIM: Advanced
-* Data processing & reporting
-* Questions
+Day 3 - Advanced Application
+* Use-case planning workshop (stack/boiler/sewer/mining)
+* Full mission prep (flight sequence, timing, contingencies)
+* Practice flight in asset (advanced scenario)
+* Final reporting, maintenance checklist, and wrap-up
 <!-- DAY3_END -->
 
 The training will start at 9am.
@@ -236,24 +247,28 @@ ich freue mich auf das Training mit Ihnen am {{TRAINING_DATE}} in Lausanne. Dami
 
 <!-- DAY1_START -->
 Agenda:
-Tag 1 - Grundlagen & System
-* Sicherheit & Best Practices
-* Elios 3 Setup, Payloads, Checklisten
-* Übungsflüge (Navigation und Stabilitätsübungen)
-* Daten-Workflow & erste Analyse
+Tag 1 - Grundlagen
+* Sicherheit, Grenzen und Best Practices
+* Elios 3 Setup (Payloads, Batterien, RC, Cockpit-Checks)
+* Fluggrundlagen (LOS/FPV, Stabilität, ATTI-Recovery)
+* Einführung in den Datenworkflow in Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Tag 2 - Fortgeschritten & Anwendung
-* Missionsplanung (inkl. Erkundungsflug)
-* Praktische Übung vor Ort / Szenario
-* Datenverarbeitung & Reporting
+Tag 2 - AIIM-Methodik & erste Anwendung
+* AIIM-Prozess: planen, vorbereiten, durchführen, nachbearbeiten
+* Methodik für Reco-, lokale und systematische Inspektionen
+* Missionsplanung und Risikominderung
+* Praxisflug im Objekt (geführtes Szenario)
+* Daten-Download und erstes Reporting in Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Tag 3 - AIIM: Advanced
-* Datenverarbeitung & Reporting
-* Fragen
+Tag 3 - Fortgeschrittene Anwendung
+* Use-Case-Workshop (Stack/Kessel/Kanal/Mining)
+* Vollständige Missionsvorbereitung (Flugfolge, Timing, Notfallplan)
+* Praxisflug im Objekt (fortgeschrittenes Szenario)
+* Abschlussreporting, Maintenance-Checkliste und Wrap-up
 <!-- DAY3_END -->
 
 Das Training beginnt um 09:00 Uhr.
@@ -325,24 +340,28 @@ Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à {{LOCATION}}. P
 
 <!-- DAY1_START -->
 Programme :
-Jour 1 - Fondamentaux & système
-* Sécurité et bonnes pratiques
-* Mise en route Elios 3, charges utiles, check-lists
-* Vols d'entraînement (navigation et stabilité)
-* Flux de données et première analyse
+Jour 1 - Fondamentaux
+* Sécurité, limites et bonnes pratiques
+* Configuration Elios 3 (charges utiles, batteries, RC, contrôles Cockpit)
+* Exercices de vol de base (LOS/FPV, stabilité, récupération ATTI)
+* Introduction au workflow de données dans Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Jour 2 - Avancé & mise en pratique
-* Planification de mission (y compris vol d'exploration)
-* Exercice pratique sur site / scénario
-* Traitement des données et reporting
+Jour 2 - Méthode AIIM & première application
+* Processus AIIM : planifier, préparer, exécuter, post-traiter
+* Méthodologie d'inspection reco/locale/systématique
+* Planification de mission et réduction des risques
+* Vol pratique dans l'actif (scénario guidé)
+* Téléchargement des données et premier reporting dans Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Jour 3 - AIIM : avancé
-* Traitement des données et reporting
-* Questions
+Jour 3 - Application avancée
+* Atelier de planification de cas d'usage (stack/chaudière/égout/minier)
+* Préparation mission complète (séquence de vol, timing, contingences)
+* Vol pratique dans l'actif (scénario avancé)
+* Reporting final, checklist maintenance et clôture
 <!-- DAY3_END -->
 
 Merci de prévoir :
@@ -371,24 +390,28 @@ Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à Lausanne. Pour 
 
 <!-- DAY1_START -->
 Programme :
-Jour 1 - Fondamentaux & système
-* Sécurité et bonnes pratiques
-* Mise en route Elios 3, charges utiles, check-lists
-* Vols d'entraînement (navigation et stabilité)
-* Flux de données et première analyse
+Jour 1 - Fondamentaux
+* Sécurité, limites et bonnes pratiques
+* Configuration Elios 3 (charges utiles, batteries, RC, contrôles Cockpit)
+* Exercices de vol de base (LOS/FPV, stabilité, récupération ATTI)
+* Introduction au workflow de données dans Inspector
 <!-- DAY1_END -->
 
 <!-- DAY2_START -->
-Jour 2 - Avancé & mise en pratique
-* Planification de mission (y compris vol d'exploration)
-* Exercice pratique sur site / scénario
-* Traitement des données et reporting
+Jour 2 - Méthode AIIM & première application
+* Processus AIIM : planifier, préparer, exécuter, post-traiter
+* Méthodologie d'inspection reco/locale/systématique
+* Planification de mission et réduction des risques
+* Vol pratique dans l'actif (scénario guidé)
+* Téléchargement des données et premier reporting dans Inspector
 <!-- DAY2_END -->
 
 <!-- DAY3_START -->
-Jour 3 - AIIM : avancé
-* Traitement des données et reporting
-* Questions
+Jour 3 - Application avancée
+* Atelier de planification de cas d'usage (stack/chaudière/égout/minier)
+* Préparation mission complète (séquence de vol, timing, contingences)
+* Vol pratique dans l'actif (scénario avancé)
+* Reporting final, checklist maintenance et clôture
 <!-- DAY3_END -->
 
 La formation commence à 9h.
