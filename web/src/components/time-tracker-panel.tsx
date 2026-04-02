@@ -207,6 +207,7 @@ export function TimeTrackerPanel() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorPortalReady, setEditorPortalReady] = useState(false);
+  const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
@@ -302,27 +303,6 @@ export function TimeTrackerPanel() {
   useEffect(() => {
     let active = true;
     async function loadWeek() {
-      const hydrateWeekDetailsInBackground = (targetWeekStart: string) => {
-        void fetchWeekData(targetWeekStart, { force: true, includeTravel: true, includeBank: true })
-          .then((fullWeek) => {
-            if (!active) return;
-            if (fullWeek.week_start !== targetWeekStart) return;
-            setData((prev) => {
-              if (!prev || prev.week_start !== targetWeekStart) return prev;
-              return {
-                ...prev,
-                overtime_bank_mins: fullWeek.overtime_bank_mins,
-                travel_by_date: fullWeek.travel_by_date,
-                travel_debug: fullWeek.travel_debug,
-                includes_travel: fullWeek.includes_travel,
-                includes_bank: fullWeek.includes_bank,
-              };
-            });
-          })
-          .catch(() => {
-            // Keep quick week load even if background hydration fails.
-          });
-      };
       try {
         const cached = weekCacheRef.current.get(weekStart);
         if (cached) {
@@ -330,10 +310,6 @@ export function TimeTrackerPanel() {
           applyWeekData(cached);
           setWeekLoadTick((prev) => prev + 1);
           prefetchNearbyWeeks(weekStart);
-          const needsHydration = !cached.includes_travel || !cached.includes_bank;
-          if (needsHydration) {
-            hydrateWeekDetailsInBackground(weekStart);
-          }
           return;
         }
         setLoading(true);
@@ -342,7 +318,6 @@ export function TimeTrackerPanel() {
         applyWeekData(weekData);
         setWeekLoadTick((prev) => prev + 1);
         prefetchNearbyWeeks(weekStart);
-        hydrateWeekDetailsInBackground(weekStart);
       } catch (error) {
         if (!active) return;
         setToast({ kind: "error", message: (error as Error).message });
@@ -400,6 +375,20 @@ export function TimeTrackerPanel() {
     applyWeekData(weekData);
     prefetchNearbyWeeks(weekStart);
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
+
+  const ensureWeekDetails = useCallback(async () => {
+    const current = weekCacheRef.current.get(weekStart);
+    if (current?.includes_travel && current?.includes_bank) return;
+    setDayDetailsLoading(true);
+    try {
+      const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true, includeBank: true });
+      applyWeekData(fullWeek);
+    } catch {
+      // Keep editor interaction responsive even if details fetch fails.
+    } finally {
+      setDayDetailsLoading(false);
+    }
+  }, [applyWeekData, fetchWeekData, weekStart]);
 
   const returnToWeekdays = useCallback(() => {
     setEditorOpen(false);
@@ -660,6 +649,7 @@ export function TimeTrackerPanel() {
   function handleEditDay(date: string) {
     setSelectedDate(date);
     setEditorOpen(true);
+    void ensureWeekDetails();
   }
 
   const selectedDaySupportsBreaks = Boolean(selectedDay);
@@ -687,13 +677,13 @@ export function TimeTrackerPanel() {
     editorPortalReady && editorOpen ? (
       <>
         <div
-          className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md"
+          className="day-logger-overlay fixed inset-0 z-[200] bg-slate-950/70"
           aria-hidden="true"
           onClick={() => returnToWeekdays()}
         />
-        <div className="fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6">
+        <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6">
           <div
-            className="glass-card my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92vh,880px)] overflow-y-auto scroll-mt-24"
+            className="glass-card day-logger-card day-logger-dialog my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92vh,880px)] overflow-y-auto scroll-mt-24"
             role="dialog"
             aria-modal="true"
             aria-labelledby="day-logger-title"
@@ -868,6 +858,8 @@ export function TimeTrackerPanel() {
                 <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
                 {!selectedDay ? (
                   <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+                ) : dayDetailsLoading ? (
+                  <p className="mt-4 text-sm text-slate-300/80">Loading travel details...</p>
                 ) : !selectedTravelInfo ? (
                   <>
                     <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
