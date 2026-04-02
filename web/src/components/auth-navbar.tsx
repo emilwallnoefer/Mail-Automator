@@ -71,6 +71,15 @@ export function AuthNavbar({
 
           {menuOpen && (
             <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-white/15 bg-slate-950/92 p-2.5 shadow-xl backdrop-blur-xl">
+              <div className="mb-2">
+                <a
+                  href="/onboarding"
+                  className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900"
+                >
+                  <span>Onboarding</span>
+                  <span className="text-[10px] opacity-80">Open</span>
+                </a>
+              </div>
               <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Workspace</p>
               <div className="space-y-1" role="tablist" aria-label="Workspace tabs">
                 {availableModules.includes("mail") ? (
