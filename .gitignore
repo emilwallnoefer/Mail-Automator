@@ -9,3 +9,6 @@ scripts/token.json
 web/.env.local
 web/.next/
 web/node_modules/
+
+# Local training email samples (not part of the app)
+Mail training cursor/
