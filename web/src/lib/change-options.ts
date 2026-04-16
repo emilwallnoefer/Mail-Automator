@@ -19,8 +19,8 @@ export const RESOURCE_SECTION_ORDER: ResourceSectionId[] = [
 export const RESOURCE_SECTION_LABELS: Record<ResourceSectionId, { en: string; de: string; fr: string }> = {
   other_useful_links: { en: "Other useful links", de: "Weitere nützliche Links", fr: "Autres liens utiles" },
   other_trainings: {
-    en: "📑 Additional training slide decks",
-    de: "📑 Weitere Trainings-Folien",
+    en: "📑 Additional training decks",
+    de: "📑 Weitere Trainingsfolien",
     fr: "📑 Autres diaporamas de formation",
   },
   online_courses: { en: "💻 Online courses", de: "💻 Online-Schulungen", fr: "💻 Cours en ligne" },
@@ -39,9 +39,9 @@ export const RESOURCE_SECTION_EMAIL_INTRO: Partial<
   Record<ResourceSectionId, { en: string; de: string; fr: string }>
 > = {
   videos: {
-    en: "These walkthroughs and quick guides focus on specific payloads, power options, and field accessories. Share them with pilots and anyone supporting inspections on site so the team knows what to prepare and how to handle kit safely.",
-    de: "Die folgenden Videos und Kurzanleitungen betreffen konkrete Payloads, Energieversorgung und Feldzubehör. Teilt sie mit Piloten und allen, die Inspektionen vor Ort unterstützen, damit klar ist, was vorbereitet werden muss und wie ihr das Material sicher handhabt.",
-    fr: "Ces vidéos et guides courts portent sur des charges utiles précises, l’alimentation et le matériel de terrain. Partagez-les avec les pilotes et toute personne qui soutient les inspections sur place, pour préparer les missions et manipuler le matériel en toute sécurité.",
+    en: "Short walkthroughs on payloads, power options, and field accessories—ideal for pilots and site support before tether work or high-capacity battery operations.",
+    de: "Kurze Walkthroughs zu Payloads, Energieversorgung und Feldzubehör—für Piloten und Unterstützung vor Ort, insbesondere vor Tether-Einsätzen oder mit High-Capacity-Akkus.",
+    fr: "Guides courts sur charges utiles, alimentation et accessoires de terrain—pour les pilotes et l'équipe terrain avant usage du tether ou batteries grande capacité.",
   },
 };
 
@@ -213,11 +213,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "YouTube-Kanal",
     label_fr: "Chaîne YouTube",
     desc_en:
-      "Flyability playlists for payloads, inspections, and field work. Use it for short video refreshers between missions instead of manuals.",
+      "Curated Flyability playlists for payloads, inspections, and field workflows—quick video refreshers between missions without long manual reads.",
     desc_de:
-      "Flyability-Playlists zu Payloads, Inspektionen und Feldarbeit. Nutzt es für kurze Video-Auffrischer zwischen Jobs statt lange Handbücher zu lesen.",
+      "Kuratierte Flyability-Playlists zu Payloads, Inspektionen und Feldworkflow—kurze Video-Auffrischer zwischen den Einsätzen statt langer Handbücher.",
     desc_fr:
-      "Playlists Flyability sur charges utiles, inspections et terrain. Utilisez-les pour des rappels vidéo courts entre missions plutôt que relire les PDF.",
+      "Playlists Flyability sur charges utiles, inspections et terrain—rappels vidéo courts entre missions sans relire de longs manuels.",
     default_checked: false,
     link_key: "YOUTUBE_CHANNEL_URL",
   },
@@ -229,11 +229,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Customer Toolkit",
     label_fr: "Customer Toolkit",
     desc_en:
-      "Logos, brochures, datasheets, and sample sets for customer-facing work. Use it when proposals need polished files without hours of layout.",
+      "Downloadable brand assets, brochures, datasheets, and sample datasets for polished customer-facing deliverables.",
     desc_de:
-      "Logos, Broschüren, Datenblätter und Beispielsets für Kundenunterlagen. Nutzt es, wenn Angebote fertige Dateien ohne endloses Layout brauchen.",
+      "Herunterladbare Markenassets, Broschüren, Datenblätter und Beispieldatensätze für professionelle Kundenunterlagen.",
     desc_fr:
-      "Logos, brochures, fiches et jeux d'exemple pour livrables clients. Utilisez-le quand les propositions doivent paraître soignées sans refaire la mise en page.",
+      "Assets de marque, brochures, fiches techniques et jeux de données téléchargeables pour des livrables clients soignés.",
     default_checked: false,
     link_key: "CUSTOMER_TOOLKIT_URL",
   },
@@ -293,11 +293,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "UT-Einführungstraining Elios 3 — Foliensatz",
     label_fr: "Formation d'introduction UT Elios 3 — diaporama",
     desc_en:
-      "Introduces Elios 3 UT hardware, checks, and how A-scans support defect calls. Use it before the first ultrasonic inspection on site.",
+      "Covers Elios 3 UT hardware, pre-flight checks, and how A-scans support defect interpretation before your first ultrasonic inspections on site.",
     desc_de:
-      "Stellt Elios-3-UT-Hardware, Checks und den A-Scan-Bezug zu Befunden vor. Nutzt es vor der ersten UT-Inspektion bei euch vor Ort.",
+      "Elios-3-UT-Hardware, Preflight-Checks und A-Scan-Bezug zu Befunden—Grundlage vor den ersten UT-Inspektionen bei euch vor Ort.",
     desc_fr:
-      "Présente le matériel UT Elios 3, les vérifications et le lien A-scan / défauts. Utilisez-le avant la première inspection ultrason sur site.",
+      "Matériel UT Elios 3, vérifications et lecture A-scan pour l'interprétation des défauts avant les premières inspections ultrason sur site.",
     default_checked: false,
     link_key: "INTRO_UT_TRAINING_URL",
   },
@@ -309,11 +309,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "UT-Fortgeschrittenentraining Elios 3 — Foliensatz",
     label_fr: "Formation UT avancée Elios 3 — diaporama",
     desc_en:
-      "Adds scan plans, gates, and tougher data cases beyond the intro deck. Use it when UT jobs add complex geometry or tight access.",
+      "Builds on the intro deck with scan plans, gating, and more demanding scenarios for complex UT geometry and tight access.",
     desc_de:
-      "Ergänzt Scanpläne, Gates und kniffligere Fälle jenseits der Einführung. Nutzt es, wenn UT-Aufträge komplexe Geometrie oder engen Zugang haben.",
+      "Baut auf dem Einführungsdeck auf: Scanpläne, Gates und anspruchsvollere Szenarien bei komplexer Geometrie oder engem Zugang.",
     desc_fr:
-      "Ajoute plans de balayage, gates et cas plus difficiles après l'intro. Utilisez-le quand l'UT impose géométrie complexe ou accès étroit.",
+      "Prolonge l'intro avec plans de balayage, gates et cas plus exigeants pour géométrie UT complexe ou accès restreint.",
     default_checked: false,
     link_key: "UT_ADVANCED_ELIO3_DECK_URL",
   },
@@ -341,11 +341,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "FARO Connect Online-Kurs",
     label_fr: "Cours en ligne FARO Connect",
     desc_en:
-      "Self-paced FARO modules with examples and quizzes end to end. Use it when slides alone still leave gaps in your Connect workflow.",
+      "Self-paced FARO Connect modules with examples and quizzes across the full import-to-delivery workflow beyond what slides alone cover.",
     desc_de:
-      "Selbststudium-FARO-Module mit Beispielen und Quizzes über den ganzen Workflow. Nutzt es, wenn Folien allein Lücken in eurem Connect-Ablauf lassen.",
+      "Selbststudium-Module mit Beispielen und Quizzes über den gesamten FARO-Connect-Workflow vom Import bis zur Auslieferung.",
     desc_fr:
-      "Modules FARO à votre rythme, exemples et quiz sur tout le flux. Utilisez-les quand les diapos laissent encore des trous dans votre workflow Connect.",
+      "Modules à votre rythme, exemples et quiz sur tout le flux FARO Connect de l'import à la livraison, au-delà du seul diaporama.",
     default_checked: false,
     link_key: "FARO_CONNECT_ONLINE_COURSE_URL",
   },
@@ -357,11 +357,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Water & Wastewater Training — Foliensatz",
     label_fr: "Formation eau & eaux usées — diaporama",
     desc_en:
-      "Water and wastewater framing for pipes, wet wells, and treatment assets. Use it to align crews before utility inspection campaigns.",
+      "Sector framing for pipes, wet wells, and treatment assets so the team shares one approach before wastewater inspection campaigns.",
     desc_de:
-      "Wasser- und Abwasser-Rahmen für Leitungen, Schächte und Anlagen. Nutzt es, um Teams vor Versorger-Inspektionskampagnen abzugleichen.",
+      "Branchenrahmen für Leitungen, Schächte und Kläranlagen—gemeinsame Linie vor Abwasser- und Versorger-Inspektionskampagnen.",
     desc_fr:
-      "Cadre eau et eaux usées pour conduites, regards et ouvrages de traitement. Utilisez-le pour aligner l'équipe avant campagnes d'inspection réseau.",
+      "Cadre eau et eaux usées pour conduites, regards et ouvrages de traitement—alignement d'équipe avant campagnes d'inspection réseau.",
     default_checked: false,
     link_key: "WATER_WASTEWATER_DECK_URL",
   },
@@ -373,11 +373,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Zementwerk- & Ofeninspektion — Foliensatz",
     label_fr: "Inspection cimenterie & four — diaporama",
     desc_en:
-      "Cement angles for kilns, coolers, and hot dusty plants. Use it when briefs need industry hazards beyond generic indoor guidance.",
+      "Kiln, cooler, and high-dust plant angles that go beyond generic indoor guidance for cement-site inspection briefings.",
     desc_de:
-      "Zement-Blickwinkel für Ofen, Kühler und heiße staubige Anlagen. Nutzt es, wenn Briefings branchenspezifische Gefahren jenseits generischer Indoor-Hinweise brauchen.",
+      "Ofen, Kühler und staubige Heißanlagen aus Zement-Sicht—über generische Indoor-Hinweise hinaus für Einsatzbriefings.",
     desc_fr:
-      "Angles ciment pour fours, refroidisseurs et sites chauds poussiéreux. Utilisez-le quand les briefs exigent des risques métier au-delà du guidage indoor générique.",
+      "Fours, refroidisseurs et sites chauds poussiéreux vus ciment—au-delà du guidage indoor générique pour vos briefs terrain.",
     default_checked: false,
     link_key: "CEMENT_ONLINE_DECK_URL",
   },
@@ -389,11 +389,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Wastewater Online-Kurs",
     label_fr: "Cours en ligne eaux usées",
     desc_en:
-      "Academy track on wastewater inspections, access, and reporting norms. Use it after the slide deck for deeper operational training.",
+      "Academy path on access, inspection patterns, and reporting norms—a structured follow-on after the sector slide deck.",
     desc_de:
-      "Academy-Pfad zu Abwasser-Inspektionen, Zugang und Berichtsnormen. Nutzt ihn nach den Folien für tiefergehende operative Schulung.",
+      "Academy-Pfad zu Zugang, Inspektionsmustern und Berichtsnormen—strukturierte Vertiefung nach dem Branchen-Foliensatz.",
     desc_fr:
-      "Parcours Academy inspections eaux usées, accès et normes de rapport. Utilisez-le après le diaporama pour une formation opérationnelle plus poussée.",
+      "Parcours Academy sur accès, modes d'inspection et normes de rapport—suite structurée après le diaporama sectoriel.",
     default_checked: false,
     link_key: "WASTEWATER_ONLINE_COURSE_URL",
   },
@@ -421,11 +421,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Gas Sensor Quick-Start-Guide",
     label_fr: "Guide de démarrage capteur de gaz",
     desc_en:
-      "Covers mounting, pre-flight checks, and flammable gas readings in flight. Use it as a refresher before missions with this payload.",
+      "Mounting, pre-flight checks, and in-flight flammable-gas reading practice for this payload.",
     desc_de:
-      "Deckt Montage, Preflight-Checks und brennbare Gaswerte im Flug ab. Nutzt es als Auffrischung vor Einsätzen mit diesem Payload.",
+      "Montage, Preflight-Checks und brennbare Gaswerte im Flug für diesen Payload.",
     desc_fr:
-      "Couvre montage, vérifications avant vol et lectures de gaz inflammables en vol. Servez-vous-en pour réviser avant missions avec cette charge utile.",
+      "Montage, vérifications avant vol et lectures de gaz inflammables en vol pour cette charge utile.",
     default_checked: false,
     link_key: "GAS_SENSOR_QUICKSTART_URL",
   },
@@ -437,11 +437,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Elios 3 RAD-Sensor Schulungsvideo",
     label_fr: "Vidéo de formation capteur RAD Elios 3",
     desc_en:
-      "Explains RAD flight behavior, data cues, and Elios 3 field tips. Use it before flying so acquisition expectations stay aligned.",
+      "RAD flight behaviour, data cues, and Elios 3 field practices so acquisition expectations are clear before you fly.",
     desc_de:
-      "Erklärt RAD-Flugverhalten, Daten-Hinweise und Elios-3-Feldtipps. Nutzt es vor dem Flug, damit die Erwartungen zur Erfassung übereinstimmen.",
+      "RAD-Flugverhalten, Datenhinweise und Elios-3-Feldpraxis—klare Erwartungen an die Datenerfassung vor dem Flug.",
     desc_fr:
-      "Explique comportement RAD en vol, signaux dans les données et conseils Elios 3. Utilisez-le avant vol pour aligner les attentes d'acquisition.",
+      "Comportement RAD en vol, indices dans les données et pratiques Elios 3—attentes d'acquisition claires avant le vol.",
     default_checked: false,
     link_key: "RAD_SENSOR_VIDEO_URL",
   },
@@ -485,11 +485,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability-Zelt Falt-Tutorial",
     label_fr: "Tutoriel pliage tente Flyability",
     desc_en:
-      "Step-by-step folding so the tent fits its bag for transport. Use it after outdoor jobs to save time and avoid torn fabric or bent poles.",
+      "Step-by-step folding so the tent packs cleanly for transport after outdoor operations.",
     desc_de:
-      "Schritt für Schritt Falten, damit das Zelt in die Tasche passt und transporttauglich bleibt. Nutzt es nach Außeneinsätzen, um Zeit zu sparen und Schäden zu vermeiden.",
+      "Schritt-für-Schritt-Falten, damit das Zelt sauber in die Tasche passt und transporttauglich bleibt.",
     desc_fr:
-      "Pliage pas à pas pour que la tente tienne dans son sac et survive au transport. Utilisez-le après travaux extérieurs pour gagner du temps et limiter casse.",
+      "Pliage pas à pas pour ranger la tente proprement dans son sac après interventions extérieures.",
     default_checked: false,
     link_key: "TENT_FOLDING_TUTORIAL_URL",
   },
@@ -501,11 +501,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability-Leitfaden zur UT-Sondenauswahl — Foliensatz",
     label_fr: "Guide Flyability — choix des sondes UT — diaporama",
     desc_en:
-      "Probe types, couplant, and surface prep so UT readings stay trustworthy. Use it before accessories or demanding wall and tank scans.",
+      "Probe types, couplant choice, and surface preparation so ultrasonic readings stay consistent on demanding surfaces.",
     desc_de:
-      "Sondentypen, Koppelmittel und Oberflächenvorbereitung für belastbare UT-Werte. Nutzt es vor Zubehörkäufen oder anspruchsvollen Wand- und Tank-Scans.",
+      "Sondentypen, Koppelmittelwahl und Oberflächenvorbereitung für konsistente UT-Messungen auf anspruchsvollen Oberflächen.",
     desc_fr:
-      "Types de sondes, couplant et préparation de surface pour des mesures UT fiables. Utilisez-le avant achats d'accessoires ou scans mur/réservoir difficiles.",
+      "Types de sondes, choix du couplant et préparation de surface pour des mesures UT stables sur surfaces exigeantes.",
     default_checked: false,
     link_key: "UT_PROBE_SELECTION_GUIDE_URL",
   },
@@ -520,40 +520,40 @@ const thinkificOptions: ChangeOption[] = ((industryLinks.courses as Array<Record
     const url = String(course.url ?? "");
     const descriptionById: Record<string, { en: string; de: string; fr: string }> = {
       gas_sensor: {
-        en: "Gas modules on setup, monitoring, and reading flammable trends safely. Use it before confined or regulated missions with this payload.",
-        de: "Gas-Module zu Setup, Monitoring und sicherer Einordnung brennbarer Trends. Nutzt es vor begrenzten oder regulierten Missionen mit diesem Payload.",
-        fr: "Modules gaz : installation, suivi et lecture sûre des tendances inflammables. Utilisez-les avant missions confinées ou réglementées avec cette charge.",
+        en: "Academy modules on gas-sensor setup, monitoring, and safe interpretation of flammable trends for regulated or confined operations.",
+        de: "Academy-Module zu Gas-Sensor-Setup, Monitoring und sicherer Einordnung brennbarer Trends für regulierte oder begrenzte Einsätze.",
+        fr: "Modules Academy sur installation, suivi et lecture sûre des tendances inflammables pour opérations réglementées ou confinées.",
       },
       cement: {
-        en: "Cement modules for kilns, coolers, and Elios paths in dusty high-heat plants. Use it after the slide deck for structured online depth.",
-        de: "Zement-Module für Ofen, Kühler und Elios-Pfade in staubigen Heißanlagen. Nutzt es nach den Folien für strukturierte Online-Tiefe.",
-        fr: "Modules ciment pour fours, refroidisseurs et parcours Elios sous chaleur et poussière. Utilisez-les après le diaporama pour approfondir en ligne.",
+        en: "Online cement modules for kilns, coolers, and Elios flight paths in dusty, high-heat plants—structured depth after the sector slide deck.",
+        de: "Online-Zement-Module für Ofen, Kühler und Elios-Flugpfade in staubigen Heißanlagen—strukturierte Vertiefung nach dem Branchen-Foliensatz.",
+        fr: "Modules ciment en ligne pour fours, refroidisseurs et parcours Elios sous chaleur et poussière—approfondissement après le diaporama sectoriel.",
       },
       mining: {
-        en: "Mining modules for headings, ground support, and Elios underground flight tactics. Use it when cave or heading work is common for your team.",
-        de: "Bergbau-Module zu Ortsbrüsten, Gebirgssicherung und unterirdischen Elios-Flugtaktiken. Nutzt es, wenn Stollen- oder Streckenarbeit zur Routine wird.",
-        fr: "Modules mines : galeries, soutènements et tactiques de vol Elios souterrain. Utilisez-les quand le travail en galerie devient courant pour l'équipe.",
+        en: "Underground mining modules on headings, ground support, and Elios flight tactics for teams that routinely work in cave or drift environments.",
+        de: "Untertage-Bergbau-Module zu Ortsbrüsten, Gebirgssicherung und Elios-Flugtaktik für Teams in Stollen- und Streckenroutine.",
+        fr: "Modules mines souterraines : galeries, soutènements et tactiques de vol Elios pour équipes en travail de galerie courant.",
       },
       wastewater: {
-        en: "Wastewater modules on sewers, treatment assets, access, and reporting norms. Use it with the slide deck for paced lessons beyond static PDFs.",
-        de: "Abwasser-Module zu Kanälen, Anlagen, Zugang und Berichtsnormen. Nutzt es mit den Folien für strukturiertes Lernen jenseits statischer PDFs.",
-        fr: "Modules eaux usées : réseaux, ouvrages, accès et normes de rapport. Utilisez-les avec le diaporama pour un rythme pédagogique au-delà des PDF.",
+        en: "Wastewater Academy modules on sewers, treatment assets, access, and reporting norms—paced lessons alongside the sector slide deck.",
+        de: "Academy-Abwasser-Module zu Kanälen, Anlagen, Zugang und Berichtsnormen—strukturierte Lektionen ergänzend zum Branchen-Foliensatz.",
+        fr: "Modules Academy eaux usées : réseaux, ouvrages, accès et normes de rapport—leçons structurées en complément du diaporama sectoriel.",
       },
       regulation: {
-        en: "Regulation modules on approvals, airspace, and compliance basics for UAS ops. Use it when legal questions go beyond what class time allowed.",
-        de: "Regulatorik-Module zu Genehmigungen, Luftraum und Compliance-Grundlagen für UAS. Nutzt es, wenn Rechtsfragen über den Schulungsumfang hinausgehen.",
-        fr: "Modules réglementaires : autorisations, espace aérien et bases conformité pour UAS. Utilisez-les quand le juridique dépasse le temps de cours.",
+        en: "Regulation-focused modules on approvals, airspace, and UAS compliance basics beyond what fits in classroom time.",
+        de: "Regulatorik-Module zu Genehmigungen, Luftraum und UAS-Compliance-Grundlagen—über den klassischen Schulungsumfang hinaus.",
+        fr: "Modules réglementation : autorisations, espace aérien et bases conformité UAS—au-delà du temps de cours classique.",
       },
       faro_connect: {
-        en: "FARO drills on Elios exports from import through delivery. Use it when slide-only review still leaves gaps in your daily processing workflow.",
-        de: "FARO-Übungen an Elios-Exporten vom Import bis zur Auslieferung. Nutzt es, wenn Folien allein noch Lücken im täglichen Verarbeitungsworkflow lassen.",
-        fr: "Exercices FARO sur exports Elios de l'import à la livraison. Utilisez-les quand les diapos seules laissent des trous dans votre flux quotidien.",
+        en: "Hands-on FARO Connect drills on Elios exports from import through delivery for your daily processing workflow.",
+        de: "Praxisnahe FARO-Connect-Übungen an Elios-Exporten vom Import bis zur Auslieferung für den täglichen Verarbeitungsworkflow.",
+        fr: "Exercices FARO Connect sur exports Elios de l'import à la livraison pour votre flux de traitement quotidien.",
       },
     };
     const desc = descriptionById[id] ?? {
-      en: "Academy modules for specialized industries beyond core Elios pilot training. Use it when one vertical dominates your inspection calendar.",
-      de: "Academy-Module für Branchen jenseits der Elios-Grundausbildung. Nutzt es, wenn eine Domäne euren Inspektionskalender dominiert.",
-      fr: "Modules Academy pour secteurs spécialisés au-delà du socle Elios. Utilisez-les quand un vertical occupe la majeure partie du calendrier d'inspection.",
+      en: "Industry-focused Academy modules beyond core Elios pilot training when a single vertical dominates your inspection work.",
+      de: "Branchenfokussierte Academy-Module jenseits der Elios-Grundausbildung, wenn eine Domäne eure Inspektionsarbeit prägt.",
+      fr: "Modules Academy sectoriels au-delà du socle pilote Elios lorsqu'un vertical structure votre activité d'inspection.",
     };
     return {
       id: `thinkific_${id}`,

@@ -64,6 +64,52 @@ type Course = {
   keywords: string[];
 };
 
+/** One-line follow-up after auto-inferred industry / Thinkific links (post-mail proposal §3). */
+const INDUSTRY_COURSE_FOLLOWUP: Record<string, Record<MailLanguage, string>> = {
+  regulation: {
+    en: "Thinkific regulation track for approvals, airspace, and compliance basics.",
+    de: "Thinkific-Regulatorik-Track zu Genehmigungen, Luftraum und Compliance-Grundlagen.",
+    fr: "Parcours Thinkific réglementation : autorisations, espace aérien et bases conformité.",
+  },
+  gas_sensor: {
+    en: "Thinkific gas-sensor track for setup, monitoring, and safe flammable-gas interpretation.",
+    de: "Thinkific-Gas-Sensor-Track zu Setup, Monitoring und sicherer Einordnung brennbarer Gase.",
+    fr: "Parcours Thinkific capteur gaz : installation, suivi et lecture sûre des gaz inflammables.",
+  },
+  cement: {
+    en: "Thinkific cement track for hot, dusty plant inspection context with Elios.",
+    de: "Thinkific-Zement-Track für heiße, staubige Anlagenkontexte mit Elios.",
+    fr: "Parcours Thinkific ciment pour contexte Elios en milieu chaud et poussiéreux.",
+  },
+  mining: {
+    en: "Thinkific mining track for underground headings, support, and Elios tactics.",
+    de: "Thinkific-Bergbau-Track für unterirdische Strecken, Sicherung und Elios-Taktik.",
+    fr: "Parcours Thinkific mines : galeries, soutènement et tactiques Elios souterrain.",
+  },
+  wastewater: {
+    en: "Thinkific wastewater track for networks, assets, access, and reporting norms.",
+    de: "Thinkific-Abwasser-Track für Netze, Anlagen, Zugang und Berichtsnormen.",
+    fr: "Parcours Thinkific eaux usées : réseaux, ouvrages, accès et normes de rapport.",
+  },
+  faro_connect: {
+    en: "Thinkific FARO Connect track from Elios import through delivery.",
+    de: "Thinkific-FARO-Connect-Track von Elios-Import bis Auslieferung.",
+    fr: "Parcours Thinkific FARO Connect des imports Elios à la livraison.",
+  },
+};
+
+function industryCourseFollowupDesc(courseId: string, lang: MailLanguage): string {
+  const row = INDUSTRY_COURSE_FOLLOWUP[courseId];
+  if (!row) return "";
+  if (lang === "de") return row.de;
+  if (lang === "fr") return row.fr;
+  return row.en;
+}
+
+function postAssetFollowUpKind(isPostMail: boolean): "plain" | "callout" {
+  return isPostMail ? "plain" : "callout";
+}
+
 function resolveLinkUrl(linkKey: string, catalog: Course[]) {
   const links = trainingLinks as Record<string, string>;
   const url = links[linkKey];
@@ -274,14 +320,18 @@ function resolveIncludedChangeIds(input: MailInput) {
   return DEFAULT_INCLUDED_CHANGE_IDS;
 }
 
-/** Canonical section titles (emoji + wording) aligned with internal recap style. */
+/** Section titles aligned with post-mail proposal (source-style emojis). */
 function trainingMaterialsHeading(lang: MailLanguage) {
-  if (lang === "de") return "## 📂 Trainings-Folien";
-  if (lang === "fr") return "## 📂 Diaporamas de formation";
-  return "## 📂 Training slide decks";
+  if (lang === "de") return "## 📚 Trainingsunterlagen";
+  if (lang === "fr") return "## 📚 Supports de formation";
+  return "## 📚 Training materials";
 }
 
-function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: string[]) {
+function buildTrainingMaterialsBlock(
+  language: MailLanguage,
+  selectedChangeIds: string[],
+  followUpKind: "plain" | "callout",
+) {
   const selected = new Set(selectedChangeIds);
   const links = trainingLinks as Record<string, string>;
   const materialOptions = CHANGE_OPTIONS.filter((opt) => opt.category === "training_material");
@@ -293,7 +343,7 @@ function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: 
     if (!url) continue;
     const { label, desc } = getChangeOptionLabelDesc(item, language);
     rows.push(`➡️ [${label}](${url})`);
-    rows.push(withCallout(language, desc, "callout"));
+    rows.push(withCallout(language, desc, followUpKind));
     rows.push("");
   }
 
@@ -322,9 +372,9 @@ function inferIndustryCourseIds(input: MailInput, catalog: Course[]) {
 }
 
 function industryTrainingBlockTitle(lang: MailLanguage) {
-  if (lang === "de") return "## 📋 Use-Case-spezifische Trainings und Unterlagen";
-  if (lang === "fr") return "## 📋 Formations et documents spécifiques au cas d'usage";
-  return "## 📋 Use-case specific trainings and docs";
+  if (lang === "de") return "## 📋 Branchenspezifische Kurse (Thinkific)";
+  if (lang === "fr") return "## 📋 Formations sectorielles (Thinkific)";
+  return "## 📋 Industry-specific courses (Thinkific)";
 }
 
 function courseDisplayLabel(course: Course, lang: MailLanguage) {
@@ -333,7 +383,13 @@ function courseDisplayLabel(course: Course, lang: MailLanguage) {
   return course.label_en;
 }
 
-function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[], catalog: Course[]) {
+function buildIndustryTrainingBlock(
+  language: MailLanguage,
+  selectedIds: string[],
+  catalog: Course[],
+  followUpKind: "plain" | "callout",
+  isPostMail: boolean,
+) {
   if (!selectedIds.length) return "";
   const byId = new Map(catalog.map((course) => [course.id, course]));
   const lines = [industryTrainingBlockTitle(language)];
@@ -343,14 +399,19 @@ function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[
     if (!course) continue;
     const label = courseDisplayLabel(course, language);
     lines.push(`➡️ [${label}](${course.url})`);
+    if (isPostMail) {
+      const extra = industryCourseFollowupDesc(id, language);
+      if (extra) lines.push(withCallout(language, extra, followUpKind));
+    }
+    lines.push("");
   }
-  return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : "";
+  return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n").trimEnd()}` : "";
 }
 
 function usefulLinksMainHeader(lang: MailLanguage) {
-  if (lang === "de") return "## 🔗 Weitere nützliche Links";
-  if (lang === "fr") return "## 🔗 Autres liens utiles";
-  return "## 🔗 Software & learning resources";
+  if (lang === "de") return "## 🔗 Nützliche Links";
+  if (lang === "fr") return "## 🔗 Liens utiles";
+  return "## 🔗 Useful links";
 }
 
 function calloutPrefix(lang: MailLanguage): string {
@@ -359,7 +420,7 @@ function calloutPrefix(lang: MailLanguage): string {
   return "Recommendation: ";
 }
 
-/** Tips after materials / useful links; Thinkific industry lines stay without a callout label to limit noise. */
+/** Post-mail uses `plain` (sentence only); other paths may use `callout` (Recommendation / Empfehlung prefix). */
 function withCallout(lang: MailLanguage, desc: string, kind: "callout" | "plain"): string {
   const t = desc.trim();
   if (!t) return "";
@@ -380,7 +441,12 @@ function policyItemLabelDesc(item: Record<string, unknown>, lang: MailLanguage) 
   return { label: String(item.label_en ?? ""), desc: String(item.desc_en ?? "") };
 }
 
-function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], input: MailInput) {
+function buildUsefulLinksBlock(
+  language: MailLanguage,
+  selectedIds: string[],
+  input: MailInput,
+  followUpKind: "plain" | "callout",
+) {
   const policy = usefulLinksPolicy as {
     common: Array<Record<string, unknown>>;
     conditional: Array<Record<string, unknown>>;
@@ -394,7 +460,7 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
     if (!url) return;
     const { label, desc } = policyItemLabelDesc(item, language);
     lines.push(`➡️ [${label}](${url})`);
-    lines.push(withCallout(language, desc, "callout"));
+    lines.push(withCallout(language, desc, followUpKind));
     lines.push("");
   };
 
@@ -410,7 +476,11 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
   return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : "";
 }
 
-function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChangeIds: string[]) {
+function buildUsefulLinksBlockFromChanges(
+  language: MailLanguage,
+  selectedChangeIds: string[],
+  followUpKind: "plain" | "callout",
+) {
   const selected = new Set(selectedChangeIds);
   const catalog = (industryLinks.courses as Course[]) ?? [];
   const header = usefulLinksMainHeader(language);
@@ -444,7 +514,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
         const url = resolveLinkUrl(item.link_key ?? "", catalog);
         const { label, desc } = getChangeOptionLabelDesc(item, language);
         parts.push(`➡️ [${label}](${url})`);
-        parts.push(withCallout(language, desc, "callout"));
+        parts.push(withCallout(language, desc, followUpKind));
         parts.push("");
       }
       continue;
@@ -462,7 +532,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
         const url = resolveOnlineItemUrl(item);
         const { label, desc } = getChangeOptionLabelDesc(item, language);
         parts.push(`➡️ [${label}](${url})`);
-        parts.push(withCallout(language, desc, item.category === "thinkific" ? "plain" : "callout"));
+        parts.push(withCallout(language, desc, followUpKind));
         parts.push("");
       }
       continue;
@@ -489,7 +559,7 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       const url = resolveLinkUrl(item.link_key ?? "", catalog);
       const { label, desc } = getChangeOptionLabelDesc(item, language);
       parts.push(`➡️ [${label}](${url})`);
-      parts.push(withCallout(language, desc, videoSection ? "plain" : "callout"));
+      parts.push(withCallout(language, desc, followUpKind));
       parts.push("");
     }
   }
@@ -550,6 +620,8 @@ export function renderMail(input: MailInput): RenderResult {
   const catalog = (industryLinks.courses as Course[]) ?? [];
   const selected = inferIndustryCourseIds(input, catalog);
   const includedChangeIds = resolveIncludedChangeIds(input);
+  const isPostMail = input.mail_type === "post";
+  const followUpKind = postAssetFollowUpKind(isPostMail);
 
   const links = trainingLinks as Record<string, string>;
   const feedbackQr = resolveFeedbackQr(input);
@@ -562,15 +634,15 @@ export function renderMail(input: MailInput): RenderResult {
     TRAINING_DATE: input.date || "",
     LOCATION: input.location || "",
     CUSTOM_OPENER_NOTE: input.custom_opener_note || "",
-    TRAINING_MATERIALS_BLOCK: buildTrainingMaterialsBlock(input.language, includedChangeIds),
+    TRAINING_MATERIALS_BLOCK: buildTrainingMaterialsBlock(input.language, includedChangeIds, followUpKind),
     USEFUL_LINKS_BLOCK:
       input.included_change_ids && input.included_change_ids.length > 0
-        ? buildUsefulLinksBlockFromChanges(input.language, includedChangeIds)
-        : buildUsefulLinksBlock(input.language, selected, input),
+        ? buildUsefulLinksBlockFromChanges(input.language, includedChangeIds, followUpKind)
+        : buildUsefulLinksBlock(input.language, selected, input, followUpKind),
     INDUSTRY_TRAINING_BLOCK:
       input.included_change_ids && input.included_change_ids.length > 0
         ? ""
-        : buildIndustryTrainingBlock(input.language, selected, catalog),
+        : buildIndustryTrainingBlock(input.language, selected, catalog, followUpKind, isPostMail),
     CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note),
     SIMULATOR_NOTE_BLOCK: simulatorNote(input.language, input.include_simulator_note),
     COMPANY_CONTEXT_LINE: "",
