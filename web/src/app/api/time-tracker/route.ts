@@ -77,6 +77,11 @@ function sanitizeMins(value: unknown) {
   return Number.isFinite(mins) && mins >= 0 ? mins : 0;
 }
 
+function parseInteger(value: unknown, fallback = 0) {
+  const parsed = Number.parseInt(String(value ?? fallback), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function getWeekStart(dateInput?: string) {
   const base = dateInput ? new Date(dateInput) : new Date();
   if (Number.isNaN(base.getTime())) return null;
@@ -130,6 +135,112 @@ function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping 
 
   const hasAnyConfig = Object.values(mapping).some((value) => Boolean(value));
   return hasAnyConfig ? mapping : undefined;
+}
+
+function looksLikeMissingStatsObjects(detail: string) {
+  return /tt_refresh_overtime_bank_stats|time_tracker_user_stats|relation .* does not exist|function .* does not exist/i.test(
+    detail,
+  );
+}
+
+async function computeOvertimeBankMins(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  todayKey: string,
+) {
+  const [logsAllRes, compAllRes] = await Promise.all([
+    supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", userId),
+    supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
+  ]);
+  if (logsAllRes.error) throw new Error(logsAllRes.error.message);
+  if (compAllRes.error) throw new Error(compAllRes.error.message);
+
+  const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
+  for (const row of logsAllRes.data ?? []) {
+    allWorkByDate.set(row.work_date, {
+      net: sanitizeMins(row.net_mins),
+      holiday: Boolean(row.holiday),
+    });
+  }
+  const allCompByDate = new Map<string, number>();
+  for (const row of compAllRes.data ?? []) {
+    allCompByDate.set(row.work_date, sanitizeMins(row.mins));
+  }
+
+  let overtimeBankMins = 0;
+  const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
+  for (const date of allDates) {
+    const work = allWorkByDate.get(date);
+    const comp = allCompByDate.get(date) ?? 0;
+    overtimeBankMins += getDayOvertimeContributionMins(
+      date,
+      work?.net ?? 0,
+      work?.holiday ?? false,
+      comp,
+      todayKey,
+    );
+  }
+
+  return overtimeBankMins;
+}
+
+async function getOvertimeBankMins(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  includeBank: boolean,
+) {
+  if (!includeBank) return { overtimeBankMins: 0, includesBank: false };
+
+  const todayKey = toDateString(new Date());
+  const statsRes = await supabase
+    .from("time_tracker_user_stats")
+    .select("overtime_bank_mins, computed_for_day")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (statsRes.error && !looksLikeMissingStatsObjects(statsRes.error.message ?? "")) {
+    throw new Error(statsRes.error.message);
+  }
+
+  const hasFreshStats =
+    !statsRes.error && statsRes.data?.computed_for_day === todayKey && statsRes.data?.overtime_bank_mins != null;
+  if (hasFreshStats) {
+    return {
+      overtimeBankMins: parseInteger(statsRes.data?.overtime_bank_mins),
+      includesBank: true,
+    };
+  }
+
+  const refreshRes = await supabase.rpc("tt_refresh_overtime_bank_stats", {
+    p_user: userId,
+    p_today: todayKey,
+  });
+  if (!refreshRes.error) {
+    return {
+      overtimeBankMins: parseInteger(refreshRes.data),
+      includesBank: true,
+    };
+  }
+
+  const detail = refreshRes.error.message ?? "";
+  const overtimeBankMins = await computeOvertimeBankMins(supabase, userId, todayKey);
+  if (looksLikeMissingStatsObjects(detail)) {
+    return { overtimeBankMins, includesBank: true };
+  }
+
+  const persistRes = await supabase.from("time_tracker_user_stats").upsert(
+    {
+      user_id: userId,
+      overtime_bank_mins: overtimeBankMins,
+      computed_for_day: todayKey,
+    },
+    { onConflict: "user_id" },
+  );
+  if (persistRes.error && !looksLikeMissingStatsObjects(persistRes.error.message ?? "")) {
+    throw new Error(persistRes.error.message);
+  }
+
+  return { overtimeBankMins, includesBank: true };
 }
 
 export async function GET(request: Request) {
@@ -213,35 +324,13 @@ export async function GET(request: Request) {
   const weekHoursMins = weekDays.reduce((sum, day) => sum + day.net_mins, 0);
 
   let overtimeBankMins = 0;
-  if (includeBank) {
-    const [logsAllRes, compAllRes] = await Promise.all([
-      supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", user.id),
-      supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", user.id),
-    ]);
-    if (logsAllRes.error) return NextResponse.json({ error: logsAllRes.error.message }, { status: 500 });
-    if (compAllRes.error) return NextResponse.json({ error: compAllRes.error.message }, { status: 500 });
-
-    const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
-    for (const row of logsAllRes.data ?? []) {
-      allWorkByDate.set(row.work_date, {
-        net: sanitizeMins(row.net_mins),
-        holiday: Boolean(row.holiday),
-      });
-    }
-    const allCompByDate = new Map<string, number>();
-    for (const row of compAllRes.data ?? []) {
-      allCompByDate.set(row.work_date, sanitizeMins(row.mins));
-    }
-    const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
-    const todayKey = toDateString(new Date());
-
-    for (const date of allDates) {
-      const work = allWorkByDate.get(date);
-      const comp = allCompByDate.get(date) ?? 0;
-      const net = work?.net ?? 0;
-      const holiday = work?.holiday ?? false;
-      overtimeBankMins += getDayOvertimeContributionMins(date, net, holiday, comp, todayKey);
-    }
+  let includesBank = false;
+  try {
+    const bank = await getOvertimeBankMins(supabase, user.id, includeBank);
+    overtimeBankMins = bank.overtimeBankMins;
+    includesBank = bank.includesBank;
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message || "Failed to load overtime bank" }, { status: 500 });
   }
 
   let travelByDate: Record<
@@ -337,7 +426,7 @@ export async function GET(request: Request) {
     travel_by_date: travelByDate,
     travel_debug: travelDebug,
     includes_travel: includeTravel,
-    includes_bank: includeBank,
+    includes_bank: includesBank,
   });
 }
 

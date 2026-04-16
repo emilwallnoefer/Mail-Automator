@@ -279,7 +279,7 @@ export function TimeTrackerPanel() {
       if (i === 0) continue;
       const key = toDateKey(addDays(center, i * 7));
       if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-      void fetchWeekData(key, { includeTravel: false, includeBank: false }).catch(() => {
+      void fetchWeekData(key, { includeTravel: false, includeBank: true }).catch(() => {
         // Silent prefetch failures should not interrupt UI interactions.
       });
     }
@@ -313,7 +313,7 @@ export function TimeTrackerPanel() {
           return;
         }
         setLoading(true);
-        const weekData = await fetchWeekData(weekStart, { includeTravel: false, includeBank: false });
+        const weekData = await fetchWeekData(weekStart, { includeTravel: false, includeBank: true });
         if (!active) return;
         applyWeekData(weekData);
         setWeekLoadTick((prev) => prev + 1);
@@ -378,7 +378,7 @@ export function TimeTrackerPanel() {
 
   const ensureWeekDetails = useCallback(async () => {
     const current = weekCacheRef.current.get(weekStart);
-    if (current?.includes_travel && current?.includes_bank) return;
+    if (current?.includes_travel) return;
     setDayDetailsLoading(true);
     try {
       const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true, includeBank: true });
