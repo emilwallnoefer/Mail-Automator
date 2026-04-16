@@ -5,18 +5,18 @@
       "label_en": "Inspector 5",
       "label_de": "Inspector 5",
       "label_fr": "Inspector 5",
-      "desc_en": "Inspector 5 centralizes captured mission data and streamlines visual review before internal handoff or customer delivery.",
-      "desc_de": "Inspector 5 bündelt erfasste Einsatzdaten und vereinfacht die visuelle Auswertung vor interner Übergabe oder Kundendokumentation.",
-      "desc_fr": "Inspector 5 centralise les données capturées et facilite la revue visuelle avant partage interne ou livrable client."
+      "desc_en": "Download and review flight data in one place.",
+      "desc_de": "Software zum Herunterladen und Auswerten der Flugdaten an einem Ort.",
+      "desc_fr": "Logiciel de visualisation des données capturées par le drone."
     },
     {
       "link_key": "KNOWLEDGE_BASE_URL",
       "label_en": "Flyability Knowledge Base",
       "label_de": "Flyability Knowledge Base",
       "label_fr": "Base de connaissances Flyability",
-      "desc_en": "Your main entry point for product support, firmware guidance, and practical field troubleshooting.",
-      "desc_de": "Euer zentraler Einstieg für Produktsupport, Firmware-Hinweise und praxisnahes Troubleshooting im Feld.",
-      "desc_fr": "Votre point d'entrée principal pour le support produit, les notes firmware et les bonnes pratiques d'exploitation."
+      "desc_en": "FAQs, firmware notes, and Elios 3 answers—the first stop when something in the field behaves differently than it did in class.",
+      "desc_de": "FAQs, Firmware und Produktwissen für Elios 3—erster Anlauf, wenn’s vor Ort anders läuft als in der Schulung.",
+      "desc_fr": "Hub pour dépannage, firmware et guides produit : FAQ, mises à jour et astuces terrain."
     }
   ],
   "conditional": [
@@ -25,9 +25,9 @@
       "label_en": "Nubigon",
       "label_de": "Nubigon",
       "label_fr": "Nubigon",
-      "desc_en": "Nubigon helps you leverage point clouds for advanced visual reviews and decision-ready stakeholder presentations.",
-      "desc_de": "Mit Nubigon nutzt ihr Punktwolken für vertiefte visuelle Analysen und entscheidungsorientierte Präsentationen.",
-      "desc_fr": "Nubigon permet d'exploiter les nuages de points pour des revues visuelles avancées et des présentations orientées décision.",
+      "desc_en": "Software for visually rich point-cloud animations in reviews and stakeholder meetings.",
+      "desc_de": "Software für anschauliche Punktwolken-Animationen in Reviews und Kundenterminen.",
+      "desc_fr": "Logiciel pour animer des nuages de points de façon convaincante (hors Flyability ; abonnement requis).",
       "industry_course_ids": ["faro_connect"]
     },
     {
@@ -35,9 +35,9 @@
       "label_en": "Customer Toolkit",
       "label_de": "Customer Toolkit",
       "label_fr": "Customer Toolkit",
-      "desc_en": "Downloadable brand assets, brochures, datasheets, and sample datasets for polished customer-facing deliverables.",
-      "desc_de": "Herunterladbare Markenassets, Broschüren, Datenblätter und Beispieldatensätze für professionelle Kundenunterlagen.",
-      "desc_fr": "Assets de marque, brochures, fiches techniques et jeux de données téléchargeables pour des livrables clients soignés.",
+      "desc_en": "Logos, brochures, spec sheets, sample datasets, and media for polished customer handouts.",
+      "desc_de": "Logos, Broschüren, Datenblätter, Beispieldatensätze und Medien für überzeugende Kundenunterlagen.",
+      "desc_fr": "Logos, brochures, fiches techniques, jeux de données et médias téléchargeables pour livrables clients.",
       "include_flag": "include_customer_toolkit"
     }
   ]

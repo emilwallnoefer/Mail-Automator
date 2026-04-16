@@ -221,19 +221,8 @@ def is_truthy(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "ja"}
 
 
-def callout_prefix(language: str) -> str:
-    if language == "de":
-        return "Empfehlung: "
-    if language == "fr":
-        return "Recommandation : "
-    return "Recommendation: "
-
-
-def with_callout(language: str, desc: str) -> str:
-    t = desc.strip()
-    if not t:
-        return ""
-    return f"{callout_prefix(language)}{t}"
+def with_callout(_language: str, desc: str) -> str:
+    return desc.strip()
 
 
 def training_materials_heading(language: str) -> str:
@@ -251,7 +240,7 @@ def build_training_materials_block(links: Dict[str, str], language: str) -> str:
             "INTRO_TRAINING_URL",
             {
                 "en": "Introductory Training for Elios 3",
-                "de": "Einführungstraining für den Elios 3",
+                "de": "Einführungstraining für die Elios 3",
                 "fr": "Formation d'introduction Elios 3",
             },
             {
