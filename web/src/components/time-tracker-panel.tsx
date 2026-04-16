@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { createPortal } from "react-dom";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 import {
-  getDayOvertimeContributionMins,
   isPremiumOvertimeDay,
   isSaturdayDate,
   isSundayDate,
@@ -227,7 +226,6 @@ export function TimeTrackerPanel() {
   const [formStop, setFormStop] = useState("");
   const [formHoliday, setFormHoliday] = useState(false);
   const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
-  const todayKey = toDateKey(new Date());
   const currentWeekStartKey = toDateKey(getMonday());
 
   const applyWeekData = useCallback((weekData: WeekResponse) => {
@@ -376,6 +374,11 @@ export function TimeTrackerPanel() {
     prefetchNearbyWeeks(weekStart);
   }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
+  const invalidateWeekCaches = useCallback(() => {
+    weekCacheRef.current.clear();
+    weekInflightRef.current.clear();
+  }, []);
+
   const ensureWeekDetails = useCallback(async () => {
     const current = weekCacheRef.current.get(weekStart);
     if (current?.includes_travel) return;
@@ -425,21 +428,17 @@ export function TimeTrackerPanel() {
         nextDays[dayIndex] = nextDay;
 
         const weekHoursDelta = nextDay.net_mins - prevDay.net_mins;
-        const overtimeDelta =
-          getDayOvertimeContributionMins(nextDay.date, nextDay.net_mins, nextDay.holiday, nextDay.comp_mins, todayKey) -
-          getDayOvertimeContributionMins(prevDay.date, prevDay.net_mins, prevDay.holiday, prevDay.comp_mins, todayKey);
 
         const nextWeek: WeekResponse = {
           ...prev,
           week_hours_mins: prev.week_hours_mins + weekHoursDelta,
-          overtime_bank_mins: prev.overtime_bank_mins + overtimeDelta,
           days: nextDays,
         };
         weekCacheRef.current.set(weekStart, nextWeek);
         return nextWeek;
       });
     },
-    [weekStart, todayKey],
+    [weekStart],
   );
 
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
@@ -504,6 +503,10 @@ export function TimeTrackerPanel() {
       },
     })
       .then(() => {
+        invalidateWeekCaches();
+        void refreshWeek().catch(() => {
+          // Keep optimistic UI if the background sync fails.
+        });
         setToast({ kind: "ok", message: "Day saved." });
       })
       .catch((error) => {
@@ -541,6 +544,10 @@ export function TimeTrackerPanel() {
           comp_note: payload.comp_mins > 0 ? "auto-fill" : "",
         }));
       }
+      invalidateWeekCaches();
+      void refreshWeek().catch(() => {
+        // Keep optimistic UI if the background sync fails.
+      });
       setToast({ kind: "ok", message: "Missing time updated." });
     } catch (error) {
       // Rollback optimistic value if request failed.
@@ -589,6 +596,10 @@ export function TimeTrackerPanel() {
           breaks: nextBreaks,
         },
       });
+      invalidateWeekCaches();
+      void refreshWeek().catch(() => {
+        // Keep optimistic UI if the background sync fails.
+      });
       setToast({ kind: "ok", message: "Day filled." });
     } catch (error) {
       patchDayInCurrentWeek(date, () => ({
@@ -614,6 +625,10 @@ export function TimeTrackerPanel() {
         comp_note: "",
         breaks: [],
       }));
+      invalidateWeekCaches();
+      void refreshWeek().catch(() => {
+        // Keep reset UI if the background sync fails.
+      });
       returnToWeekdays();
       setToast({ kind: "ok", message: "Day reset." });
     } catch (error) {
@@ -898,7 +913,7 @@ export function TimeTrackerPanel() {
     const isSelected = selectedDay?.date === day.date;
     const revealed = index < revealedDayCount;
     const isRelaxDay = isWeekendDate(day.date) || day.holiday;
-    const premiumOvertimeDay = isPremiumOvertimeDay(day.date, day.net_mins, day.holiday, todayKey);
+    const premiumOvertimeDay = isPremiumOvertimeDay(day.date, day.net_mins, day.holiday);
     const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
     const overtimeWorkedMinsWeekday = premiumOvertimeDay
       ? Math.max(0, day.net_mins)

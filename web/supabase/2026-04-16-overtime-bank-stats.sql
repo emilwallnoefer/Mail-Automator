@@ -50,7 +50,11 @@ begin
     sum(
       case
         when coalesce(logs.holiday, false) and coalesce(logs.net_mins, 0) = 0 then 0
-        when ((extract(dow from dates.work_date)::int in (0, 6)) and dates.work_date >= p_today)
+        when (
+          (extract(dow from dates.work_date)::int in (0, 6))
+          and coalesce(logs.net_mins, 0) > 0
+          and dates.work_date >= date '2026-04-01'
+        )
           or (coalesce(logs.holiday, false) and coalesce(logs.net_mins, 0) > 0)
           then greatest(0, coalesce(logs.net_mins, 0)) - coalesce(comp.mins, 0)
         else greatest(0, coalesce(logs.net_mins, 0) - 504) - coalesce(comp.mins, 0)
@@ -84,7 +88,7 @@ begin
   values (
     p_user,
     v_total,
-    p_today,
+    current_date,
     now()
   )
   on conflict (user_id) do update

@@ -146,7 +146,6 @@ function looksLikeMissingStatsObjects(detail: string) {
 async function computeOvertimeBankMins(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  todayKey: string,
 ) {
   const [logsAllRes, compAllRes] = await Promise.all([
     supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", userId),
@@ -177,7 +176,6 @@ async function computeOvertimeBankMins(
       work?.net ?? 0,
       work?.holiday ?? false,
       comp,
-      todayKey,
     );
   }
 
@@ -191,7 +189,6 @@ async function getOvertimeBankMins(
 ) {
   if (!includeBank) return { overtimeBankMins: 0, includesBank: false };
 
-  const todayKey = toDateString(new Date());
   const statsRes = await supabase
     .from("time_tracker_user_stats")
     .select("overtime_bank_mins, computed_for_day")
@@ -202,8 +199,7 @@ async function getOvertimeBankMins(
     throw new Error(statsRes.error.message);
   }
 
-  const hasFreshStats =
-    !statsRes.error && statsRes.data?.computed_for_day === todayKey && statsRes.data?.overtime_bank_mins != null;
+  const hasFreshStats = !statsRes.error && statsRes.data?.overtime_bank_mins != null;
   if (hasFreshStats) {
     return {
       overtimeBankMins: parseInteger(statsRes.data?.overtime_bank_mins),
@@ -213,7 +209,6 @@ async function getOvertimeBankMins(
 
   const refreshRes = await supabase.rpc("tt_refresh_overtime_bank_stats", {
     p_user: userId,
-    p_today: todayKey,
   });
   if (!refreshRes.error) {
     return {
@@ -223,7 +218,7 @@ async function getOvertimeBankMins(
   }
 
   const detail = refreshRes.error.message ?? "";
-  const overtimeBankMins = await computeOvertimeBankMins(supabase, userId, todayKey);
+  const overtimeBankMins = await computeOvertimeBankMins(supabase, userId);
   if (looksLikeMissingStatsObjects(detail)) {
     return { overtimeBankMins, includesBank: true };
   }
@@ -232,7 +227,7 @@ async function getOvertimeBankMins(
     {
       user_id: userId,
       overtime_bank_mins: overtimeBankMins,
-      computed_for_day: todayKey,
+      computed_for_day: toDateString(new Date()),
     },
     { onConflict: "user_id" },
   );
