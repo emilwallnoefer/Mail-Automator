@@ -39,9 +39,9 @@ export const RESOURCE_SECTION_EMAIL_INTRO: Partial<
   Record<ResourceSectionId, { en: string; de: string; fr: string }>
 > = {
   videos: {
-    en: "Short videos on payloads, power, tether, and batteries—share with pilots and anyone supporting flights on site before those missions.",
-    de: "Kurze Videos zu Payloads, Stromversorgung, Tether und Akkus—für Piloten und Unterstützung vor Ort, bevor solche Einsätze anstehen.",
-    fr: "Vidéos courtes sur charges utiles, alimentation, tether et batteries—à partager avec pilotes et équipe terrain avant ces missions.",
+    en: "Short videos on payloads, power, tether, and batteries\nshare with pilots and anyone supporting flights on site before those missions.",
+    de: "Kurze Videos zu Payloads, Stromversorgung, Tether und Akkus\nfür Piloten und Unterstützung vor Ort, bevor solche Einsätze anstehen.",
+    fr: "Vidéos courtes sur charges utiles, alimentation, tether et batteries\nà partager avec pilotes et équipe terrain avant ces missions.",
   },
 };
 
@@ -118,11 +118,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Einführungstraining für die Elios 3",
     label_fr: "Formation d'introduction Elios 3",
     desc_en:
-      "Day-1 slide deck with every Elios 3 feature, control, and menu setting walked through in order—handy as a refresher.",
+      "Day-1 slide deck with every Elios 3 feature, control, and menu setting walked through in order\nhandy as a refresher.",
     desc_de:
-      "Foliensatz von Tag 1 mit jeder Funktion, jedem Bedienelement und jeder Menüeinstellung der Elios 3, Schritt für Schritt erklärt—praktisch als Nachschlagewerk.",
+      "Foliensatz von Tag 1 mit jeder Funktion, jedem Bedienelement und jeder Menüeinstellung der Elios 3, Schritt für Schritt erklärt\npraktisch als Nachschlagewerk.",
     desc_fr:
-      "Diaporama du jour 1 avec chaque fonction, commande et réglage de menu de l'Elios 3, passés en revue dans l'ordre—pratique comme rappel.",
+      "Diaporama du jour 1 avec chaque fonction, commande et réglage de menu de l'Elios 3, passés en revue dans l'ordre\npratique comme rappel.",
     default_checked: true,
     link_key: "INTRO_TRAINING_URL",
   },
@@ -133,11 +133,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Indoor Aerial Inspection Methodology (AIIM) Training",
     label_fr: "Formation Indoor Aerial Inspection Methodology (AIIM)",
     desc_en:
-      "Day 2–3 slide deck covering mission prep, site reconnaissance, inspection execution, and wrap-up, step by step—handy for any complex job.",
+      "Day 2–3 slide deck covering mission prep, site reconnaissance, inspection execution, and wrap-up, step by step\nhandy for any complex job.",
     desc_de:
-      "Foliensatz von Tag 2–3 zu Missionsvorbereitung, Erkundung, Inspektionsdurchführung und Abschluss, Schritt für Schritt—hilfreich für komplexe Einsätze.",
+      "Foliensatz von Tag 2–3 zu Missionsvorbereitung, Erkundung, Inspektionsdurchführung und Abschluss, Schritt für Schritt\nhilfreich für komplexe Einsätze.",
     desc_fr:
-      "Diaporama des jours 2–3 couvrant préparation de mission, reconnaissance, exécution de l'inspection et clôture, étape par étape—utile pour toute mission complexe.",
+      "Diaporama des jours 2–3 couvrant préparation de mission, reconnaissance, exécution de l'inspection et clôture, étape par étape\nutile pour toute mission complexe.",
     default_checked: true,
     link_key: "AIIM_TRAINING_URL",
   },
@@ -148,11 +148,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Method Statement Vorlage",
     label_fr: "Modèle de méthodologie (Method Statement)",
     desc_en:
-      "Template listing all the mission questions to cover with a client before a flight—scope, access, safety, deliverables—use as-is or adapt.",
+      "Template listing all the mission questions to cover with a client before a flight—scope, access, safety, deliverables\nuse as-is or adapt.",
     desc_de:
-      "Vorlage mit allen Missionsfragen, die ihr vor dem Flug mit dem Kunden klären solltet—Umfang, Zugang, Sicherheit, Ergebnisse—so nutzen oder anpassen.",
+      "Vorlage mit allen Missionsfragen, die ihr vor dem Flug mit dem Kunden klären solltet—Umfang, Zugang, Sicherheit, Ergebnisse\nso nutzen oder anpassen.",
     desc_fr:
-      "Modèle regroupant toutes les questions de mission à aborder avec le client avant un vol—périmètre, accès, sécurité, livrables—à utiliser ou à adapter.",
+      "Modèle regroupant toutes les questions de mission à aborder avec le client avant un vol—périmètre, accès, sécurité, livrables\nà utiliser ou à adapter.",
     default_checked: true,
     link_key: "METHOD_STATEMENT_URL",
   },
@@ -163,11 +163,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Leitfaden zur Risikobewertung",
     label_fr: "Guide d'évaluation des risques",
     desc_en:
-      "Scorecard scoring missions on human, drone, and environmental risk factors across weighted categories—useful for sizing the job.",
+      "Scorecard scoring missions on human, drone, and environmental risk factors across weighted categories\nuseful for sizing the job.",
     desc_de:
-      "Bewertungsbogen, der Missionen nach menschlichen, drohnen- und umweltbezogenen Risikofaktoren in gewichteten Kategorien einstuft—hilft beim Einschätzen des Einsatzes.",
+      "Bewertungsbogen, der Missionen nach menschlichen, drohnen- und umweltbezogenen Risikofaktoren in gewichteten Kategorien einstuft\nhilft beim Einschätzen des Einsatzes.",
     desc_fr:
-      "Grille qui note les missions selon les facteurs humains, drone et environnementaux dans des catégories pondérées—utile pour dimensionner l'intervention.",
+      "Grille qui note les missions selon les facteurs humains, drone et environnementaux dans des catégories pondérées\nutile pour dimensionner l'intervention.",
     default_checked: true,
     link_key: "RISK_ASSESSMENT_URL",
   },
@@ -178,11 +178,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "SOP (Standard Operating Procedure)",
     label_fr: "SOP (Standard Operating Procedure)",
     desc_en:
-      "Manual listing every pre- and post-inspection step, check, and workflow reference in one document—use it as a reference or a printed checklist.",
+      "Manual listing every pre- and post-inspection step, check, and workflow reference in one document\nuse it as a reference or a printed checklist.",
     desc_de:
-      "Handbuch mit allen Schritten, Checks und Workflow-Referenzen vor und nach der Inspektion in einem Dokument—als Referenz oder ausgedruckte Checkliste nutzbar.",
+      "Handbuch mit allen Schritten, Checks und Workflow-Referenzen vor und nach der Inspektion in einem Dokument\nals Referenz oder ausgedruckte Checkliste nutzbar.",
     desc_fr:
-      "Manuel regroupant toutes les étapes, vérifications et références de workflow avant et après inspection dans un seul document—comme référence ou checklist imprimée.",
+      "Manuel regroupant toutes les étapes, vérifications et références de workflow avant et après inspection dans un seul document\ncomme référence ou checklist imprimée.",
     default_checked: true,
     link_key: "SOP_URL",
   },
@@ -197,11 +197,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability Knowledge Base",
     label_fr: "Base de connaissances Flyability",
     desc_en:
-      "Flyability's hub with FAQs, firmware notes, troubleshooting articles, Elios 3 product guides, and payload documentation—use it as your reference.",
+      "Flyability's hub with FAQs, firmware notes, troubleshooting articles, Elios 3 product guides, and payload documentation\nuse it as your reference.",
     desc_de:
-      "Flyability-Hub mit FAQs, Firmware-Hinweisen, Troubleshooting-Artikeln, Elios-3-Produktguides und Payload-Dokumentation—als zentrales Nachschlagewerk nutzen.",
+      "Flyability-Hub mit FAQs, Firmware-Hinweisen, Troubleshooting-Artikeln, Elios-3-Produktguides und Payload-Dokumentation\nals zentrales Nachschlagewerk nutzen.",
     desc_fr:
-      "Hub Flyability avec FAQ, notes firmware, articles de dépannage, guides produit Elios 3 et documentation des payloads—votre référence centrale (notre « Wikipedia-bility »).",
+      "Hub Flyability avec FAQ, notes firmware, articles de dépannage, guides produit Elios 3 et documentation des payloads\nvotre référence centrale (notre « Wikipedia-bility »).",
     default_checked: true,
     link_key: "KNOWLEDGE_BASE_URL",
   },
@@ -213,11 +213,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "YouTube-Kanal",
     label_fr: "Chaîne YouTube",
     desc_en:
-      "Flyability's YouTube channel with tutorial playlists, payload walkthroughs, and industry case studies—great for quick refreshers.",
+      "Flyability's YouTube channel with tutorial playlists, payload walkthroughs, and industry case studies\ngreat for quick refreshers.",
     desc_de:
-      "Flyability-YouTube-Kanal mit Tutorial-Playlists, Payload-Walkthroughs und Branchen-Fallstudien—ideal für schnelle Auffrischer.",
+      "Flyability-YouTube-Kanal mit Tutorial-Playlists, Payload-Walkthroughs und Branchen-Fallstudien\nideal für schnelle Auffrischer.",
     desc_fr:
-      "Chaîne YouTube Flyability avec playlists tutos, démos des payloads et études de cas sectorielles—idéale pour des rappels rapides.",
+      "Chaîne YouTube Flyability avec playlists tutos, démos des payloads et études de cas sectorielles\nidéale pour des rappels rapides.",
     default_checked: false,
     link_key: "YOUTUBE_CHANNEL_URL",
   },
@@ -229,11 +229,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Customer Toolkit",
     label_fr: "Customer Toolkit",
     desc_en:
-      "Downloadable Elios 3 brand assets, brochures, spec sheets, sample datasets, and marketing media—reuse in your own client materials.",
+      "Downloadable Elios 3 brand assets, brochures, spec sheets, sample datasets, and marketing media\nreuse in your own client materials.",
     desc_de:
-      "Herunterladbare Elios-3-Markenassets, Broschüren, Datenblätter, Beispieldatensätze und Marketing-Medien—für eigene Kundenunterlagen wiederverwendbar.",
+      "Herunterladbare Elios-3-Markenassets, Broschüren, Datenblätter, Beispieldatensätze und Marketing-Medien\nfür eigene Kundenunterlagen wiederverwendbar.",
     desc_fr:
-      "Assets de marque, brochures, fiches techniques, jeux de données et médias marketing Elios 3 téléchargeables—à réutiliser dans vos supports clients.",
+      "Assets de marque, brochures, fiches techniques, jeux de données et médias marketing Elios 3 téléchargeables\nà réutiliser dans vos supports clients.",
     default_checked: false,
     link_key: "CUSTOMER_TOOLKIT_URL",
   },
@@ -249,7 +249,7 @@ const usefulOptions: ChangeOption[] = [
     desc_de:
       "Flyabilitys Elios-3-Flugdatensoftware zum Herunterladen, Ansehen und Auswerten der Aufnahmen an einem Ort (stets die aktuelle Version unter diesem Link).",
     desc_fr:
-      "Logiciel Flyability pour les données de vol Elios 3—téléchargement, visualisation et relecture des captures au même endroit (toujours la dernière version à ce lien).",
+      "Logiciel Flyability pour les données de vol Elios 3\ntéléchargement, visualisation et relecture des captures au même endroit (toujours la dernière version à ce lien).",
     default_checked: true,
     link_key: "INSPECTOR_URL",
   },
@@ -261,11 +261,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Nubigon",
     label_fr: "Nubigon",
     desc_en:
-      "Third-party software for point-cloud animations and cinematic fly-throughs of Elios 3 scans (subscription required)—useful for presentations.",
+      "Third-party software for point-cloud animations and cinematic fly-throughs of Elios 3 scans (subscription required)\nuseful for presentations.",
     desc_de:
-      "Software für Punktwolken-Animationen und kinoreife Flüge durch Elios-3-Scans—nützlich für Präsentationen.",
+      "Software für Punktwolken-Animationen und kinoreife Flüge durch Elios-3-Scans\nnützlich für Präsentationen.",
     desc_fr:
-      "Logiciel tiers pour animations de nuages de points et fly-throughs cinématiques des scans Elios 3 (abonnement requis)—utile pour les présentations.",
+      "Logiciel tiers pour animations de nuages de points et fly-throughs cinématiques des scans Elios 3 (abonnement requis)\nutile pour les présentations.",
     default_checked: false,
     link_key: "NUBIGON_URL",
   },
@@ -293,11 +293,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "UT-Einführungstraining Elios 3 — Foliensatz",
     label_fr: "Formation d'introduction UT Elios 3 — diaporama",
     desc_en:
-      "Light intro slide deck on the UT payload hardware, first setup, and basic ultrasonic concepts—use it before first UT jobs.",
+      "Light intro slide deck on the UT payload hardware, first setup, and basic ultrasonic concepts\nuse it before first UT jobs.",
     desc_de:
-      "Leichter Einführungsfoliensatz zu Hardware, erster Inbetriebnahme und Ultraschall-Grundlagen des UT-Payloads—vor den ersten UT-Einsätzen nutzen.",
+      "Leichter Einführungsfoliensatz zu Hardware, erster Inbetriebnahme und Ultraschall-Grundlagen des UT-Payloads\nvor den ersten UT-Einsätzen nutzen.",
     desc_fr:
-      "Diaporama d'introduction allégé sur le hardware, la première mise en route et les bases ultrason du payload UT—à utiliser avant les premiers jobs UT.",
+      "Diaporama d'introduction allégé sur le hardware, la première mise en route et les bases ultrason du payload UT\nà utiliser avant les premiers jobs UT.",
     default_checked: false,
     link_key: "INTRO_UT_TRAINING_URL",
   },
@@ -309,11 +309,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "UT-Fortgeschrittenentraining Elios 3 — Foliensatz",
     label_fr: "Formation UT avancée Elios 3 — diaporama",
     desc_en:
-      "Full UT payload slide deck on probe technology, dual-crystal mechanics, measurement theory, and inspection methodology—use for any UT mission.",
+      "Full UT payload slide deck on probe technology, dual-crystal mechanics, measurement theory, and inspection methodology\nuse for any UT mission.",
     desc_de:
-      "Vollständiger UT-Payload-Foliensatz zu Sondentechnologie, Dual-Crystal-Mechanik, Messtheorie und Inspektionsmethodik—für jeden UT-Einsatz nutzbar.",
+      "Vollständiger UT-Payload-Foliensatz zu Sondentechnologie, Dual-Crystal-Mechanik, Messtheorie und Inspektionsmethodik\nfür jeden UT-Einsatz nutzbar.",
     desc_fr:
-      "Diaporama complet du payload UT : technologie des sondes, mécanique double cristal, théorie de mesure et méthodologie d'inspection—utilisable sur toute mission UT.",
+      "Diaporama complet du payload UT : technologie des sondes, mécanique double cristal, théorie de mesure et méthodologie d'inspection\nutilisable sur toute mission UT.",
     default_checked: false,
     link_key: "UT_ADVANCED_ELIO3_DECK_URL",
   },
@@ -325,11 +325,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "FARO Connect Training — Foliensatz",
     label_fr: "Formation FARO Connect — diaporama",
     desc_en:
-      "REV 7 surveyor slide deck on the full capture-to-clean-point-cloud workflow in FARO Connect, with flight best practices along the way—reference when processing.",
+      "REV 7 surveyor slide deck on the full capture-to-clean-point-cloud workflow in FARO Connect, with flight best practices along the way\nreference when processing.",
     desc_de:
-      "Surveyor-Foliensatz für REV 7 zum gesamten Workflow von der Aufnahme bis zur sauberen Punktwolke in FARO Connect, inkl. Flug-Best-Practices—als Referenz beim Verarbeiten.",
+      "Surveyor-Foliensatz für REV 7 zum gesamten Workflow von der Aufnahme bis zur sauberen Punktwolke in FARO Connect, inkl. Flug-Best-Practices\nals Referenz beim Verarbeiten.",
     desc_fr:
-      "Diaporama surveyor REV 7 sur le workflow complet, de la capture au nuage de points propre dans FARO Connect, avec les bonnes pratiques de vol—comme référence en traitement.",
+      "Diaporama surveyor REV 7 sur le workflow complet, de la capture au nuage de points propre dans FARO Connect, avec les bonnes pratiques de vol\ncomme référence en traitement.",
     default_checked: false,
     link_key: "FARO_CONNECT_DECK_URL",
   },
@@ -341,11 +341,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "FARO Connect Online-Kurs",
     label_fr: "Cours en ligne FARO Connect",
     desc_en:
-      "Self-paced Academy course with modules and quizzes on point-cloud processing and the FARO Connect workflow end to end—work through at your own pace.",
+      "Self-paced Academy course with modules and quizzes on point-cloud processing and the FARO Connect workflow end to end\nwork through at your own pace.",
     desc_de:
-      "Selbstgeführter Academy-Kurs mit Modulen und Quizfragen zur Punktwolkenverarbeitung und zum FARO-Connect-Workflow von A bis Z—im eigenen Tempo durcharbeiten.",
+      "Selbstgeführter Academy-Kurs mit Modulen und Quizfragen zur Punktwolkenverarbeitung und zum FARO-Connect-Workflow von A bis Z\nim eigenen Tempo durcharbeiten.",
     desc_fr:
-      "Cours Academy en autonomie avec modules et quiz sur le traitement des nuages de points et le workflow FARO Connect de bout en bout—à suivre à son rythme.",
+      "Cours Academy en autonomie avec modules et quiz sur le traitement des nuages de points et le workflow FARO Connect de bout en bout\nà suivre à son rythme.",
     default_checked: false,
     link_key: "FARO_CONNECT_ONLINE_COURSE_URL",
   },
@@ -357,11 +357,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Water & Wastewater Training — Foliensatz",
     label_fr: "Formation eau & eaux usées — diaporama",
     desc_en:
-      "Slide deck on risks, safety considerations, flight best practices, and target-based georeferencing in sewers and underground pipes—reference before similar jobs.",
+      "Slide deck on risks, safety considerations, flight best practices, and target-based georeferencing in sewers and underground pipes\nreference before similar jobs.",
     desc_de:
-      "Foliensatz zu Risiken, Sicherheitsaspekten, Flug-Best-Practices und Target-basierter Georeferenzierung in Kanälen und unterirdischen Leitungen—als Referenz vor ähnlichen Einsätzen.",
+      "Foliensatz zu Risiken, Sicherheitsaspekten, Flug-Best-Practices und Target-basierter Georeferenzierung in Kanälen und unterirdischen Leitungen\nals Referenz vor ähnlichen Einsätzen.",
     desc_fr:
-      "Diaporama sur les risques, considérations de sécurité, bonnes pratiques de vol et géoréférencement par cibles dans égouts et conduites souterraines—comme référence avant missions similaires.",
+      "Diaporama sur les risques, considérations de sécurité, bonnes pratiques de vol et géoréférencement par cibles dans égouts et conduites souterraines\ncomme référence avant missions similaires.",
     default_checked: false,
     link_key: "WATER_WASTEWATER_DECK_URL",
   },
@@ -373,11 +373,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Zementwerk- & Ofeninspektion — Foliensatz",
     label_fr: "Inspection cimenterie & four — diaporama",
     desc_en:
-      "Slide deck on cement-plant environments, risk points, flight best practices, and inspection examples on kilns, coolers, and typical assets—reference before similar jobs.",
+      "Slide deck on cement-plant environments, risk points, flight best practices, and inspection examples on kilns, coolers, and typical assets\nreference before similar jobs.",
     desc_de:
-      "Foliensatz zu Zementanlagen, Risikopunkten, Flug-Best-Practices und Inspektionsbeispielen an Ofen, Kühler und typischen Anlagen—als Referenz vor ähnlichen Einsätzen.",
+      "Foliensatz zu Zementanlagen, Risikopunkten, Flug-Best-Practices und Inspektionsbeispielen an Ofen, Kühler und typischen Anlagen\nals Referenz vor ähnlichen Einsätzen.",
     desc_fr:
-      "Diaporama sur les environnements cimentiers, les points de risque, les bonnes pratiques de vol et des exemples d'inspections sur fours, refroidisseurs et ouvrages typiques—référence avant missions similaires.",
+      "Diaporama sur les environnements cimentiers, les points de risque, les bonnes pratiques de vol et des exemples d'inspections sur fours, refroidisseurs et ouvrages typiques\nréférence avant missions similaires.",
     default_checked: false,
     link_key: "CEMENT_ONLINE_DECK_URL",
   },
@@ -389,11 +389,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Wastewater Online-Kurs",
     label_fr: "Cours en ligne eaux usées",
     desc_en:
-      "Academy course on wastewater workflows—sewer networks, treatment plants, access points, and inspection reporting—useful before similar jobs.",
+      "Academy course on wastewater workflows—sewer networks, treatment plants, access points, and inspection reporting\nuseful before similar jobs.",
     desc_de:
-      "Academy-Kurs zu Abwasser-Workflows—Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte—vor ähnlichen Einsätzen nützlich.",
+      "Academy-Kurs zu Abwasser-Workflows—Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte\nvor ähnlichen Einsätzen nützlich.",
     desc_fr:
-      "Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection—utile avant missions similaires.",
+      "Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection\nutile avant missions similaires.",
     default_checked: false,
     link_key: "WASTEWATER_ONLINE_COURSE_URL",
   },
@@ -405,11 +405,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability Academy",
     label_fr: "Flyability Academy",
     desc_en:
-      "Flyability Academy hub listing all free industry and payload courses with enrollment and progress tracking—use to go deeper after training.",
+      "Flyability Academy hub listing all free industry and payload courses with enrollment and progress tracking\nuse to go deeper after training.",
     desc_de:
-      "Flyability-Academy-Hub mit allen kostenlosen Branchen- und Payload-Kursen, Anmeldung und Fortschrittsübersicht—nach dem Training zum Vertiefen nutzen.",
+      "Flyability-Academy-Hub mit allen kostenlosen Branchen- und Payload-Kursen, Anmeldung und Fortschrittsübersicht\nnach dem Training zum Vertiefen nutzen.",
     desc_fr:
-      "Hub Flyability Academy listant tous les cours gratuits par secteur et payload, avec inscription et suivi de progression—à utiliser pour approfondir après la formation.",
+      "Hub Flyability Academy listant tous les cours gratuits par secteur et payload, avec inscription et suivi de progression\nà utiliser pour approfondir après la formation.",
     default_checked: false,
     link_key: "FLYABILITY_ACADEMY_HUB_URL",
   },
@@ -421,11 +421,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Gas Sensor Quick-Start-Guide",
     label_fr: "Guide de démarrage capteur de gaz",
     desc_en:
-      "Knowledge-base quick-start on the gas sensor—mounting, preflight checks, alarm thresholds, and in-flight reading—watch before first gas jobs.",
+      "Knowledge-base quick-start on the gas sensor—mounting, preflight checks, alarm thresholds, and in-flight reading\nwatch before first gas jobs.",
     desc_de:
-      "Knowledge-Base-Quick-Start zum Gas-Sensor—Montage, Preflight, Alarmschwellen und Ablesen im Flug—vor den ersten Gas-Einsätzen ansehen.",
+      "Knowledge-Base-Quick-Start zum Gas-Sensor—Montage, Preflight, Alarmschwellen und Ablesen im Flug\nvor den ersten Gas-Einsätzen ansehen.",
     desc_fr:
-      "Guide de démarrage rapide Knowledge Base sur le capteur de gaz—montage, vérifications avant vol, seuils d'alarme et lecture en vol—à voir avant les premiers jobs gaz.",
+      "Guide de démarrage rapide Knowledge Base sur le capteur de gaz—montage, vérifications avant vol, seuils d'alarme et lecture en vol\nà voir avant les premiers jobs gaz.",
     default_checked: false,
     link_key: "GAS_SENSOR_QUICKSTART_URL",
   },
@@ -437,11 +437,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Elios 3 RAD-Sensor Schulungsvideo",
     label_fr: "Vidéo de formation capteur RAD Elios 3",
     desc_en:
-      "Tutorial video on the Elios 3 radiation sensor—mounting, flight behaviour, data cues, acquisition, and on-site practices—watch before first RAD jobs.",
+      "Tutorial video on the Elios 3 radiation sensor—mounting, flight behaviour, data cues, acquisition, and on-site practices\nwatch before first RAD jobs.",
     desc_de:
-      "Tutorial-Video zum Elios-3-Strahlungssensor—Montage, Flugverhalten, Datenhinweise, Aufnahme und Praxis vor Ort—vor den ersten RAD-Einsätzen ansehen.",
+      "Tutorial-Video zum Elios-3-Strahlungssensor—Montage, Flugverhalten, Datenhinweise, Aufnahme und Praxis vor Ort\nvor den ersten RAD-Einsätzen ansehen.",
     desc_fr:
-      "Vidéo tutorielle sur le capteur de radiation Elios 3—montage, comportement en vol, indices dans les données, acquisition et pratiques sur site—à voir avant les premiers jobs RAD.",
+      "Vidéo tutorielle sur le capteur de radiation Elios 3—montage, comportement en vol, indices dans les données, acquisition et pratiques sur site\nà voir avant les premiers jobs RAD.",
     default_checked: false,
     link_key: "RAD_SENSOR_VIDEO_URL",
   },
@@ -453,11 +453,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "High-Capacity-Akku Start-Guide",
     label_fr: "Guide de démarrage batterie grande capacité",
     desc_en:
-      "Video guide comparing standard and high-capacity batteries—handling, charging, runtime, and in-flight behaviour differences—watch before switching batteries.",
+      "Video guide comparing standard and high-capacity batteries—handling, charging, runtime, and in-flight behaviour differences\nwatch before switching batteries.",
     desc_de:
-      "Video-Guide mit Vergleich von Standard- und High-Capacity-Akkus—Handling, Laden, Laufzeit und Unterschiede im Flugverhalten—vor dem Wechsel ansehen.",
+      "Video-Guide mit Vergleich von Standard- und High-Capacity-Akkus—Handling, Laden, Laufzeit und Unterschiede im Flugverhalten\nvor dem Wechsel ansehen.",
     desc_fr:
-      "Vidéo comparant batteries standards et grande capacité—manipulation, charge, autonomie et différences de comportement du drone—à voir avant de changer de batterie.",
+      "Vidéo comparant batteries standards et grande capacité—manipulation, charge, autonomie et différences de comportement du drone\nà voir avant de changer de batterie.",
     default_checked: false,
     link_key: "HIGH_CAP_BATTERY_GUIDE_URL",
   },
@@ -469,11 +469,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Tether-Einheit Start-Guide",
     label_fr: "Guide de démarrage unité d'attache",
     desc_en:
-      "Video guide to the tether unit—rigging, safe in-flight use, maintenance, and storage between missions—watch before first tethered flight.",
+      "Video guide to the tether unit—rigging, safe in-flight use, maintenance, and storage between missions\nwatch before first tethered flight.",
     desc_de:
-      "Video-Guide zur Tether-Einheit—Aufbau, sicherer Flugeinsatz, Wartung und Lagerung zwischen Einsätzen—vor dem ersten Tether-Flug ansehen.",
+      "Video-Guide zur Tether-Einheit—Aufbau, sicherer Flugeinsatz, Wartung und Lagerung zwischen Einsätzen\nvor dem ersten Tether-Flug ansehen.",
     desc_fr:
-      "Vidéo sur l'unité d'attache—montage, utilisation sûre en vol, maintenance et rangement entre les missions—à voir avant le premier vol attaché.",
+      "Vidéo sur l'unité d'attache—montage, utilisation sûre en vol, maintenance et rangement entre les missions\nà voir avant le premier vol attaché.",
     default_checked: false,
     link_key: "TETHER_UNIT_GUIDE_URL",
   },
@@ -485,11 +485,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability-Zelt Falt-Tutorial",
     label_fr: "Tutoriel pliage tente Flyability",
     desc_en:
-      "Step-by-step video on how to fold the Flyability tent back into its bag without damaging fabric or poles—watch before packing up on site.",
+      "Step-by-step video on how to fold the Flyability tent back into its bag without damaging fabric or poles\nwatch before packing up on site.",
     desc_de:
-      "Schritt-für-Schritt-Video, wie das Flyability-Zelt wieder in die Tasche gefaltet wird, ohne Stoff oder Stangen zu beschädigen—vor dem Zusammenpacken vor Ort ansehen.",
+      "Schritt-für-Schritt-Video, wie das Flyability-Zelt wieder in die Tasche gefaltet wird, ohne Stoff oder Stangen zu beschädigen\nvor dem Zusammenpacken vor Ort ansehen.",
     desc_fr:
-      "Vidéo pas à pas pour replier la tente Flyability dans son sac sans abîmer le tissu ni les arceaux—à voir avant le rangement sur site.",
+      "Vidéo pas à pas pour replier la tente Flyability dans son sac sans abîmer le tissu ni les arceaux\nà voir avant le rangement sur site.",
     default_checked: false,
     link_key: "TENT_FOLDING_TUTORIAL_URL",
   },
@@ -501,11 +501,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability-Leitfaden zur UT-Sondenauswahl — Foliensatz",
     label_fr: "Guide Flyability — choix des sondes UT — diaporama",
     desc_en:
-      "Decision guide comparing dual-crystal and single-crystal UT probes with selection criteria by surface, coating, and environment—use before mission prep.",
+      "Decision guide comparing dual-crystal and single-crystal UT probes with selection criteria by surface, coating, and environment\nuse before mission prep.",
     desc_de:
-      "Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung—vor der Missionsvorbereitung nutzen.",
+      "Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung\nvor der Missionsvorbereitung nutzen.",
     desc_fr:
-      "Guide de décision comparant sondes UT double et simple cristal avec critères de choix selon surface, revêtement et environnement—à consulter avant la préparation.",
+      "Guide de décision comparant sondes UT double et simple cristal avec critères de choix selon surface, revêtement et environnement\nà consulter avant la préparation.",
     default_checked: false,
     link_key: "UT_PROBE_SELECTION_GUIDE_URL",
   },
@@ -520,40 +520,40 @@ const thinkificOptions: ChangeOption[] = ((industryLinks.courses as Array<Record
     const url = String(course.url ?? "");
     const descriptionById: Record<string, { en: string; de: string; fr: string }> = {
       gas_sensor: {
-        en: "Academy course on the gas-sensor payload—mounting, in-flight use, alarm thresholds, and reading flammable-gas trends—take before first gas jobs.",
-        de: "Academy-Kurs zum Gas-Sensor-Payload—Montage, Einsatz im Flug, Alarmschwellen und Ablesen brennbarer Gastrends—vor den ersten Gas-Einsätzen nutzen.",
-        fr: "Cours Academy sur le payload capteur de gaz—montage, utilisation en vol, seuils d'alarme et lecture des tendances de gaz inflammables—à suivre avant les premiers jobs gaz.",
+        en: "Academy course on the gas-sensor payload—mounting, in-flight use, alarm thresholds, and reading flammable-gas trends\ntake before first gas jobs.",
+        de: "Academy-Kurs zum Gas-Sensor-Payload—Montage, Einsatz im Flug, Alarmschwellen und Ablesen brennbarer Gastrends\nvor den ersten Gas-Einsätzen nutzen.",
+        fr: "Cours Academy sur le payload capteur de gaz—montage, utilisation en vol, seuils d'alarme et lecture des tendances de gaz inflammables\nà suivre avant les premiers jobs gaz.",
       },
       cement: {
-        en: "Academy course on cement-plant inspections with Elios 3—kilns, coolers, silos, and typical hot and dusty assets—useful before site deployment.",
-        de: "Academy-Kurs zu Zementwerk-Inspektionen mit der Elios 3—Öfen, Kühler, Silos und typische heiße, staubige Anlagen—vor dem Einsatz vor Ort nützlich.",
-        fr: "Cours Academy sur les inspections de cimenterie avec l'Elios 3—fours, refroidisseurs, silos et ouvrages chauds et poussiéreux typiques—utile avant le déploiement sur site.",
+        en: "Academy course on cement-plant inspections with Elios 3—kilns, coolers, silos, and typical hot and dusty assets\nuseful before site deployment.",
+        de: "Academy-Kurs zu Zementwerk-Inspektionen mit der Elios 3—Öfen, Kühler, Silos und typische heiße, staubige Anlagen\nvor dem Einsatz vor Ort nützlich.",
+        fr: "Cours Academy sur les inspections de cimenterie avec l'Elios 3—fours, refroidisseurs, silos et ouvrages chauds et poussiéreux typiques\nutile avant le déploiement sur site.",
       },
       mining: {
-        en: "Academy course on underground mining inspections—drifts, stopes, raises, ore passes, and ground support—useful before site deployment.",
-        de: "Academy-Kurs zu Untertage-Inspektionen im Bergbau—Strecken, Abbaukammern, Überhauen, Erzrutschen und Gebirgssicherung—vor dem Einsatz vor Ort nützlich.",
-        fr: "Cours Academy sur les inspections minières souterraines—galeries, chantiers, montages, couloirs à minerai et soutènement—utile avant le déploiement sur site.",
+        en: "Academy course on underground mining inspections—drifts, stopes, raises, ore passes, and ground support\nuseful before site deployment.",
+        de: "Academy-Kurs zu Untertage-Inspektionen im Bergbau—Strecken, Abbaukammern, Überhauen, Erzrutschen und Gebirgssicherung\nvor dem Einsatz vor Ort nützlich.",
+        fr: "Cours Academy sur les inspections minières souterraines—galeries, chantiers, montages, couloirs à minerai et soutènement\nutile avant le déploiement sur site.",
       },
       wastewater: {
-        en: "Academy course on wastewater workflows—sewer networks, treatment plants, access points, and inspection reporting—useful before similar jobs.",
-        de: "Academy-Kurs zu Abwasser-Workflows—Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte—vor ähnlichen Einsätzen nützlich.",
-        fr: "Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection—utile avant missions similaires.",
+        en: "Academy course on wastewater workflows—sewer networks, treatment plants, access points, and inspection reporting\nuseful before similar jobs.",
+        de: "Academy-Kurs zu Abwasser-Workflows—Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte\nvor ähnlichen Einsätzen nützlich.",
+        fr: "Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection\nutile avant missions similaires.",
       },
       regulation: {
-        en: "Academy course with modules on aviation rules, airspace classes, authority approvals, and operational compliance—useful before regulated flights.",
-        de: "Academy-Kurs mit Modulen zu Luftfahrtregeln, Luftraumklassen, Behördengenehmigungen und operativer Compliance—vor regulierten Flügen nützlich.",
-        fr: "Cours Academy avec modules sur règles aériennes, classes d'espace aérien, autorisations et conformité opérationnelle—utile avant les vols réglementés.",
+        en: "Academy course with modules on aviation rules, airspace classes, authority approvals, and operational compliance\nuseful before regulated flights.",
+        de: "Academy-Kurs mit Modulen zu Luftfahrtregeln, Luftraumklassen, Behördengenehmigungen und operativer Compliance\nvor regulierten Flügen nützlich.",
+        fr: "Cours Academy avec modules sur règles aériennes, classes d'espace aérien, autorisations et conformité opérationnelle\nutile avant les vols réglementés.",
       },
       faro_connect: {
-        en: "Guided Academy course with hands-on FARO Connect exercises on Elios 3 exports, from ingest to customer-ready deliverables—work through at your own pace.",
-        de: "Geführter Academy-Kurs mit praktischen FARO-Connect-Übungen an Elios-3-Exports, vom Import bis zu kundenfähigen Ergebnissen—im eigenen Tempo durcharbeiten.",
-        fr: "Cours Academy guidé avec exercices pratiques sur FARO Connect à partir d'exports Elios 3, de l'import aux livrables clients—à suivre à son rythme.",
+        en: "Guided Academy course with hands-on FARO Connect exercises on Elios 3 exports, from ingest to customer-ready deliverables\nwork through at your own pace.",
+        de: "Geführter Academy-Kurs mit praktischen FARO-Connect-Übungen an Elios-3-Exports, vom Import bis zu kundenfähigen Ergebnissen\nim eigenen Tempo durcharbeiten.",
+        fr: "Cours Academy guidé avec exercices pratiques sur FARO Connect à partir d'exports Elios 3, de l'import aux livrables clients\nà suivre à son rythme.",
       },
     };
     const desc = descriptionById[id] ?? {
-      en: "Academy course covering additional industry or payload context beyond the core pilot training—pick the track that matches your next jobs.",
-      de: "Academy-Kurs mit zusätzlichen Branchen- oder Payload-Inhalten jenseits der Basis—wählt die Spur, die zu euren nächsten Jobs passt.",
-      fr: "Cours Academy couvrant un contexte secteur ou payload au-delà du socle pilote—choisissez le parcours aligné sur vos missions.",
+      en: "Academy course covering additional industry or payload context beyond the core pilot training\npick the track that matches your next jobs.",
+      de: "Academy-Kurs mit zusätzlichen Branchen- oder Payload-Inhalten jenseits der Basis\nwählt die Spur, die zu euren nächsten Jobs passt.",
+      fr: "Cours Academy couvrant un contexte secteur ou payload au-delà du socle pilote\nchoisissez le parcours aligné sur vos missions.",
     };
     return {
       id: `thinkific_${id}`,
