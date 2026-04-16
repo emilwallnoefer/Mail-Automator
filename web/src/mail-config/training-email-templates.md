@@ -6,7 +6,7 @@ Use placeholder syntax like `{{PLACEHOLDER}}`.
 
 ## TEMPLATE_ID: post_en
 
-SUBJECT: 📢 Flyability Recap – {{COMPANY_NAME}} – {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability / {{COMPANY_NAME}} Training recap + training materials
 
 Hello {{RECIPIENT_NAME}},
 
@@ -52,7 +52,7 @@ Flyability Pilot & Trainer
 
 ## TEMPLATE_ID: post_de
 
-SUBJECT: 📢 Flyability Recap – {{COMPANY_NAME}} – {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability / {{COMPANY_NAME}} Schulungsrückblick + Schulungsunterlagen
 
 Hallo {{RECIPIENT_NAME}},
 
@@ -286,7 +286,7 @@ Flyability Pilot & Trainer
 
 ## TEMPLATE_ID: post_fr
 
-SUBJECT: 📢 Flyability – Compte rendu de formation – {{COMPANY_NAME}} – {{TRAINING_DATE}}
+SUBJECT: 📢 Flyability / {{COMPANY_NAME}} Récapitulatif de formation + supports théoriques
 
 Bonjour {{RECIPIENT_NAME}},
 

@@ -118,11 +118,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Einführungstraining für den Elios 3",
     label_fr: "Formation d'introduction Elios 3",
     desc_en:
-      "Covers day-one Elios 3 topics: setup, basic flying, and data workflow from training. Use it as a refresher before missions.",
+      "This deck covers day-one essentials: setup, core flying, and operational basics for running Elios 3 missions confidently.",
     desc_de:
-      "Deckt Themen von Tag eins ab: Aufbau, Grundflug und Datenworkflow aus der Schulung. Nutzt es als Auffrischung vor Einsätzen.",
+      "Diese Unterlage deckt die Grundlagen von Tag 1 ab: Setup, Basisflug und operativer Einstieg mit dem Elios 3.",
     desc_fr:
-      "Couvre le jour 1 Elios 3 : mise en place, vol de base et workflow données vus en formation. Servez-vous-en pour réviser avant les missions.",
+      "Cette présentation reprend les fondamentaux du jour 1: configuration, pilotage de base et prise en main opérationnelle de l'Elios 3.",
     default_checked: true,
     link_key: "INTRO_TRAINING_URL",
   },
@@ -133,11 +133,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Indoor Aerial Inspection Methodology (AIIM) Training",
     label_fr: "Formation Indoor Aerial Inspection Methodology (AIIM)",
     desc_en:
-      "Steps through mission planning, recon flights, and AIIM methodology for indoor inspections. Use it when planning complex jobs.",
+      "This material details the AIIM method from planning to post-processing, helping your team run structured and repeatable indoor inspections.",
     desc_de:
-      "Führt durch Missionsplanung, Erkundungsflüge und AIIM-Methodik für Indoor-Inspektionen. Nutzt es bei komplexeren Aufträgen.",
+      "Diese Unterlage beschreibt die AIIM-Methode von der Vorbereitung bis zur Nachbearbeitung für strukturierte und reproduzierbare Indoor-Inspektionen.",
     desc_fr:
-      "Parcourt planification, vols de reco et méthodologie AIIM pour inspections indoor. Utilisez-le pour préparer les missions complexes.",
+      "Ce support détaille la méthode AIIM, de la préparation au post-traitement, pour structurer des inspections indoor efficaces et reproductibles.",
     default_checked: true,
     link_key: "AIIM_TRAINING_URL",
   },
@@ -148,11 +148,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Method Statement Vorlage",
     label_fr: "Modèle de méthodologie (Method Statement)",
     desc_en:
-      "Captures customer scope, hazards, and mission requirements in one method statement template. Use it when scoping new work.",
+      "This template helps you define mission scope, constraints, and responsibilities before deployment so everyone starts aligned.",
     desc_de:
-      "Erfasst Kundenumfang, Gefahren und Missionsanforderungen in einer Method-Statement-Vorlage. Nutzt es bei der Scope-Kläre neuer Jobs.",
+      "Diese Vorlage hilft euch, Auftrag, Rahmenbedingungen und Verantwortlichkeiten vor dem Einsatz klar festzulegen.",
     desc_fr:
-      "Structure périmètre client, risques et exigences dans un modèle de méthodologie. Servez-vous-en pour cadrer de nouveaux projets.",
+      "Ce modèle vous aide à cadrer mission, périmètre et contraintes avant intervention afin d'aligner toutes les parties prenantes.",
     default_checked: true,
     link_key: "METHOD_STATEMENT_URL",
   },
@@ -163,11 +163,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "Leitfaden zur Risikobewertung",
     label_fr: "Guide d'évaluation des risques",
     desc_en:
-      "Explains risk classes, mitigations, and matching crew skill to mission difficulty. Use it before demanding or unfamiliar flights.",
+      "This guide lets you assess mission risk level and define practical mitigation actions before entering the asset.",
     desc_de:
-      "Erklärt Risikoklassen, Maßnahmen und Abgleich der Crew-Fähigkeiten mit der Missionshärte. Nutzt es vor anspruchsvollen oder neuen Flügen.",
+      "Mit diesem Leitfaden bewertet ihr das Missionsrisiko und legt vor dem Flug passende Minderungsmaßnahmen fest.",
     desc_fr:
-      "Présente classes de risque, atténuations et adéquation équipe / difficulté. Utilisez-le avant vols exigeants ou peu familiers.",
+      "Ce guide permet d'évaluer le niveau de risque de chaque mission et de choisir les bonnes mesures de mitigation avant le vol.",
     default_checked: true,
     link_key: "RISK_ASSESSMENT_URL",
   },
@@ -178,11 +178,11 @@ const coreOptions: ChangeOption[] = [
     label_de: "SOP (Standard Operating Procedure)",
     label_fr: "SOP (Standard Operating Procedure)",
     desc_en:
-      "Lists standard pre- and post-inspection steps for consistent operations every time. Use it to onboard crew or audit your process.",
+      "This SOP baseline structures key pre-, during-, and post-inspection steps so operations stay consistent across teams.",
     desc_de:
-      "Listet Standard-Schritte vor und nach der Inspektion für gleichbleibende Abläufe. Nutzt es zum Einarbeiten der Crew oder für Audits.",
+      "Diese SOP-Grundlage strukturiert die zentralen Schritte vor, während und nach der Inspektion für konsistente Abläufe im Team.",
     desc_fr:
-      "Décrit les étapes standard avant et après inspection pour des opérations homogènes. Servez-vous-en pour former l'équipe ou auditer le process.",
+      "Cette base SOP formalise les étapes clés avant, pendant et après inspection pour standardiser vos opérations sur le terrain.",
     default_checked: true,
     link_key: "SOP_URL",
   },
@@ -197,11 +197,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability Knowledge Base",
     label_fr: "Base de connaissances Flyability",
     desc_en:
-      "Flyability hub for troubleshooting, firmware notes, and product how-tos. Use it between missions when field behavior differs from class.",
+      "Your main entry point for product support, firmware guidance, and practical field troubleshooting.",
     desc_de:
-      "Flyability-Drehscheibe für Troubleshooting, Firmware und Produkt-Anleitungen. Nutzt es zwischen Einsätzen, wenn vor Ort etwas anders läuft als in der Schulung.",
+      "Euer zentraler Einstieg für Produktsupport, Firmware-Hinweise und praxisnahes Troubleshooting im Feld.",
     desc_fr:
-      "Hub Flyability pour dépannage, firmware et guides produit. Utilisez-le entre missions si le terrain diffère de la formation.",
+      "Votre point d'entrée principal pour le support produit, les notes firmware et les bonnes pratiques d'exploitation.",
     default_checked: true,
     link_key: "KNOWLEDGE_BASE_URL",
   },
@@ -245,11 +245,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Inspector 5",
     label_fr: "Inspector 5",
     desc_en:
-      "Pulls Elios logs, video, and metadata to your machine after each flight. Use it before Inspector analysis or third-party processing steps.",
+      "Inspector 5 centralizes captured mission data and streamlines visual review before internal handoff or customer delivery.",
     desc_de:
-      "Zieht Elios-Logs, Videos und Metadaten nach jedem Flug auf den Rechner. Nutzt es vor der Inspector-Auswertung oder Drittsoftware-Schritten.",
+      "Inspector 5 bündelt erfasste Einsatzdaten und vereinfacht die visuelle Auswertung vor interner Übergabe oder Kundendokumentation.",
     desc_fr:
-      "Récupère journaux, vidéos et métadonnées Elios après chaque vol. Utilisez-le avant analyse Inspector ou traitement par un autre outil.",
+      "Inspector 5 centralise les données capturées et facilite la revue visuelle avant partage interne ou livrable client.",
     default_checked: true,
     link_key: "INSPECTOR_URL",
   },
@@ -261,11 +261,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Nubigon",
     label_fr: "Nubigon",
     desc_en:
-      "Builds animations from point clouds for presentations and stakeholder reviews. Use it when static orthophoto exports are not enough.",
+      "Nubigon helps you leverage point clouds for advanced visual reviews and decision-ready stakeholder presentations.",
     desc_de:
-      "Erstellt Animationen aus Punktwolken für Präsentationen und Reviews. Nutzt es, wenn statische Orthofotos für Stakeholder nicht reichen.",
+      "Mit Nubigon nutzt ihr Punktwolken für vertiefte visuelle Analysen und entscheidungsorientierte Präsentationen.",
     desc_fr:
-      "Crée des animations à partir de nuages de points pour présentations et revues. Utilisez-le quand les orthophotos statiques ne suffisent pas.",
+      "Nubigon permet d'exploiter les nuages de points pour des revues visuelles avancées et des présentations orientées décision.",
     default_checked: false,
     link_key: "NUBIGON_URL",
   },
@@ -277,11 +277,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Scan-to-BIM-Workflow",
     label_fr: "Workflow Scan vers BIM",
     desc_en:
-      "Shows how inspection meshes feed BIM checks and engineering handoffs. Use it when customers want model-ready data instead of photos alone.",
+      "This workflow explains how to move from field capture to BIM-ready outputs usable by engineering teams.",
     desc_de:
-      "Zeigt, wie Inspektionsmeshes in BIM-Prüfungen und Engineering-Übergaben fließen. Nutzt es, wenn Kunden modellreife Daten statt nur Fotos brauchen.",
+      "Dieser Workflow zeigt, wie ihr Felddaten in BIM-fähige Ergebnisse für Engineering-Teams überführt.",
     desc_fr:
-      "Montre comment les maillages d'inspection alimentent contrôles BIM et livraisons ingénierie. Utilisez-le quand le client veut des données prêtes modèle.",
+      "Ce workflow décrit le passage de la donnée terrain vers une utilisation BIM exploitable par les équipes ingénierie.",
     default_checked: false,
     link_key: "SCAN_TO_BIM_WORKFLOW_URL",
   },
@@ -325,11 +325,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "FARO Connect Training — Foliensatz",
     label_fr: "Formation FARO Connect — diaporama",
     desc_en:
-      "FARO Connect from import through deliverables with Elios outputs. Use it with the Academy course while building daily processing habits.",
+      "This deck covers the full FARO Connect chain from import to clean point-cloud output ready for analysis.",
     desc_de:
-      "FARO Connect von Import bis Deliverables mit Elios-Daten. Nutzt es parallel zur Academy, um tägliche Verarbeitungsroutinen aufzubauen.",
+      "Dieser Foliensatz behandelt die komplette FARO-Connect-Kette vom Import bis zur bereinigten, auswertbaren Punktwolke.",
     desc_fr:
-      "FARO Connect de l'import aux livrables avec sorties Elios. Utilisez-le avec l'Academy pour ancrer des habitudes de traitement quotidiennes.",
+      "Ce diaporama couvre la chaîne complète FARO Connect, de l'import au nuage de points propre prêt pour exploitation.",
     default_checked: false,
     link_key: "FARO_CONNECT_DECK_URL",
   },
@@ -405,11 +405,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Flyability Academy",
     label_fr: "Flyability Academy",
     desc_en:
-      "Portal to enroll, resume, and track Flyability Academy courses. Use it when you add modules after this recap's linked trainings.",
+      "Flyability Academy gives access to industry-focused modules so your team can continue building skills after core training.",
     desc_de:
-      "Portal zum Anmelden, Fortsetzen und Verfolgen von Flyability-Academy-Kursen. Nutzt es, wenn ihr nach den Links in dieser Recap-Mail weiterbaut.",
+      "Die Flyability Academy bietet branchenspezifische Module, damit euer Team seine Fähigkeiten nach dem Basistraining weiter ausbauen kann.",
     desc_fr:
-      "Portail pour vous inscrire, reprendre et suivre les cours Academy. Utilisez-le après les formations liées dans ce compte rendu pour aller plus loin.",
+      "La Flyability Academy donne accès à des modules sectoriels pour approfondir vos compétences au-delà de la formation initiale.",
     default_checked: false,
     link_key: "FLYABILITY_ACADEMY_HUB_URL",
   },
@@ -453,11 +453,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "High-Capacity-Akku Start-Guide",
     label_fr: "Guide de démarrage batterie grande capacité",
     desc_en:
-      "Covers charging, pack handling, and realistic runtime on the high-capacity battery. Use it on site to avoid delays from mishandling.",
+      "This guide explains handling, constraints, and best practices for high-capacity batteries to support longer, controlled flights.",
     desc_de:
-      "Ladevorgang, Pack-Handhabung und realistische Laufzeit des High-Capacity-Akkus. Nutzt es vor Ort, um Verzögerungen durch falsche Handhabung zu vermeiden.",
+      "Dieses Video zeigt Handhabung, Grenzen und Best Practices für High-Capacity-Akkus bei längeren, kontrollierten Flügen.",
     desc_fr:
-      "Couvre charge, manipulation de la batterie grande capacité et autonomie réaliste. Utilisez-le sur place pour éviter retards dus à une mauvaise prise en main.",
+      "Cette vidéo présente l'usage, les limites et les bonnes pratiques des batteries grande capacité pour des vols plus longs et maîtrisés.",
     default_checked: false,
     link_key: "HIGH_CAP_BATTERY_GUIDE_URL",
   },
@@ -469,11 +469,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "Tether-Einheit Start-Guide",
     label_fr: "Guide de démarrage unité d'attache",
     desc_en:
-      "Shows tether rigging, in-flight use, and clean stowage without tangling leads. Use it before jobs with continuous power or long hovers.",
+      "This video details tether setup, in-flight use, and maintenance for missions requiring continuous power.",
     desc_de:
-      "Tether-Aufbau, Nutzung im Flug und sauberes Verstauen ohne Kabelchaos. Nutzt es vor Jobs mit Dauerstrom oder langen Schwebephasen.",
+      "Dieses Video erläutert Aufbau, Einsatz im Flug und Wartung der Tether-Einheit für Missionen mit Dauerstrom.",
     desc_fr:
-      "Montage du filin, usage en vol et rangement sans nœuds ni câbles abîmés. Utilisez-le avant missions avec alimentation continue ou longues stations.",
+      "Cette vidéo détaille l'installation, l'utilisation en vol et la maintenance du tether pour des missions en alimentation continue.",
     default_checked: false,
     link_key: "TETHER_UNIT_GUIDE_URL",
   },
