@@ -1093,10 +1093,6 @@ export function TimeTrackerPanel() {
           </div>
           {isRelaxDay ? (
             <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
-              <div className="flex w-full items-baseline justify-between gap-3">
-                <span className="shrink-0 text-left font-normal text-slate-300/95">Core target</span>
-                <span className="text-right text-slate-300/95">None (no work required)</span>
-              </div>
               {day.net_mins > 0 ? (
                 <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
                   {(overtimeValue) => (
