@@ -286,18 +286,15 @@ function buildTrainingMaterialsBlock(language: MailLanguage, selectedChangeIds: 
   const links = trainingLinks as Record<string, string>;
   const materialOptions = CHANGE_OPTIONS.filter((opt) => opt.category === "training_material");
   const rows: string[] = [];
-  let index = 1;
-
   for (const item of materialOptions) {
     if (!selected.has(item.id)) continue;
     const linkKey = item.link_key ?? "";
     const url = links[linkKey];
     if (!url) continue;
     const { label, desc } = getChangeOptionLabelDesc(item, language);
-    rows.push(`${index}. [${label}](${url})`);
+    rows.push(`➡️ [${label}](${url})`);
     rows.push(withCallout(language, desc, "callout"));
     rows.push("");
-    index += 1;
   }
 
   if (rows.length === 0) {
@@ -345,7 +342,7 @@ function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[
     const course = byId.get(id);
     if (!course) continue;
     const label = courseDisplayLabel(course, language);
-    lines.push(`- [${label}](${course.url})`);
+    lines.push(`➡️ [${label}](${course.url})`);
   }
   return lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : "";
 }
@@ -396,7 +393,9 @@ function buildUsefulLinksBlock(language: MailLanguage, selectedIds: string[], in
     const url = links[linkKey];
     if (!url) return;
     const { label, desc } = policyItemLabelDesc(item, language);
-    lines.push(`[${label}](${url}) - ${withCallout(language, desc, "callout")}`);
+    lines.push(`➡️ [${label}](${url})`);
+    lines.push(withCallout(language, desc, "callout"));
+    lines.push("");
   };
 
   policy.common.forEach(addItem);
@@ -441,14 +440,12 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
       parts.push("");
 
-      let n = 1;
       for (const item of withUrl) {
         const url = resolveLinkUrl(item.link_key ?? "", catalog);
         const { label, desc } = getChangeOptionLabelDesc(item, language);
-        parts.push(`${n}. [${label}](${url})`);
+        parts.push(`➡️ [${label}](${url})`);
         parts.push(withCallout(language, desc, "callout"));
         parts.push("");
-        n += 1;
       }
       continue;
     }
@@ -461,14 +458,12 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
       parts.push(`### ${resourceSectionLabel(sectionId, language)}`);
       parts.push("");
 
-      let n = 1;
       for (const item of withUrl) {
         const url = resolveOnlineItemUrl(item);
         const { label, desc } = getChangeOptionLabelDesc(item, language);
-        parts.push(`${n}. [${label}](${url})`);
+        parts.push(`➡️ [${label}](${url})`);
         parts.push(withCallout(language, desc, item.category === "thinkific" ? "plain" : "callout"));
         parts.push("");
-        n += 1;
       }
       continue;
     }
@@ -490,14 +485,12 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
     }
 
     const videoSection = sectionId === "videos";
-    let n = 1;
     for (const item of withUrl) {
       const url = resolveLinkUrl(item.link_key ?? "", catalog);
       const { label, desc } = getChangeOptionLabelDesc(item, language);
-      parts.push(`${n}. [${label}](${url})`);
+      parts.push(`➡️ [${label}](${url})`);
       parts.push(withCallout(language, desc, videoSection ? "plain" : "callout"));
       parts.push("");
-      n += 1;
     }
   }
 
