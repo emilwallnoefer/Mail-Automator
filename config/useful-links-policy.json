@@ -5,18 +5,18 @@
       "label_en": "Inspector 5",
       "label_de": "Inspector 5",
       "label_fr": "Inspector 5",
-      "desc_en": "Software to download drone flight data",
-      "desc_de": "Software zum Herunterladen von Flugdaten",
-      "desc_fr": "Logiciel pour télécharger les données de vol du drone"
+      "desc_en": "Flyability's Elios 3 flight-data software for downloading, viewing, and reviewing captures in one place (always the latest version at this link).",
+      "desc_de": "Flyabilitys Elios-3-Flugdatensoftware zum Herunterladen, Ansehen und Auswerten der Aufnahmen an einem Ort (stets die aktuelle Version unter diesem Link).",
+      "desc_fr": "Logiciel Flyability pour les données de vol Elios 3—téléchargement, visualisation et relecture des captures au même endroit (toujours la dernière version à ce lien)."
     },
     {
       "link_key": "KNOWLEDGE_BASE_URL",
-      "label_en": "Knowledge Base",
-      "label_de": "Knowledge Base",
-      "label_fr": "Base de connaissances",
-      "desc_en": "An answer to (almost) all your questions",
-      "desc_de": "Eine Antwort auf (fast) alle eure Fragen",
-      "desc_fr": "Une réponse à (presque) toutes vos questions"
+      "label_en": "Flyability Knowledge Base",
+      "label_de": "Flyability Knowledge Base",
+      "label_fr": "Base de connaissances Flyability",
+      "desc_en": "Flyability's hub with FAQs, firmware notes, troubleshooting articles, Elios 3 product guides, and payload documentation—use it as your reference.",
+      "desc_de": "Flyability-Hub mit FAQs, Firmware-Hinweisen, Troubleshooting-Artikeln, Elios-3-Produktguides und Payload-Dokumentation—als zentrales Nachschlagewerk nutzen.",
+      "desc_fr": "Hub Flyability avec FAQ, notes firmware, articles de dépannage, guides produit Elios 3 et documentation des payloads—votre référence centrale (notre « Wikipedia-bility »)."
     }
   ],
   "conditional": [
@@ -25,9 +25,9 @@
       "label_en": "Nubigon",
       "label_de": "Nubigon",
       "label_fr": "Nubigon",
-      "desc_en": "Software for creating point cloud animations",
-      "desc_de": "Software zur Erstellung von Punktwolken-Animationen",
-      "desc_fr": "Logiciel pour créer des animations de nuages de points",
+      "desc_en": "Third-party software for point-cloud animations and cinematic fly-throughs of Elios 3 scans (subscription required)—useful for presentations.",
+      "desc_de": "Software für Punktwolken-Animationen und kinoreife Flüge durch Elios-3-Scans—nützlich für Präsentationen.",
+      "desc_fr": "Logiciel tiers pour animations de nuages de points et fly-throughs cinématiques des scans Elios 3 (abonnement requis)—utile pour les présentations.",
       "industry_course_ids": ["faro_connect"]
     },
     {
@@ -35,9 +35,9 @@
       "label_en": "Customer Toolkit",
       "label_de": "Customer Toolkit",
       "label_fr": "Customer Toolkit",
-      "desc_en": "Downloadable brand assets, brochures, spec sheets, sample datasets, and media for Elios 3",
-      "desc_de": "Downloadbare Brand-Assets, Broschüren, Datenblätter, Beispieldatensätze und Medien für Elios 3",
-      "desc_fr": "Assets de marque, brochures, fiches techniques, jeux de données et médias téléchargeables pour Elios 3",
+      "desc_en": "Downloadable Elios 3 brand assets, brochures, spec sheets, sample datasets, and marketing media—reuse in your own client materials.",
+      "desc_de": "Herunterladbare Elios-3-Markenassets, Broschüren, Datenblätter, Beispieldatensätze und Marketing-Medien—für eigene Kundenunterlagen wiederverwendbar.",
+      "desc_fr": "Assets de marque, brochures, fiches techniques, jeux de données et médias marketing Elios 3 téléchargeables—à réutiliser dans vos supports clients.",
       "include_flag": "include_customer_toolkit"
     }
   ]
