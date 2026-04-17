@@ -14,6 +14,7 @@ import {
   sendEmailViaResend,
   type SendEmailResult,
 } from "@/lib/email/resend";
+import { readWorkspaceSettings } from "@/lib/workspace-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ type SkipReason =
   | "not_monday"
   | "not_9am"
   | "resend_not_configured"
+  | "paused"
   | null;
 
 type Candidate = {
@@ -353,6 +355,21 @@ export async function GET(request: Request) {
     );
   }
 
+  const admin = createAdminClient();
+  const settings = await readWorkspaceSettings(admin);
+  // Pause is a hard kill-switch for real sends — force=1 does NOT override it,
+  // admins must flip the toggle back off in Workspace Insights first. Dry runs
+  // still go through so admins can preview the candidate list while paused.
+  if (settings.reminder_paused && !isDryRun) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "paused" satisfies SkipReason,
+      paused_at: settings.reminder_paused_at,
+      paused_by: settings.reminder_paused_by,
+    });
+  }
+
   const thisWeekStart = getWeekStartDate();
   if (!thisWeekStart) {
     return NextResponse.json({ error: "Could not compute week boundary" }, { status: 500 });
@@ -362,7 +379,6 @@ export async function GET(request: Request) {
   const prevWeekStartStr = toDateString(prevWeekStart);
   const prevWeekEndStr = toDateString(prevWeekEnd);
 
-  const admin = createAdminClient();
   const candidates: Candidate[] = [];
   let page = 1;
   const perPage = 200;
