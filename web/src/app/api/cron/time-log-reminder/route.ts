@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { guardAdmin } from "@/lib/admin-guard";
 import {
@@ -183,6 +184,34 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+type SendLogRow = {
+  user_id: string | null;
+  email: string;
+  display_name: string | null;
+  role: string | null;
+  week_start: string;
+  week_end: string;
+  status: "sent" | "failed" | "skipped_dry_run";
+  message_id: string | null;
+  error: string | null;
+  mode: "cron" | "admin";
+  forced: boolean;
+  dry_run: boolean;
+};
+
+async function recordSend(admin: SupabaseClient, row: SendLogRow): Promise<void> {
+  // Never let a logging failure break the send flow — we already performed
+  // (or skipped) the Resend call at this point.
+  try {
+    const { error } = await admin.from("time_log_reminder_sends").insert(row);
+    if (error) {
+      console.error("time_log_reminder_sends insert failed", error);
+    }
+  } catch (err) {
+    console.error("time_log_reminder_sends insert threw", err);
+  }
 }
 
 function resolvePreviewWeek(url: URL, request: Request) {
@@ -390,8 +419,26 @@ export async function GET(request: Request) {
       dashboardUrl,
     });
 
+    const baseLogRow = {
+      user_id: candidate.user_id,
+      email: candidate.email,
+      display_name: candidate.display_name,
+      role: candidate.role,
+      week_start: prevWeekStartStr,
+      week_end: prevWeekEndStr,
+      mode: auth.mode,
+      forced: isForced,
+      dry_run: isDryRun,
+    } as const;
+
     if (isDryRun) {
       outcomes.push({ email: candidate.email, status: "skipped_dry_run" });
+      await recordSend(admin, {
+        ...baseLogRow,
+        status: "skipped_dry_run",
+        message_id: null,
+        error: null,
+      });
       continue;
     }
 
@@ -407,10 +454,22 @@ export async function GET(request: Request) {
         status: "sent",
         message_id: result.id,
       });
+      await recordSend(admin, {
+        ...baseLogRow,
+        status: "sent",
+        message_id: result.id || null,
+        error: null,
+      });
     } else {
       outcomes.push({
         email: candidate.email,
         status: "failed",
+        error: result.error,
+      });
+      await recordSend(admin, {
+        ...baseLogRow,
+        status: "failed",
+        message_id: null,
         error: result.error,
       });
     }

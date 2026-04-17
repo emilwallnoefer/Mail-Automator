@@ -40,7 +40,10 @@ Useful knobs (all admin-gated unless called with the cron secret):
 - **Send now regardless of time:** `GET /api/cron/time-log-reminder?force=1` (**actually sends** to every candidate — use carefully).
 - **Vercel Cron auth:** When `CRON_SECRET` is set, Vercel sends it as `Authorization: Bearer <secret>` and the route trusts the call without requiring an admin session. If `CRON_SECRET` is missing, only admin-authed requests go through.
 
-Tables involved: `time_day_logs` (summed via service-role). No new tables were added.
+Tables involved:
+
+- `time_day_logs` — summed via the service-role key to decide who gets reminded.
+- `time_log_reminder_sends` — per-send audit log written by the cron route. One row is inserted for every outcome (`sent`, `failed`, `skipped_dry_run`), capturing the user, target week, Resend message id (or error), whether the call came from Vercel Cron or an admin session, and whether `force`/`dry` were used. See `supabase/2026-04-17-time-log-reminder-send-log.sql` for the schema; the table is RLS-locked and only the service-role key writes to it.
 
 ## Getting Started
 
