@@ -150,7 +150,7 @@ function buildEmail(params: {
                 <p style="margin:0 0 12px;font-size:15px;line-height:1.55;">Hi ${escapeHtml(name)},</p>
                 <p style="margin:0 0 12px;font-size:15px;line-height:1.55;">
                   It looks like no hours were logged in the Time Tracker for last week
-                  (<strong>${escapeHtml(weekLabel)}</strong>).
+                  (<strong style="white-space:nowrap;">${escapeHtml(weekLabel)}</strong>).
                 </p>
                 <p style="margin:0 0 20px;font-size:15px;line-height:1.55;">
                   Could you take a minute to fill in your days? If last week was a holiday or leave, you can mark it as such directly in the tracker.
