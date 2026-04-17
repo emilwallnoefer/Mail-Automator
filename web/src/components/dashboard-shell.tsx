@@ -667,7 +667,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
               </div>
 
               <div
-                className={`grid gap-4 ${availableModules.length >= 3 ? "md:grid-cols-3" : "sm:mx-auto sm:max-w-2xl sm:grid-cols-2"}`}
+                className={`grid gap-4 ${availableModules.filter((m) => m !== "admin").length >= 3 ? "md:grid-cols-3" : "sm:mx-auto sm:max-w-2xl sm:grid-cols-2"}`}
               >
                 {availableModules.includes("mail") ? (
                   <motion.button
@@ -751,35 +751,6 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   </motion.button>
                 ) : null}
 
-                {availableModules.includes("admin") ? (
-                  <motion.button
-                    type="button"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.35 }}
-                    onClick={() => {
-                      if (activeModule !== "admin") playUiSound("switchWhoosh");
-                      setActiveModule("admin");
-                      handleBeginAutomating();
-                    }}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-amber-400/35 hover:shadow-[0_28px_56px_-12px_rgba(251,191,36,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400/80"
-                  >
-                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-400/12 blur-2xl transition group-hover:bg-amber-400/22" aria-hidden />
-                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200">
-                      <IconCog className="h-5 w-5" />
-                    </span>
-                    <span className="text-lg font-semibold text-white">{adminModuleLabel}</span>
-                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
-                      {canManageUsers
-                        ? "Manage user roles and review everyone's logged time."
-                        : "Review everyone's logged time — summaries and week drill-downs."}
-                    </span>
-                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-200/90">
-                      Open
-                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                    </span>
-                  </motion.button>
-                ) : null}
               </div>
             </div>
           </motion.div>
