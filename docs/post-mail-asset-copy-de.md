@@ -131,7 +131,7 @@ vor der Missionsvorbereitung nutzen.
 LABEL: FARO Connect Training - Foliensatz
 LINK: FARO_CONNECT_DECK_URL
 DESC:
-Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigierten, sauberen Punktwolke (2 h Videocall-Support im Kaufpreis enthalten).
+Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigierten, sauberen Punktwolke.
 Als Referenz beim Verarbeiten.
 
 ### ID: useful_water_wastewater_deck

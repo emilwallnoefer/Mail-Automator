@@ -131,7 +131,7 @@ Guide de décision comparant sondes UT double et simple cristal avec critères d
 LABEL: Formation FARO Connect - diaporama
 LINK: FARO_CONNECT_DECK_URL
 DESC:
-Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage de points corrigé et propre (2 h de support visio incluses dans votre achat).
+Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage de points corrigé et propre.
 Comme référence en traitement.
 
 ### ID: useful_water_wastewater_deck

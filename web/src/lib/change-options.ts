@@ -325,11 +325,11 @@ const usefulOptions: ChangeOption[] = [
     label_de: "FARO Connect Training - Foliensatz",
     label_fr: "Formation FARO Connect - diaporama",
     desc_en:
-      "Deck covering the full FARO Connect workflow, from capture to a corrected and clean point cloud (2 h of video-call support included with your purchase).\nReference while processing.",
+      "Deck covering the full FARO Connect workflow, from capture to a corrected and clean point cloud.\nReference while processing.",
     desc_de:
-      "Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigierten, sauberen Punktwolke (2 h Videocall-Support im Kaufpreis enthalten).\nAls Referenz beim Verarbeiten.",
+      "Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigierten, sauberen Punktwolke.\nAls Referenz beim Verarbeiten.",
     desc_fr:
-      "Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage de points corrigé et propre (2 h de support visio incluses dans votre achat).\nComme référence en traitement.",
+      "Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage de points corrigé et propre.\nComme référence en traitement.",
     default_checked: false,
     link_key: "FARO_CONNECT_DECK_URL",
   },

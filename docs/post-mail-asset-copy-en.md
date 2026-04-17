@@ -131,7 +131,7 @@ use before mission prep.
 LABEL: FARO Connect training - slide deck
 LINK: FARO_CONNECT_DECK_URL
 DESC:
-Deck covering the full FARO Connect workflow, from capture to a corrected and clean point cloud (2 h of video-call support included with your purchase).
+Deck covering the full FARO Connect workflow, from capture to a corrected and clean point cloud.
 Reference while processing.
 
 ### ID: useful_water_wastewater_deck
