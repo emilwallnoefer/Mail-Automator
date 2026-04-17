@@ -1,4 +1,4 @@
-# Post-mail asset descriptions — Français (FR)
+# Post-mail asset descriptions - Français (FR)
 
 > Modifier uniquement le texte sous `DESC:` pour chaque asset.
 > Laisser les lignes `ID:`, `LABEL:` et `LINK:` inchangées pour que les
@@ -13,7 +13,7 @@
 
 ---
 
-## 1. Diaporamas de formation (cœur — inclus par défaut)
+## 1. Diaporamas de formation (cœur - inclus par défaut)
 
 Affichés sous `📂 Diaporamas de formation` dans l'e-mail.
 
@@ -21,36 +21,36 @@ Affichés sous `📂 Diaporamas de formation` dans l'e-mail.
 LABEL: Formation d'introduction Elios 3
 LINK: INTRO_TRAINING_URL
 DESC:
-Diaporama du jour 1 avec chaque fonction, commande et réglage de menu de l'Elios 3, passés en revue dans l'ordre
-pratique comme rappel.
+Diaporama du jour 1 avec toutes les fonctions du drone et de la télécommande, pour permettre à un nouveau pilote de prendre en main l'Elios 3.
+À utiliser pour former d'autres collègues en interne.
 
 ### ID: material_aiim
 LABEL: Formation Indoor Aerial Inspection Methodology (AIIM)
 LINK: AIIM_TRAINING_URL
 DESC:
-Diaporama des jours 2–3 couvrant préparation de mission, reconnaissance, exécution de l'inspection et clôture, étape par étape
-utile pour toute mission complexe.
+Diaporama couvrant toutes les étapes importantes de la préparation de vol et les différents types d'inspections : reconnaissance, inspection et cartographie.
+À consulter avant toute mission complexe.
 
 ### ID: material_method_statement
 LABEL: Modèle de méthodologie (Method Statement)
 LINK: METHOD_STATEMENT_URL
 DESC:
-Modèle regroupant toutes les questions de mission à aborder avec le client avant un vol—périmètre, accès, sécurité, livrables
-à utiliser ou à adapter.
+Modèle pour recueillir un maximum d'informations auprès d'un client ou d'un demandeur de service avant un vol.
+À utiliser tel quel ou à adapter à vos besoins.
 
 ### ID: material_risk_assessment
 LABEL: Guide d'évaluation des risques
 LINK: RISK_ASSESSMENT_URL
 DESC:
-Grille qui note les missions selon les facteurs humains, drone et environnementaux dans des catégories pondérées
-utile pour dimensionner l'intervention.
+Guide d'évaluation pour définir en amont le niveau de difficulté d'une mission en notant le risque par catégorie d'éléments.
+À utiliser avant des vols exigeants ou peu familiers.
 
 ### ID: material_sop
 LABEL: SOP (Standard Operating Procedure)
 LINK: SOP_URL
 DESC:
-Manuel regroupant toutes les étapes, vérifications et références de workflow avant et après inspection dans un seul document
-comme référence ou checklist imprimée.
+Modèle simple mais efficace de procédure opératoire standard.
+À adapter à vos besoins pour bâtir une procédure qui vous est propre.
 
 ---
 
@@ -62,8 +62,8 @@ Affichés sous `🔗 Autres liens utiles` (pas de sous-titre dans l'e-mail).
 LABEL: Base de connaissances Flyability
 LINK: KNOWLEDGE_BASE_URL
 DESC:
-Hub Flyability avec FAQ, notes firmware, articles de dépannage, guides produit Elios 3 et documentation des payloads
-votre référence centrale (notre « Wikipedia-bility »).
+Hub Flyability avec FAQ, dernières mises à jour logicielles, guides produit, dépannage firmware et infos pratiques sur les fonctions autonomes.
+Votre « Wikipedia-bility » au quotidien.
 
 ### ID: useful_youtube
 LABEL: Chaîne YouTube
@@ -83,21 +83,22 @@ Assets de marque, brochures, fiches techniques, jeux de données et médias mark
 LABEL: Inspector 5
 LINK: INSPECTOR_URL
 DESC:
-Logiciel Flyability pour les données de vol Elios 3
-téléchargement, visualisation et relecture des captures au même endroit (toujours la dernière version à ce lien).
+Notre logiciel pour visualiser et relire simultanément les données capturées par l'Elios 3.
+(Toujours la dernière version à ce lien.)
 
 ### ID: useful_nubigon
 LABEL: Nubigon
 LINK: NUBIGON_URL
 DESC:
-Logiciel tiers pour animations de nuages de points et fly-throughs cinématiques des scans Elios 3 (abonnement requis)
-utile pour les présentations.
+Logiciel tiers pour animer des nuages de points (abonnement requis).
+Utile pour préparer des présentations clients.
 
 ### ID: useful_scan_bim
 LABEL: Workflow Scan vers BIM
 LINK: SCAN_TO_BIM_WORKFLOW_URL
 DESC:
-Tutoriel rapide détaillant les étapes, logiciels et réglages d'export pour transformer un nuage de points Elios 3 en modèle BIM.
+Guide rapide expliquant les étapes à suivre pour passer d'un nuage de points Elios 3 à un modèle BIM.
+À consulter avant votre premier workflow scan-to-BIM.
 
 ---
 
@@ -106,42 +107,42 @@ Tutoriel rapide détaillant les étapes, logiciels et réglages d'export pour tr
 Affichés sous `### 📑 Autres diaporamas de formation`.
 
 ### ID: useful_intro_ut
-LABEL: Formation d'introduction UT Elios 3 — diaporama
+LABEL: Formation d'introduction UT Elios 3 - diaporama
 LINK: INTRO_UT_TRAINING_URL
 DESC:
 Diaporama d'introduction allégé sur le hardware, la première mise en route et les bases ultrason du payload UT
 à utiliser avant les premiers jobs UT.
 
 ### ID: useful_ut_advanced
-LABEL: Formation UT avancée Elios 3 — diaporama
+LABEL: Formation UT avancée Elios 3 - diaporama
 LINK: UT_ADVANCED_ELIO3_DECK_URL
 DESC:
 Diaporama complet du payload UT : technologie des sondes, mécanique double cristal, théorie de mesure et méthodologie d'inspection
 utilisable sur toute mission UT.
 
 ### ID: useful_ut_probe
-LABEL: Guide Flyability — choix des sondes UT — diaporama
+LABEL: Guide Flyability - choix des sondes UT - diaporama
 LINK: UT_PROBE_SELECTION_GUIDE_URL
 DESC:
 Guide de décision comparant sondes UT double et simple cristal avec critères de choix selon surface, revêtement et environnement
 à consulter avant la préparation.
 
 ### ID: useful_faro_deck
-LABEL: Formation FARO Connect — diaporama
+LABEL: Formation FARO Connect - diaporama
 LINK: FARO_CONNECT_DECK_URL
 DESC:
-Diaporama surveyor REV 7 sur le workflow complet, de la capture au nuage de points propre dans FARO Connect, avec les bonnes pratiques de vol
-comme référence en traitement.
+Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage de points corrigé et propre (2 h de support visio incluses dans votre achat).
+Comme référence en traitement.
 
 ### ID: useful_water_wastewater_deck
-LABEL: Formation eau & eaux usées — diaporama
+LABEL: Formation eau & eaux usées - diaporama
 LINK: WATER_WASTEWATER_DECK_URL
 DESC:
 Diaporama sur les risques, considérations de sécurité, bonnes pratiques de vol et géoréférencement par cibles dans égouts et conduites souterraines
 comme référence avant missions similaires.
 
 ### ID: useful_cement_deck
-LABEL: Inspection cimenterie & four — diaporama
+LABEL: Inspection cimenterie & four - diaporama
 LINK: CEMENT_ONLINE_DECK_URL
 DESC:
 Diaporama sur les environnements cimentiers, les points de risque, les bonnes pratiques de vol et des exemples d'inspections sur fours, refroidisseurs et ouvrages typiques
@@ -162,42 +163,42 @@ Cours Academy en autonomie avec modules et quiz sur le traitement des nuages de 
 
 ### ID: thinkific_regulation
 LABEL: Cours réglementation
-LINK: (Thinkific — Flyability Academy Regulation)
+LINK: (Thinkific - Flyability Academy Regulation)
 DESC:
 Cours Academy avec modules sur règles aériennes, classes d'espace aérien, autorisations et conformité opérationnelle
 utile avant les vols réglementés.
 
 ### ID: thinkific_gas_sensor
 LABEL: Cours capteur de gaz
-LINK: (Thinkific — Flyability Academy Gas sensor)
+LINK: (Thinkific - Flyability Academy Gas sensor)
 DESC:
-Cours Academy sur le payload capteur de gaz—montage, utilisation en vol, seuils d'alarme et lecture des tendances de gaz inflammables
+Cours Academy sur le payload capteur de gaz - montage, utilisation en vol, seuils d'alarme et lecture des tendances de gaz inflammables
 à suivre avant les premiers jobs gaz.
 
 ### ID: thinkific_cement
 LABEL: Cours industrie ciment
-LINK: (Thinkific — Flyability Academy Cement)
+LINK: (Thinkific - Flyability Academy Cement)
 DESC:
-Cours Academy sur les inspections de cimenterie avec l'Elios 3—fours, refroidisseurs, silos et ouvrages chauds et poussiéreux typiques
+Cours Academy sur les inspections de cimenterie avec l'Elios 3 - fours, refroidisseurs, silos et ouvrages chauds et poussiéreux typiques
 utile avant le déploiement sur site.
 
 ### ID: thinkific_mining
 LABEL: Cours industrie minière
-LINK: (Thinkific — Flyability Academy Mining)
+LINK: (Thinkific - Flyability Academy Mining)
 DESC:
-Cours Academy sur les inspections minières souterraines—galeries, chantiers, montages, couloirs à minerai et soutènement
+Cours Academy sur les inspections minières souterraines - galeries, chantiers, montages, couloirs à minerai et soutènement
 utile avant le déploiement sur site.
 
 ### ID: thinkific_wastewater
 LABEL: Cours eaux usées
-LINK: (Thinkific — Flyability Academy Wastewater)
+LINK: (Thinkific - Flyability Academy Wastewater)
 DESC:
-Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection
+Cours Academy sur les workflows eaux usées - réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection
 utile avant missions similaires.
 
 ### ID: thinkific_faro_connect
 LABEL: Cours en ligne FARO Connect
-LINK: (Thinkific — Flyability Academy FARO Connect)
+LINK: (Thinkific - Flyability Academy FARO Connect)
 DESC:
 Cours Academy guidé avec exercices pratiques sur FARO Connect à partir d'exports Elios 3, de l'import aux livrables clients
 à suivre à son rythme.
@@ -206,15 +207,15 @@ Cours Academy guidé avec exercices pratiques sur FARO Connect à partir d'expor
 LABEL: Cours en ligne eaux usées
 LINK: WASTEWATER_ONLINE_COURSE_URL
 DESC:
-Cours Academy sur les workflows eaux usées—réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection
+Cours Academy sur les workflows eaux usées - réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection
 utile avant missions similaires.
 
 ### ID: useful_academy_hub
 LABEL: Flyability Academy
 LINK: FLYABILITY_ACADEMY_HUB_URL
 DESC:
-Hub Flyability Academy listant tous les cours gratuits par secteur et payload, avec inscription et suivi de progression
-à utiliser pour approfondir après la formation.
+Notre Academy avec des modules gratuits spécifiques à plusieurs industries pour maximiser les résultats de vos inspections avec l'Elios 3.
+À parcourir après la formation pour approfondir.
 
 ---
 
@@ -223,35 +224,35 @@ Hub Flyability Academy listant tous les cours gratuits par secteur et payload, a
 Affichées sous `### 🎬 Vidéos de formation` (intro de section ci-dessous).
 
 ### SECTION_INTRO (videos)
-Vidéos courtes sur charges utiles, alimentation, tether et batteries—à partager avec pilotes et équipe terrain avant ces missions.
+Vidéos courtes sur charges utiles, alimentation, tether et batteries - à partager avec pilotes et équipe terrain avant ces missions.
 
 ### ID: useful_gas_sensor
 LABEL: Guide de démarrage capteur de gaz
 LINK: GAS_SENSOR_QUICKSTART_URL
 DESC:
-Guide de démarrage rapide Knowledge Base sur le capteur de gaz—montage, vérifications avant vol, seuils d'alarme et lecture en vol
+Guide de démarrage rapide Knowledge Base sur le capteur de gaz - montage, vérifications avant vol, seuils d'alarme et lecture en vol
 à voir avant les premiers jobs gaz.
 
 ### ID: useful_rad_video
 LABEL: Vidéo de formation capteur RAD Elios 3
 LINK: RAD_SENSOR_VIDEO_URL
 DESC:
-Vidéo tutorielle sur le capteur de radiation Elios 3—montage, comportement en vol, indices dans les données, acquisition et pratiques sur site
+Vidéo tutorielle sur le capteur de radiation Elios 3 - montage, comportement en vol, indices dans les données, acquisition et pratiques sur site
 à voir avant les premiers jobs RAD.
 
 ### ID: useful_battery
 LABEL: Guide de démarrage batterie grande capacité
 LINK: HIGH_CAP_BATTERY_GUIDE_URL
 DESC:
-Vidéo comparant batteries standards et grande capacité—manipulation, charge, autonomie et différences de comportement du drone
-à voir avant de changer de batterie.
+Vidéo couvrant les différences de comportement du drone entre batteries standards et haute capacité.
+À voir avant de passer aux batteries haute capacité.
 
 ### ID: useful_tether
 LABEL: Guide de démarrage unité d'attache
 LINK: TETHER_UNIT_GUIDE_URL
 DESC:
-Vidéo sur l'unité d'attache—montage, utilisation sûre en vol, maintenance et rangement entre les missions
-à voir avant le premier vol attaché.
+Vidéo sur le montage, l'utilisation en toute sécurité, la maintenance et les bonnes pratiques du Tether.
+À voir avant le premier vol attaché.
 
 ### ID: useful_tent
 LABEL: Tutoriel pliage tente Flyability

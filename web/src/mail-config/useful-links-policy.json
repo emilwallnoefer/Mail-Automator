@@ -5,18 +5,18 @@
       "label_en": "Inspector 5",
       "label_de": "Inspector 5",
       "label_fr": "Inspector 5",
-      "desc_en": "Flyability's Elios 3 flight-data software for downloading, viewing, and reviewing captures in one place (always the latest version at this link).",
-      "desc_de": "Flyabilitys Elios-3-Flugdatensoftware zum Herunterladen, Ansehen und Auswerten der Aufnahmen an einem Ort (stets die aktuelle Version unter diesem Link).",
-      "desc_fr": "Logiciel Flyability pour les données de vol Elios 3\ntéléchargement, visualisation et relecture des captures au même endroit (toujours la dernière version à ce lien)."
+      "desc_en": "Our software for viewing and reviewing the data captured by the Elios 3, all in one place.\n(Always the latest version at this link.)",
+      "desc_de": "Unsere Software zum Ansehen und Auswerten der mit der Elios 3 aufgenommenen Daten an einem Ort.\n(Stets die aktuelle Version unter diesem Link.)",
+      "desc_fr": "Notre logiciel pour visualiser et relire simultanément les données capturées par l'Elios 3.\n(Toujours la dernière version à ce lien.)"
     },
     {
       "link_key": "KNOWLEDGE_BASE_URL",
       "label_en": "Flyability Knowledge Base",
       "label_de": "Flyability Knowledge Base",
       "label_fr": "Base de connaissances Flyability",
-      "desc_en": "Flyability's hub with FAQs, firmware notes, troubleshooting articles, Elios 3 product guides, and payload documentation\nuse it as your reference.",
-      "desc_de": "Flyability-Hub mit FAQs, Firmware-Hinweisen, Troubleshooting-Artikeln, Elios-3-Produktguides und Payload-Dokumentation\nals zentrales Nachschlagewerk nutzen.",
-      "desc_fr": "Hub Flyability avec FAQ, notes firmware, articles de dépannage, guides produit Elios 3 et documentation des payloads\nvotre référence centrale (notre « Wikipedia-bility »)."
+      "desc_en": "Flyability hub with FAQs, the latest software updates, product guides, firmware troubleshooting, and handy notes on autonomous features.\nYour day-to-day “Wikipedia-bility”.",
+      "desc_de": "Flyability-Hub mit FAQs, aktuellen Software-Updates, Produktguides, Firmware-Troubleshooting und praktischen Hinweisen zu den autonomen Funktionen.\nEure alltägliche „Wikipedia-bility“.",
+      "desc_fr": "Hub Flyability avec FAQ, dernières mises à jour logicielles, guides produit, dépannage firmware et infos pratiques sur les fonctions autonomes.\nVotre « Wikipedia-bility » au quotidien."
     }
   ],
   "conditional": [
@@ -25,9 +25,9 @@
       "label_en": "Nubigon",
       "label_de": "Nubigon",
       "label_fr": "Nubigon",
-      "desc_en": "Third-party software for point-cloud animations and cinematic fly-throughs of Elios 3 scans (subscription required)\nuseful for presentations.",
-      "desc_de": "Software für Punktwolken-Animationen und kinoreife Flüge durch Elios-3-Scans\nnützlich für Präsentationen.",
-      "desc_fr": "Logiciel tiers pour animations de nuages de points et fly-throughs cinématiques des scans Elios 3 (abonnement requis)\nutile pour les présentations.",
+      "desc_en": "Third-party software for animating point clouds (subscription required).\nHandy for building client-ready presentations.",
+      "desc_de": "Drittanbieter-Software für Punktwolken-Animationen (Abo erforderlich).\nPraktisch für kundentaugliche Präsentationen.",
+      "desc_fr": "Logiciel tiers pour animer des nuages de points (abonnement requis).\nUtile pour préparer des présentations clients.",
       "industry_course_ids": ["faro_connect"]
     },
     {
