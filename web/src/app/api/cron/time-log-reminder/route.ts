@@ -185,6 +185,80 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+function resolvePreviewWeek(url: URL, request: Request) {
+  const thisWeekStart = getWeekStartDate();
+  if (!thisWeekStart) return null;
+  const prevWeekStart = addDays(thisWeekStart, -7);
+  const prevWeekEnd = addDays(prevWeekStart, 6);
+  const nameOverride = url.searchParams.get("name")?.trim();
+  return {
+    name: nameOverride && nameOverride.length > 0 ? nameOverride : "Emil",
+    weekStart: toDateString(prevWeekStart),
+    weekEnd: toDateString(prevWeekEnd),
+    dashboardUrl: `${appBaseUrl(request)}/dashboard`,
+  };
+}
+
+function buildPreviewResponse(request: Request, format: "html" | "text", url: URL) {
+  const preview = resolvePreviewWeek(url, request);
+  if (!preview) {
+    return NextResponse.json({ error: "Could not compute week boundary" }, { status: 500 });
+  }
+  const email = buildEmail(preview);
+  if (format === "text") {
+    return new NextResponse(email.text, {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  return new NextResponse(email.html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+async function sendTestResponse(request: Request, to: string, url: URL) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return NextResponse.json(
+      { error: `Invalid 'send_test' email: ${to}` },
+      { status: 400 },
+    );
+  }
+
+  if (!isResendConfigured()) {
+    return NextResponse.json(
+      { error: "Resend is not configured (missing RESEND_API_KEY or RESEND_FROM)." },
+      { status: 503 },
+    );
+  }
+
+  const preview = resolvePreviewWeek(url, request);
+  if (!preview) {
+    return NextResponse.json({ error: "Could not compute week boundary" }, { status: 500 });
+  }
+
+  const email = buildEmail(preview);
+
+  const result = await sendEmailViaResend({
+    to,
+    subject: `[TEST] ${email.subject}`,
+    html: email.html,
+    text: email.text,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    to,
+    message_id: result.id,
+    preview_name: preview.name,
+    previous_week: { start: preview.weekStart, end: preview.weekEnd },
+  });
+}
+
 async function authorize(request: Request): Promise<
   { ok: true; mode: "cron" | "admin" } | { ok: false; response: NextResponse }
 > {
@@ -210,6 +284,16 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const isDryRun = url.searchParams.get("dry") === "1";
   const isForced = url.searchParams.get("force") === "1";
+  const preview = url.searchParams.get("preview");
+  const sendTestTo = url.searchParams.get("send_test")?.trim() ?? "";
+
+  if (preview === "html" || preview === "text") {
+    return buildPreviewResponse(request, preview, url);
+  }
+
+  if (sendTestTo) {
+    return sendTestResponse(request, sendTestTo, url);
+  }
 
   const now = new Date();
   const zurich = getZurichParts(now);

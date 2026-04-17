@@ -32,10 +32,12 @@ A Vercel Cron Job hits `GET /api/cron/time-log-reminder` every Monday at 07:00 U
 
 For each user whose `user_metadata.role` is `sales`, `eu_pilot`, or `us_pilot`, the route sums `time_day_logs.net_mins` across the previous Monday→Sunday window. If the total is **0 minutes**, a reminder email is sent via [Resend](https://resend.com).
 
-Useful knobs:
+Useful knobs (all admin-gated unless called with the cron secret):
 
-- **Test manually (dry run, admin-authed):** `GET /api/cron/time-log-reminder?dry=1&force=1` — logged in as an admin in the browser lists the candidates and shows what would be sent, without actually sending.
-- **Send now regardless of time:** `GET /api/cron/time-log-reminder?force=1` (admin-authed, **actually sends**).
+- **Preview the email in your browser:** `GET /api/cron/time-log-reminder?preview=html` renders the exact HTML recipients will see. Add `&name=Sarah` to override the greeting. `preview=text` returns the plain-text variant.
+- **Send a test email to yourself:** `GET /api/cron/time-log-reminder?send_test=you@example.com` sends one real email to the given address via Resend, subject-prefixed with `[TEST]`. Does not touch the normal candidate list.
+- **Dry run:** `GET /api/cron/time-log-reminder?dry=1&force=1` lists the candidates and what would be sent, without actually sending.
+- **Send now regardless of time:** `GET /api/cron/time-log-reminder?force=1` (**actually sends** to every candidate — use carefully).
 - **Vercel Cron auth:** When `CRON_SECRET` is set, Vercel sends it as `Authorization: Bearer <secret>` and the route trusts the call without requiring an admin session. If `CRON_SECRET` is missing, only admin-authed requests go through.
 
 Tables involved: `time_day_logs` (summed via service-role). No new tables were added.
