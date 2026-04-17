@@ -196,6 +196,9 @@ function markdownBlockToHtml(chunk: string): string {
   c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
     return `<span style="font-weight:600;color:#222;">${escapeHtmlText(inner)}</span>`;
   });
+  c = c.replace(/(➡️\s*)\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, prefix, label, url) => {
+    return `${prefix}<a href="${url}" style="font-size:17px;font-weight:600;color:#111;text-decoration:underline;">${escapeHtmlText(label)}</a>`;
+  });
   c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
     return `<a href="${url}">${escapeHtmlText(label)}</a>`;
   });
