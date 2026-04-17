@@ -69,7 +69,7 @@ export function SettingsPanel({
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const importFileRef = useRef<HTMLInputElement | null>(null);
-  const isSalesOnly = userRole === "sales";
+  const isSalesOnly = userRole === "sales" || userRole === "hr";
   const [mailSigPreset, setMailSigPreset] = useState<string>(MAIL_SIGNATURE_NAME_PRESETS[0]);
   const [mailSigCustom, setMailSigCustom] = useState("");
   const [mailSigSaving, setMailSigSaving] = useState(false);

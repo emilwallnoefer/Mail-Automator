@@ -181,7 +181,20 @@ function AnimatedNumber({
   return <>{children(animated)}</>;
 }
 
-export function TimeTrackerPanel() {
+type TimeTrackerPanelProps = {
+  /** When true, hides all mutating controls (save, reset, fill, break editing). */
+  readOnly?: boolean;
+  /**
+   * Base URL for the week-read endpoint. Defaults to `/api/time-tracker`.
+   * The panel will append `?weekStart=...&includeTravel=...&includeBank=...` (and any
+   * extra query params already present in the URL, e.g. `user_id=...`).
+   */
+  apiBase?: string;
+  /** Optional header to display when viewing another user's tracker. */
+  viewingLabel?: string;
+};
+
+export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: TimeTrackerPanelProps = {}) {
   const bubbles = [
     { left: "6%", size: "10px", duration: "9s", delay: "0s" },
     { left: "14%", size: "8px", duration: "12s", delay: "-3s" },
@@ -253,9 +266,10 @@ export function TimeTrackerPanel() {
     }
 
     const requestPromise = (async () => {
-      const response = await fetch(
-        `/api/time-tracker?weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}&includeBank=${includeBank ? "1" : "0"}`,
-      );
+      const base = apiBase ?? "/api/time-tracker";
+      const separator = base.includes("?") ? "&" : "?";
+      const url = `${base}${separator}weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}&includeBank=${includeBank ? "1" : "0"}`;
+      const response = await fetch(url);
       const payload = (await response.json()) as WeekResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
       const weekData = payload as WeekResponse;
@@ -269,7 +283,7 @@ export function TimeTrackerPanel() {
     } finally {
       weekInflightRef.current.delete(targetWeekStart);
     }
-  }, []);
+  }, [apiBase]);
 
   const prefetchNearbyWeeks = useCallback((centerWeekStart: string) => {
     const center = getMonday(centerWeekStart);
@@ -453,6 +467,7 @@ export function TimeTrackerPanel() {
   }
 
   function handleSaveDay() {
+    if (readOnly) return;
     if (!selectedDay) return;
     const date = selectedDay.date;
     const nextBreaks = formBreaks.map((item) => ({ ...item }));
@@ -520,6 +535,7 @@ export function TimeTrackerPanel() {
   }
 
   async function handleFillMissing(date: string) {
+    if (readOnly) return;
     const currentDay = data?.days.find((day) => day.date === date);
     const worked = Math.max(0, currentDay?.net_mins ?? 0);
     const currentComp = Math.max(0, currentDay?.comp_mins ?? 0);
@@ -561,6 +577,7 @@ export function TimeTrackerPanel() {
   }
 
   async function handleFillDay(date: string) {
+    if (readOnly) return;
     const currentDay = data?.days.find((day) => day.date === date);
     if (!currentDay) return;
 
@@ -611,6 +628,7 @@ export function TimeTrackerPanel() {
   }
 
   async function handleResetDay() {
+    if (readOnly) return;
     if (!selectedDay) return;
     setSaving(true);
     try {
@@ -727,7 +745,7 @@ export function TimeTrackerPanel() {
                     <input
                       type="time"
                       value={formStart}
-                      disabled={!selectedDay}
+                      disabled={!selectedDay || readOnly}
                       onChange={(event) => setFormStart(event.target.value)}
                       className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                     />
@@ -737,7 +755,7 @@ export function TimeTrackerPanel() {
                     <input
                       type="time"
                       value={formStop}
-                      disabled={!selectedDay}
+                      disabled={!selectedDay || readOnly}
                       onChange={(event) => setFormStop(event.target.value)}
                       className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                     />
@@ -747,7 +765,7 @@ export function TimeTrackerPanel() {
                       type="checkbox"
                       className="mt-0.5"
                       checked={formHoliday}
-                      disabled={!selectedDay}
+                      disabled={!selectedDay || readOnly}
                       onChange={(event) => setFormHoliday(event.target.checked)}
                     />
                     <span>
@@ -765,7 +783,20 @@ export function TimeTrackerPanel() {
                           <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
                         </div>
                       </div>
-                      {selectedDayUsesBreakCounter ? (
+                      {readOnly ? (
+                        <div className="space-y-1 text-xs text-slate-200/90">
+                          {formBreaks.length === 0 ? (
+                            <p className="text-slate-300/80">No breaks logged.</p>
+                          ) : (
+                            formBreaks.map((item, index) => (
+                              <div key={`${index}-ro`} className="flex justify-between">
+                                <span>{item.name || "Break"}</span>
+                                <span className="tabular-nums">{item.mins} min</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ) : selectedDayUsesBreakCounter ? (
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 items-center gap-2">
                             <button
@@ -838,29 +869,33 @@ export function TimeTrackerPanel() {
 
                   <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
 
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleSaveDay();
-                      }}
-                      disabled={saving || !selectedDay}
-                      className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
-                    >
-                      {saving ? "Saving..." : "Save day"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playUiSound("resetTap");
-                        void handleResetDay();
-                      }}
-                      disabled={saving || !selectedDay}
-                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
-                    >
-                      Reset day
-                    </button>
-                  </div>
+                  {readOnly ? (
+                    <p className="text-xs text-slate-400">Read-only view &mdash; saving is disabled.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleSaveDay();
+                        }}
+                        disabled={saving || !selectedDay}
+                        className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
+                      >
+                        {saving ? "Saving..." : "Save day"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playUiSound("resetTap");
+                          void handleResetDay();
+                        }}
+                        disabled={saving || !selectedDay}
+                        className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+                      >
+                        Reset day
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {toast && (
@@ -1147,26 +1182,28 @@ export function TimeTrackerPanel() {
             </AnimatedNumber>
           )}
         </button>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => {
-              void handleFillMissing(day.date);
-            }}
-            className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
-          >
-            Fill missing
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void handleFillDay(day.date);
-            }}
-            className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
-          >
-            Fill Day
-          </button>
-        </div>
+        {readOnly ? null : (
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                void handleFillMissing(day.date);
+              }}
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+            >
+              Fill missing
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handleFillDay(day.date);
+              }}
+              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+            >
+              Fill Day
+            </button>
+          </div>
+        )}
       </article>
     );
   }
@@ -1197,6 +1234,9 @@ export function TimeTrackerPanel() {
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
+            {viewingLabel ? (
+              <p className="mt-1 text-xs text-amber-200/90">Viewing: {viewingLabel}</p>
+            ) : null}
           </div>
           <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end sm:gap-2">
             <button

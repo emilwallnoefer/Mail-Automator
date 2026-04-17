@@ -2,6 +2,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isAdminEmail } from "@/lib/admin";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -21,6 +22,13 @@ export default async function DashboardPage() {
       ? (user.user_metadata as Record<string, unknown>).role
       : null;
   const initialRole = normalizeUserRole(userRoleRaw);
+  const isAdmin = isAdminEmail(user.email);
 
-  return <DashboardShell email={user.email ?? "Signed in"} initialRole={initialRole} />;
+  return (
+    <DashboardShell
+      email={user.email ?? "Signed in"}
+      initialRole={initialRole}
+      isAdmin={isAdmin}
+    />
+  );
 }

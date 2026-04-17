@@ -25,6 +25,7 @@ import {
 import { AuthNavbar } from "@/components/auth-navbar";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
+import { AdminPanel } from "@/components/admin-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
@@ -33,7 +34,10 @@ import { userRoleLabel, type UserRole } from "@/lib/user-role";
 type DashboardShellProps = {
   email: string;
   initialRole: UserRole | null;
+  isAdmin?: boolean;
 };
+
+type ModuleKey = "mail" | "time" | "settings" | "admin";
 
 const PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY = "ma_program_readme_prompt_seen_deploy_v1";
 const SUBJECT_WRITE_STEP = 2;
@@ -195,7 +199,7 @@ function IconArrow({ className }: { className?: string }) {
   );
 }
 
-export function DashboardShell({ email, initialRole }: DashboardShellProps) {
+export function DashboardShell({ email, initialRole, isAdmin = false }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -204,7 +208,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
-  const [activeModule, setActiveModule] = useState<"mail" | "time" | "settings">(initialRole === "sales" ? "time" : "mail");
+  const [activeModule, setActiveModule] = useState<ModuleKey>(
+    initialRole === "sales" || initialRole === "hr" ? "time" : "mail",
+  );
   const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
   const [roleSaving, setRoleSaving] = useState(false);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
@@ -304,10 +310,17 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
     setChangesTouched(false);
   }, []);
 
-  const availableModules = useMemo<Array<"mail" | "time" | "settings">>(
-    () => (userRole === "sales" ? ["time", "settings"] : ["mail", "time", "settings"]),
-    [userRole],
-  );
+  const availableModules = useMemo<ModuleKey[]>(() => {
+    const base: ModuleKey[] =
+      userRole === "sales" || userRole === "hr"
+        ? ["time", "settings"]
+        : ["mail", "time", "settings"];
+    if (isAdmin || userRole === "hr") base.push("admin");
+    return base;
+  }, [userRole, isAdmin]);
+
+  const canManageUsers = isAdmin;
+  const adminModuleLabel = canManageUsers ? "Admin" : "Team time";
 
   useEffect(() => {
     function onMailSignatureSaved(event: Event) {
@@ -322,7 +335,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
 
   useEffect(() => {
     (async () => {
-      if (userRole === "sales") return;
+      if (userRole === "sales" || userRole === "hr") return;
       const sigResponse = await fetch("/api/settings/mail-signature");
       if (sigResponse.ok) {
         const sigData = (await sigResponse.json()) as { signature_name?: string };
@@ -334,7 +347,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
 
   useEffect(() => {
     (async () => {
-      if (userRole === "sales") return;
+      if (userRole === "sales" || userRole === "hr") return;
       const response = await fetch("/api/gmail/status");
       if (!response.ok) return;
       const data = (await response.json()) as { connected: boolean; gmail_email?: string | null };
@@ -466,7 +479,7 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
       const { error: updateError } = await supabase.auth.updateUser({ data: { role: nextRole } });
       if (updateError) throw updateError;
       setUserRole(nextRole);
-      if (nextRole === "sales") {
+      if (nextRole === "sales" || nextRole === "hr") {
         setActiveModule("time");
       }
     } catch (err) {
@@ -590,8 +603,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
           gmailEmail={gmailStatus.gmail_email}
           activeModule={activeModule}
           availableModules={availableModules}
-          showGmailStatus={userRole !== "sales"}
+          showGmailStatus={userRole !== "sales" && userRole !== "hr"}
           userRole={userRole}
+          adminModuleLabel={adminModuleLabel}
           onSelectModule={(module) => {
             if (!availableModules.includes(module)) return;
             if (module !== activeModule) playUiSound("switchWhoosh");
@@ -620,7 +634,9 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 ? "Mail Automator"
                 : activeModule === "time"
                   ? "Time Tracker"
-                  : "Settings"}
+                  : activeModule === "admin"
+                    ? adminModuleLabel
+                    : "Settings"}
             </p>
           </div>
         ) : null}
@@ -734,6 +750,36 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                     </span>
                   </motion.button>
                 ) : null}
+
+                {availableModules.includes("admin") ? (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.35 }}
+                    onClick={() => {
+                      if (activeModule !== "admin") playUiSound("switchWhoosh");
+                      setActiveModule("admin");
+                      handleBeginAutomating();
+                    }}
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-amber-400/35 hover:shadow-[0_28px_56px_-12px_rgba(251,191,36,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400/80"
+                  >
+                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-400/12 blur-2xl transition group-hover:bg-amber-400/22" aria-hidden />
+                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200">
+                      <IconCog className="h-5 w-5" />
+                    </span>
+                    <span className="text-lg font-semibold text-white">{adminModuleLabel}</span>
+                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                      {canManageUsers
+                        ? "Manage user roles and review everyone's logged time."
+                        : "Review everyone's logged time — summaries and week drill-downs."}
+                    </span>
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-200/90">
+                      Open
+                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    </span>
+                  </motion.button>
+                ) : null}
               </div>
             </div>
           </motion.div>
@@ -759,6 +805,8 @@ export function DashboardShell({ email, initialRole }: DashboardShellProps) {
                 >
                   {activeModule === "time" ? (
                     <TimeTrackerPanel />
+                  ) : activeModule === "admin" ? (
+                    <AdminPanel canManageUsers={canManageUsers} />
                   ) : activeModule === "settings" ? (
                     <SettingsPanel
                       email={email}

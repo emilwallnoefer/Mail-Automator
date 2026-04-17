@@ -4,7 +4,8 @@ import { sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDayOvertimeContributionMins, TIME_TRACKER_TARGET_MINS } from "@/lib/time-tracker-rules";
+import { TIME_TRACKER_TARGET_MINS } from "@/lib/time-tracker-rules";
+import { fetchWeekForUser, getWeekStartDate, sanitizeMins } from "@/lib/time-tracker-queries";
 
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 
@@ -72,39 +73,6 @@ function isDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function sanitizeMins(value: unknown) {
-  const mins = Number.parseInt(String(value ?? 0), 10);
-  return Number.isFinite(mins) && mins >= 0 ? mins : 0;
-}
-
-function parseInteger(value: unknown, fallback = 0) {
-  const parsed = Number.parseInt(String(value ?? fallback), 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function getWeekStart(dateInput?: string) {
-  const base = dateInput ? new Date(dateInput) : new Date();
-  if (Number.isNaN(base.getTime())) return null;
-  const date = new Date(base);
-  const day = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - day);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function toDateString(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
 function normalizeColumnLetter(value: unknown) {
   const text = String(value ?? "").trim().toUpperCase();
   if (!text) return undefined;
@@ -137,107 +105,6 @@ function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping 
   return hasAnyConfig ? mapping : undefined;
 }
 
-function looksLikeMissingStatsObjects(detail: string) {
-  return /tt_refresh_overtime_bank_stats|time_tracker_user_stats|relation .* does not exist|function .* does not exist/i.test(
-    detail,
-  );
-}
-
-async function computeOvertimeBankMins(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const [logsAllRes, compAllRes] = await Promise.all([
-    supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", userId),
-    supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
-  ]);
-  if (logsAllRes.error) throw new Error(logsAllRes.error.message);
-  if (compAllRes.error) throw new Error(compAllRes.error.message);
-
-  const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
-  for (const row of logsAllRes.data ?? []) {
-    allWorkByDate.set(row.work_date, {
-      net: sanitizeMins(row.net_mins),
-      holiday: Boolean(row.holiday),
-    });
-  }
-  const allCompByDate = new Map<string, number>();
-  for (const row of compAllRes.data ?? []) {
-    allCompByDate.set(row.work_date, sanitizeMins(row.mins));
-  }
-
-  let overtimeBankMins = 0;
-  const allDates = new Set([...allWorkByDate.keys(), ...allCompByDate.keys()]);
-  for (const date of allDates) {
-    const work = allWorkByDate.get(date);
-    const comp = allCompByDate.get(date) ?? 0;
-    overtimeBankMins += getDayOvertimeContributionMins(
-      date,
-      work?.net ?? 0,
-      work?.holiday ?? false,
-      comp,
-    );
-  }
-
-  return overtimeBankMins;
-}
-
-async function getOvertimeBankMins(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  includeBank: boolean,
-) {
-  if (!includeBank) return { overtimeBankMins: 0, includesBank: false };
-
-  const statsRes = await supabase
-    .from("time_tracker_user_stats")
-    .select("overtime_bank_mins, computed_for_day")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (statsRes.error && !looksLikeMissingStatsObjects(statsRes.error.message ?? "")) {
-    throw new Error(statsRes.error.message);
-  }
-
-  const hasFreshStats = !statsRes.error && statsRes.data?.overtime_bank_mins != null;
-  if (hasFreshStats) {
-    return {
-      overtimeBankMins: parseInteger(statsRes.data?.overtime_bank_mins),
-      includesBank: true,
-    };
-  }
-
-  const refreshRes = await supabase.rpc("tt_refresh_overtime_bank_stats", {
-    p_user: userId,
-  });
-  if (!refreshRes.error) {
-    return {
-      overtimeBankMins: parseInteger(refreshRes.data),
-      includesBank: true,
-    };
-  }
-
-  const detail = refreshRes.error.message ?? "";
-  const overtimeBankMins = await computeOvertimeBankMins(supabase, userId);
-  if (looksLikeMissingStatsObjects(detail)) {
-    return { overtimeBankMins, includesBank: true };
-  }
-
-  const persistRes = await supabase.from("time_tracker_user_stats").upsert(
-    {
-      user_id: userId,
-      overtime_bank_mins: overtimeBankMins,
-      computed_for_day: toDateString(new Date()),
-    },
-    { onConflict: "user_id" },
-  );
-  if (persistRes.error && !looksLikeMissingStatsObjects(persistRes.error.message ?? "")) {
-    throw new Error(persistRes.error.message);
-  }
-
-  return { overtimeBankMins, includesBank: true };
-}
-
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -247,86 +114,24 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
-  const weekStartDate = getWeekStart(url.searchParams.get("weekStart") ?? undefined);
+  const weekStartDate = getWeekStartDate(url.searchParams.get("weekStart") ?? undefined);
   const includeTravel = url.searchParams.get("includeTravel") !== "0";
   const includeBank = url.searchParams.get("includeBank") !== "0";
   if (!weekStartDate) return NextResponse.json({ error: "Invalid weekStart date" }, { status: 400 });
 
-  const weekStart = toDateString(weekStartDate);
-  const weekEnd = toDateString(addDays(weekStartDate, 6));
-
-  const [logsWeekRes, compWeekRes] = await Promise.all([
-    supabase
-      .from("time_day_logs")
-      .select("id, work_date, start_time, stop_time, net_mins, holiday")
-      .eq("user_id", user.id)
-      .gte("work_date", weekStart)
-      .lte("work_date", weekEnd)
-      .order("work_date", { ascending: true }),
-    supabase
-      .from("time_comp_adjustments")
-      .select("work_date, mins, note")
-      .eq("user_id", user.id)
-      .gte("work_date", weekStart)
-      .lte("work_date", weekEnd)
-      .order("work_date", { ascending: true }),
-  ]);
-
-  if (logsWeekRes.error) return NextResponse.json({ error: logsWeekRes.error.message }, { status: 500 });
-  if (compWeekRes.error) return NextResponse.json({ error: compWeekRes.error.message }, { status: 500 });
-
-  const weekLogs = logsWeekRes.data ?? [];
-  const weekLogIds = weekLogs.map((row) => row.id);
-  const breaksRes =
-    weekLogIds.length > 0
-      ? await supabase
-          .from("time_day_breaks")
-          .select("day_log_id, position, name, mins")
-          .in("day_log_id", weekLogIds)
-          .order("position", { ascending: true })
-      : { data: [], error: null };
-
-  if (breaksRes.error) return NextResponse.json({ error: breaksRes.error.message }, { status: 500 });
-
-  const breaksByLogId = new Map<number, Array<{ name: string; mins: number }>>();
-  for (const row of breaksRes.data ?? []) {
-    const list = breaksByLogId.get(row.day_log_id) ?? [];
-    list.push({ name: row.name ?? "", mins: sanitizeMins(row.mins) });
-    breaksByLogId.set(row.day_log_id, list);
-  }
-
-  const compByDate = new Map<string, { mins: number; note: string }>();
-  for (const row of compWeekRes.data ?? []) {
-    compByDate.set(row.work_date, { mins: sanitizeMins(row.mins), note: row.note ?? "" });
-  }
-
-  const weekDays = Array.from({ length: 7 }).map((_, idx) => {
-    const date = toDateString(addDays(weekStartDate, idx));
-    const log = weekLogs.find((item) => item.work_date === date);
-    const comp = compByDate.get(date);
-    return {
-      date,
-      start_time: log?.start_time ?? "",
-      stop_time: log?.stop_time ?? "",
-      net_mins: sanitizeMins(log?.net_mins),
-      holiday: Boolean(log?.holiday),
-      comp_mins: comp?.mins ?? 0,
-      comp_note: comp?.note ?? "",
-      breaks: log ? breaksByLogId.get(log.id) ?? [] : [],
-    };
-  });
-
-  const weekHoursMins = weekDays.reduce((sum, day) => sum + day.net_mins, 0);
-
-  let overtimeBankMins = 0;
-  let includesBank = false;
+  let week;
   try {
-    const bank = await getOvertimeBankMins(supabase, user.id, includeBank);
-    overtimeBankMins = bank.overtimeBankMins;
-    includesBank = bank.includesBank;
+    week = await fetchWeekForUser(supabase, user.id, weekStartDate, { includeBank });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "Failed to load overtime bank" }, { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message || "Failed to load tracker week" },
+      { status: 500 },
+    );
   }
+
+  const { week_start: weekStart, week_end: weekEnd, days: weekDays, week_hours_mins: weekHoursMins } = week;
+  const overtimeBankMins = week.overtime_bank_mins;
+  const includesBank = week.includes_bank;
 
   let travelByDate: Record<
     string,

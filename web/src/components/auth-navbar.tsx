@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { playUiSound } from "@/lib/ui-sounds";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
-type ModuleKey = "mail" | "time" | "settings";
+type ModuleKey = "mail" | "time" | "settings" | "admin";
 
 type AuthNavbarProps = {
   email: string;
@@ -14,6 +14,7 @@ type AuthNavbarProps = {
   availableModules?: ModuleKey[];
   showGmailStatus?: boolean;
   userRole?: UserRole | null;
+  adminModuleLabel?: string;
   onSelectModule: (module: ModuleKey) => void;
 };
 
@@ -25,6 +26,7 @@ export function AuthNavbar({
   availableModules = ["mail", "time", "settings"],
   showGmailStatus = true,
   userRole = null,
+  adminModuleLabel = "Admin",
   onSelectModule,
 }: AuthNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -134,6 +136,24 @@ export function AuthNavbar({
                   >
                     <span>Settings</span>
                     {activeModule === "settings" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                  </button>
+                ) : null}
+                {availableModules.includes("admin") ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeModule !== "admin") playUiSound("switchWhoosh");
+                      onSelectModule("admin");
+                      setMenuOpen(false);
+                    }}
+                    role="tab"
+                    aria-selected={activeModule === "admin"}
+                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-amber-300/70 hover:bg-amber-400/95 hover:text-slate-900 ${
+                      activeModule === "admin" ? "border-amber-300/55 bg-white/12" : "border-white/10 bg-white/5"
+                    }`}
+                  >
+                    <span>{adminModuleLabel}</span>
+                    {activeModule === "admin" ? <span className="text-[10px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}
               </div>
