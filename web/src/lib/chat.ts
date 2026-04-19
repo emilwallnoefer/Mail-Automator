@@ -1,0 +1,491 @@
+"use client";
+
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Team Chat client helpers.
+ *
+ * Schema lives in:
+ *   - web/supabase/2026-04-19-team-chat.sql            (base)
+ *   - web/supabase/2026-04-19-team-chat-marks-and-votes.sql (kinds + votes)
+ *
+ * One global channel, one `chat_messages` table, RLS that lets every authed
+ * user read every message and only the author can insert/edit/delete.
+ * Marking a feature/change request as "done" goes through the admin-only
+ * `/api/chat/mark-done` route (service-role bypass of RLS).
+ *
+ * Realtime delivers INSERT/UPDATE/DELETE events on `chat_messages` and
+ * `chat_message_votes`; presence and typing indicators are ephemeral over
+ * Supabase Realtime channels (no DB writes).
+ */
+
+export const CHAT_BUCKET = "chat-attachments";
+export const CHAT_REALTIME_TOPIC = "team-chat:global";
+export const CHAT_HISTORY_LIMIT = 200;
+
+/** Max upload size for chat attachments (10 MiB). Enforced client-side; the
+ *  bucket itself does not impose a limit. */
+export const CHAT_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+export type MessageKind = "message" | "feature_request" | "change_request" | "best_practice";
+export const MESSAGE_KINDS: MessageKind[] = [
+  "message",
+  "feature_request",
+  "change_request",
+  "best_practice",
+];
+export type TaggedMessageKind = Exclude<MessageKind, "message">;
+export const TAGGED_KINDS: TaggedMessageKind[] = [
+  "feature_request",
+  "change_request",
+  "best_practice",
+];
+export const VOTABLE_KINDS: TaggedMessageKind[] = ["feature_request", "change_request"];
+
+export function isVotableKind(kind: MessageKind): boolean {
+  return (VOTABLE_KINDS as readonly MessageKind[]).includes(kind);
+}
+export function isMarkableKind(kind: MessageKind): boolean {
+  return (VOTABLE_KINDS as readonly MessageKind[]).includes(kind);
+}
+
+export function messageKindLabel(kind: MessageKind): string {
+  switch (kind) {
+    case "feature_request":
+      return "Feature request";
+    case "change_request":
+      return "Change request";
+    case "best_practice":
+      return "Best practice";
+    default:
+      return "Message";
+  }
+}
+
+export type ChatMessageRow = {
+  id: string;
+  sender_id: string;
+  sender_email: string;
+  body: string | null;
+  attachment_path: string | null;
+  attachment_name: string | null;
+  attachment_type: string | null;
+  attachment_size: number | null;
+  created_at: string;
+  kind: MessageKind;
+  done_at: string | null;
+  done_by: string | null;
+  edited_at: string | null;
+};
+
+export type ChatVoteRow = {
+  message_id: string;
+  user_id: string;
+  vote: -1 | 1;
+};
+
+export type VoteSummary = {
+  up: number;
+  down: number;
+  /** Current viewer's vote (0 = none). */
+  mine: -1 | 0 | 1;
+};
+
+export type ChatPresenceUser = {
+  user_id: string;
+  email: string;
+  online_at: string;
+};
+
+export type TypingPayload = {
+  user_id: string;
+  email: string;
+  is_typing: boolean;
+};
+
+const MESSAGE_COLUMNS =
+  "id, sender_id, sender_email, body, attachment_path, attachment_name, attachment_type, attachment_size, created_at, kind, done_at, done_by, edited_at";
+
+let _client: SupabaseClient | null = null;
+function client(): SupabaseClient {
+  if (!_client) _client = createClient();
+  return _client;
+}
+
+export async function fetchChatHistory(): Promise<ChatMessageRow[]> {
+  const supabase = client();
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select(MESSAGE_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(CHAT_HISTORY_LIMIT);
+  if (error) throw error;
+  // Return oldest -> newest so the UI can render top-down naturally.
+  return ((data ?? []) as ChatMessageRow[]).slice().reverse();
+}
+
+export async function fetchAllVotes(): Promise<ChatVoteRow[]> {
+  const supabase = client();
+  const { data, error } = await supabase
+    .from("chat_message_votes")
+    .select("message_id, user_id, vote");
+  if (error) throw error;
+  return (data ?? []) as ChatVoteRow[];
+}
+
+type SendInput = {
+  body?: string;
+  kind?: MessageKind;
+  attachment?: {
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+  };
+};
+
+export async function sendChatMessage(input: SendInput): Promise<ChatMessageRow> {
+  const supabase = client();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error("Not signed in");
+  const user = userData.user;
+
+  const trimmed = (input.body ?? "").trim();
+  if (!trimmed && !input.attachment) {
+    throw new Error("Message must have text or an attachment.");
+  }
+
+  const insertRow = {
+    sender_id: user.id,
+    sender_email: user.email ?? "unknown",
+    body: trimmed || null,
+    attachment_path: input.attachment?.path ?? null,
+    attachment_name: input.attachment?.name ?? null,
+    attachment_type: input.attachment?.type ?? null,
+    attachment_size: input.attachment?.size ?? null,
+    kind: input.kind ?? "message",
+  };
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert(insertRow)
+    .select(MESSAGE_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as ChatMessageRow;
+}
+
+export async function editChatMessage(messageId: string, body: string): Promise<ChatMessageRow> {
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("Edited message cannot be empty.");
+  const supabase = client();
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .update({ body: trimmed, edited_at: new Date().toISOString() })
+    .eq("id", messageId)
+    .select(MESSAGE_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as ChatMessageRow;
+}
+
+export async function deleteChatMessage(messageId: string): Promise<void> {
+  const supabase = client();
+  const { error } = await supabase.from("chat_messages").delete().eq("id", messageId);
+  if (error) throw error;
+}
+
+/**
+ * Set or clear the current viewer's vote on a message. Pass `0` to remove.
+ * Uses upsert so re-voting in the same direction is a no-op.
+ */
+export async function setMessageVote(
+  messageId: string,
+  vote: -1 | 0 | 1,
+): Promise<void> {
+  const supabase = client();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error("Not signed in");
+  const user = userData.user;
+
+  if (vote === 0) {
+    const { error } = await supabase
+      .from("chat_message_votes")
+      .delete()
+      .eq("message_id", messageId)
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from("chat_message_votes")
+    .upsert(
+      {
+        message_id: messageId,
+        user_id: user.id,
+        vote,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "message_id,user_id" },
+    );
+  if (error) throw error;
+}
+
+export async function markMessageDone(messageId: string, done: boolean): Promise<ChatMessageRow> {
+  const response = await fetch("/api/chat/mark-done", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message_id: messageId, done }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as
+    | { ok: true; message: ChatMessageRow }
+    | { error: string };
+  if (!response.ok || !("ok" in payload)) {
+    throw new Error(("error" in payload && payload.error) || "Failed to mark message");
+  }
+  return payload.message;
+}
+
+/**
+ * Upload an attachment to the chat bucket. Returns the storage path that can
+ * be persisted on a `chat_messages` row. The path is forced to be under the
+ * caller's user folder to match the bucket's RLS policy.
+ */
+export async function uploadChatAttachment(file: File): Promise<{
+  path: string;
+  name: string;
+  type: string;
+  size: number;
+}> {
+  if (file.size > CHAT_MAX_ATTACHMENT_BYTES) {
+    throw new Error(
+      `File is too large. Max is ${Math.round(CHAT_MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB.`,
+    );
+  }
+  const supabase = client();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error("Not signed in");
+  const user = userData.user;
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80) || "file";
+  const id = (typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2)) as string;
+  const path = `${user.id}/${Date.now()}-${id}-${safeName}`;
+
+  const { error } = await supabase.storage.from(CHAT_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  if (error) throw error;
+  return { path, name: file.name, type: file.type || "application/octet-stream", size: file.size };
+}
+
+const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+const _signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+export async function getAttachmentSignedUrl(path: string): Promise<string> {
+  const cached = _signedUrlCache.get(path);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+  const supabase = client();
+  const { data, error } = await supabase.storage
+    .from(CHAT_BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+  if (error || !data?.signedUrl) throw error ?? new Error("Failed to sign URL");
+  _signedUrlCache.set(path, {
+    url: data.signedUrl,
+    expiresAt: Date.now() + SIGNED_URL_TTL_SECONDS * 1000,
+  });
+  return data.signedUrl;
+}
+
+export type ChatChannelHandlers = {
+  onInsert: (row: ChatMessageRow) => void;
+  onUpdate: (row: ChatMessageRow) => void;
+  onDelete: (rowId: string) => void;
+  onVoteInsert: (row: ChatVoteRow) => void;
+  onVoteUpdate: (row: ChatVoteRow) => void;
+  onVoteDelete: (row: { message_id: string; user_id: string }) => void;
+  onPresence: (users: ChatPresenceUser[]) => void;
+  onTyping: (payload: TypingPayload) => void;
+};
+
+/**
+ * Subscribes to:
+ *   - Postgres INSERT/UPDATE/DELETE on `public.chat_messages`
+ *   - Postgres INSERT/UPDATE/DELETE on `public.chat_message_votes`
+ *   - Realtime presence on `CHAT_REALTIME_TOPIC` (online users)
+ *   - Broadcast events on `typing` (typing indicators)
+ *
+ * Returns the channel — call `.unsubscribe()` on it when unmounting.
+ */
+export async function subscribeToChat(handlers: ChatChannelHandlers): Promise<{
+  channel: RealtimeChannel;
+  trackPresence: () => Promise<void>;
+  broadcastTyping: (isTyping: boolean) => Promise<void>;
+  currentUserId: string;
+  currentEmail: string;
+}> {
+  const supabase = client();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw userErr ?? new Error("Not signed in");
+  const user = userData.user;
+
+  const channel = supabase.channel(CHAT_REALTIME_TOPIC, {
+    config: { presence: { key: user.id } },
+  });
+
+  channel.on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "chat_messages" },
+    (payload) => handlers.onInsert(payload.new as ChatMessageRow),
+  );
+  channel.on(
+    "postgres_changes",
+    { event: "UPDATE", schema: "public", table: "chat_messages" },
+    (payload) => handlers.onUpdate(payload.new as ChatMessageRow),
+  );
+  channel.on(
+    "postgres_changes",
+    { event: "DELETE", schema: "public", table: "chat_messages" },
+    (payload) => {
+      const old = payload.old as { id?: string };
+      if (old?.id) handlers.onDelete(old.id);
+    },
+  );
+
+  channel.on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "chat_message_votes" },
+    (payload) => handlers.onVoteInsert(payload.new as ChatVoteRow),
+  );
+  channel.on(
+    "postgres_changes",
+    { event: "UPDATE", schema: "public", table: "chat_message_votes" },
+    (payload) => handlers.onVoteUpdate(payload.new as ChatVoteRow),
+  );
+  channel.on(
+    "postgres_changes",
+    { event: "DELETE", schema: "public", table: "chat_message_votes" },
+    (payload) => {
+      const old = payload.old as { message_id?: string; user_id?: string };
+      if (old?.message_id && old?.user_id) {
+        handlers.onVoteDelete({ message_id: old.message_id, user_id: old.user_id });
+      }
+    },
+  );
+
+  channel.on("presence", { event: "sync" }, () => {
+    const state = channel.presenceState<{ user_id: string; email: string; online_at: string }>();
+    const users: ChatPresenceUser[] = [];
+    for (const key of Object.keys(state)) {
+      const entries = state[key];
+      const first = entries[0];
+      if (!first) continue;
+      users.push({
+        user_id: first.user_id ?? key,
+        email: first.email ?? "unknown",
+        online_at: first.online_at ?? new Date().toISOString(),
+      });
+    }
+    handlers.onPresence(users);
+  });
+
+  channel.on("broadcast", { event: "typing" }, (msg) => {
+    const payload = msg.payload as TypingPayload | undefined;
+    if (!payload || payload.user_id === user.id) return;
+    handlers.onTyping(payload);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    channel.subscribe((status, err) => {
+      if (status === "SUBSCRIBED") resolve();
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        reject(err ?? new Error(`Realtime channel status: ${status}`));
+      }
+    });
+  });
+
+  const trackPresence = async () => {
+    await channel.track({
+      user_id: user.id,
+      email: user.email ?? "unknown",
+      online_at: new Date().toISOString(),
+    });
+  };
+
+  const broadcastTyping = async (isTyping: boolean) => {
+    await channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: {
+        user_id: user.id,
+        email: user.email ?? "unknown",
+        is_typing: isTyping,
+      } satisfies TypingPayload,
+    });
+  };
+
+  return {
+    channel,
+    trackPresence,
+    broadcastTyping,
+    currentUserId: user.id,
+    currentEmail: user.email ?? "unknown",
+  };
+}
+
+export function formatChatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) {
+    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function shortNameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  const part = local.split(/[._-]/)[0] ?? local;
+  if (!part) return email;
+  return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+}
+
+export function initialsFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  const parts = local.split(/[._-]/).filter(Boolean);
+  const a = parts[0]?.[0] ?? local[0] ?? "?";
+  const b = parts[1]?.[0] ?? local[1] ?? "";
+  return (a + b).toUpperCase();
+}
+
+/**
+ * Reduce an array of vote rows into a per-message summary (counts + the
+ * current viewer's vote).
+ */
+export function summarizeVotes(
+  votes: ChatVoteRow[],
+  currentUserId: string | null,
+): Map<string, VoteSummary> {
+  const out = new Map<string, VoteSummary>();
+  for (const v of votes) {
+    const cur = out.get(v.message_id) ?? { up: 0, down: 0, mine: 0 as const };
+    if (v.vote === 1) cur.up += 1;
+    else if (v.vote === -1) cur.down += 1;
+    if (currentUserId && v.user_id === currentUserId) cur.mine = v.vote;
+    out.set(v.message_id, cur);
+  }
+  return out;
+}

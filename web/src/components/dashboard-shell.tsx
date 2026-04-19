@@ -23,6 +23,7 @@ import {
   RESOURCE_SECTION_ORDER,
 } from "@/lib/change-options";
 import { AuthNavbar } from "@/components/auth-navbar";
+import { ChatWidget } from "@/components/chat-widget";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { AdminPanel } from "@/components/admin-panel";
@@ -631,7 +632,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
             </button>
             <p className="text-[11px] text-slate-500">
               {activeModule === "mail"
-                ? "Mail Automator"
+                ? "Flya-Allrounder"
                 : activeModule === "time"
                   ? "Time Tracker"
                   : activeModule === "admin"
@@ -686,7 +687,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                     <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
                       <IconMail className="h-5 w-5" />
                     </span>
-                    <span className="text-lg font-semibold text-white">Mail Automator</span>
+                    <span className="text-lg font-semibold text-white">Flya-Allrounder</span>
                     <span className="mt-2 text-sm leading-relaxed text-slate-400">
                       Training email drafts and Gmail handoff in one flow.
                     </span>
@@ -1148,6 +1149,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
         </AnimatePresence>
 
       </section>
+      <ChatWidget bottomOffsetRem={showProgramReadmePrompt ? 11 : 1} isAdmin={isAdmin} />
       {showProgramReadmePrompt ? (
         <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-white/20 bg-slate-950/92 p-3 shadow-xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">

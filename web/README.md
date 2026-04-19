@@ -45,6 +45,22 @@ Tables involved:
 - `time_day_logs` — summed via the service-role key to decide who gets reminded.
 - `time_log_reminder_sends` — per-send audit log written by the cron route. One row is inserted for every outcome (`sent`, `failed`, `skipped_dry_run`), capturing the user, target week, Resend message id (or error), whether the call came from Vercel Cron or an admin session, and whether `force`/`dry` were used. See `supabase/2026-04-17-time-log-reminder-send-log.sql` for the schema; the table is RLS-locked and only the service-role key writes to it.
 
+### Team Chat
+
+A floating "Team chat" pill at the bottom-right of the dashboard opens a slide-in panel where every signed-in user can chat in a single global channel.
+
+- **Schema (run in order):**
+  1. `supabase/2026-04-19-team-chat.sql` — creates `public.chat_messages`, RLS policies, the realtime publication entry, and the private `chat-attachments` Storage bucket.
+  2. `supabase/2026-04-19-team-chat-marks-and-votes.sql` — adds `kind` / `done_at` / `done_by` / `edited_at` columns, owner-only UPDATE/DELETE policies (column-level grant restricts authors to editing `body` only), the `chat_message_votes` table with its RLS, and sets `replica identity full` on both tables so Realtime delivers full UPDATE/DELETE rows.
+- **Realtime requirement:** the dashboard subscribes to `postgres_changes` on both `chat_messages` and `chat_message_votes`, so Realtime must be enabled for the project (default on Supabase).
+- **Attachments:** files (≤10 MB) are uploaded directly from the browser to the `chat-attachments` bucket under a per-user folder (`<user_id>/...`). Recipients fetch them via 1-hour signed URLs generated client-side with the user's JWT.
+- **Presence + typing:** ephemeral, sent over Supabase Realtime presence/broadcast channels — no DB writes.
+- **Message kinds & filters:** any message can be tagged on send as a `feature_request`, `change_request`, or `best_practice`. The widget exposes filter chips that, for the request kinds, hide entries that have been marked done.
+- **Votes:** any signed-in user may upvote or downvote `feature_request` / `change_request` messages (one vote each, toggleable). `best_practice` messages do not have voting.
+- **Marking done:** only admins (emails listed in `ADMIN_EMAILS`) see the "Mark done" button on feature/change requests. The flip happens via `POST /api/chat/mark-done`, which is `guardAdmin()`-protected and uses the service-role key to write `done_at` / `done_by`. RLS deliberately doesn't allow ordinary users to update those columns even on their own messages (column-level UPDATE grant restricts authors to `body` + `edited_at`).
+- **Edit / delete:** authors can edit their own message's text or delete it entirely. Edits set `edited_at` and the row gets an "(edited)" tag; deletes are hard deletes (cascades through votes).
+- **No new env vars.** Uses the existing `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` and (for `mark-done`) the existing `SUPABASE_SERVICE_ROLE_KEY` + `ADMIN_EMAILS`.
+
 ## Getting Started
 
 First, run the development server:
