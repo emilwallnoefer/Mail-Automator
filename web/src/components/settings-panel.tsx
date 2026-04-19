@@ -640,7 +640,7 @@ export function SettingsPanel({
                       <ul className="mt-2 list-disc space-y-1 pl-4">
                         {!isSalesOnly ? (
                           <li>
-                            <strong>Mail Automator</strong> creates pre/post training mails from structured inputs (language,
+                            <strong>Flya-Allrounder</strong> creates pre/post training mails from structured inputs (language,
                             context, materials, and custom notes).
                           </li>
                         ) : null}

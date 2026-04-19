@@ -6,7 +6,7 @@ This guide configures one-time OAuth so local scripts can create Gmail drafts in
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/).
 2. Click the project picker (top bar) -> **New Project**.
-3. Name it something like `mail-automator-drafts`.
+3. Name it something like `flya-allrounder-drafts`.
 4. Click **Create** and switch to that project.
 
 ## 2) Enable Gmail API
@@ -20,7 +20,7 @@ This guide configures one-time OAuth so local scripts can create Gmail drafts in
 1. Go to **APIs & Services** -> **OAuth consent screen**.
 2. Choose **External** (recommended for personal use) and continue.
 3. Fill required fields:
-   - App name: `Mail Automator`
+   - App name: `Flya-Allrounder`
    - User support email: your email
    - Developer contact email: your email
 4. Save and continue through scopes/test users.
@@ -31,7 +31,7 @@ This guide configures one-time OAuth so local scripts can create Gmail drafts in
 1. Go to **APIs & Services** -> **Credentials**.
 2. Click **Create Credentials** -> **OAuth client ID**.
 3. Application type: **Desktop app**.
-4. Name it: `mail-automator-local`.
+4. Name it: `flya-allrounder-local`.
 5. Click **Create**, then **Download JSON**.
 6. Save the file as:
 
@@ -76,7 +76,7 @@ What happens:
 python3 scripts/gmail_bridge.py create-draft \
   --to "your-test@example.com" \
   --subject "Draft API test" \
-  --body "Hello from Mail Automator."
+  --body "Hello from Flya-Allrounder."
 ```
 
 Check Gmail -> **Drafts**.

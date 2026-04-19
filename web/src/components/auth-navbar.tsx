@@ -98,7 +98,7 @@ export function AuthNavbar({
                       activeModule === "mail" ? "border-cyan-300/55 bg-white/12" : "border-white/10 bg-white/5"
                     }`}
                   >
-                    <span>Mail Automator</span>
+                    <span>Flya-Allrounder</span>
                     {activeModule === "mail" ? <span className="text-[10px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}

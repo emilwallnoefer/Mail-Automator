@@ -222,6 +222,77 @@ body {
   overflow: hidden;
 }
 
+/*
+ * Team-chat action row (vote / edit / delete / mark-done buttons).
+ *
+ * On touch devices (@media not (hover: hover)) we keep the row inline and
+ * always visible, because there's no way to "hover" to reveal it.
+ *
+ * On hover-capable devices the row is hidden by default and is rendered as
+ * an absolutely-positioned floating bar anchored to the bottom of the
+ * message bubble. It appears on hover or keyboard focus-within, overlays
+ * subsequent messages instead of pushing them, and gets its own subtle
+ * panel background so it stays legible over whatever sits behind it.
+ */
+.chat-actions-row {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+.chat-actions-row > * {
+  flex: 0 0 auto; /* never shrink individual buttons */
+}
+@media (hover: hover) {
+  /*
+   * Floating, single-row action bar that overlays the message bubble itself.
+   * Anchored to the bubble's top edge (the parent `.relative` wrapper sits
+   * around just the bubble, not the whole column), translated up so it sits
+   * mostly above the bubble with a small visual hook overlapping the top.
+   * `flex-wrap: nowrap` + `whitespace: nowrap` keep it as a single tidy row
+   * — no cramping, even though it may extend wider than the bubble.
+   */
+  .chat-actions-row {
+    position: absolute;
+    top: 0;
+    z-index: 10;
+    display: none;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0;
+    transform: translateY(-55%);
+    white-space: nowrap;
+    width: max-content;
+    max-width: none;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem;
+    background: rgba(2, 6, 23, 0.94);
+    padding: 0.2rem 0.35rem;
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  /*
+   * Anchor each bar to the bubble edge that faces the panel wall, so the
+   * toolbar grows inward (toward the centre of the panel) and can never
+   * overflow past the right/left edge of the chat window.
+   *   - is-me:   bubble hugs the right wall → anchor right, grow leftward.
+   *   - is-other: bubble hugs the left wall  → anchor left,  grow rightward.
+   */
+  .chat-actions-row.is-me {
+    right: 0.25rem;
+  }
+  .chat-actions-row.is-other {
+    left: 0.25rem;
+  }
+  .chat-message-row:hover .chat-actions-row,
+  .chat-message-row:focus-within .chat-actions-row {
+    display: inline-flex;
+  }
+}
+
 .hourlogger-surface {
   position: relative;
   overflow: hidden;

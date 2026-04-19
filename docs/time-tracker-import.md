@@ -1,6 +1,6 @@
 # Time Tracker Historical Import
 
-This imports legacy Hour Logger JSON into per-user Supabase tables for the Mail Automator project.
+This imports legacy Hour Logger JSON into per-user Supabase tables for the Flya-Allrounder project.
 
 ## 1) Create tables in Supabase
 

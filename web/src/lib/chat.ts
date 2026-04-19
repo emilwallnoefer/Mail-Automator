@@ -22,7 +22,11 @@ import { createClient } from "@/lib/supabase/client";
 
 export const CHAT_BUCKET = "chat-attachments";
 export const CHAT_REALTIME_TOPIC = "team-chat:global";
-export const CHAT_HISTORY_LIMIT = 200;
+/** Initial page size when opening the chat. Older messages can be paged in
+ *  via `fetchChatHistory({ before })`. */
+export const CHAT_HISTORY_LIMIT = 50;
+/** Page size when the user clicks "Load older". */
+export const CHAT_PAGE_SIZE = 50;
 
 /** Max upload size for chat attachments (10 MiB). Enforced client-side; the
  *  bucket itself does not impose a limit. */
@@ -113,15 +117,35 @@ function client(): SupabaseClient {
   return _client;
 }
 
-export async function fetchChatHistory(): Promise<ChatMessageRow[]> {
+export type FetchHistoryOptions = {
+  /** ISO timestamp; only return messages strictly older than this. */
+  before?: string;
+  /** ISO timestamp; only return messages strictly newer than this (used to
+   *  patch up gaps after a Realtime reconnection). */
+  after?: string;
+  /** Defaults to CHAT_PAGE_SIZE. */
+  limit?: number;
+};
+
+/**
+ * Fetch a slice of chat history. By default returns the most recent
+ * `CHAT_HISTORY_LIMIT` messages, oldest -> newest. Pass `before` to load an
+ * older page, or `after` to fill in a gap (e.g. after a reconnect).
+ */
+export async function fetchChatHistory(opts: FetchHistoryOptions = {}): Promise<ChatMessageRow[]> {
   const supabase = client();
-  const { data, error } = await supabase
+  const limit = opts.limit ?? (opts.before || opts.after ? CHAT_PAGE_SIZE : CHAT_HISTORY_LIMIT);
+
+  let q = supabase
     .from("chat_messages")
     .select(MESSAGE_COLUMNS)
     .order("created_at", { ascending: false })
-    .limit(CHAT_HISTORY_LIMIT);
+    .limit(limit);
+  if (opts.before) q = q.lt("created_at", opts.before);
+  if (opts.after) q = q.gt("created_at", opts.after);
+
+  const { data, error } = await q;
   if (error) throw error;
-  // Return oldest -> newest so the UI can render top-down naturally.
   return ((data ?? []) as ChatMessageRow[]).slice().reverse();
 }
 
@@ -135,6 +159,14 @@ export async function fetchAllVotes(): Promise<ChatVoteRow[]> {
 }
 
 type SendInput = {
+  /**
+   * Optional client-generated UUID. When provided, it is used as the row's
+   * primary key — this lets callers render an optimistic message locally and
+   * have the persisted row arrive via Realtime (or the insert response) with
+   * the same id, so the optimistic entry is silently replaced instead of
+   * duplicated.
+   */
+  id?: string;
   body?: string;
   kind?: MessageKind;
   attachment?: {
@@ -157,6 +189,7 @@ export async function sendChatMessage(input: SendInput): Promise<ChatMessageRow>
   }
 
   const insertRow = {
+    ...(input.id ? { id: input.id } : {}),
     sender_id: user.id,
     sender_email: user.email ?? "unknown",
     body: trimmed || null,
@@ -311,6 +344,10 @@ export type ChatChannelHandlers = {
   onVoteDelete: (row: { message_id: string; user_id: string }) => void;
   onPresence: (users: ChatPresenceUser[]) => void;
   onTyping: (payload: TypingPayload) => void;
+  /** Fires every time the channel transitions back to SUBSCRIBED *after* the
+   *  initial subscription, i.e. a reconnection — caller should refetch any
+   *  data that may have been missed while disconnected. */
+  onReconnect?: () => void;
 };
 
 /**
@@ -400,10 +437,20 @@ export async function subscribeToChat(handlers: ChatChannelHandlers): Promise<{
     handlers.onTyping(payload);
   });
 
+  // We resolve on the first SUBSCRIBED. Every subsequent SUBSCRIBED is a
+  // reconnect and triggers `onReconnect` so the caller can patch any gap in
+  // the message stream that occurred while we were offline.
+  let resolved = false;
   await new Promise<void>((resolve, reject) => {
     channel.subscribe((status, err) => {
-      if (status === "SUBSCRIBED") resolve();
-      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+      if (status === "SUBSCRIBED") {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        } else {
+          handlers.onReconnect?.();
+        }
+      } else if (!resolved && (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) {
         reject(err ?? new Error(`Realtime channel status: ${status}`));
       }
     });
@@ -436,6 +483,35 @@ export async function subscribeToChat(handlers: ChatChannelHandlers): Promise<{
     currentUserId: user.id,
     currentEmail: user.email ?? "unknown",
   };
+}
+
+/** Returns a stable YYYY-MM-DD key for grouping messages by local day. */
+export function dayKeyFromIso(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Friendly day separator label: "Today", "Yesterday", or e.g. "Mon, Apr 14". */
+export function formatDaySeparator(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const todayKey = dayKeyFromIso(now.toISOString());
+  const targetKey = dayKeyFromIso(iso);
+  if (todayKey === targetKey) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (dayKeyFromIso(yesterday.toISOString()) === targetKey) return "Yesterday";
+  // Show year only when it isn't the current year.
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
 }
 
 export function formatChatTimestamp(iso: string): string {
