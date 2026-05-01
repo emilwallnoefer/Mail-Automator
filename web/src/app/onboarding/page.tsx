@@ -26,6 +26,58 @@ function resolveOnboardingUrl(linkKey?: string, directUrl?: string) {
   return links[linkKey] ?? "";
 }
 
+/** Curated from https://www.flyability.com/resources (Case studies filter). */
+const CASE_STUDIES: OnboardingItem[] = [
+  {
+    id: "case_study_shell_canusa_offshore",
+    title: "CAN-USA and Shell redefine offshore inspections with the Elios 3 UT",
+    description:
+      "Maritime and oil & gas: offshore inspections with localized UT and LiDAR, tether power, and Inspector workflows — complementary to rope access.",
+    url: "https://www.flyability.com/casestudies/offshore-inspections-at-shell-with-elios-3-ndt-drone",
+    estimatedMinutes: 20,
+  },
+  {
+    id: "case_study_gold_mine_stope",
+    title: "125% more data in gold mine stope surveys with the Elios 3",
+    description:
+      "Mining: narrow stope scanning with the surveying payload — higher coverage vs. handheld methods in minutes, with visual + LiDAR in Inspector.",
+    url: "https://www.flyability.com/casestudies/gold-mine-drone-survey",
+    estimatedMinutes: 18,
+  },
+  {
+    id: "case_study_niagara_sewer",
+    title: "Surveying 450 meters of damaged sewers in one day at Niagara Falls",
+    description:
+      "Wastewater / sewer: engineering-grade visual and LiDAR for relining design without confined-space entry — NASSCO-aligned deliverables.",
+    url: "https://www.flyability.com/casestudies/sewer-relining-survey",
+    estimatedMinutes: 18,
+  },
+  {
+    id: "case_study_indoor_waterpark",
+    title: "Inspecting indoor waterparks with the Elios 3",
+    description:
+      "Infrastructure / facilities: overhead structure and MEP inspection without scaffolding — POIs localized in 3D for maintenance tracking.",
+    url: "https://www.flyability.com/casestudies/drone-indoor-waterpark-inspection",
+    estimatedMinutes: 18,
+  },
+  {
+    id: "case_study_powerplant_shutdown",
+    title: "Drone inspection cuts 300+ hours of work in an emergency power plant shutdown",
+    description:
+      "Power generation: furnace / coal burner assessment during outage — remote visual inspection to scope only what truly needs teardown.",
+    url: "https://www.flyability.com/casestudies/drone-inspection-emergency-powerplant-shutdown",
+    estimatedMinutes: 18,
+  },
+  {
+    id: "case_study_forestry_scan",
+    title: "10-minute forestry scans with the Elios 3 drone",
+    description:
+      "Forestry / surveying: plantation plots scanned above and below canopy with the surveying payload — minutes vs. hours of handheld work.",
+    url: "https://www.flyability.com/casestudies/drone-forestry-scan",
+    estimatedMinutes: 12,
+  },
+];
+
 function estimateTrainingMinutes(id: string): number {
   const estimates: Record<string, number> = {
     material_intro: 90,
@@ -100,6 +152,7 @@ function buildSectionItems(): OnboardingSection[] {
 
   return [
     { id: "training-slide-decks", title: "Training slide decks", items: materialItems },
+    { id: "case-studies", title: "Case studies", items: CASE_STUDIES },
     ...usefulSections.map((section) => ({
       id: section.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
       title: section.title,
