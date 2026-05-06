@@ -175,14 +175,24 @@ export async function rewriteHtmlForTracking(
 
 /**
  * Returns the configured public base URL for redirect links.
- * Falls back to the request origin when neither env var is set so
- * local dev still works.
+ *
+ * Order of preference:
+ *  1. `NEXT_PUBLIC_SITE_URL` — explicit, stable, custom-domain friendly.
+ *  2. `VERCEL_PROJECT_PRODUCTION_URL` — Vercel's stable production
+ *     alias for the project (e.g. `mail-automator.vercel.app`). Stays
+ *     valid across deploys.
+ *  3. The current request origin — local dev fallback only.
+ *
+ * `VERCEL_URL` is intentionally NOT used: that's the *deployment-
+ * specific* URL (e.g. `…-2zuma2wdy-…vercel.app`) which gets garbage-
+ * collected when the deployment rolls out, breaking every email link
+ * we ever sent that referenced it.
  */
 export function resolveTrackingBaseUrl(request: Request): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
-  if (fromEnv) return fromEnv;
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (explicit) return explicit;
+  const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/\/$/, "");
+  if (vercelProd) return `https://${vercelProd}`;
   try {
     return new URL(request.url).origin;
   } catch {
