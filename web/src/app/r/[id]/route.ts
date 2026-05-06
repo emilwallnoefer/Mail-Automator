@@ -22,9 +22,27 @@ function isLikelyBot(userAgent: string | null): boolean {
   return BOT_UA_REGEX.test(userAgent);
 }
 
+// Headers that ensure recipient browsers, ISPs, and corporate proxies
+// always re-fetch the redirect (so every click is logged) and that the
+// downstream URL never sees `/r/<id>` as Referer.
+const REDIRECT_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex, nofollow",
+};
+
+function redirectTo(url: string | URL, status = 302) {
+  const response = NextResponse.redirect(url, status);
+  for (const [name, value] of Object.entries(REDIRECT_HEADERS)) {
+    response.headers.set(name, value);
+  }
+  return response;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const fallback = NextResponse.redirect(new URL("/", request.url), 302);
+  const fallback = redirectTo(new URL("/", request.url));
 
   if (!id || !LINK_ID_REGEX.test(id)) return fallback;
 
@@ -71,5 +89,5 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     })
     .then(() => undefined);
 
-  return NextResponse.redirect(target, 302);
+  return redirectTo(target);
 }
