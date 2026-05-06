@@ -643,7 +643,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
             </button>
             <p className="text-[11px] text-slate-500">
               {activeModule === "mail"
-                ? "Flya-Allrounder"
+                ? "Mail Composer"
                 : activeModule === "time"
                   ? "Time Tracker"
                   : activeModule === "admin"
@@ -698,7 +698,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                     <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
                       <IconMail className="h-5 w-5" />
                     </span>
-                    <span className="text-lg font-semibold text-white">Flya-Allrounder</span>
+                    <span className="text-lg font-semibold text-white">Mail Composer</span>
                     <span className="mt-2 text-sm leading-relaxed text-slate-400">
                       Training email drafts and Gmail handoff in one flow.
                     </span>
