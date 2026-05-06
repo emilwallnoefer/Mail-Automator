@@ -52,6 +52,30 @@ type SendDetailResponse = {
   links: SendDetailLink[];
 };
 
+type LinkLeaderboardRow = {
+  key: string;
+  original_url: string;
+  label: string | null;
+  link_key: string | null;
+  sends_count: number;
+  real_clicks: number;
+  bot_clicks: number;
+  last_click_at: string | null;
+  first_sent_at: string;
+};
+
+type LinkLeaderboardResponse = {
+  links: LinkLeaderboardRow[];
+  totals: {
+    unique_links: number;
+    total_link_rows: number;
+    real_clicks: number;
+    bot_clicks: number;
+  };
+};
+
+type ViewMode = "by_recipient" | "by_link";
+
 function toDateKey(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -122,10 +146,15 @@ function StatTile({ label, value, hint }: { label: string; value: string | numbe
 }
 
 export function MailTrackingPanel() {
+  const [view, setView] = useState<ViewMode>("by_recipient");
   const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [linkData, setLinkData] = useState<LinkLeaderboardResponse | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [showBots, setShowBots] = useState(false);
@@ -149,9 +178,31 @@ export function MailTrackingPanel() {
     }
   }, []);
 
+  const loadLinks = useCallback(async () => {
+    setLinkLoading(true);
+    setLinkError(null);
+    try {
+      const response = await fetch("/api/admin/mail-tracking/links");
+      const payload = (await response.json()) as LinkLeaderboardResponse | { error: string };
+      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load links.");
+      setLinkData(payload as LinkLeaderboardResponse);
+    } catch (err) {
+      setLinkError((err as Error).message || "Failed to load links.");
+    } finally {
+      setLinkLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (view !== "by_recipient") return;
     void loadOverview(weekStart);
-  }, [loadOverview, weekStart]);
+  }, [loadOverview, view, weekStart]);
+
+  useEffect(() => {
+    if (view !== "by_link") return;
+    if (linkData || linkLoading) return;
+    void loadLinks();
+  }, [linkData, linkLoading, loadLinks, view]);
 
   const weekRangeLabel = useMemo(() => {
     const start = fromDateKey(weekStart);
@@ -199,35 +250,80 @@ export function MailTrackingPanel() {
     [detailBySend, loadSendDetail],
   );
 
+  const linkSearch = search.trim().toLowerCase();
+  const filteredLinks = useMemo(() => {
+    if (!linkData) return [];
+    if (!linkSearch) return linkData.links;
+    return linkData.links.filter((link) => {
+      return (
+        (link.label ?? "").toLowerCase().includes(linkSearch) ||
+        (link.link_key ?? "").toLowerCase().includes(linkSearch) ||
+        link.original_url.toLowerCase().includes(linkSearch)
+      );
+    });
+  }, [linkData, linkSearch]);
+
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
-          className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-        >
-          Prev week
-        </button>
-        <button
-          type="button"
-          onClick={() => setWeekStart(toDateKey(getMonday()))}
-          className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
-          className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-        >
-          Next week
-        </button>
+        <div className="inline-flex rounded-lg border border-white/15 bg-white/5 p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setView("by_recipient")}
+            className={`rounded-md px-2.5 py-1 transition ${
+              view === "by_recipient"
+                ? "bg-amber-400/15 text-amber-100"
+                : "text-slate-300 hover:text-slate-100"
+            }`}
+            aria-pressed={view === "by_recipient"}
+          >
+            By recipient
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("by_link")}
+            className={`rounded-md px-2.5 py-1 transition ${
+              view === "by_link"
+                ? "bg-amber-400/15 text-amber-100"
+                : "text-slate-300 hover:text-slate-100"
+            }`}
+            aria-pressed={view === "by_link"}
+          >
+            By link
+          </button>
+        </div>
+
+        {view === "by_recipient" ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+            >
+              Prev week
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekStart(toDateKey(getMonday()))}
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+            >
+              This week
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+            >
+              Next week
+            </button>
+          </>
+        ) : null}
+
         <input
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search recipient or company"
+          placeholder={view === "by_recipient" ? "Search recipient or company" : "Search link, label or URL"}
           className="rounded-lg border border-white/15 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
         />
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
@@ -239,82 +335,114 @@ export function MailTrackingPanel() {
           />
           Show scanner clicks
         </label>
-        <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
+        <span className="ml-auto text-xs text-slate-300/80">
+          {view === "by_recipient" ? weekRangeLabel : "All time"}
+        </span>
       </div>
 
-      {error ? (
+      {(view === "by_recipient" ? error : linkError) ? (
         <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-          {error}
+          {view === "by_recipient" ? error : linkError}
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <StatTile
-          label="Mails sent"
-          value={data?.totals.mails_sent ?? 0}
-          hint="This week"
-        />
-        <StatTile
-          label="Recipients"
-          value={data?.totals.recipients ?? 0}
-          hint="Distinct names + companies"
-        />
-        <StatTile
-          label="Real clicks"
-          value={data?.totals.real_clicks ?? 0}
-          hint="Excludes scanners"
-        />
-        <StatTile
-          label="Scanner clicks"
-          value={data?.totals.bot_clicks ?? 0}
-          hint="Outlook ATP, Mimecast, etc."
-        />
-      </div>
+      {view === "by_recipient" ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatTile label="Mails sent" value={data?.totals.mails_sent ?? 0} hint="This week" />
+          <StatTile
+            label="Recipients"
+            value={data?.totals.recipients ?? 0}
+            hint="Distinct names + companies"
+          />
+          <StatTile
+            label="Real clicks"
+            value={data?.totals.real_clicks ?? 0}
+            hint="Excludes scanners"
+          />
+          <StatTile
+            label="Scanner clicks"
+            value={data?.totals.bot_clicks ?? 0}
+            hint="Outlook ATP, Mimecast, etc."
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatTile
+            label="Unique links"
+            value={linkData?.totals.unique_links ?? 0}
+            hint="Across all sends"
+          />
+          <StatTile
+            label="Total link sends"
+            value={linkData?.totals.total_link_rows ?? 0}
+            hint="Each link counted per email it appears in"
+          />
+          <StatTile
+            label="Real clicks"
+            value={linkData?.totals.real_clicks ?? 0}
+            hint="Excludes scanners"
+          />
+          <StatTile
+            label="Scanner clicks"
+            value={linkData?.totals.bot_clicks ?? 0}
+            hint="Outlook ATP, Mimecast, etc."
+          />
+        </div>
+      )}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
-            <tr>
-              <th className="px-3 py-2">Recipient</th>
-              <th className="px-3 py-2">Company</th>
-              <th className="px-3 py-2 text-right">Mails</th>
-              <th className="px-3 py-2 text-right">Clicks</th>
-              <th className="px-3 py-2 text-right">Last click</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && !data ? (
+      {view === "by_recipient" ? (
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                  Loading tracking…
-                </td>
+                <th className="px-3 py-2">Recipient</th>
+                <th className="px-3 py-2">Company</th>
+                <th className="px-3 py-2 text-right">Mails</th>
+                <th className="px-3 py-2 text-right">Clicks</th>
+                <th className="px-3 py-2 text-right">Last click</th>
+                <th className="px-3 py-2" />
               </tr>
-            ) : filteredRecipients.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                  No tracked emails this week. Tracking activates when a Gmail draft is created from the
-                  generator.
-                </td>
-              </tr>
-            ) : (
-              filteredRecipients.map((recipient) => {
-                const isOpen = expanded === recipient.key;
-                return (
-                  <RecipientRow
-                    key={recipient.key}
-                    recipient={recipient}
-                    isOpen={isOpen}
-                    onToggle={() => toggleRecipient(recipient.key, recipient.send_ids)}
-                    showBots={showBots}
-                    detailBySend={detailBySend}
-                  />
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {loading && !data ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                    Loading tracking…
+                  </td>
+                </tr>
+              ) : filteredRecipients.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                    No tracked emails this week. Tracking activates when a Gmail draft is created from the
+                    generator.
+                  </td>
+                </tr>
+              ) : (
+                filteredRecipients.map((recipient) => {
+                  const isOpen = expanded === recipient.key;
+                  return (
+                    <RecipientRow
+                      key={recipient.key}
+                      recipient={recipient}
+                      isOpen={isOpen}
+                      onToggle={() => toggleRecipient(recipient.key, recipient.send_ids)}
+                      showBots={showBots}
+                      detailBySend={detailBySend}
+                    />
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <LinkLeaderboardTable
+          rows={filteredLinks}
+          loading={linkLoading}
+          hasData={Boolean(linkData)}
+          showBots={showBots}
+        />
+      )}
 
       <p className="text-xs text-slate-400">
         Tracking links rewrite outbound HTML at Gmail draft creation time. Email scanners (Outlook ATP,
@@ -484,5 +612,97 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
         );
       })}
     </ul>
+  );
+}
+
+function LinkLeaderboardTable({
+  rows,
+  loading,
+  hasData,
+  showBots,
+}: {
+  rows: LinkLeaderboardRow[];
+  loading: boolean;
+  hasData: boolean;
+  showBots: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+          <tr>
+            <th className="px-3 py-2">Link</th>
+            <th className="px-3 py-2 text-right">Sent in</th>
+            <th className="px-3 py-2 text-right">Clicks</th>
+            <th className="px-3 py-2 text-right">CTR</th>
+            <th className="px-3 py-2 text-right">Last click</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading && !hasData ? (
+            <tr>
+              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                Loading link leaderboard…
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                No tracked links yet. Send a Gmail draft from the generator to start collecting clicks.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => {
+              const total = showBots ? row.real_clicks + row.bot_clicks : row.real_clicks;
+              const botSuffix = showBots || row.bot_clicks === 0 ? "" : ` +${row.bot_clicks} scanner`;
+              const ctr = row.sends_count > 0 ? total / row.sends_count : 0;
+              const ctrLabel = row.sends_count > 0 ? `${(ctr * 100).toFixed(ctr >= 0.1 ? 0 : 1)}%` : "—";
+              const displayLabel = row.label || row.link_key || pickTrustedHost(row.original_url);
+              return (
+                <tr key={row.key} className="border-t border-white/5 align-middle">
+                  <td className="px-3 py-2">
+                    <a
+                      href={row.original_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block min-w-0"
+                      title={row.original_url}
+                    >
+                      <div className="truncate text-sm text-slate-100 hover:text-amber-200">
+                        {displayLabel}
+                      </div>
+                      <div className="truncate text-[10px] text-slate-500">
+                        {row.link_key ? (
+                          <span className="mr-2 rounded bg-white/5 px-1 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">
+                            {row.link_key}
+                          </span>
+                        ) : null}
+                        {pickTrustedHost(row.original_url)}
+                      </div>
+                    </a>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                    {row.sends_count}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <span className={total > 0 ? "text-amber-200" : "text-slate-400"}>{total}</span>
+                    {botSuffix ? (
+                      <span className="ml-1 text-[10px] text-slate-500">{botSuffix}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-300">{ctrLabel}</td>
+                  <td
+                    className="px-3 py-2 text-right text-xs text-slate-300"
+                    title={fmtAbsolute(row.last_click_at)}
+                  >
+                    {fmtRelative(row.last_click_at)}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
