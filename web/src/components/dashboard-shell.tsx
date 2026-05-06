@@ -549,6 +549,17 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
           body: result.body,
           html_body: result.html_body,
           inline_attachments: result.inline_attachments,
+          tracking_meta: form.recipient_name
+            ? {
+                recipient_name: form.recipient_name,
+                recipient_email: form.to || form.recipient_optional || undefined,
+                company_name: form.company_name || undefined,
+                mail_type: form.mail_type || "unknown",
+                language: form.language || undefined,
+                template_variant: form.template_variant || undefined,
+                training_type: form.training_type || undefined,
+              }
+            : undefined,
         }),
       });
       const data = (await response.json()) as { draftId: string; messageId: string } | { error: string };

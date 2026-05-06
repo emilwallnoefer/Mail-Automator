@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { AdminInsightsPanel } from "@/components/admin-insights-panel";
+import { MailTrackingPanel } from "@/components/mail-tracking-panel";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type AdminUser = {
@@ -33,7 +34,7 @@ type UsersResponse = {
   users: AdminUser[];
 };
 
-type AdminTab = "users" | "overview" | "insights";
+type AdminTab = "users" | "overview" | "insights" | "mail_tracking";
 
 const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
   { value: "sales", label: "Sales" },
@@ -145,7 +146,9 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   }, [loadOverview, weekStart]);
 
   useEffect(() => {
-    if (!canManageUsers && (tab === "users" || tab === "insights")) setTab("overview");
+    if (!canManageUsers && (tab === "users" || tab === "insights" || tab === "mail_tracking")) {
+      setTab("overview");
+    }
   }, [canManageUsers, tab]);
 
   const changeRole = useCallback(async (userId: string, next: UserRole | null) => {
@@ -260,6 +263,19 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
             >
               Insights
             </button>
+            <button
+              type="button"
+              onClick={() => setTab("mail_tracking")}
+              role="tab"
+              aria-selected={tab === "mail_tracking"}
+              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                tab === "mail_tracking"
+                  ? "border-amber-300/55 bg-amber-400/15 text-amber-100"
+                  : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              Mail tracking
+            </button>
           </div>
         ) : null}
       </div>
@@ -371,6 +387,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
       ) : null}
 
       {tab === "insights" && canManageUsers ? <AdminInsightsPanel /> : null}
+
+      {tab === "mail_tracking" && canManageUsers ? <MailTrackingPanel /> : null}
 
       {tab === "users" && canManageUsers ? (
         <div className="mt-5 space-y-4">
