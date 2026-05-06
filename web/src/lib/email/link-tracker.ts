@@ -16,8 +16,13 @@ import trainingLinks from "@/mail-config/training-links.json";
  * is nothing to rewrite there.
  */
 
+// Matches `<a ... href="https?://..." ...>...</a>`. The URL part is
+// `[^"]+` (anything until the closing quote of href) so URLs with `#`
+// fragments, `?` query strings, `&` etc. all match. Markdown link
+// rendering in mail-engine.ts always emits double-quoted hrefs, so
+// stopping at `"` is unambiguous.
 const TRACKABLE_ANCHOR_REGEX =
-  /<a\s+([^>]*?)href="(https?:\/\/[^"#\s]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
+  /<a\s+([^>]*?)href="(https?:\/\/[^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
 
 const LINK_ID_BYTE_LENGTH = 8;
 

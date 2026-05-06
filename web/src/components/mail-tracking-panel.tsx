@@ -428,44 +428,61 @@ function SendDetailBlock({ detail, showBots }: { detail: SendDetailResponse; sho
           {fmtRelative(detail.send.created_at)}
         </span>
       </div>
-      {detail.links.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-400">No tracked links in this email.</p>
-      ) : (
-        <ul className="mt-2 space-y-1">
-          {detail.links.map((link) => {
-            const total = showBots ? link.real_clicks + link.bot_clicks : link.real_clicks;
-            const botSuffix =
-              showBots || link.bot_clicks === 0 ? "" : ` +${link.bot_clicks} scanner`;
-            return (
-              <li
-                key={link.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-slate-950/40 px-3 py-1.5"
-              >
-                <a
-                  href={link.original_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-w-0 flex-1 truncate text-xs text-slate-200 hover:text-amber-200"
-                  title={link.original_url}
-                >
-                  <span className="font-medium">{link.link_label || link.link_key || pickTrustedHost(link.original_url)}</span>
-                  <span className="ml-2 text-[10px] text-slate-500">{pickTrustedHost(link.original_url)}</span>
-                </a>
-                <span className="shrink-0 text-right text-xs tabular-nums">
-                  <span className={total > 0 ? "text-amber-200" : "text-slate-400"}>{total}</span>
-                  {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
-                </span>
-                <span
-                  className="shrink-0 text-[11px] text-slate-400"
-                  title={fmtAbsolute(link.last_click_at)}
-                >
-                  {fmtRelative(link.last_click_at)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ClickedLinksList links={detail.links} showBots={showBots} />
     </div>
+  );
+}
+
+function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBots: boolean }) {
+  const clicked = links.filter((link) =>
+    showBots ? link.real_clicks + link.bot_clicks > 0 : link.real_clicks > 0,
+  );
+
+  if (links.length === 0) {
+    return <p className="mt-2 text-xs text-slate-400">No tracked links in this email.</p>;
+  }
+  if (clicked.length === 0) {
+    return (
+      <p className="mt-2 text-xs text-slate-400">
+        No clicks yet on the {links.length} tracked link{links.length === 1 ? "" : "s"} in this email.
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-2 space-y-1">
+      {clicked.map((link) => {
+        const total = showBots ? link.real_clicks + link.bot_clicks : link.real_clicks;
+        const botSuffix = showBots || link.bot_clicks === 0 ? "" : ` +${link.bot_clicks} scanner`;
+        return (
+          <li
+            key={link.id}
+            className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-slate-950/40 px-3 py-1.5"
+          >
+            <a
+              href={link.original_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 flex-1 truncate text-xs text-slate-200 hover:text-amber-200"
+              title={link.original_url}
+            >
+              <span className="font-medium">
+                {link.link_label || link.link_key || pickTrustedHost(link.original_url)}
+              </span>
+              <span className="ml-2 text-[10px] text-slate-500">{pickTrustedHost(link.original_url)}</span>
+            </a>
+            <span className="shrink-0 text-right text-xs tabular-nums">
+              <span className="text-amber-200">{total}</span>
+              {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
+            </span>
+            <span
+              className="shrink-0 text-[11px] text-slate-400"
+              title={fmtAbsolute(link.last_click_at)}
+            >
+              {fmtRelative(link.last_click_at)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
