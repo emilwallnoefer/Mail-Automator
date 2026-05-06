@@ -6,7 +6,9 @@ import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const LINK_ID_REGEX = /^[A-Za-z0-9_-]{8,32}$/;
+// Tracking ids are `<slug>-<random>` and may be up to ~80 chars. Older
+// rows (pre-slug) were 8–32 chars of base64url; both fit this regex.
+const LINK_ID_REGEX = /^[A-Za-z0-9_-]{8,100}$/;
 
 const BOT_UA_REGEX =
   /\b(bot|crawl|spider|preview|GoogleImageProxy|Mimecast|Proofpoint|Microsoft|Mailchimp|Outlook|Defender|Barracuda|FortiMail|Symantec|TrendMicro|MessageLabs|HeadlessChrome|Slackbot|FacebookExternalHit|LinkedInBot|WhatsApp|TelegramBot|Twitterbot|PhantomJS|Puppeteer|Postman|curl|wget|HTTPie|python-requests)\b/i;

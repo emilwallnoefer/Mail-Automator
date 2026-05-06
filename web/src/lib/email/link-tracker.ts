@@ -25,6 +25,8 @@ const TRACKABLE_ANCHOR_REGEX =
   /<a\s+([^>]*?)href="(https?:\/\/[^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
 
 const LINK_ID_BYTE_LENGTH = 8;
+const SLUG_MAX_LENGTH = 60;
+const FALLBACK_SLUG = "link";
 
 type LinkRow = {
   id: string;
@@ -49,12 +51,51 @@ function buildLinkKeyIndex(): Map<string, string> {
   return map;
 }
 
-function generateLinkId(): string {
+function randomSuffix(): string {
   return randomBytes(LINK_ID_BYTE_LENGTH)
     .toString("base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
+}
+
+/**
+ * Turns a label/key/URL into a URL-friendly slug. Strips diacritics,
+ * lowercases, replaces non-alphanumerics with `-`, collapses repeats,
+ * trims to a sensible length. Always returns at least `FALLBACK_SLUG`.
+ */
+function slugify(input: string | null | undefined): string {
+  if (!input) return FALLBACK_SLUG;
+  const ascii = input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const slug = ascii
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SLUG_MAX_LENGTH)
+    .replace(/^-+|-+$/g, "");
+  return slug || FALLBACK_SLUG;
+}
+
+function hostnameFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Generates a tracking id of the form `<readable-slug>-<random>`. The
+ * slug helps recipients see what a link is before clicking; the random
+ * suffix keeps each id unique per-send so click attribution stays
+ * accurate even when the same label appears in many emails.
+ */
+function generateLinkId(label: string | null, linkKey: string | null, url: string): string {
+  const seed = label || linkKey || hostnameFromUrl(url);
+  const slug = slugify(seed);
+  return `${slug}-${randomSuffix()}`;
 }
 
 function decodeBasicHtml(value: string): string {
@@ -101,14 +142,16 @@ export async function rewriteHtmlForTracking(
       const cleanUrl = url.trim();
       let id = idByUrl.get(cleanUrl);
       if (!id) {
-        id = generateLinkId();
+        const label = extractAnchorLabel(inner) || null;
+        const linkKey = keyByUrl.get(cleanUrl) ?? null;
+        id = generateLinkId(label, linkKey, cleanUrl);
         idByUrl.set(cleanUrl, id);
         rows.push({
           id,
           send_id: sendId,
           original_url: cleanUrl,
-          link_label: extractAnchorLabel(inner) || null,
-          link_key: keyByUrl.get(cleanUrl) ?? null,
+          link_label: label,
+          link_key: linkKey,
         });
       }
       const trackedHref = `${sanitizedBase}/r/${id}`;
