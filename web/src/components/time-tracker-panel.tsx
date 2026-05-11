@@ -12,7 +12,32 @@ import {
 } from "@/lib/time-tracker-rules";
 
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
-const PREFETCH_WEEKS_EACH_SIDE = 4;
+const PREFETCH_WEEKS_EACH_SIDE = 1;
+const PREFETCH_DEFER_FALLBACK_MS = 600;
+
+type IdleCallbackHandle = number;
+type IdleRequestCallback = (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void;
+type IdleScheduler = {
+  requestIdleCallback?: (cb: IdleRequestCallback, opts?: { timeout?: number }) => IdleCallbackHandle;
+  cancelIdleCallback?: (handle: IdleCallbackHandle) => void;
+};
+
+function scheduleIdle(callback: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {
+      // No-op cleanup on the server.
+    };
+  }
+  const scheduler = window as unknown as IdleScheduler;
+  if (typeof scheduler.requestIdleCallback === "function") {
+    const handle = scheduler.requestIdleCallback(() => callback(), { timeout: 1500 });
+    return () => {
+      if (typeof scheduler.cancelIdleCallback === "function") scheduler.cancelIdleCallback(handle);
+    };
+  }
+  const timeoutHandle = window.setTimeout(callback, PREFETCH_DEFER_FALLBACK_MS);
+  return () => window.clearTimeout(timeoutHandle);
+}
 
 type DayBreak = {
   name: string;
@@ -134,7 +159,7 @@ function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
 }
 
-function useAnimatedNumber(target: number, durationMs = 620) {
+function useAnimatedNumber(target: number, durationMs = 280) {
   const [value, setValue] = useState(0);
   const valueRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -285,17 +310,34 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
     }
   }, [apiBase]);
 
+  const prefetchCancelRef = useRef<(() => void) | null>(null);
   const prefetchNearbyWeeks = useCallback((centerWeekStart: string) => {
-    const center = getMonday(centerWeekStart);
-    for (let i = -PREFETCH_WEEKS_EACH_SIDE; i <= PREFETCH_WEEKS_EACH_SIDE; i += 1) {
-      if (i === 0) continue;
-      const key = toDateKey(addDays(center, i * 7));
-      if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-      void fetchWeekData(key, { includeTravel: false, includeBank: true }).catch(() => {
-        // Silent prefetch failures should not interrupt UI interactions.
-      });
+    if (prefetchCancelRef.current) {
+      prefetchCancelRef.current();
+      prefetchCancelRef.current = null;
     }
+    const cancel = scheduleIdle(() => {
+      const center = getMonday(centerWeekStart);
+      for (let i = -PREFETCH_WEEKS_EACH_SIDE; i <= PREFETCH_WEEKS_EACH_SIDE; i += 1) {
+        if (i === 0) continue;
+        const key = toDateKey(addDays(center, i * 7));
+        if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
+        void fetchWeekData(key, { includeTravel: false, includeBank: true }).catch(() => {
+          // Silent prefetch failures should not interrupt UI interactions.
+        });
+      }
+    });
+    prefetchCancelRef.current = cancel;
   }, [fetchWeekData]);
+
+  useEffect(() => {
+    return () => {
+      if (prefetchCancelRef.current) {
+        prefetchCancelRef.current();
+        prefetchCancelRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -346,6 +388,15 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
   useEffect(() => {
     const total = data?.days?.length ?? 0;
     if (total === 0) return;
+    // On the very first paint, reveal every card immediately so the user does
+    // not wait an additional ~600 ms (7 cards x 85 ms stagger) after the
+    // network response. The staged reveal stays as polish for subsequent
+    // week switches.
+    if (weekLoadTick <= 1) {
+      setRevealedDayCount(total);
+      setShowUpToDateSweep(false);
+      return;
+    }
     playUiSound("daysAppearStart");
     setRevealedDayCount(0);
     setShowUpToDateSweep(false);
@@ -1278,7 +1329,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
             <span className="shrink-0">Weekly hours:</span>
             <span className="inline-block min-w-[8ch] text-right">
               {hasActiveWeekData ? (
-                <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={760}>
+                <AnimatedNumber key={`week-hours-${weekLoadTick}`} value={activeWeekData?.week_hours_mins ?? 0} durationMs={320}>
                   {(value) => fmtHM(Math.round(value))}
                 </AnimatedNumber>
               ) : (
@@ -1290,7 +1341,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
             <span className="shrink-0">Overtime bank:</span>
             <span className="inline-block min-w-[9ch] text-right">
               {hasActiveWeekData ? (
-                <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={760}>
+                <AnimatedNumber key={`overtime-bank-${weekLoadTick}`} value={activeWeekData?.overtime_bank_mins ?? 0} durationMs={320}>
                   {(value) => fmtSignedHM(Math.round(value))}
                 </AnimatedNumber>
               ) : (

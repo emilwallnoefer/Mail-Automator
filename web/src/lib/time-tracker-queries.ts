@@ -163,18 +163,115 @@ export async function getOvertimeBankMinsForUser(
   return { overtimeBankMins, includesBank: true };
 }
 
+type RpcLogRow = {
+  id: number;
+  work_date: string;
+  start_time: string | null;
+  stop_time: string | null;
+  net_mins: number | null;
+  holiday: boolean | null;
+};
+type RpcCompRow = { work_date: string; mins: number | null; note: string | null };
+type RpcBreakRow = { day_log_id: number; position: number; name: string | null; mins: number | null };
+type TtUserWeekPayload = {
+  logs?: RpcLogRow[];
+  comp?: RpcCompRow[];
+  breaks?: RpcBreakRow[];
+  bank_mins?: number;
+};
+
+function looksLikeMissingTtUserWeekRpc(detail: string) {
+  return /tt_user_week_v1|function .* does not exist|could not find the function/i.test(detail);
+}
+
+async function tryFetchWeekViaRpc(
+  supabase: SupabaseClient,
+  weekStartDate: Date,
+): Promise<WeekForUser | null> {
+  const weekStart = toDateString(weekStartDate);
+  const weekEnd = toDateString(addDays(weekStartDate, 6));
+
+  const { data, error } = await supabase.rpc("tt_user_week_v1", { p_week_start: weekStart });
+  if (error) {
+    if (looksLikeMissingTtUserWeekRpc(error.message ?? "")) return null;
+    throw new Error(error.message);
+  }
+
+  const payload = (data ?? {}) as TtUserWeekPayload;
+  const logs = Array.isArray(payload.logs) ? payload.logs : [];
+  const comp = Array.isArray(payload.comp) ? payload.comp : [];
+  const breaks = Array.isArray(payload.breaks) ? payload.breaks : [];
+
+  const breaksByLogId = new Map<number, Array<{ name: string; mins: number }>>();
+  for (const row of breaks) {
+    const list = breaksByLogId.get(row.day_log_id) ?? [];
+    list.push({ name: row.name ?? "", mins: sanitizeMins(row.mins) });
+    breaksByLogId.set(row.day_log_id, list);
+  }
+
+  const compByDate = new Map<string, { mins: number; note: string }>();
+  for (const row of comp) {
+    compByDate.set(row.work_date, { mins: sanitizeMins(row.mins), note: row.note ?? "" });
+  }
+
+  const logsByDate = new Map<string, RpcLogRow>();
+  for (const row of logs) {
+    logsByDate.set(row.work_date, row);
+  }
+
+  const days: WeekDay[] = Array.from({ length: 7 }).map((_, idx) => {
+    const date = toDateString(addDays(weekStartDate, idx));
+    const log = logsByDate.get(date);
+    const compRow = compByDate.get(date);
+    return {
+      date,
+      start_time: log?.start_time ?? "",
+      stop_time: log?.stop_time ?? "",
+      net_mins: sanitizeMins(log?.net_mins),
+      holiday: Boolean(log?.holiday),
+      comp_mins: compRow?.mins ?? 0,
+      comp_note: compRow?.note ?? "",
+      breaks: log ? breaksByLogId.get(log.id) ?? [] : [],
+    };
+  });
+
+  const weekHoursMins = days.reduce((sum, day) => sum + day.net_mins, 0);
+
+  return {
+    week_start: weekStart,
+    week_end: weekEnd,
+    target_mins: TARGET_MINS,
+    week_hours_mins: weekHoursMins,
+    overtime_bank_mins: parseInteger(payload.bank_mins, 0),
+    includes_bank: true,
+    days,
+  };
+}
+
 /**
  * Fetch a 7-day week of time-tracker data for a specific user.
  * Bypasses no RLS: caller must supply a Supabase client that has
  * permission to read the target user's rows (either the user themselves
  * or a service-role client for admin access).
+ *
+ * When `useCurrentUserRpc` is true, the function first tries a single
+ * `tt_user_week_v1` RPC call which collapses logs+comp+breaks+bank into
+ * one round-trip. The RPC reads `auth.uid()` internally, so callers must
+ * only opt in when `userId` is guaranteed to equal the session user.
+ * If the RPC is missing (pre-migration), it falls back to the legacy
+ * multi-query path automatically.
  */
 export async function fetchWeekForUser(
   supabase: SupabaseClient,
   userId: string,
   weekStartDate: Date,
-  options?: { includeBank?: boolean },
+  options?: { includeBank?: boolean; useCurrentUserRpc?: boolean },
 ): Promise<WeekForUser> {
+  if (options?.useCurrentUserRpc) {
+    const rpcResult = await tryFetchWeekViaRpc(supabase, weekStartDate);
+    if (rpcResult) return rpcResult;
+  }
+
   const includeBank = options?.includeBank ?? true;
   const weekStart = toDateString(weekStartDate);
   const weekEnd = toDateString(addDays(weekStartDate, 6));

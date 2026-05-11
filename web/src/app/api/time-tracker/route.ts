@@ -107,11 +107,15 @@ function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping 
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Prefer getClaims() over getUser(): it verifies the JWT locally against the
+  // cached JWKS (no extra round-trip to Supabase Auth) when the project is on
+  // asymmetric signing keys. Authorization for the per-user week read is
+  // additionally enforced inside the tt_user_week_v1 RPC via auth.uid().
+  const claimsRes = await supabase.auth.getClaims();
+  const claims = claimsRes.data?.claims ?? null;
+  const userId = typeof claims?.sub === "string" ? claims.sub : null;
 
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
   const weekStartDate = getWeekStartDate(url.searchParams.get("weekStart") ?? undefined);
@@ -121,7 +125,10 @@ export async function GET(request: Request) {
 
   let week;
   try {
-    week = await fetchWeekForUser(supabase, user.id, weekStartDate, { includeBank });
+    week = await fetchWeekForUser(supabase, userId, weekStartDate, {
+      includeBank,
+      useCurrentUserRpc: true,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message || "Failed to load tracker week" },
@@ -161,7 +168,11 @@ export async function GET(request: Request) {
   const weekDateSet = new Set(weekDays.map((day) => day.date));
   if (includeTravel) {
     try {
-      const refreshToken = String(user.user_metadata?.gmail_refresh_token ?? "");
+      const userMetadata =
+        claims && typeof claims === "object" && "user_metadata" in claims
+          ? (claims.user_metadata as Record<string, unknown> | undefined)
+          : undefined;
+      const refreshToken = String(userMetadata?.gmail_refresh_token ?? "");
       if (!refreshToken) {
         travelDebug = {
           status: "missing_refresh_token",
@@ -170,7 +181,7 @@ export async function GET(request: Request) {
           week_matches: 0,
         };
       } else {
-        const userTravelMapping = parseUserTravelMapping(user.user_metadata);
+        const userTravelMapping = parseUserTravelMapping(userMetadata);
         travelByDate = await fetchTravelByDate(refreshToken, userTravelMapping);
         const fetchedDates = Object.keys(travelByDate);
         const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
