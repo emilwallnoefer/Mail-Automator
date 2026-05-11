@@ -731,10 +731,12 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
                   <button
                     type="button"
                     onClick={() => returnToWeekdays()}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
+                    className="group flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
                     aria-label="Close day editor"
                   >
-                    ×
+                    <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
+                      ×
+                    </span>
                   </button>
                 </div>
 
@@ -879,7 +881,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
                           void handleSaveDay();
                         }}
                         disabled={saving || !selectedDay}
-                        className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:opacity-70"
+                        className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70"
                       >
                         {saving ? "Saving..." : "Save day"}
                       </button>

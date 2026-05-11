@@ -24,6 +24,36 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/*
+ * Minimalistic, system-wide button affordance.
+ *
+ * Rules live in @layer base so any explicit Tailwind utility (e.g.
+ * `active:scale-95`, `hover:bg-*`, etc.) cleanly overrides them on a
+ * per-button basis. Framer-motion buttons set inline `transform: none`,
+ * which beats this rule — those get matching `whileTap` props instead.
+ */
+@layer base {
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  button:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(0.97);
+    filter: brightness(0.94);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:active:not(:disabled):not([aria-disabled="true"]) {
+      transform: none;
+    }
+  }
+}
+
 .aurora-bg {
   position: relative;
   overflow: hidden;

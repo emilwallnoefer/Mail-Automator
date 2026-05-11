@@ -16,14 +16,23 @@ type Recipient = {
 };
 
 type OverviewResponse = {
-  week_start: string;
+  scope: "week" | "all";
+  query: string;
+  week_start: string | null;
   recipients: Recipient[];
   totals: {
     mails_sent: number;
     recipients: number;
     real_clicks: number;
     bot_clicks: number;
+    truncated?: boolean;
   };
+};
+
+type ClickDetail = {
+  clicked_at: string;
+  is_likely_bot: boolean;
+  user_agent: string | null;
 };
 
 type SendDetailLink = {
@@ -34,6 +43,7 @@ type SendDetailLink = {
   real_clicks: number;
   bot_clicks: number;
   last_click_at: string | null;
+  clicks: ClickDetail[];
 };
 
 type SendDetailResponse = {
@@ -163,20 +173,29 @@ export function MailTrackingPanel() {
     {},
   );
 
-  const loadOverview = useCallback(async (week: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/admin/mail-tracking?week=${encodeURIComponent(week)}`);
-      const payload = (await response.json()) as OverviewResponse | { error: string };
-      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracking.");
-      setData(payload as OverviewResponse);
-    } catch (err) {
-      setError((err as Error).message || "Failed to load tracking.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadOverview = useCallback(
+    async (args: { week?: string; query?: string }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (args.query && args.query.trim().length > 0) {
+          params.set("q", args.query.trim());
+        } else if (args.week) {
+          params.set("week", args.week);
+        }
+        const response = await fetch(`/api/admin/mail-tracking?${params.toString()}`);
+        const payload = (await response.json()) as OverviewResponse | { error: string };
+        if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracking.");
+        setData(payload as OverviewResponse);
+      } catch (err) {
+        setError((err as Error).message || "Failed to load tracking.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const loadLinks = useCallback(async () => {
     setLinkLoading(true);
@@ -195,8 +214,16 @@ export function MailTrackingPanel() {
 
   useEffect(() => {
     if (view !== "by_recipient") return;
-    void loadOverview(weekStart);
-  }, [loadOverview, view, weekStart]);
+    const trimmed = search.trim();
+    const handle = setTimeout(() => {
+      if (trimmed.length > 0) {
+        void loadOverview({ query: trimmed });
+      } else {
+        void loadOverview({ week: weekStart });
+      }
+    }, trimmed.length > 0 ? 300 : 0);
+    return () => clearTimeout(handle);
+  }, [loadOverview, view, weekStart, search]);
 
   useEffect(() => {
     if (view !== "by_link") return;
@@ -212,17 +239,8 @@ export function MailTrackingPanel() {
     return `${fmt(start)} \u2013 ${fmt(end)}`;
   }, [weekStart]);
 
-  const filteredRecipients = useMemo(() => {
-    if (!data) return [];
-    const needle = search.trim().toLowerCase();
-    if (!needle) return data.recipients;
-    return data.recipients.filter((r) => {
-      return (
-        r.recipient_name.toLowerCase().includes(needle) ||
-        (r.company_name ?? "").toLowerCase().includes(needle)
-      );
-    });
-  }, [data, search]);
+  const isSearchMode = search.trim().length > 0;
+  const filteredRecipients = data?.recipients ?? [];
 
   const loadSendDetail = useCallback(async (sendId: string) => {
     setDetailBySend((prev) => ({ ...prev, [sendId]: "loading" }));
@@ -336,7 +354,11 @@ export function MailTrackingPanel() {
           Show scanner clicks
         </label>
         <span className="ml-auto text-xs text-slate-300/80">
-          {view === "by_recipient" ? weekRangeLabel : "All time"}
+          {view === "by_recipient"
+            ? isSearchMode
+              ? "All-time search"
+              : weekRangeLabel
+            : "All time"}
         </span>
       </div>
 
@@ -346,9 +368,19 @@ export function MailTrackingPanel() {
         </p>
       ) : null}
 
+      {view === "by_recipient" && isSearchMode && data?.totals.truncated ? (
+        <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Showing the most recent matches. Refine the search to narrow further.
+        </p>
+      ) : null}
+
       {view === "by_recipient" ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatTile label="Mails sent" value={data?.totals.mails_sent ?? 0} hint="This week" />
+          <StatTile
+            label="Mails sent"
+            value={data?.totals.mails_sent ?? 0}
+            hint={isSearchMode ? "Matching search" : "This week"}
+          />
           <StatTile
             label="Recipients"
             value={data?.totals.recipients ?? 0}
@@ -413,8 +445,9 @@ export function MailTrackingPanel() {
               ) : filteredRecipients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                    No tracked emails this week. Tracking activates when a Gmail draft is created from the
-                    generator.
+                    {isSearchMode
+                      ? "No tracked emails match this search across the full history."
+                      : "No tracked emails this week. Tracking activates when a Gmail draft is created from the generator."}
                   </td>
                 </tr>
               ) : (
@@ -562,6 +595,7 @@ function SendDetailBlock({ detail, showBots }: { detail: SendDetailResponse; sho
 }
 
 function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBots: boolean }) {
+  const [expandedLinkIds, setExpandedLinkIds] = useState<Set<string>>(new Set());
   const clicked = links.filter((link) =>
     showBots ? link.real_clicks + link.bot_clicks > 0 : link.real_clicks > 0,
   );
@@ -576,42 +610,110 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
       </p>
     );
   }
+
+  const toggle = (id: string) => {
+    setExpandedLinkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <ul className="mt-2 space-y-1">
       {clicked.map((link) => {
         const total = showBots ? link.real_clicks + link.bot_clicks : link.real_clicks;
         const botSuffix = showBots || link.bot_clicks === 0 ? "" : ` +${link.bot_clicks} scanner`;
+        const visibleClicks = (link.clicks ?? []).filter((click) => showBots || !click.is_likely_bot);
+        const isExpanded = expandedLinkIds.has(link.id);
         return (
           <li
             key={link.id}
-            className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-slate-950/40 px-3 py-1.5"
+            className="rounded-lg border border-white/5 bg-slate-950/40"
           >
-            <a
-              href={link.original_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-w-0 flex-1 truncate text-xs text-slate-200 hover:text-amber-200"
-              title={link.original_url}
-            >
-              <span className="font-medium">
-                {link.link_label || link.link_key || pickTrustedHost(link.original_url)}
+            <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+              <a
+                href={link.original_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-w-0 flex-1 truncate text-xs text-slate-200 hover:text-amber-200"
+                title={link.original_url}
+              >
+                <span className="font-medium">
+                  {link.link_label || link.link_key || pickTrustedHost(link.original_url)}
+                </span>
+                <span className="ml-2 text-[10px] text-slate-500">{pickTrustedHost(link.original_url)}</span>
+              </a>
+              <span className="shrink-0 text-right text-xs tabular-nums">
+                <span className="text-amber-200">{total}</span>
+                {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
               </span>
-              <span className="ml-2 text-[10px] text-slate-500">{pickTrustedHost(link.original_url)}</span>
-            </a>
-            <span className="shrink-0 text-right text-xs tabular-nums">
-              <span className="text-amber-200">{total}</span>
-              {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
-            </span>
-            <span
-              className="shrink-0 text-[11px] text-slate-400"
-              title={fmtAbsolute(link.last_click_at)}
-            >
-              {fmtRelative(link.last_click_at)}
-            </span>
+              <span
+                className="shrink-0 text-[11px] text-slate-400"
+                title={fmtAbsolute(link.last_click_at)}
+              >
+                {fmtRelative(link.last_click_at)}
+              </span>
+              {visibleClicks.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => toggle(link.id)}
+                  className="shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-300 hover:bg-white/10"
+                  aria-expanded={isExpanded}
+                >
+                  {isExpanded ? "Hide timeline" : `Show ${visibleClicks.length} click${visibleClicks.length === 1 ? "" : "s"}`}
+                </button>
+              ) : null}
+            </div>
+            {isExpanded && visibleClicks.length > 0 ? (
+              <ClickTimeline clicks={visibleClicks} />
+            ) : null}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function ClickTimeline({ clicks }: { clicks: ClickDetail[] }) {
+  return (
+    <ol className="border-t border-white/5 px-3 py-2 text-[11px] text-slate-300">
+      {clicks.map((click, idx) => (
+        <li
+          key={`${click.clicked_at}-${idx}`}
+          className="flex items-start gap-2 py-0.5"
+        >
+          <span className="mt-0.5 inline-flex w-12 shrink-0 justify-end text-slate-500 tabular-nums">
+            #{idx + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="text-slate-100 tabular-nums" title={fmtAbsolute(click.clicked_at)}>
+                {fmtAbsolute(click.clicked_at)}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                ({fmtRelative(click.clicked_at)})
+              </span>
+              {click.is_likely_bot ? (
+                <span className="rounded bg-slate-700/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-300">
+                  scanner
+                </span>
+              ) : (
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-200">
+                  real click
+                </span>
+              )}
+            </div>
+            {click.user_agent ? (
+              <p className="mt-0.5 truncate text-[10px] text-slate-500" title={click.user_agent}>
+                {click.user_agent}
+              </p>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 

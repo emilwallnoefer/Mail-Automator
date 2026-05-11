@@ -313,38 +313,51 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                 {filteredSectionItems.map((item, idx) => (
                   <article
                     key={item.id}
-                    className={`rounded-xl border p-3 ${
+                    className={`group relative rounded-xl border p-3 transition hover:border-cyan-300/60 hover:bg-white/10 focus-within:border-cyan-300/60 ${
                       (progressByItem[item.id] ?? 0) >= 100
-                        ? "border-emerald-300/45 bg-emerald-500/10"
+                        ? "border-emerald-300/45 bg-emerald-500/10 hover:bg-emerald-500/15"
                         : "border-white/10 bg-white/5"
                     }`}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${item.title}`}
+                      className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                    />
+                    <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 pointer-events-none">
                       <div className="min-w-0">
                         <p className="text-[10px] uppercase tracking-[0.12em] text-cyan-200/80">
                           Step {String(idx + 1).padStart(2, "0")}
                         </p>
-                        <a href={item.url} target="_blank" rel="noreferrer" className="mt-1 block">
-                          <p className="text-sm font-medium text-slate-100">{item.title}</p>
-                        </a>
+                        <p className="mt-1 text-sm font-medium text-slate-100 group-hover:text-cyan-100">
+                          {item.title}
+                        </p>
                         <p className="mt-1 text-xs leading-relaxed text-slate-300/80">{item.description}</p>
                         <p className="mt-1 text-[11px] text-cyan-200/80">
                           Estimated time: {item.estimatedMinutes} min
                         </p>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5">
+                      <div className="flex flex-col items-end gap-1.5 pointer-events-auto">
                         <p className="text-[11px] text-cyan-200">{progressByItem[item.id] ?? 0}%</p>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => adjustItemProgress(item.id, -25)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              adjustItemProgress(item.id, -25);
+                            }}
                             className="rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-white/15"
                           >
                             -25%
                           </button>
                           <button
                             type="button"
-                            onClick={() => adjustItemProgress(item.id, 25)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              adjustItemProgress(item.id, 25);
+                            }}
                             className="rounded-md border border-cyan-300/45 bg-cyan-500/15 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/25"
                           >
                             +25%

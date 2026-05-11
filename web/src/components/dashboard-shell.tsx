@@ -687,6 +687,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05, duration: 0.35 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       if (activeModule !== "mail") playUiSound("switchWhoosh");
                       setActiveModule("mail");
@@ -714,6 +715,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1, duration: 0.35 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     if (activeModule !== "time") playUiSound("switchWhoosh");
                     setActiveModule("time");
@@ -741,6 +743,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15, duration: 0.35 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       if (activeModule !== "settings") playUiSound("switchWhoosh");
                       setActiveModule("settings");
@@ -1085,7 +1088,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   void handleGenerate();
                 }}
                 disabled={loading || generateDisabled}
-                className="h-11 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-70 sm:w-auto"
+                className="h-11 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
                 type="button"
               >
                 {loading ? "Generating..." : "Generate draft"}
@@ -1095,7 +1098,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   void handleCreateDraft();
                 }}
                 disabled={draftLoading || !gmailStatus.connected || !result}
-                className="h-11 w-full rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="h-11 w-full rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-500/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 type="button"
               >
                 {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
@@ -1170,10 +1173,12 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
             <button
               type="button"
               onClick={dismissProgramReadmePrompt}
-              className="rounded-md border border-white/15 bg-white/10 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+              className="group rounded-md border border-white/15 bg-white/10 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/15"
               aria-label="Close program readme prompt"
             >
-              X
+              <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
+                X
+              </span>
             </button>
           </div>
           <button
@@ -1185,7 +1190,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
               setSettingsReadmeOpenToken((prev) => prev + 1);
               dismissProgramReadmePrompt();
             }}
-            className="mt-3 w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-cyan-300"
+            className="mt-3 w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300"
           >
             Open program README
           </button>
@@ -1206,7 +1211,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   void handleSelectRole("eu_pilot");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/15 disabled:opacity-60"
+                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-white/15 disabled:translate-y-0 disabled:opacity-60"
               >
                 EU Pilot
               </button>
@@ -1216,7 +1221,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   void handleSelectRole("us_pilot");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/15 disabled:opacity-60"
+                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-white/15 disabled:translate-y-0 disabled:opacity-60"
               >
                 US Pilot
               </button>
@@ -1226,7 +1231,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   void handleSelectRole("sales");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-cyan-300/60 bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/30 disabled:opacity-60"
+                className="rounded-lg border border-cyan-300/60 bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-500/30 disabled:translate-y-0 disabled:opacity-60"
               >
                 Sales
               </button>

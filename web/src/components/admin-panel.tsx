@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { AdminInsightsPanel } from "@/components/admin-insights-panel";
 import { MailTrackingPanel } from "@/components/mail-tracking-panel";
@@ -103,6 +103,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   const [drilldownUserId, setDrilldownUserId] = useState<string | null>(null);
   const [drilldownEmail, setDrilldownEmail] = useState<string>("");
 
+  const usersFetchedRef = useRef(false);
+
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     setUsersError(null);
@@ -138,8 +140,11 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
 
   useEffect(() => {
     if (!canManageUsers) return;
+    if (tab !== "users") return;
+    if (usersFetchedRef.current) return;
+    usersFetchedRef.current = true;
     void loadUsers();
-  }, [loadUsers, canManageUsers]);
+  }, [loadUsers, canManageUsers, tab]);
 
   useEffect(() => {
     void loadOverview(weekStart);

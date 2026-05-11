@@ -31,6 +31,13 @@ type ClickRow = {
   link_id: string;
   clicked_at: string;
   is_likely_bot: boolean;
+  user_agent: string | null;
+};
+
+type ClickDetail = {
+  clicked_at: string;
+  is_likely_bot: boolean;
+  user_agent: string | null;
 };
 
 export async function GET(_request: Request, context: { params: Promise<{ sendId: string }> }) {
@@ -68,7 +75,7 @@ export async function GET(_request: Request, context: { params: Promise<{ sendId
   if (linkRows.length > 0) {
     const { data: clicks, error: clicksError } = await admin
       .from("mail_link_clicks")
-      .select("link_id, clicked_at, is_likely_bot")
+      .select("link_id, clicked_at, is_likely_bot, user_agent")
       .in(
         "link_id",
         linkRows.map((row) => row.id),
@@ -79,13 +86,22 @@ export async function GET(_request: Request, context: { params: Promise<{ sendId
   }
 
   const statsByLink = new Map<string, { real: number; bot: number; last: string | null }>();
-  for (const link of linkRows) statsByLink.set(link.id, { real: 0, bot: 0, last: null });
+  const clicksByLink = new Map<string, ClickDetail[]>();
+  for (const link of linkRows) {
+    statsByLink.set(link.id, { real: 0, bot: 0, last: null });
+    clicksByLink.set(link.id, []);
+  }
   for (const click of clickRows) {
     const entry = statsByLink.get(click.link_id);
     if (!entry) continue;
     if (click.is_likely_bot) entry.bot += 1;
     else entry.real += 1;
     if (!entry.last || click.clicked_at > entry.last) entry.last = click.clicked_at;
+    clicksByLink.get(click.link_id)?.push({
+      clicked_at: click.clicked_at,
+      is_likely_bot: click.is_likely_bot,
+      user_agent: click.user_agent,
+    });
   }
 
   const linksOut = linkRows.map((link) => {
@@ -98,6 +114,7 @@ export async function GET(_request: Request, context: { params: Promise<{ sendId
       real_clicks: stats.real,
       bot_clicks: stats.bot,
       last_click_at: stats.last,
+      clicks: clicksByLink.get(link.id) ?? [],
     };
   });
 

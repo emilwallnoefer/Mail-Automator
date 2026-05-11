@@ -735,6 +735,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 12 }}
             transition={{ type: "spring", stiffness: 360, damping: 30 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => {
               playUiSound("switchWhoosh");
               setOpen(true);
@@ -813,9 +814,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     type="button"
                     onClick={() => setOpen(false)}
                     aria-label="Close"
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                    className="group grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                   >
-                    <XMarkIcon className="h-3.5 w-3.5" />
+                    <XMarkIcon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-90" />
                   </button>
                 </header>
 
@@ -926,6 +927,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
+                        whileTap={{ scale: 0.95 }}
                         className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-cyan-300/40 bg-cyan-400/90 px-3 py-1 text-[11px] font-semibold text-slate-900 shadow-[0_6px_18px_-6px_rgba(34,211,238,0.6)] backdrop-blur"
                       >
                         <ArrowDownIcon className="h-3 w-3" />
@@ -973,9 +975,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                         type="button"
                         onClick={() => setError(null)}
                         aria-label="Dismiss error"
-                        className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-rose-200 transition hover:bg-rose-500/20"
+                        className="group grid h-5 w-5 shrink-0 place-items-center rounded-md text-rose-200 transition hover:bg-rose-500/20"
                       >
-                        <XMarkIcon className="h-3 w-3" />
+                        <XMarkIcon className="h-3 w-3 transition-transform duration-200 group-hover:rotate-90" />
                       </button>
                     </motion.div>
                   ) : null}
@@ -989,9 +991,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                       aria-label="Attach file"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={sendState === "sending"}
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+                      className="group grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                     >
-                      <PaperclipIcon className="h-4 w-4" />
+                      <PaperclipIcon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
                     </button>
                     <input
                       ref={fileInputRef}
@@ -1061,9 +1063,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     type="button"
                     onClick={() => setLightbox(null)}
                     aria-label="Close preview"
-                    className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-900/80 text-white transition hover:bg-slate-800"
+                    className="group absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-900/80 text-white transition hover:bg-slate-800"
                   >
-                    <XMarkIcon className="h-4 w-4" />
+                    <XMarkIcon className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
                   </button>
                 </motion.div>
               ) : null}

@@ -4,7 +4,7 @@ import { guardAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeUserRole, type UserRole } from "@/lib/user-role";
 import { readWorkspaceSettings, type WorkspaceSettings } from "@/lib/workspace-settings";
-import { sanitizeMins } from "@/lib/time-tracker-queries";
+import { parseInteger } from "@/lib/time-tracker-queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -184,20 +184,13 @@ async function fetchWorkspaceKpis(admin: SupabaseClient): Promise<WorkspaceKpis>
   const sevenDaysAgoIsoDate = daysAgoIso(7).slice(0, 10);
   const monthStartDate = monthStart.slice(0, 10);
 
-  const [weekRes, monthRes] = await Promise.all([
-    admin.from("time_day_logs").select("net_mins").gte("work_date", sevenDaysAgoIsoDate),
-    admin.from("time_day_logs").select("net_mins").gte("work_date", monthStartDate),
-  ]);
-
-  const sumMinutes = (rows: Array<{ net_mins: unknown }> | null | undefined) => {
-    if (!rows) return 0;
-    let total = 0;
-    for (const row of rows) total += sanitizeMins(row.net_mins);
-    return total;
-  };
-
-  const weekMinutes = weekRes.error ? 0 : sumMinutes(weekRes.data);
-  const monthMinutes = monthRes.error ? 0 : sumMinutes(monthRes.data);
+  const summaryRes = await admin.rpc("tt_workspace_summary", {
+    p_week_start_date: sevenDaysAgoIsoDate,
+    p_month_start_date: monthStartDate,
+  });
+  const summaryRow = Array.isArray(summaryRes.data) ? summaryRes.data[0] : summaryRes.data;
+  const weekMinutes = summaryRes.error ? 0 : parseInteger((summaryRow as { week_mins?: unknown })?.week_mins);
+  const monthMinutes = summaryRes.error ? 0 : parseInteger((summaryRow as { month_mins?: unknown })?.month_mins);
 
   return {
     total_users: totalUsers,
