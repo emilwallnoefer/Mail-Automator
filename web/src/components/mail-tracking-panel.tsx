@@ -87,6 +87,25 @@ type LinkLeaderboardResponse = {
 };
 
 type ViewMode = "by_recipient" | "by_link";
+type TimelinePeriod = "day" | "week" | "month" | "year";
+type TimelineBucket = {
+  bucket_start: string;
+  mails_sent: number;
+  real_clicks: number;
+  bot_clicks: number;
+};
+type TimelineResponse = {
+  period: TimelinePeriod;
+  anchor: string;
+  range_start: string;
+  range_end: string;
+  buckets: TimelineBucket[];
+  totals: {
+    mails_sent: number;
+    real_clicks: number;
+    bot_clicks: number;
+  };
+};
 
 function toDateKey(date: Date) {
   const y = date.getFullYear();
@@ -112,6 +131,83 @@ function addDays(value: Date, delta: number) {
   const next = new Date(value);
   next.setDate(next.getDate() + delta);
   return next;
+}
+
+function addMonths(value: Date, delta: number) {
+  const next = new Date(value);
+  next.setMonth(next.getMonth() + delta);
+  return next;
+}
+
+function addYears(value: Date, delta: number) {
+  const next = new Date(value);
+  next.setFullYear(next.getFullYear() + delta);
+  return next;
+}
+
+function startOfPeriod(value: Date, period: TimelinePeriod) {
+  const next = new Date(value);
+  next.setHours(0, 0, 0, 0);
+  if (period === "day") return next;
+  if (period === "week") return getMonday(toDateKey(next));
+  if (period === "month") {
+    next.setDate(1);
+    return next;
+  }
+  next.setMonth(0, 1);
+  return next;
+}
+
+function shiftPeriod(value: string, period: TimelinePeriod, delta: number) {
+  const base = fromDateKey(value);
+  if (period === "day") return toDateKey(addDays(base, delta));
+  if (period === "week") return toDateKey(addDays(base, delta * 7));
+  if (period === "month") return toDateKey(addMonths(base, delta));
+  return toDateKey(addYears(base, delta));
+}
+
+function periodResetLabel(period: TimelinePeriod) {
+  if (period === "day") return "Today";
+  if (period === "week") return "This week";
+  if (period === "month") return "This month";
+  return "This year";
+}
+
+function formatTimelineRangeLabel(anchor: string, period: TimelinePeriod) {
+  const base = fromDateKey(anchor);
+  if (period === "day") {
+    return base.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (period === "week") {
+    const start = getMonday(anchor);
+    const end = addDays(start, 6);
+    const fmt = (value: Date) => value.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `${fmt(start)} - ${fmt(end)}, ${end.getFullYear()}`;
+  }
+  if (period === "month") {
+    return base.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }
+  return String(base.getFullYear());
+}
+
+function formatBucketTick(iso: string, period: TimelinePeriod) {
+  const date = new Date(iso);
+  if (period === "day") {
+    return date.toLocaleTimeString(undefined, { hour: "numeric" });
+  }
+  if (period === "week") {
+    return date.toLocaleDateString(undefined, { weekday: "short" });
+  }
+  if (period === "month") {
+    return date.toLocaleDateString(undefined, { day: "numeric" });
+  }
+  return date.toLocaleDateString(undefined, { month: "short" });
+}
+
+function shouldShowBucketTick(index: number, total: number, period: TimelinePeriod) {
+  if (period === "week" || period === "year") return true;
+  if (period === "day") return index % 3 === 0 || index === total - 1;
+  return index === 0 || index === total - 1 || index % 5 === 0;
 }
 
 function fmtAbsolute(iso: string | null): string {
@@ -173,6 +269,8 @@ function StatTile({
 export function MailTrackingPanel() {
   const [view, setView] = useState<ViewMode>("by_recipient");
   const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
+  const [timelinePeriod, setTimelinePeriod] = useState<TimelinePeriod>("week");
+  const [timelineAnchor, setTimelineAnchor] = useState<string>(toDateKey(startOfPeriod(new Date(), "week")));
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +282,9 @@ export function MailTrackingPanel() {
   const [search, setSearch] = useState("");
   const [showBots, setShowBots] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [timelineData, setTimelineData] = useState<TimelineResponse | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
   const [detailBySend, setDetailBySend] = useState<Record<string, SendDetailResponse | "loading" | { error: string }>>(
     {},
   );
@@ -227,6 +328,25 @@ export function MailTrackingPanel() {
     }
   }, []);
 
+  const loadTimeline = useCallback(async (period: TimelinePeriod, anchor: string) => {
+    setTimelineLoading(true);
+    setTimelineError(null);
+    try {
+      const params = new URLSearchParams({
+        period,
+        anchor,
+      });
+      const response = await fetch(`/api/admin/mail-tracking/timeline?${params.toString()}`);
+      const payload = (await response.json()) as TimelineResponse | { error: string };
+      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load timeline.");
+      setTimelineData(payload as TimelineResponse);
+    } catch (err) {
+      setTimelineError((err as Error).message || "Failed to load timeline.");
+    } finally {
+      setTimelineLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (view !== "by_recipient") return;
     const trimmed = search.trim();
@@ -245,6 +365,10 @@ export function MailTrackingPanel() {
     if (linkData || linkLoading) return;
     void loadLinks();
   }, [linkData, linkLoading, loadLinks, view]);
+
+  useEffect(() => {
+    void loadTimeline(timelinePeriod, timelineAnchor);
+  }, [loadTimeline, timelinePeriod, timelineAnchor]);
 
   const weekRangeLabel = useMemo(() => {
     const start = fromDateKey(weekStart);
@@ -295,6 +419,10 @@ export function MailTrackingPanel() {
       );
     });
   }, [linkData, linkSearch]);
+  const timelineRangeLabel = useMemo(
+    () => formatTimelineRangeLabel(timelineAnchor, timelinePeriod),
+    [timelineAnchor, timelinePeriod],
+  );
 
   return (
     <div className="mt-5 space-y-4">
@@ -499,6 +627,236 @@ export function MailTrackingPanel() {
         />
       )}
 
+      <section className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-slate-100">Click timeline</h3>
+              <InfoTooltip label="About click timeline">
+                Aggregated click activity across all tracked emails and links. X is time, Y is clicks.
+              </InfoTooltip>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">{timelineRangeLabel}</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-xs">
+              {(["day", "week", "month", "year"] as const).map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => {
+                    setTimelineAnchor((prev) => toDateKey(startOfPeriod(fromDateKey(prev), period)));
+                    setTimelinePeriod(period);
+                  }}
+                  className={`rounded-md px-3 py-1 transition ${
+                    timelinePeriod === period
+                      ? "bg-amber-400/15 text-amber-100"
+                      : "text-slate-300 hover:text-slate-100"
+                  }`}
+                  aria-pressed={timelinePeriod === period}
+                >
+                  {period[0].toUpperCase() + period.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-white/15 bg-slate-950/50 text-xs">
+              <button
+                type="button"
+                onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, -1))}
+                className="px-2.5 py-1.5 text-slate-200 transition hover:bg-white/10"
+                aria-label={`Previous ${timelinePeriod}`}
+              >
+                <span aria-hidden>&larr;</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineAnchor(toDateKey(startOfPeriod(new Date(), timelinePeriod)))}
+                className="border-x border-white/10 px-3 py-1.5 text-slate-200 transition hover:bg-white/10"
+              >
+                {periodResetLabel(timelinePeriod)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, 1))}
+                className="px-2.5 py-1.5 text-slate-200 transition hover:bg-white/10"
+                aria-label={`Next ${timelinePeriod}`}
+              >
+                <span aria-hidden>&rarr;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {timelineError ? (
+          <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            {timelineError}
+          </p>
+        ) : null}
+
+        <div className="mt-4">
+          <MailClickTimelineChart
+            data={timelineData}
+            loading={timelineLoading}
+            period={timelinePeriod}
+            showBots={showBots}
+          />
+        </div>
+      </section>
+
+    </div>
+  );
+}
+
+function MailClickTimelineChart({
+  data,
+  loading,
+  period,
+  showBots,
+}: {
+  data: TimelineResponse | null;
+  loading: boolean;
+  period: TimelinePeriod;
+  showBots: boolean;
+}) {
+  if (loading && !data) {
+    return (
+      <div className="flex h-72 items-center justify-center rounded-xl border border-white/10 bg-slate-950/40 text-sm text-slate-300/80">
+        Loading click timeline...
+      </div>
+    );
+  }
+
+  const buckets = data?.buckets ?? [];
+  if (buckets.length === 0) {
+    return (
+      <div className="flex h-72 items-center justify-center rounded-xl border border-white/10 bg-slate-950/40 px-6 text-center text-sm text-slate-300/80">
+        No tracked click activity yet for this period.
+      </div>
+    );
+  }
+
+  const width = 920;
+  const height = 288;
+  const marginTop = 16;
+  const marginRight = 18;
+  const marginBottom = 42;
+  const marginLeft = 42;
+  const plotWidth = width - marginLeft - marginRight;
+  const plotHeight = height - marginTop - marginBottom;
+  const gap = Math.max(2, Math.floor(plotWidth / Math.max(1, buckets.length * 5)));
+  const barWidth = Math.max(6, (plotWidth - gap * (buckets.length - 1)) / buckets.length);
+  const maxVisible = Math.max(
+    1,
+    ...buckets.map((bucket) => (showBots ? bucket.real_clicks + bucket.bot_clicks : bucket.real_clicks)),
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <StatTile
+          label="Visible clicks"
+          value={showBots ? (data?.totals.real_clicks ?? 0) + (data?.totals.bot_clicks ?? 0) : data?.totals.real_clicks ?? 0}
+          hint={showBots ? "Real + scanners" : "Real only"}
+        />
+        <StatTile label="Mails sent" value={data?.totals.mails_sent ?? 0} hint="Same period" />
+        <StatTile label="Scanner clicks" value={data?.totals.bot_clicks ?? 0} hint="Hidden unless enabled" />
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40 p-3">
+        <div className="min-w-[720px]">
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Mail click timeline chart">
+            {Array.from({ length: 4 }, (_, index) => {
+              const value = Math.round((maxVisible * (4 - index)) / 4);
+              const y = marginTop + (plotHeight * index) / 4;
+              return (
+                <g key={value}>
+                  <line
+                    x1={marginLeft}
+                    x2={width - marginRight}
+                    y1={y}
+                    y2={y}
+                    className="stroke-white/10"
+                    strokeWidth="1"
+                  />
+                  <text x={marginLeft - 8} y={y + 4} textAnchor="end" className="fill-slate-500 text-[10px]">
+                    {value}
+                  </text>
+                </g>
+              );
+            })}
+
+            {buckets.map((bucket, index) => {
+              const x = marginLeft + index * (barWidth + gap);
+              const realHeight = (plotHeight * bucket.real_clicks) / maxVisible;
+              const botHeight = showBots ? (plotHeight * bucket.bot_clicks) / maxVisible : 0;
+              const totalHeight = realHeight + botHeight;
+              const y = marginTop + plotHeight - totalHeight;
+              const realY = marginTop + plotHeight - realHeight;
+              const label = formatBucketTick(bucket.bucket_start, period);
+              const visibleClicks = showBots ? bucket.real_clicks + bucket.bot_clicks : bucket.real_clicks;
+              return (
+                <g key={bucket.bucket_start}>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={Math.max(totalHeight, 2)}
+                    rx="4"
+                    className="fill-amber-500/25"
+                  >
+                    <title>{`${label}: ${visibleClicks} visible clicks, ${bucket.mails_sent} mails sent`}</title>
+                  </rect>
+                  <rect
+                    x={x}
+                    y={realY}
+                    width={barWidth}
+                    height={Math.max(realHeight, 2)}
+                    rx="4"
+                    className="fill-amber-300"
+                  >
+                    <title>{`${label}: ${bucket.real_clicks} real clicks`}</title>
+                  </rect>
+                  {showBots && bucket.bot_clicks > 0 ? (
+                    <rect
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={Math.max(botHeight, 2)}
+                      rx="4"
+                      className="fill-slate-500/80"
+                    >
+                      <title>{`${label}: ${bucket.bot_clicks} scanner clicks`}</title>
+                    </rect>
+                  ) : null}
+                  {shouldShowBucketTick(index, buckets.length, period) ? (
+                    <text
+                      x={x + barWidth / 2}
+                      y={height - 14}
+                      textAnchor="middle"
+                      className="fill-slate-500 text-[10px]"
+                    >
+                      {label}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+
+            <line
+              x1={marginLeft}
+              x2={width - marginRight}
+              y1={marginTop + plotHeight}
+              y2={marginTop + plotHeight}
+              className="stroke-white/15"
+              strokeWidth="1"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-slate-400">
+        X-axis: time. Y-axis: clicks from all tracked emails and links. Amber shows real clicks; gray adds scanner clicks when enabled.
+      </p>
     </div>
   );
 }
