@@ -13,31 +13,7 @@ import {
 
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 const PREFETCH_WEEKS_EACH_SIDE = 1;
-const PREFETCH_DEFER_FALLBACK_MS = 600;
-
-type IdleCallbackHandle = number;
-type IdleRequestCallback = (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void;
-type IdleScheduler = {
-  requestIdleCallback?: (cb: IdleRequestCallback, opts?: { timeout?: number }) => IdleCallbackHandle;
-  cancelIdleCallback?: (handle: IdleCallbackHandle) => void;
-};
-
-function scheduleIdle(callback: () => void): () => void {
-  if (typeof window === "undefined") {
-    return () => {
-      // No-op cleanup on the server.
-    };
-  }
-  const scheduler = window as unknown as IdleScheduler;
-  if (typeof scheduler.requestIdleCallback === "function") {
-    const handle = scheduler.requestIdleCallback(() => callback(), { timeout: 1500 });
-    return () => {
-      if (typeof scheduler.cancelIdleCallback === "function") scheduler.cancelIdleCallback(handle);
-    };
-  }
-  const timeoutHandle = window.setTimeout(callback, PREFETCH_DEFER_FALLBACK_MS);
-  return () => window.clearTimeout(timeoutHandle);
-}
+const PREFETCH_IDLE_FALLBACK_MS = 600;
 
 type DayBreak = {
   name: string;
@@ -211,7 +187,7 @@ type TimeTrackerPanelProps = {
   readOnly?: boolean;
   /**
    * Base URL for the week-read endpoint. Defaults to `/api/time-tracker`.
-   * The panel will append `?weekStart=...&includeTravel=...&includeBank=...` (and any
+   * The panel will append `?weekStart=...&includeTravel=...` (and any
    * extra query params already present in the URL, e.g. `user_id=...`).
    */
   apiBase?: string;
@@ -278,11 +254,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
 
   const fetchWeekData = useCallback(async (
     targetWeekStart: string,
-    options?: { force?: boolean; includeTravel?: boolean; includeBank?: boolean },
+    options?: { force?: boolean; includeTravel?: boolean },
   ): Promise<WeekResponse> => {
     const force = options?.force ?? false;
     const includeTravel = options?.includeTravel ?? true;
-    const includeBank = options?.includeBank ?? true;
     if (!force) {
       const cached = weekCacheRef.current.get(targetWeekStart);
       if (cached) return cached;
@@ -293,7 +268,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
     const requestPromise = (async () => {
       const base = apiBase ?? "/api/time-tracker";
       const separator = base.includes("?") ? "&" : "?";
-      const url = `${base}${separator}weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}&includeBank=${includeBank ? "1" : "0"}`;
+      const url = `${base}${separator}weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}`;
       const response = await fetch(url);
       const payload = (await response.json()) as WeekResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
@@ -310,34 +285,29 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
     }
   }, [apiBase]);
 
-  const prefetchCancelRef = useRef<(() => void) | null>(null);
   const prefetchNearbyWeeks = useCallback((centerWeekStart: string) => {
-    if (prefetchCancelRef.current) {
-      prefetchCancelRef.current();
-      prefetchCancelRef.current = null;
-    }
-    const cancel = scheduleIdle(() => {
+    const runPrefetch = () => {
       const center = getMonday(centerWeekStart);
       for (let i = -PREFETCH_WEEKS_EACH_SIDE; i <= PREFETCH_WEEKS_EACH_SIDE; i += 1) {
         if (i === 0) continue;
         const key = toDateKey(addDays(center, i * 7));
         if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-        void fetchWeekData(key, { includeTravel: false, includeBank: true }).catch(() => {
+        void fetchWeekData(key, { includeTravel: false }).catch(() => {
           // Silent prefetch failures should not interrupt UI interactions.
         });
       }
-    });
-    prefetchCancelRef.current = cancel;
-  }, [fetchWeekData]);
-
-  useEffect(() => {
-    return () => {
-      if (prefetchCancelRef.current) {
-        prefetchCancelRef.current();
-        prefetchCancelRef.current = null;
-      }
     };
-  }, []);
+
+    if (typeof window === "undefined") return;
+    const idle = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+    }).requestIdleCallback;
+    if (typeof idle === "function") {
+      idle(runPrefetch, { timeout: PREFETCH_IDLE_FALLBACK_MS * 2 });
+    } else {
+      window.setTimeout(runPrefetch, PREFETCH_IDLE_FALLBACK_MS);
+    }
+  }, [fetchWeekData]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -367,7 +337,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
           return;
         }
         setLoading(true);
-        const weekData = await fetchWeekData(weekStart, { includeTravel: false, includeBank: true });
+        const weekData = await fetchWeekData(weekStart, { includeTravel: false });
         if (!active) return;
         applyWeekData(weekData);
         setWeekLoadTick((prev) => prev + 1);
@@ -388,15 +358,6 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
   useEffect(() => {
     const total = data?.days?.length ?? 0;
     if (total === 0) return;
-    // On the very first paint, reveal every card immediately so the user does
-    // not wait an additional ~600 ms (7 cards x 85 ms stagger) after the
-    // network response. The staged reveal stays as polish for subsequent
-    // week switches.
-    if (weekLoadTick <= 1) {
-      setRevealedDayCount(total);
-      setShowUpToDateSweep(false);
-      return;
-    }
     playUiSound("daysAppearStart");
     setRevealedDayCount(0);
     setShowUpToDateSweep(false);
@@ -449,7 +410,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
     if (current?.includes_travel) return;
     setDayDetailsLoading(true);
     try {
-      const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true, includeBank: true });
+      const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true });
       applyWeekData(fullWeek);
     } catch {
       // Keep editor interaction responsive even if details fetch fails.

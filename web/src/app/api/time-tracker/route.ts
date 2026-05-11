@@ -5,7 +5,7 @@ import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/secur
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { TIME_TRACKER_TARGET_MINS } from "@/lib/time-tracker-rules";
-import { fetchWeekForUser, getWeekStartDate, sanitizeMins } from "@/lib/time-tracker-queries";
+import { fetchCurrentUserWeek, getWeekStartDate, sanitizeMins } from "@/lib/time-tracker-queries";
 
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 
@@ -107,28 +107,21 @@ function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping 
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  // Prefer getClaims() over getUser(): it verifies the JWT locally against the
-  // cached JWKS (no extra round-trip to Supabase Auth) when the project is on
-  // asymmetric signing keys. Authorization for the per-user week read is
-  // additionally enforced inside the tt_user_week_v1 RPC via auth.uid().
+  // Verify the session locally (no network round-trip). The week RPC enforces
+  // auth.uid() internally, so we only need to know that a session is present
+  // and to read user_metadata for the optional travel-sheet fetch.
   const claimsRes = await supabase.auth.getClaims();
   const claims = claimsRes.data?.claims ?? null;
-  const userId = typeof claims?.sub === "string" ? claims.sub : null;
-
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!claims) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
   const weekStartDate = getWeekStartDate(url.searchParams.get("weekStart") ?? undefined);
   const includeTravel = url.searchParams.get("includeTravel") !== "0";
-  const includeBank = url.searchParams.get("includeBank") !== "0";
   if (!weekStartDate) return NextResponse.json({ error: "Invalid weekStart date" }, { status: 400 });
 
   let week;
   try {
-    week = await fetchWeekForUser(supabase, userId, weekStartDate, {
-      includeBank,
-      useCurrentUserRpc: true,
-    });
+    week = await fetchCurrentUserWeek(supabase, weekStartDate);
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message || "Failed to load tracker week" },
@@ -168,10 +161,7 @@ export async function GET(request: Request) {
   const weekDateSet = new Set(weekDays.map((day) => day.date));
   if (includeTravel) {
     try {
-      const userMetadata =
-        claims && typeof claims === "object" && "user_metadata" in claims
-          ? (claims.user_metadata as Record<string, unknown> | undefined)
-          : undefined;
+      const userMetadata = claims.user_metadata ?? null;
       const refreshToken = String(userMetadata?.gmail_refresh_token ?? "");
       if (!refreshToken) {
         travelDebug = {
