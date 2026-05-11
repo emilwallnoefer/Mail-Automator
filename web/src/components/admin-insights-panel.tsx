@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type Insights = {
@@ -72,14 +73,19 @@ function StatCard({
   label,
   value,
   hint,
+  info,
 }: {
   label: string;
   value: string;
   hint?: string;
+  info?: string;
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-      <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">{label}</p>
+        {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
+      </div>
       <p className="mt-1 text-xl font-semibold tabular-nums text-slate-100">{value}</p>
       {hint ? <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p> : null}
     </div>
@@ -225,10 +231,12 @@ export function AdminInsightsPanel() {
       ) : null}
 
       <section aria-label="Statistics" className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/80">Statistics</p>
-            <h3 className="text-base font-semibold text-slate-100">Workspace activity at a glance</h3>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-medium text-slate-200">Activity</h3>
+            <InfoTooltip label="About activity">
+              Workspace KPIs and the latest reminder cron run. Stats refresh on demand.
+            </InfoTooltip>
           </div>
           <button
             type="button"
@@ -236,7 +244,7 @@ export function AdminInsightsPanel() {
               void load();
             }}
             disabled={loading}
-            className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15 disabled:opacity-60"
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
           >
             {loading ? "Refreshing…" : "Refresh"}
           </button>
@@ -259,41 +267,41 @@ export function AdminInsightsPanel() {
                       ? ` · ${reminders.last_cron_run.skipped_dry_run} dry`
                       : ""
                   }`
-                : "Migration + first Monday cron needed"
+                : "—"
             }
+            info="Latest weekly cron run. Counts how many real reminder emails were sent, failed, or skipped (dry runs)."
           />
           <StatCard
             label="Sent in last 7 days"
             value={String(reminders?.last_7_days.sent ?? 0)}
-            hint={
-              reminders
-                ? `${reminders.last_7_days.failed} failed`
-                : loading
-                  ? "…"
-                  : "—"
-            }
+            hint={reminders ? `${reminders.last_7_days.failed} failed` : loading ? "…" : "—"}
+            info="Production reminder emails dispatched in the last 7 days. Excludes dry runs and admin test sends."
           />
           <StatCard
             label="30-day failure rate"
             value={reminders ? fmtPct(reminders.failure_rate_30d) : loading ? "…" : "0%"}
-            hint={
-              reminders
-                ? `${reminders.last_30_days.total} sends recorded`
-                : "No data yet"
-            }
+            hint={reminders ? `${reminders.last_30_days.total} sends recorded` : "No data yet"}
+            info="Share of reminder sends in the last 30 days that returned an error from Resend."
           />
           <StatCard
             label="Active users (7d)"
             value={workspace ? String(workspace.active_last_7_days) : loading ? "…" : "0"}
             hint={workspace ? `of ${workspace.total_users} total` : undefined}
+            info="Auth users whose last sign-in timestamp falls inside the past 7 days."
           />
           <StatCard
             label="Hours logged this month"
             value={workspace ? `${workspace.hours_logged_this_month}h` : loading ? "…" : "0h"}
             hint={workspace ? `${workspace.hours_logged_last_7_days}h in last 7d` : undefined}
+            info="Sum of net minutes across every user's time logs since the first of the current month."
           />
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2 lg:col-span-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">Users by role</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">Users by role</p>
+              <InfoTooltip label="About roles">
+                Counts each role stored in <code>user_metadata.role</code>. Users with no role assigned fall under &quot;Not selected&quot;.
+              </InfoTooltip>
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {usersByRole.length === 0 ? (
                 <span className="text-xs text-slate-400">
@@ -315,9 +323,14 @@ export function AdminInsightsPanel() {
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">
-            Most reminded in last 90 days
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">
+              Most reminded in last 90 days
+            </p>
+            <InfoTooltip label="About reminders">
+              Recipients who received the most production reminder emails in the last 90 days.
+            </InfoTooltip>
+          </div>
           {reminders && reminders.top_reminded_90d.length > 0 ? (
             <ul className="mt-2 divide-y divide-white/5">
               {reminders.top_reminded_90d.map((entry) => (
@@ -341,28 +354,32 @@ export function AdminInsightsPanel() {
       </section>
 
       <section aria-label="Settings" className="space-y-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/80">Settings</p>
-          <h3 className="text-base font-semibold text-slate-100">Reminder controls</h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-medium text-slate-200">Controls</h3>
+          <InfoTooltip label="About controls">
+            Pause or test the weekly Monday reminder cron without leaving the admin panel.
+          </InfoTooltip>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-medium text-slate-100">
-                Monday reminder email
-              </p>
-              <p className="text-xs text-slate-400">
-                When paused, the weekly cron and any <code>?force=1</code> run will skip sending.
-                Dry runs still work for previewing the candidate list.
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-slate-100">Monday reminder</p>
+                <InfoTooltip label="About the Monday reminder">
+                  Weekly cron at Mon 09:00 Europe/Zurich. When paused, real and forced runs skip
+                  sending; dry runs still preview the candidate list.
+                </InfoTooltip>
+              </div>
               {settings?.reminder_paused ? (
-                <p className="text-xs text-amber-200/90">
-                  Paused {fmtRelative(settings.reminder_paused_at)} by{" "}
-                  {settings.reminder_paused_by || "unknown"} ({fmtAbsolute(settings.reminder_paused_at)})
+                <p
+                  className="text-xs text-amber-200/90"
+                  title={`Paused by ${settings.reminder_paused_by || "unknown"} (${fmtAbsolute(settings.reminder_paused_at)})`}
+                >
+                  Paused {fmtRelative(settings.reminder_paused_at)}
                 </p>
               ) : settings ? (
-                <p className="text-xs text-emerald-200/85">Active — next run Monday 09:00 Europe/Zurich.</p>
+                <p className="text-xs text-emerald-200/85">Active · next Mon 09:00 CET</p>
               ) : null}
             </div>
             <button
@@ -378,47 +395,47 @@ export function AdminInsightsPanel() {
                   : "border-amber-300/55 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
               }`}
             >
-              {pausePending
-                ? "Saving…"
-                : settings?.reminder_paused
-                  ? "Resume reminder"
-                  : "Pause reminder"}
+              {pausePending ? "Saving…" : settings?.reminder_paused ? "Resume" : "Pause"}
             </button>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-sm font-medium text-slate-100">Force-run (dry)</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Runs the candidate scan right now without sending any real emails. Rows are recorded
-              in the audit log as <code>skipped_dry_run</code>.
-            </p>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="text-sm font-medium text-slate-100">Dry run</p>
+              <InfoTooltip label="About dry runs">
+                Runs the candidate scan right now without sending any real emails. Rows are recorded
+                in the audit log as <code>skipped_dry_run</code>.
+              </InfoTooltip>
+            </div>
             <button
               type="button"
               onClick={() => {
                 void runDryRun();
               }}
               disabled={actionPending === "dry"}
-              className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15 disabled:opacity-60"
+              className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
             >
-              {actionPending === "dry" ? "Running…" : "Run dry"}
+              {actionPending === "dry" ? "Running…" : "Run"}
             </button>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-sm font-medium text-slate-100">Send test to an address</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Sends one real email via Resend (subject prefixed with <code>[TEST]</code>) to the
-              address you enter. Does not touch the normal candidate list or the audit log.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-slate-100">Test send</p>
+              <InfoTooltip label="About test sends">
+                Sends one real email via Resend (subject prefixed with <code>[TEST]</code>) to the
+                address you enter. Does not touch the candidate list or audit log.
+              </InfoTooltip>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <input
                 type="email"
                 value={testEmail}
                 onChange={(event) => setTestEmail(event.target.value)}
                 placeholder="you@flyability.com"
-                className="min-w-[180px] flex-1 rounded-lg border border-white/20 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500"
+                className="min-w-[180px] flex-1 rounded-lg border border-white/15 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500"
               />
               <button
                 type="button"
@@ -426,9 +443,9 @@ export function AdminInsightsPanel() {
                   void sendTest();
                 }}
                 disabled={actionPending === "test" || testEmail.trim().length === 0}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15 disabled:opacity-60"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
               >
-                {actionPending === "test" ? "Sending…" : "Send test"}
+                {actionPending === "test" ? "Sending…" : "Send"}
               </button>
             </div>
           </div>

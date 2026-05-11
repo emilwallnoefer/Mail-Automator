@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { AdminInsightsPanel } from "@/components/admin-insights-panel";
 import { MailTrackingPanel } from "@/components/mail-tracking-panel";
+import { WeekStepper } from "@/components/week-stepper";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type AdminUser = {
@@ -48,6 +50,33 @@ export type AdminPanelProps = {
   /** When false, the Users & roles tab is hidden (HR read-only view). */
   canManageUsers?: boolean;
 };
+
+const ADMIN_TABS: Array<{ id: AdminTab; label: string; subtitle: string; help: string }> = [
+  {
+    id: "overview",
+    label: "Time",
+    subtitle: "Weekly totals per user",
+    help: "Per-user weekly time totals, overtime bank, and missing day count. Click a row to drill into a specific user's week.",
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    subtitle: "Workspace KPIs and reminder controls",
+    help: "Aggregate workspace metrics plus the Monday reminder cron settings (pause, dry run, send test).",
+  },
+  {
+    id: "mail_tracking",
+    label: "Mail tracking",
+    subtitle: "Click telemetry per recipient and link",
+    help: "Tracking links rewrite outbound HTML at Gmail draft creation. Scanner clicks (Outlook ATP, Mimecast, etc.) are flagged and hidden unless the Scanners checkbox is on.",
+  },
+  {
+    id: "users",
+    label: "Users",
+    subtitle: "Manage workspace roles",
+    help: "Roles are stored in Supabase user_metadata.role. Changes take effect on the user's next dashboard load.",
+  },
+];
 
 function fmtHM(mins: number) {
   const safe = Math.max(0, Math.round(mins));
@@ -189,6 +218,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
     return `${fmt(start)} \u2013 ${fmt(end)}`;
   }, [weekStart]);
 
+  const activeTab = useMemo(() => ADMIN_TABS.find((entry) => entry.id === tab), [tab]);
+
   if (drilldownUserId) {
     const apiBase = `/api/admin/time-user?user_id=${encodeURIComponent(drilldownUserId)}`;
     return (
@@ -218,97 +249,55 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
 
   return (
     <section className="glass-card hourlogger-surface rounded-2xl p-4 md:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-200/80">
-            {canManageUsers ? "Admin" : "HR"}
-          </p>
-          <h2 className="text-lg font-semibold md:text-xl">
-            {canManageUsers ? "Workspace administration" : "Team time overview"}
-          </h2>
-        </div>
+      <header className="space-y-2 border-b border-white/5 pb-3">
         {canManageUsers ? (
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Admin tabs">
-            <button
-              type="button"
-              onClick={() => setTab("overview")}
-              role="tab"
-              aria-selected={tab === "overview"}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                tab === "overview"
-                  ? "border-amber-300/55 bg-amber-400/15 text-amber-100"
-                  : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-              }`}
-            >
-              Time overview
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("users")}
-              role="tab"
-              aria-selected={tab === "users"}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                tab === "users"
-                  ? "border-amber-300/55 bg-amber-400/15 text-amber-100"
-                  : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-              }`}
-            >
-              Users &amp; roles
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("insights")}
-              role="tab"
-              aria-selected={tab === "insights"}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                tab === "insights"
-                  ? "border-amber-300/55 bg-amber-400/15 text-amber-100"
-                  : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-              }`}
-            >
-              Insights
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("mail_tracking")}
-              role="tab"
-              aria-selected={tab === "mail_tracking"}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                tab === "mail_tracking"
-                  ? "border-amber-300/55 bg-amber-400/15 text-amber-100"
-                  : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-              }`}
-            >
-              Mail tracking
-            </button>
+          <nav
+            className="inline-flex w-full overflow-x-auto rounded-lg border border-white/10 bg-white/5 p-0.5 text-xs sm:w-auto"
+            role="tablist"
+            aria-label="Admin tabs"
+          >
+            {ADMIN_TABS.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === entry.id}
+                onClick={() => setTab(entry.id)}
+                className={`whitespace-nowrap rounded-md px-3 py-1.5 transition ${
+                  tab === entry.id
+                    ? "bg-amber-400/15 text-amber-100"
+                    : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
+                }`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <p className="text-[10px] uppercase tracking-[0.22em] text-amber-200/80">
+            Team time overview
+          </p>
+        )}
+        {canManageUsers && activeTab ? (
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-slate-400">{activeTab.subtitle}</p>
+            <InfoTooltip label={`About ${activeTab.label}`}>{activeTab.help}</InfoTooltip>
           </div>
         ) : null}
-      </div>
+      </header>
 
       {tab === "overview" ? (
         <div className="mt-5 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              Prev week
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(getMonday()))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              This week
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              Next week
-            </button>
+            <WeekStepper
+              onPrev={() =>
+                setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))
+              }
+              onToday={() => setWeekStart(toDateKey(getMonday()))}
+              onNext={() =>
+                setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))
+              }
+            />
             <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
           </div>
 
@@ -472,10 +461,6 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-slate-400">
-            Roles are stored in Supabase <code>user_metadata.role</code>. Changes take effect on the
-            user&apos;s next dashboard load.
-          </p>
         </div>
       ) : null}
     </section>

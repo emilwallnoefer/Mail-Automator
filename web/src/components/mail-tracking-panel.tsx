@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { InfoTooltip } from "@/components/info-tooltip";
+import { WeekStepper } from "@/components/week-stepper";
 
 type Recipient = {
   key: string;
@@ -145,10 +147,23 @@ function pickTrustedHost(url: string): string {
   }
 }
 
-function StatTile({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+function StatTile({
+  label,
+  value,
+  hint,
+  info,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  info?: string;
+}) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/70">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/70">{label}</p>
+        {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
+      </div>
       <p className="mt-1 text-xl font-semibold tabular-nums text-slate-100">{value}</p>
       {hint ? <p className="mt-0.5 text-[10px] text-slate-400">{hint}</p> : null}
     </div>
@@ -284,11 +299,11 @@ export function MailTrackingPanel() {
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-lg border border-white/15 bg-white/5 p-0.5 text-xs">
+        <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5 text-xs">
           <button
             type="button"
             onClick={() => setView("by_recipient")}
-            className={`rounded-md px-2.5 py-1 transition ${
+            className={`whitespace-nowrap rounded-md px-3 py-1 transition ${
               view === "by_recipient"
                 ? "bg-amber-400/15 text-amber-100"
                 : "text-slate-300 hover:text-slate-100"
@@ -300,7 +315,7 @@ export function MailTrackingPanel() {
           <button
             type="button"
             onClick={() => setView("by_link")}
-            className={`rounded-md px-2.5 py-1 transition ${
+            className={`whitespace-nowrap rounded-md px-3 py-1 transition ${
               view === "by_link"
                 ? "bg-amber-400/15 text-amber-100"
                 : "text-slate-300 hover:text-slate-100"
@@ -311,56 +326,55 @@ export function MailTrackingPanel() {
           </button>
         </div>
 
-        {view === "by_recipient" ? (
-          <>
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              Prev week
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(getMonday()))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              This week
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-            >
-              Next week
-            </button>
-          </>
+        {view === "by_recipient" && !isSearchMode ? (
+          <WeekStepper
+            onPrev={() =>
+              setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))
+            }
+            onToday={() => setWeekStart(toDateKey(getMonday()))}
+            onNext={() =>
+              setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))
+            }
+          />
         ) : null}
 
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={view === "by_recipient" ? "Search recipient or company" : "Search link, label or URL"}
-          className="rounded-lg border border-white/15 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
-        />
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
+        <div className="relative min-w-[180px] flex-1">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={
+              view === "by_recipient"
+                ? "Search recipient, company or email (all time)"
+                : "Search link, label or URL"
+            }
+            className="w-full rounded-lg border border-white/15 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
+          />
+        </div>
+
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
           <input
             type="checkbox"
             checked={showBots}
             onChange={(event) => setShowBots(event.target.checked)}
             className="accent-amber-300"
           />
-          Show scanner clicks
+          Scanners
+          <InfoTooltip label="About scanner clicks" align="end">
+            Tracking links rewrite outbound HTML at Gmail draft creation time. Corporate scanners
+            (Outlook ATP, Mimecast, Proofpoint, etc.) hit redirect URLs to inspect them — flagged
+            as scanner clicks and hidden by default.
+          </InfoTooltip>
         </label>
-        <span className="ml-auto text-xs text-slate-300/80">
-          {view === "by_recipient"
-            ? isSearchMode
-              ? "All-time search"
-              : weekRangeLabel
-            : "All time"}
-        </span>
       </div>
+
+      <p className="text-[11px] text-slate-400">
+        {view === "by_recipient"
+          ? isSearchMode
+            ? `All-time search · ${data?.totals.recipients ?? 0} recipient${data?.totals.recipients === 1 ? "" : "s"} matching "${search.trim()}"`
+            : weekRangeLabel
+          : "All time across every tracked send"}
+      </p>
 
       {(view === "by_recipient" ? error : linkError) ? (
         <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -380,21 +394,25 @@ export function MailTrackingPanel() {
             label="Mails sent"
             value={data?.totals.mails_sent ?? 0}
             hint={isSearchMode ? "Matching search" : "This week"}
+            info="Number of Gmail drafts tracked in the current scope."
           />
           <StatTile
             label="Recipients"
             value={data?.totals.recipients ?? 0}
-            hint="Distinct names + companies"
+            hint="Distinct"
+            info="Distinct recipients — counted by lowercased name + company so capitalisation doesn't split entries."
           />
           <StatTile
             label="Real clicks"
             value={data?.totals.real_clicks ?? 0}
-            hint="Excludes scanners"
+            hint="Humans"
+            info="Clicks that did not match the scanner heuristic (corporate ATP, Mimecast, etc.). These are most likely real recipients opening the link."
           />
           <StatTile
             label="Scanner clicks"
             value={data?.totals.bot_clicks ?? 0}
-            hint="Outlook ATP, Mimecast, etc."
+            hint="Bots"
+            info="Likely corporate link scanners — Outlook ATP, Mimecast, Proofpoint, etc. Hidden by default, toggle the Scanners checkbox to include."
           />
         </div>
       ) : (
@@ -402,22 +420,26 @@ export function MailTrackingPanel() {
           <StatTile
             label="Unique links"
             value={linkData?.totals.unique_links ?? 0}
-            hint="Across all sends"
+            hint="All time"
+            info="Distinct destinations across every tracked send, grouped by link_key when present, otherwise by original URL."
           />
           <StatTile
             label="Total link sends"
             value={linkData?.totals.total_link_rows ?? 0}
-            hint="Each link counted per email it appears in"
+            hint="Per email"
+            info="Total rows in mail_send_links — each link counted once per email it was inserted into."
           />
           <StatTile
             label="Real clicks"
             value={linkData?.totals.real_clicks ?? 0}
-            hint="Excludes scanners"
+            hint="Humans"
+            info="Clicks that did not match the scanner heuristic."
           />
           <StatTile
             label="Scanner clicks"
             value={linkData?.totals.bot_clicks ?? 0}
-            hint="Outlook ATP, Mimecast, etc."
+            hint="Bots"
+            info="Likely corporate link scanners — Outlook ATP, Mimecast, Proofpoint, etc."
           />
         </div>
       )}
@@ -477,11 +499,6 @@ export function MailTrackingPanel() {
         />
       )}
 
-      <p className="text-xs text-slate-400">
-        Tracking links rewrite outbound HTML at Gmail draft creation time. Email scanners (Outlook ATP,
-        Mimecast, Proofpoint, etc.) hit redirect URLs to inspect them — those are flagged as scanner
-        clicks and hidden by default.
-      </p>
     </div>
   );
 }
