@@ -31,7 +31,7 @@ type DayData = {
   breaks: DayBreak[];
 };
 
-type WeekResponse = {
+export type WeekResponse = {
   week_start: string;
   week_end: string;
   target_mins: number;
@@ -193,9 +193,15 @@ type TimeTrackerPanelProps = {
   apiBase?: string;
   /** Optional header to display when viewing another user's tracker. */
   viewingLabel?: string;
+  /**
+   * SSR-fetched current week to seed the local cache, so the first paint
+   * skips the client-side fetch round-trip. Only applied when its
+   * `week_start` matches the client-computed Monday for "today".
+   */
+  initialWeek?: WeekResponse | null;
 };
 
-export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: TimeTrackerPanelProps = {}) {
+export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, initialWeek }: TimeTrackerPanelProps = {}) {
   const bubbles = [
     { left: "6%", size: "10px", duration: "9s", delay: "0s" },
     { left: "14%", size: "8px", duration: "12s", delay: "-3s" },
@@ -224,6 +230,14 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel }: Ti
   const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
+  const initialWeekSeededRef = useRef(false);
+
+  if (!initialWeekSeededRef.current) {
+    initialWeekSeededRef.current = true;
+    if (initialWeek && initialWeek.week_start === weekStart) {
+      weekCacheRef.current.set(initialWeek.week_start, initialWeek);
+    }
+  }
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;

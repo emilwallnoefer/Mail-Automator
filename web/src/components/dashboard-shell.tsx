@@ -25,7 +25,7 @@ import {
 import { AuthNavbar } from "@/components/auth-navbar";
 import { ChatWidget } from "@/components/chat-widget";
 import { SettingsPanel } from "@/components/settings-panel";
-import { TimeTrackerPanel } from "@/components/time-tracker-panel";
+import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
 import { AdminPanel } from "@/components/admin-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +36,7 @@ type DashboardShellProps = {
   email: string;
   initialRole: UserRole | null;
   isAdmin?: boolean;
+  initialWeek?: WeekResponse | null;
 };
 
 type ModuleKey = "mail" | "time" | "settings" | "admin";
@@ -200,7 +201,7 @@ function IconArrow({ className }: { className?: string }) {
   );
 }
 
-export function DashboardShell({ email, initialRole, isAdmin = false }: DashboardShellProps) {
+export function DashboardShell({ email, initialRole, isAdmin = false, initialWeek = null }: DashboardShellProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -790,7 +791,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false }: Dashboar
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {activeModule === "time" ? (
-                    <TimeTrackerPanel />
+                    <TimeTrackerPanel initialWeek={initialWeek} />
                   ) : activeModule === "admin" ? (
                     <AdminPanel canManageUsers={canManageUsers} />
                   ) : activeModule === "settings" ? (
