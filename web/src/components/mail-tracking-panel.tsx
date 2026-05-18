@@ -427,11 +427,11 @@ export function MailTrackingPanel() {
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5 text-xs">
+        <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5 text-sm">
           <button
             type="button"
             onClick={() => setView("by_recipient")}
-            className={`whitespace-nowrap rounded-md px-3 py-1 transition ${
+            className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-md px-4 py-2 transition ${
               view === "by_recipient"
                 ? "bg-amber-400/15 text-amber-100"
                 : "text-slate-300 hover:text-slate-100"
@@ -443,7 +443,7 @@ export function MailTrackingPanel() {
           <button
             type="button"
             onClick={() => setView("by_link")}
-            className={`whitespace-nowrap rounded-md px-3 py-1 transition ${
+            className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-md px-4 py-2 transition ${
               view === "by_link"
                 ? "bg-amber-400/15 text-amber-100"
                 : "text-slate-300 hover:text-slate-100"
@@ -639,7 +639,7 @@ export function MailTrackingPanel() {
             <p className="mt-1 text-xs text-slate-400">{timelineRangeLabel}</p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-xs">
+            <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-sm">
               {(["day", "week", "month", "year"] as const).map((period) => (
                 <button
                   key={period}
@@ -648,7 +648,7 @@ export function MailTrackingPanel() {
                     setTimelineAnchor((prev) => toDateKey(startOfPeriod(fromDateKey(prev), period)));
                     setTimelinePeriod(period);
                   }}
-                  className={`rounded-md px-3 py-1 transition ${
+                  className={`inline-flex min-h-10 min-w-12 items-center justify-center rounded-md px-4 py-2 transition ${
                     timelinePeriod === period
                       ? "bg-amber-400/15 text-amber-100"
                       : "text-slate-300 hover:text-slate-100"
@@ -659,11 +659,11 @@ export function MailTrackingPanel() {
                 </button>
               ))}
             </div>
-            <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-white/15 bg-slate-950/50 text-xs">
+            <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-white/15 bg-slate-950/50 text-sm">
               <button
                 type="button"
                 onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, -1))}
-                className="px-2.5 py-1.5 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-slate-200 transition hover:bg-white/10"
                 aria-label={`Previous ${timelinePeriod}`}
               >
                 <span aria-hidden>&larr;</span>
@@ -671,14 +671,14 @@ export function MailTrackingPanel() {
               <button
                 type="button"
                 onClick={() => setTimelineAnchor(toDateKey(startOfPeriod(new Date(), timelinePeriod)))}
-                className="border-x border-white/10 px-3 py-1.5 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 items-center justify-center border-x border-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/10"
               >
                 {periodResetLabel(timelinePeriod)}
               </button>
               <button
                 type="button"
                 onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, 1))}
-                className="px-2.5 py-1.5 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-slate-200 transition hover:bg-white/10"
                 aria-label={`Next ${timelinePeriod}`}
               >
                 <span aria-hidden>&rarr;</span>
@@ -769,7 +769,7 @@ function MailClickTimelineChart({
               const value = Math.round((maxVisible * (4 - index)) / 4);
               const y = marginTop + (plotHeight * index) / 4;
               return (
-                <g key={value}>
+                <g key={`gridline-${index}-${value}`}>
                   <line
                     x1={marginLeft}
                     x2={width - marginRight}
