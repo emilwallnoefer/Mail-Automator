@@ -7,6 +7,12 @@
   --app-sticky-offset: max(5.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
 }
 
+/* Solarized Light — base3 page, base01 body text. */
+[data-theme="light"] {
+  --background: #fdf6e3;
+  --foreground: #586e75;
+}
+
 html {
   scroll-padding-top: var(--app-sticky-offset);
 }
@@ -819,6 +825,109 @@ body {
   }
 }
 
+.freshness-pill {
+  position: relative;
+  display: inline-block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.5);
+  vertical-align: middle;
+  transition: background 600ms ease-out, box-shadow 600ms ease-out, transform 600ms ease-out;
+}
+
+.freshness-pill--loading {
+  background: rgb(34, 211, 238);
+  animation: freshnessLoadingPulse 1500ms ease-in-out infinite;
+}
+
+.freshness-pill-ripple {
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(34, 211, 238, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  animation: freshnessRipple 1500ms cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+}
+
+.freshness-pill-ripple--delayed {
+  animation-delay: 750ms;
+}
+
+.freshness-flash {
+  animation:
+    freshnessPop 700ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    freshnessFade 180s linear both;
+}
+
+@keyframes freshnessLoadingPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(34, 211, 238, 0.45);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.95);
+  }
+}
+
+@keyframes freshnessRipple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.95;
+    border-width: 1.5px;
+  }
+  55% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(4.4);
+    opacity: 0;
+    border-width: 0.5px;
+  }
+}
+
+@keyframes freshnessPop {
+  0% {
+    transform: scale(1.45);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes freshnessFade {
+  0% {
+    background: rgb(52, 211, 153);
+    box-shadow: 0 0 14px rgba(52, 211, 153, 0.9);
+  }
+  3% {
+    background: rgb(52, 211, 153);
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+  }
+  100% {
+    background: rgba(148, 163, 184, 0.5);
+    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .freshness-flash,
+  .freshness-pill--loading {
+    animation: none;
+  }
+
+  .freshness-flash {
+    background: rgb(52, 211, 153);
+  }
+
+  .freshness-pill-ripple {
+    display: none;
+  }
+}
+
 @keyframes dayLoggerOverlayIn {
   from {
     opacity: 0;
@@ -846,4 +955,490 @@ body {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
   }
+}
+
+/* =========================================================================
+ * Solarized Light theme
+ *
+ * The app's components are styled with hardcoded dark utilities (bg-slate-950,
+ * text-white, border-white/15, etc.) and dark-tuned custom CSS classes. Rather
+ * than sweep every component, we re-target the rendered utilities under
+ * `html[data-theme="light"]`. Rules placed here (after `@import "tailwindcss"`,
+ * outside any @layer) come later in the cascade than Tailwind's @layer
+ * utilities and win for same-or-higher specificity.
+ *
+ * Palette (Solarized Light):
+ *   base3 #fdf6e3   page bg
+ *   base2 #eee8d5   panel surface
+ *   base1 #93a1a1   secondary
+ *   base00 #657b83  body text
+ *   base01 #586e75  emphasized text
+ *   yellow #b58900  orange #cb4b16  red #dc322f
+ *   violet #6c71c4  blue #268bd2    cyan #2aa198  green #859900
+ * ========================================================================= */
+
+html[data-theme="light"] body {
+  color: #586e75;
+}
+
+/* ---- Surfaces: dark slate fills -> solarized paper / panel ---- */
+html[data-theme="light"] .bg-slate-950 { background-color: #fdf6e3; }
+html[data-theme="light"] .bg-slate-900 { background-color: #eee8d5; }
+html[data-theme="light"] .bg-slate-800 { background-color: #e5dfca; }
+html[data-theme="light"] .bg-slate-700\/60 { background-color: rgba(147, 161, 161, 0.32); }
+html[data-theme="light"] .bg-slate-500 { background-color: #93a1a1; }
+html[data-theme="light"] .bg-slate-300\/80 { background-color: rgba(238, 232, 213, 0.9); }
+
+html[data-theme="light"] .bg-slate-950\/20 { background-color: rgba(238, 232, 213, 0.5); }
+html[data-theme="light"] .bg-slate-950\/30 { background-color: rgba(238, 232, 213, 0.6); }
+html[data-theme="light"] .bg-slate-950\/40 { background-color: rgba(238, 232, 213, 0.65); }
+html[data-theme="light"] .bg-slate-950\/45 { background-color: rgba(238, 232, 213, 0.7); }
+html[data-theme="light"] .bg-slate-950\/50 { background-color: rgba(238, 232, 213, 0.75); }
+html[data-theme="light"] .bg-slate-950\/60 { background-color: rgba(238, 232, 213, 0.8); }
+html[data-theme="light"] .bg-slate-950\/70 { background-color: rgba(238, 232, 213, 0.85); }
+html[data-theme="light"] .bg-slate-950\/85 { background-color: rgba(253, 246, 227, 0.9); }
+html[data-theme="light"] .bg-slate-950\/90 { background-color: rgba(253, 246, 227, 0.94); }
+html[data-theme="light"] .bg-slate-950\/92 { background-color: rgba(253, 246, 227, 0.96); }
+html[data-theme="light"] .bg-slate-950\/95 { background-color: rgba(253, 246, 227, 0.98); }
+
+html[data-theme="light"] .bg-slate-900\/40 { background-color: rgba(229, 223, 202, 0.55); }
+html[data-theme="light"] .bg-slate-900\/45 { background-color: rgba(229, 223, 202, 0.6); }
+html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(229, 223, 202, 0.7); }
+html[data-theme="light"] .bg-slate-900\/80 { background-color: rgba(229, 223, 202, 0.85); }
+html[data-theme="light"] .bg-slate-900\/95 { background-color: rgba(229, 223, 202, 0.95); }
+
+/* ---- Glass tints: white-alpha highlights -> base01-alpha shadows (darker) ---- */
+html[data-theme="light"] .bg-white { background-color: #fdf6e3; }
+html[data-theme="light"] .bg-white\/5 { background-color: rgba(88, 110, 117, 0.04); }
+html[data-theme="light"] .bg-white\/8 { background-color: rgba(88, 110, 117, 0.06); }
+html[data-theme="light"] .bg-white\/10 { background-color: rgba(88, 110, 117, 0.08); }
+html[data-theme="light"] .bg-white\/12 { background-color: rgba(88, 110, 117, 0.1); }
+html[data-theme="light"] .bg-white\/14 { background-color: rgba(88, 110, 117, 0.12); }
+html[data-theme="light"] .bg-white\/15 { background-color: rgba(88, 110, 117, 0.13); }
+html[data-theme="light"] .bg-white\/20 { background-color: rgba(88, 110, 117, 0.15); }
+html[data-theme="light"] .bg-white\/40 { background-color: rgba(88, 110, 117, 0.2); }
+html[data-theme="light"] .bg-white\/60 { background-color: rgba(88, 110, 117, 0.25); }
+
+html[data-theme="light"] .hover\:bg-white\/12:hover { background-color: rgba(88, 110, 117, 0.13); }
+html[data-theme="light"] .hover\:bg-white\/15:hover { background-color: rgba(88, 110, 117, 0.16); }
+html[data-theme="light"] .hover\:bg-white\/20:hover { background-color: rgba(88, 110, 117, 0.18); }
+html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #e5dfca; }
+html[data-theme="light"] .hover\:bg-slate-900\/60:hover { background-color: rgba(229, 223, 202, 0.75); }
+
+/* ---- Text: invert ladder (light->dark) ---- */
+html[data-theme="light"] .text-white { color: #586e75; }
+html[data-theme="light"] .text-slate-50 { color: #586e75; }
+html[data-theme="light"] .text-slate-100 { color: #586e75; }
+html[data-theme="light"] .text-slate-100\/90 { color: rgba(88, 110, 117, 0.95); }
+html[data-theme="light"] .text-slate-200 { color: #657b83; }
+html[data-theme="light"] .text-slate-200\/75 { color: rgba(101, 123, 131, 0.92); }
+html[data-theme="light"] .text-slate-200\/80 { color: rgba(101, 123, 131, 0.94); }
+html[data-theme="light"] .text-slate-200\/85 { color: rgba(101, 123, 131, 0.95); }
+html[data-theme="light"] .text-slate-200\/90 { color: rgba(101, 123, 131, 0.96); }
+html[data-theme="light"] .text-slate-300 { color: #6c7a80; }
+html[data-theme="light"] .text-slate-300\/70 { color: rgba(108, 122, 128, 0.85); }
+html[data-theme="light"] .text-slate-300\/75 { color: rgba(108, 122, 128, 0.88); }
+html[data-theme="light"] .text-slate-300\/80 { color: rgba(108, 122, 128, 0.9); }
+html[data-theme="light"] .text-slate-300\/85 { color: rgba(108, 122, 128, 0.92); }
+html[data-theme="light"] .text-slate-300\/90 { color: rgba(108, 122, 128, 0.95); }
+html[data-theme="light"] .text-slate-400 { color: #839496; }
+html[data-theme="light"] .text-slate-400\/80 { color: rgba(131, 148, 150, 0.88); }
+html[data-theme="light"] .text-slate-400\/90 { color: rgba(131, 148, 150, 0.94); }
+html[data-theme="light"] .text-slate-500 { color: #93a1a1; }
+html[data-theme="light"] .text-slate-600 { color: #93a1a1; }
+html[data-theme="light"] .text-slate-700 { color: #586e75; }
+
+/* Decoration / placeholder match the muted ladder. */
+html[data-theme="light"] .decoration-slate-400\/70 { text-decoration-color: rgba(131, 148, 150, 0.75); }
+html[data-theme="light"] .placeholder\:text-slate-500::placeholder { color: rgba(131, 148, 150, 0.85); }
+html[data-theme="light"] .placeholder\:text-slate-400::placeholder { color: rgba(147, 161, 161, 0.85); }
+
+/* ---- Accent text: cyan / amber / emerald / rose / indigo on cream ---- */
+html[data-theme="light"] .text-cyan-50 { color: #0f6e6a; }
+html[data-theme="light"] .text-cyan-100 { color: #0f6e6a; }
+html[data-theme="light"] .text-cyan-100\/90 { color: rgba(15, 110, 106, 0.95); }
+html[data-theme="light"] .text-cyan-100\/95 { color: rgba(15, 110, 106, 0.98); }
+html[data-theme="light"] .text-cyan-200 { color: #0e7972; }
+html[data-theme="light"] .text-cyan-200\/65 { color: rgba(14, 121, 114, 0.7); }
+html[data-theme="light"] .text-cyan-200\/70 { color: rgba(14, 121, 114, 0.78); }
+html[data-theme="light"] .text-cyan-200\/75 { color: rgba(14, 121, 114, 0.82); }
+html[data-theme="light"] .text-cyan-200\/80 { color: rgba(14, 121, 114, 0.88); }
+html[data-theme="light"] .text-cyan-200\/90 { color: rgba(14, 121, 114, 0.96); }
+
+html[data-theme="light"] .text-amber-100 { color: #8a6500; }
+html[data-theme="light"] .text-amber-100\/95 { color: rgba(138, 101, 0, 0.98); }
+html[data-theme="light"] .text-amber-200 { color: #9a7400; }
+html[data-theme="light"] .text-amber-200\/80 { color: rgba(154, 116, 0, 0.88); }
+html[data-theme="light"] .text-amber-200\/90 { color: rgba(154, 116, 0, 0.96); }
+
+html[data-theme="light"] .text-emerald-100 { color: #5a6f00; }
+html[data-theme="light"] .text-emerald-200 { color: #6a8000; }
+html[data-theme="light"] .text-emerald-200\/85 { color: rgba(106, 128, 0, 0.92); }
+html[data-theme="light"] .text-emerald-200\/90 { color: rgba(106, 128, 0, 0.95); }
+html[data-theme="light"] .text-emerald-200\/95 { color: rgba(106, 128, 0, 0.98); }
+html[data-theme="light"] .text-emerald-300 { color: #7a8f00; }
+
+html[data-theme="light"] .text-rose-100 { color: #a02324; }
+html[data-theme="light"] .text-rose-100\/80 { color: rgba(160, 35, 36, 0.88); }
+html[data-theme="light"] .text-rose-100\/95 { color: rgba(160, 35, 36, 0.98); }
+html[data-theme="light"] .text-rose-200 { color: #b62b2b; }
+html[data-theme="light"] .text-rose-300 { color: #c0312f; }
+
+html[data-theme="light"] .text-indigo-100\/95 { color: rgba(53, 65, 145, 0.98); }
+
+/* ---- Borders: white-alpha -> base01-alpha; slate-900 -> base1 ---- */
+html[data-theme="light"] .border-white\/5 { border-color: rgba(88, 110, 117, 0.08); }
+html[data-theme="light"] .border-white\/10 { border-color: rgba(88, 110, 117, 0.12); }
+html[data-theme="light"] .border-white\/12 { border-color: rgba(88, 110, 117, 0.14); }
+html[data-theme="light"] .border-white\/15 { border-color: rgba(88, 110, 117, 0.18); }
+html[data-theme="light"] .border-white\/20 { border-color: rgba(88, 110, 117, 0.22); }
+html[data-theme="light"] .border-white\/25 { border-color: rgba(88, 110, 117, 0.28); }
+html[data-theme="light"] .border-slate-900\/30 { border-color: rgba(147, 161, 161, 0.4); }
+html[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(88, 110, 117, 0.08);
+}
+html[data-theme="light"] .ring-white\/5 { --tw-ring-color: rgba(88, 110, 117, 0.08); }
+html[data-theme="light"] .ring-white\/10 { --tw-ring-color: rgba(88, 110, 117, 0.12); }
+html[data-theme="light"] .ring-white\/15 { --tw-ring-color: rgba(88, 110, 117, 0.16); }
+html[data-theme="light"] .ring-slate-950 { --tw-ring-color: rgba(238, 232, 213, 0.9); }
+
+/* SVG strokes used in chart/gridlines. */
+html[data-theme="light"] .stroke-white\/10 { stroke: rgba(88, 110, 117, 0.18); }
+html[data-theme="light"] .stroke-white\/15 { stroke: rgba(88, 110, 117, 0.22); }
+
+/* ---- Gradient stops on dark slate ---- */
+html[data-theme="light"] .from-slate-600 { --tw-gradient-from: #93a1a1 var(--tw-gradient-from-position); }
+html[data-theme="light"] .from-slate-700 { --tw-gradient-from: #839496 var(--tw-gradient-from-position); }
+html[data-theme="light"] .from-slate-700\/80 { --tw-gradient-from: rgba(131, 148, 150, 0.88) var(--tw-gradient-from-position); }
+html[data-theme="light"] .from-slate-900\/95 { --tw-gradient-from: rgba(229, 223, 202, 0.95) var(--tw-gradient-from-position); }
+html[data-theme="light"] .via-slate-900 { --tw-gradient-via: #eee8d5 var(--tw-gradient-via-position); }
+html[data-theme="light"] .via-slate-950\/90 { --tw-gradient-via: rgba(238, 232, 213, 0.92) var(--tw-gradient-via-position); }
+html[data-theme="light"] .to-slate-800 { --tw-gradient-to: #e5dfca var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-900 { --tw-gradient-to: #eee8d5 var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-950 { --tw-gradient-to: #fdf6e3 var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-950\/80 { --tw-gradient-to: rgba(253, 246, 227, 0.88) var(--tw-gradient-to-position); }
+
+/* ---- Arbitrary-value white tints used on module-tab cards and inputs ---- */
+html[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(88, 110, 117, 0.04); }
+html[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(88, 110, 117, 0.05); }
+html[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(88, 110, 117, 0.06); }
+html[data-theme="light"] .bg-white\/\[0\.07\] { background-color: rgba(88, 110, 117, 0.07); }
+html[data-theme="light"] .border-white\/\[0\.07\] { border-color: rgba(88, 110, 117, 0.12); }
+html[data-theme="light"] .border-white\/\[0\.09\] { border-color: rgba(88, 110, 117, 0.16); }
+html[data-theme="light"] .ring-white\/\[0\.04\] { --tw-ring-color: rgba(88, 110, 117, 0.08); }
+html[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(88, 110, 117, 0.08); }
+
+/* ---- Fills ---- */
+html[data-theme="light"] .fill-slate-500 { fill: #93a1a1; }
+html[data-theme="light"] .fill-slate-500\/80 { fill: rgba(147, 161, 161, 0.85); }
+
+/* ---- Shadows: lift tone so they don't blow out on cream ---- */
+html[data-theme="light"] .shadow-black\/20 { --tw-shadow-color: rgba(7, 54, 66, 0.12); }
+html[data-theme="light"] .shadow-black\/50 { --tw-shadow-color: rgba(7, 54, 66, 0.22); }
+
+/* =========================================================================
+ * Custom CSS classes — re-skinned for paper
+ * ========================================================================= */
+
+/* Aurora wash: replace cyan/indigo glow with a soft cream + yellow paper. */
+html[data-theme="light"] .aurora-bg {
+  background:
+    radial-gradient(45rem 45rem at 0% 0%, rgba(181, 137, 0, 0.12), transparent 60%),
+    radial-gradient(40rem 40rem at 95% 15%, rgba(38, 139, 210, 0.1), transparent 55%),
+    radial-gradient(35rem 35rem at 40% 90%, rgba(133, 153, 0, 0.1), transparent 55%),
+    linear-gradient(130deg, #fdf6e3 0%, #fdf6e3 45%, #eee8d5 100%);
+  filter: saturate(100%);
+}
+
+html[data-theme="light"] .aurora-bg::before {
+  background:
+    repeating-linear-gradient(
+      64deg,
+      rgba(88, 110, 117, 0.08) 0px,
+      rgba(88, 110, 117, 0.08) 2px,
+      rgba(88, 110, 117, 0.02) 2px,
+      rgba(88, 110, 117, 0.02) 68px
+    ),
+    radial-gradient(92rem 40rem at 2% -8%, rgba(181, 137, 0, 0.12), transparent 74%),
+    linear-gradient(148deg, rgba(101, 123, 131, 0.08) 0%, rgba(101, 123, 131, 0) 64%);
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+html[data-theme="light"] .aurora-bg::after {
+  background:
+    repeating-linear-gradient(
+      60deg,
+      rgba(88, 110, 117, 0.05) 0px,
+      rgba(88, 110, 117, 0.05) 1px,
+      transparent 1px,
+      transparent 44px
+    ),
+    radial-gradient(100rem 46rem at -8% -16%, rgba(38, 139, 210, 0.08), transparent 74%),
+    linear-gradient(150deg, rgba(38, 139, 210, 0.05), rgba(38, 139, 210, 0) 70%);
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+}
+
+/* Glass cards: light paper-tinted glass over base2. */
+html[data-theme="light"] .glass-card {
+  border: 1px solid rgba(101, 123, 131, 0.2);
+  background: linear-gradient(140deg, rgba(238, 232, 213, 0.88), rgba(238, 232, 213, 0.6));
+  box-shadow:
+    0 22px 48px rgba(7, 54, 66, 0.1),
+    0 8px 24px rgba(7, 54, 66, 0.06),
+    inset 0 1px 0 rgba(253, 246, 227, 0.8),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .glass-card::before {
+  background:
+    radial-gradient(26rem 16rem at 12% 8%, rgba(181, 137, 0, 0.08), transparent 70%),
+    radial-gradient(22rem 14rem at 86% 72%, rgba(38, 139, 210, 0.06), transparent 74%);
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .glass-card::after {
+  background:
+    linear-gradient(112deg, rgba(253, 246, 227, 0.4) 0%, rgba(253, 246, 227, 0.05) 42%, rgba(253, 246, 227, 0) 72%),
+    radial-gradient(24rem 14rem at 88% 14%, rgba(181, 137, 0, 0.04), transparent 75%);
+  opacity: 0.5;
+}
+
+/* Day-logger modal: cream surface, base01 text. */
+html[data-theme="light"] .day-logger-card {
+  border: 1px solid rgba(101, 123, 131, 0.3);
+  background: linear-gradient(140deg, rgba(253, 246, 227, 0.96), rgba(238, 232, 213, 0.94));
+  box-shadow:
+    0 28px 64px rgba(7, 54, 66, 0.18),
+    0 10px 28px rgba(7, 54, 66, 0.1),
+    inset 0 1px 0 rgba(253, 246, 227, 0.85),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .day-logger-card::before { opacity: 0.1; }
+html[data-theme="light"] .day-logger-card::after { opacity: 0.08; }
+
+/* Liquid day card: paper variant. */
+html[data-theme="light"] .liquid-day-card {
+  border: 1px solid rgba(101, 123, 131, 0.22);
+  background: linear-gradient(142deg, rgba(238, 232, 213, 0.85), rgba(238, 232, 213, 0.55));
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 1px 0 rgba(253, 246, 227, 0.9),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .liquid-day-card::before {
+  background:
+    radial-gradient(22rem 16rem at 12% 10%, rgba(181, 137, 0, 0.1), transparent 68%),
+    radial-gradient(16rem 12rem at 76% 72%, rgba(38, 139, 210, 0.08), transparent 70%);
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .liquid-day-card::after {
+  background:
+    linear-gradient(112deg, rgba(253, 246, 227, 0.45) 0%, rgba(253, 246, 227, 0.05) 44%, rgba(253, 246, 227, 0) 72%),
+    radial-gradient(20rem 11rem at 84% 16%, rgba(181, 137, 0, 0.04), transparent 75%);
+  opacity: 0.5;
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sat {
+  border-left: 3px solid rgba(108, 113, 196, 0.7);
+  background: linear-gradient(145deg, rgba(108, 113, 196, 0.16), rgba(238, 232, 213, 0.7));
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sun {
+  border-left: 3px solid rgba(211, 54, 130, 0.7);
+  background: linear-gradient(145deg, rgba(211, 54, 130, 0.14), rgba(238, 232, 213, 0.7));
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(181, 137, 0, 0.8);
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 4px 0 rgba(181, 137, 0, 0.16),
+    inset 0 1px 0 rgba(253, 246, 227, 0.85);
+}
+
+html[data-theme="light"] .day-card-selected {
+  border-color: rgba(42, 161, 152, 0.65);
+  box-shadow:
+    0 30px 64px rgba(7, 54, 66, 0.18),
+    inset 0 1px 0 rgba(253, 246, 227, 0.9),
+    0 0 0 1px rgba(42, 161, 152, 0.3);
+}
+
+/* Wave tank: solarized cyan fill on paper. */
+html[data-theme="light"] .wave-tank {
+  border: 1px solid rgba(101, 123, 131, 0.25);
+  background: rgba(238, 232, 213, 0.7);
+}
+
+html[data-theme="light"] .wave-fill {
+  background: linear-gradient(180deg, rgba(42, 161, 152, 0.7), rgba(15, 110, 106, 0.85));
+}
+
+html[data-theme="light"] .wave-fill::before,
+html[data-theme="light"] .wave-fill::after {
+  background: rgba(238, 232, 213, 0.55);
+}
+
+/* Day progress bar: tone background for paper, keep accent gradients. */
+html[data-theme="light"] .day-progress {
+  border: 1px solid rgba(101, 123, 131, 0.22);
+  background: rgba(238, 232, 213, 0.65);
+}
+
+html[data-theme="light"] .day-progress-topdown {
+  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgba(38, 139, 210, 0.03));
+}
+
+html[data-theme="light"] .day-progress-sand {
+  background: linear-gradient(180deg, rgba(229, 175, 90, 0.95), rgba(181, 137, 0, 0.92));
+}
+
+html[data-theme="light"] .day-progress-rest {
+  background: linear-gradient(180deg, rgba(147, 161, 161, 0.7), rgba(101, 123, 131, 0.85));
+}
+
+html[data-theme="light"] .day-progress-algae {
+  background: linear-gradient(180deg, rgba(133, 153, 0, 0.92), rgba(89, 102, 0, 0.95));
+}
+
+html[data-theme="light"] .day-progress-comp {
+  background: linear-gradient(180deg, rgba(220, 50, 47, 0.9), rgba(160, 35, 36, 0.95));
+}
+
+/* Mail composer select: light form chrome. */
+html[data-theme="light"] .mail-composer-select {
+  color-scheme: light;
+  accent-color: #2aa198;
+  color: #586e75;
+}
+
+html[data-theme="light"] .mail-composer-select option {
+  background-color: #eee8d5;
+  color: #586e75;
+}
+
+html[data-theme="light"] .mail-composer-select:focus-visible {
+  outline: 2px solid rgba(42, 161, 152, 0.55);
+}
+
+/* Floating chat actions row. */
+@media (hover: hover) {
+  html[data-theme="light"] .chat-actions-row {
+    border: 1px solid rgba(101, 123, 131, 0.2);
+    background: rgba(253, 246, 227, 0.96);
+    box-shadow: 0 12px 30px -10px rgba(7, 54, 66, 0.25);
+  }
+}
+
+/* Dashboard mesh: tone gridlines down for paper. */
+html[data-theme="light"] .dashboard-mesh {
+  background-image:
+    linear-gradient(rgba(101, 123, 131, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101, 123, 131, 0.07) 1px, transparent 1px);
+  opacity: 0.75;
+}
+
+html[data-theme="light"] .dashboard-mesh-fade {
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgba(253, 246, 227, 0.65), transparent 65%);
+}
+
+/* Underwater panel pseudo-elements: soften caustics. */
+html[data-theme="light"] .underwater-panel::before {
+  background:
+    radial-gradient(40rem 30rem at 15% 25%, rgba(42, 161, 152, 0.08), transparent 65%),
+    radial-gradient(36rem 26rem at 80% 80%, rgba(38, 139, 210, 0.08), transparent 65%);
+}
+
+html[data-theme="light"] .underwater-panel::after {
+  background:
+    radial-gradient(56rem 24rem at 86% -4%, rgba(181, 137, 0, 0.08), transparent 74%),
+    linear-gradient(180deg, rgba(181, 137, 0, 0.04), rgba(181, 137, 0, 0));
+  mix-blend-mode: multiply;
+}
+
+/* Freshness pill: Solarized green/cyan accents on paper. */
+html[data-theme="light"] .freshness-pill {
+  background: rgba(101, 123, 131, 0.45);
+}
+
+html[data-theme="light"] .freshness-pill--loading {
+  background: rgb(42, 161, 152);
+  animation: freshnessLoadingPulseLight 1500ms ease-in-out infinite;
+}
+
+html[data-theme="light"] .freshness-pill-ripple {
+  border-color: rgba(42, 161, 152, 0.85);
+}
+
+html[data-theme="light"] .freshness-flash {
+  animation:
+    freshnessPop 700ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    freshnessFadeLight 180s linear both;
+}
+
+@keyframes freshnessLoadingPulseLight {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(42, 161, 152, 0.45);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 0 14px rgba(42, 161, 152, 0.9);
+  }
+}
+
+@keyframes freshnessFadeLight {
+  0% {
+    background: rgb(133, 153, 0);
+    box-shadow: 0 0 14px rgba(133, 153, 0, 0.85);
+  }
+  3% {
+    background: rgb(133, 153, 0);
+    box-shadow: 0 0 10px rgba(133, 153, 0, 0.55);
+  }
+  100% {
+    background: rgba(101, 123, 131, 0.45);
+    box-shadow: 0 0 0 rgba(133, 153, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="light"] .freshness-flash {
+    background: rgb(133, 153, 0);
+  }
+}
+
+/* Tone down typing/write glows on paper. */
+html[data-theme="light"] .write-glow-live {
+  text-shadow:
+    0 0 6px rgba(38, 139, 210, 0.28),
+    0 0 14px rgba(42, 161, 152, 0.16);
+}
+
+/* Day-ready sweep beam — keep motion, dim the shine. */
+html[data-theme="light"] .day-ready-sweep-beam::before {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(38, 139, 210, 0) 42%,
+      rgba(38, 139, 210, 0.12) 49%,
+      rgba(42, 161, 152, 0.28) 51.5%,
+      rgba(38, 139, 210, 0.12) 54%,
+      rgba(38, 139, 210, 0) 61%
+    ),
+    radial-gradient(28% 24% at 50% 50%, rgba(42, 161, 152, 0.22), rgba(42, 161, 152, 0) 72%);
+  mix-blend-mode: multiply;
+}
+
+/* Inline-arbitrary value on the interface-sounds switch. */
+html[data-theme="light"] .bg-\[rgb\(22_58_68\)\] {
+  background-color: #2aa198;
 }

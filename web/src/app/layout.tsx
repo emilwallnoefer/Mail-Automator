@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   description: "Flyability internal allround workspace for mail automation and time tracking.",
 };
 
+// Runs before hydration so light-mode users don't flash dark on first paint.
+const themeBootstrapScript = `try{var t=localStorage.getItem("ma_theme");if(t==="light")document.documentElement.dataset.theme="light";}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,6 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

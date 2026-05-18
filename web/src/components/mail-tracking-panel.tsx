@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { WeekStepper } from "@/components/week-stepper";
+import { FreshnessPill } from "@/components/freshness-pill";
 
 type Recipient = {
   key: string;
@@ -274,10 +275,12 @@ export function MailTrackingPanel() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overviewUpdatedAt, setOverviewUpdatedAt] = useState<number | null>(null);
 
   const [linkData, setLinkData] = useState<LinkLeaderboardResponse | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkUpdatedAt, setLinkUpdatedAt] = useState<number | null>(null);
 
   const [search, setSearch] = useState("");
   const [showBots, setShowBots] = useState(false);
@@ -285,6 +288,7 @@ export function MailTrackingPanel() {
   const [timelineData, setTimelineData] = useState<TimelineResponse | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineUpdatedAt, setTimelineUpdatedAt] = useState<number | null>(null);
   const [detailBySend, setDetailBySend] = useState<Record<string, SendDetailResponse | "loading" | { error: string }>>(
     {},
   );
@@ -304,6 +308,7 @@ export function MailTrackingPanel() {
         const payload = (await response.json()) as OverviewResponse | { error: string };
         if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracking.");
         setData(payload as OverviewResponse);
+        setOverviewUpdatedAt(Date.now());
       } catch (err) {
         setError((err as Error).message || "Failed to load tracking.");
       } finally {
@@ -321,6 +326,7 @@ export function MailTrackingPanel() {
       const payload = (await response.json()) as LinkLeaderboardResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load links.");
       setLinkData(payload as LinkLeaderboardResponse);
+      setLinkUpdatedAt(Date.now());
     } catch (err) {
       setLinkError((err as Error).message || "Failed to load links.");
     } finally {
@@ -340,6 +346,7 @@ export function MailTrackingPanel() {
       const payload = (await response.json()) as TimelineResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load timeline.");
       setTimelineData(payload as TimelineResponse);
+      setTimelineUpdatedAt(Date.now());
     } catch (err) {
       setTimelineError((err as Error).message || "Failed to load timeline.");
     } finally {
@@ -496,13 +503,19 @@ export function MailTrackingPanel() {
         </label>
       </div>
 
-      <p className="text-[11px] text-slate-400">
-        {view === "by_recipient"
-          ? isSearchMode
-            ? `All-time search · ${data?.totals.recipients ?? 0} recipient${data?.totals.recipients === 1 ? "" : "s"} matching "${search.trim()}"`
-            : weekRangeLabel
-          : "All time across every tracked send"}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-slate-400">
+          {view === "by_recipient"
+            ? isSearchMode
+              ? `All-time search · ${data?.totals.recipients ?? 0} recipient${data?.totals.recipients === 1 ? "" : "s"} matching "${search.trim()}"`
+              : weekRangeLabel
+            : "All time across every tracked send"}
+        </p>
+        <FreshnessPill
+          updatedAt={view === "by_recipient" ? overviewUpdatedAt : linkUpdatedAt}
+          loading={view === "by_recipient" ? loading : linkLoading}
+        />
+      </div>
 
       {(view === "by_recipient" ? error : linkError) ? (
         <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -637,6 +650,9 @@ export function MailTrackingPanel() {
               </InfoTooltip>
             </div>
             <p className="mt-1 text-xs text-slate-400">{timelineRangeLabel}</p>
+            <div className="mt-2">
+              <FreshnessPill updatedAt={timelineUpdatedAt} loading={timelineLoading} />
+            </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-sm">

@@ -6,6 +6,7 @@ import { AdminInsightsPanel } from "@/components/admin-insights-panel";
 import { MailTrackingPanel } from "@/components/mail-tracking-panel";
 import { WeekStepper } from "@/components/week-stepper";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { FreshnessPill } from "@/components/freshness-pill";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type AdminUser = {
@@ -128,6 +129,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   const [overview, setOverview] = useState<TimeOverviewResponse | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [overviewUpdatedAt, setOverviewUpdatedAt] = useState<number | null>(null);
+  const [usersUpdatedAt, setUsersUpdatedAt] = useState<number | null>(null);
 
   const [drilldownUserId, setDrilldownUserId] = useState<string | null>(null);
   const [drilldownEmail, setDrilldownEmail] = useState<string>("");
@@ -142,6 +145,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
       const payload = (await response.json()) as UsersResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load users.");
       setUsers((payload as UsersResponse).users);
+      setUsersUpdatedAt(Date.now());
     } catch (error) {
       setUsersError((error as Error).message || "Failed to load users.");
     } finally {
@@ -158,6 +162,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
         const payload = (await response.json()) as TimeOverviewResponse | { error: string };
         if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load overview.");
         setOverview(payload as TimeOverviewResponse);
+        setOverviewUpdatedAt(Date.now());
       } catch (error) {
         setOverviewError((error as Error).message || "Failed to load overview.");
       } finally {
@@ -299,6 +304,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               }
             />
             <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
+            <FreshnessPill updatedAt={overviewUpdatedAt} loading={overviewLoading} />
           </div>
 
           {overviewError ? (
@@ -386,6 +392,9 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
 
       {tab === "users" && canManageUsers ? (
         <div className="mt-5 space-y-4">
+          <div className="flex justify-end">
+            <FreshnessPill updatedAt={usersUpdatedAt} loading={usersLoading} />
+          </div>
           {usersError ? (
             <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
               {usersError}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { FreshnessPill } from "@/components/freshness-pill";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
 type Insights = {
@@ -96,6 +97,7 @@ export function AdminInsightsPanel() {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const [pausePending, setPausePending] = useState(false);
   const [actionPending, setActionPending] = useState<null | "dry" | "test">(null);
@@ -110,6 +112,7 @@ export function AdminInsightsPanel() {
       const payload = (await response.json()) as Insights | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load insights.");
       setData(payload as Insights);
+      setLastUpdatedAt(Date.now());
     } catch (err) {
       setError((err as Error).message || "Failed to load insights.");
     } finally {
@@ -238,16 +241,19 @@ export function AdminInsightsPanel() {
               Workspace KPIs and the latest reminder cron run. Stats refresh on demand.
             </InfoTooltip>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              void load();
-            }}
-            disabled={loading}
-            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
-          >
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
+          <div className="flex items-center gap-2">
+            <FreshnessPill updatedAt={lastUpdatedAt} loading={loading} />
+            <button
+              type="button"
+              onClick={() => {
+                void load();
+              }}
+              disabled={loading}
+              className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            >
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

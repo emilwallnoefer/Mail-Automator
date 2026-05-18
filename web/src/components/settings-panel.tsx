@@ -7,6 +7,7 @@ import {
   MAIL_SIGNATURE_NAME_PRESETS,
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
+import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
 import type { UserRole } from "@/lib/user-role";
 
@@ -15,6 +16,7 @@ export type SettingsSectionId =
   | "travel_mapping"
   | "mail_signature"
   | "time_data"
+  | "appearance"
   | "interface_sounds"
   | "security"
   | "readme";
@@ -24,6 +26,7 @@ const SETTINGS_NAV: { id: SettingsSectionId; label: string; pilotOnly?: boolean 
   { id: "travel_mapping", label: "Travel mapping", pilotOnly: true },
   { id: "mail_signature", label: "Mail signature", pilotOnly: true },
   { id: "time_data", label: "Time data" },
+  { id: "appearance", label: "Appearance" },
   { id: "interface_sounds", label: "Interface sounds" },
   { id: "security", label: "Account & security" },
   { id: "readme", label: "Help & README" },
@@ -74,6 +77,7 @@ export function SettingsPanel({
   const [mailSigCustom, setMailSigCustom] = useState("");
   const [mailSigSaving, setMailSigSaving] = useState(false);
   const [uiSoundsOn, setUiSoundsOn] = useState(true);
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
     setUiSoundsOn(getUiSoundsEnabled());
@@ -83,6 +87,16 @@ export function SettingsPanel({
     }
     window.addEventListener("ma-ui-sounds-changed", onUiSoundsChanged);
     return () => window.removeEventListener("ma-ui-sounds-changed", onUiSoundsChanged);
+  }, []);
+
+  useEffect(() => {
+    setThemeState(getTheme());
+    function onThemeChanged(e: Event) {
+      const d = (e as CustomEvent<{ theme?: Theme }>).detail;
+      if (d?.theme === "light" || d?.theme === "dark") setThemeState(d.theme);
+    }
+    window.addEventListener("ma-theme-changed", onThemeChanged);
+    return () => window.removeEventListener("ma-theme-changed", onThemeChanged);
   }, []);
 
   useEffect(() => {
@@ -552,6 +566,47 @@ export function SettingsPanel({
                       event.currentTarget.value = "";
                     }}
                   />
+                </div>
+              ) : null}
+
+              {activeSection === "appearance" ? (
+                <div className="mt-5">
+                  <div className="rounded-xl border border-white/15 bg-slate-950/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Appearance</p>
+                        <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                          {theme === "light" ? "Solarized light" : "Dark"}
+                        </p>
+                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                          Switches the app between the default dark palette and a Solarized Light skin. Stored on this device.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={theme === "light"}
+                        aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+                        onClick={() => {
+                          const next: Theme = theme === "light" ? "dark" : "light";
+                          setThemeState(next);
+                          persistTheme(next);
+                        }}
+                        className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
+                          theme === "light"
+                            ? "border-amber-300/45 bg-[rgb(181_137_0)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                            : "border-white/15 bg-white/[0.07]"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                            theme === "light" ? "translate-x-[22px]" : "translate-x-0"
+                          }`}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
