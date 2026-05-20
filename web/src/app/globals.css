@@ -837,22 +837,24 @@ body {
 }
 
 .freshness-pill--loading {
-  background: rgb(34, 211, 238);
+  background: rgb(251, 146, 60);
   animation: freshnessLoadingPulse 1500ms ease-in-out infinite;
 }
 
-.freshness-pill-ripple {
+.freshness-pill-particle {
   position: absolute;
-  inset: -2px;
+  left: 50%;
+  top: 50%;
+  width: 2.5px;
+  height: 2.5px;
+  margin: -1.25px 0 0 -1.25px;
   border-radius: 9999px;
-  border: 1.5px solid rgba(34, 211, 238, 0.85);
+  background: rgb(251, 146, 60);
+  box-shadow: 0 0 3px rgba(251, 146, 60, 0.9);
   opacity: 0;
   pointer-events: none;
-  animation: freshnessRipple 1500ms cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
-}
-
-.freshness-pill-ripple--delayed {
-  animation-delay: 750ms;
+  animation: freshnessParticleIn 1600ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation-delay: var(--particle-delay, 0ms);
 }
 
 .freshness-flash {
@@ -865,27 +867,28 @@ body {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 6px rgba(34, 211, 238, 0.45);
+    box-shadow: 0 0 6px rgba(251, 146, 60, 0.45);
   }
   50% {
     transform: scale(1.3);
-    box-shadow: 0 0 14px rgba(34, 211, 238, 0.95);
+    box-shadow: 0 0 14px rgba(251, 146, 60, 0.95);
   }
 }
 
-@keyframes freshnessRipple {
+@keyframes freshnessParticleIn {
   0% {
-    transform: scale(0.6);
-    opacity: 0.95;
-    border-width: 1.5px;
+    transform: rotate(var(--particle-angle, 0deg)) translateX(15px) scale(0.5);
+    opacity: 0;
   }
-  55% {
-    opacity: 0.35;
+  18% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
-    transform: scale(4.4);
+    transform: rotate(var(--particle-angle, 0deg)) translateX(0px) scale(0.9);
     opacity: 0;
-    border-width: 0.5px;
   }
 }
 
@@ -900,16 +903,16 @@ body {
 
 @keyframes freshnessFade {
   0% {
-    background: rgb(52, 211, 153);
-    box-shadow: 0 0 14px rgba(52, 211, 153, 0.9);
+    background: rgb(74, 222, 128);
+    box-shadow: 0 0 16px rgba(74, 222, 128, 0.95);
   }
   3% {
-    background: rgb(52, 211, 153);
-    box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+    background: rgb(74, 222, 128);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
   }
   100% {
     background: rgba(148, 163, 184, 0.5);
-    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+    box-shadow: 0 0 0 rgba(74, 222, 128, 0);
   }
 }
 
@@ -920,10 +923,69 @@ body {
   }
 
   .freshness-flash {
-    background: rgb(52, 211, 153);
+    background: rgb(74, 222, 128);
   }
 
-  .freshness-pill-ripple {
+  .freshness-pill-particle {
+    display: none;
+  }
+}
+
+.data-refresh-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.data-refresh-sweep::before {
+  content: "";
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: 55%;
+  top: -55%;
+  background: linear-gradient(
+    180deg,
+    rgba(74, 222, 128, 0) 0%,
+    rgba(74, 222, 128, 0.11) 50%,
+    rgba(74, 222, 128, 0) 100%
+  );
+  filter: blur(6px);
+  animation: dataRefreshSweep 900ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+@keyframes dataRefreshSweep {
+  from {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(320%);
+    opacity: 0;
+  }
+}
+
+html[data-theme="light"] .data-refresh-sweep::before {
+  background: linear-gradient(
+    180deg,
+    rgba(133, 153, 0, 0) 0%,
+    rgba(133, 153, 0, 0.13) 50%,
+    rgba(133, 153, 0, 0) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-refresh-sweep::before {
+    animation: none;
     display: none;
   }
 }
@@ -1369,12 +1431,13 @@ html[data-theme="light"] .freshness-pill {
 }
 
 html[data-theme="light"] .freshness-pill--loading {
-  background: rgb(42, 161, 152);
+  background: rgb(203, 75, 22);
   animation: freshnessLoadingPulseLight 1500ms ease-in-out infinite;
 }
 
-html[data-theme="light"] .freshness-pill-ripple {
-  border-color: rgba(42, 161, 152, 0.85);
+html[data-theme="light"] .freshness-pill-particle {
+  background: rgb(203, 75, 22);
+  box-shadow: 0 0 3px rgba(203, 75, 22, 0.9);
 }
 
 html[data-theme="light"] .freshness-flash {
@@ -1387,11 +1450,11 @@ html[data-theme="light"] .freshness-flash {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 6px rgba(42, 161, 152, 0.45);
+    box-shadow: 0 0 6px rgba(203, 75, 22, 0.45);
   }
   50% {
     transform: scale(1.3);
-    box-shadow: 0 0 14px rgba(42, 161, 152, 0.9);
+    box-shadow: 0 0 14px rgba(203, 75, 22, 0.9);
   }
 }
 

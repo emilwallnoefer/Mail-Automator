@@ -256,7 +256,11 @@ export function AdminInsightsPanel() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative">
+          {lastUpdatedAt != null ? (
+            <span key={`sweep-${lastUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Last reminder run"
             value={
@@ -325,6 +329,7 @@ export function AdminInsightsPanel() {
                 ))
               )}
             </div>
+          </div>
           </div>
         </div>
 

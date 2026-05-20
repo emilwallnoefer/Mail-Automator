@@ -313,14 +313,17 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
             </p>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+          <div className="relative">
+            {overviewUpdatedAt != null ? (
+              <span key={`sweep-${overviewUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
+            ) : null}
+            <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
                 <tr>
                   <th className="px-3 py-2">User</th>
                   <th className="px-3 py-2">Role</th>
                   <th className="px-3 py-2 text-right">Weekly total</th>
-                  <th className="px-3 py-2 text-right">Target</th>
                   <th className="px-3 py-2 text-right">Overtime bank</th>
                   <th className="px-3 py-2 text-right">Missing days</th>
                   <th className="px-3 py-2" />
@@ -329,13 +332,13 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               <tbody>
                 {overviewLoading && !overview ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
                       Loading overview...
                     </td>
                   </tr>
                 ) : overview?.users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
                       No users found.
                     </td>
                   </tr>
@@ -354,7 +357,6 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                         {userRoleLabel(user.role)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtHM(user.weekly_total_mins)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{fmtHM(user.target_mins)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtSignedHM(user.overtime_bank_mins)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {user.missing_days > 0 ? (
@@ -382,6 +384,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       ) : null}
@@ -406,7 +409,11 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
             </p>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+          <div className="relative">
+            {usersUpdatedAt != null ? (
+              <span key={`sweep-${usersUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
+            ) : null}
+            <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
                 <tr>
@@ -469,6 +476,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       ) : null}
