@@ -425,13 +425,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     setDayDetailsLoading(true);
     try {
       const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true });
-      applyWeekData(fullWeek);
+      setData(fullWeek);
     } catch {
       // Keep editor interaction responsive even if details fetch fails.
     } finally {
       setDayDetailsLoading(false);
     }
-  }, [applyWeekData, fetchWeekData, weekStart]);
+  }, [fetchWeekData, weekStart]);
 
   const returnToWeekdays = useCallback(() => {
     setEditorOpen(false);
@@ -1219,7 +1219,9 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               }}
               className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
             >
-              Fill missing
+              Compensate
+              <br />
+              Day
             </button>
             <button
               type="button"
@@ -1228,7 +1230,9 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               }}
               className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
             >
-              Fill Day
+              Standard
+              <br />
+              Day
             </button>
           </div>
         )}
