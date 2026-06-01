@@ -26,6 +26,7 @@ type DayData = {
   stop_time: string;
   net_mins: number;
   holiday: boolean;
+  sick_leave: boolean;
   comp_mins: number;
   comp_note: string;
   breaks: DayBreak[];
@@ -253,6 +254,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   const [formStart, setFormStart] = useState("");
   const [formStop, setFormStop] = useState("");
   const [formHoliday, setFormHoliday] = useState(false);
+  const [formSickLeave, setFormSickLeave] = useState(false);
   const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
   const currentWeekStartKey = toDateKey(getMonday());
 
@@ -329,6 +331,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     setFormStart(selectedDay.start_time ?? "");
     setFormStop(selectedDay.stop_time ?? "");
     setFormHoliday(Boolean(selectedDay.holiday));
+    setFormSickLeave(Boolean(selectedDay.sick_leave));
     const useBreakCounter = selectedDay.date >= currentWeekStartKey;
     if (useBreakCounter) {
       const totalBreakMins = (selectedDay.breaks ?? []).reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0);
@@ -509,6 +512,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       selectedDay.start_time !== formStart ||
       selectedDay.stop_time !== formStop ||
       Boolean(selectedDay.holiday) !== Boolean(formHoliday) ||
+      Boolean(selectedDay.sick_leave) !== Boolean(formSickLeave) ||
       selectedDay.net_mins !== netMins ||
       breaksChanged;
 
@@ -528,6 +532,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       stop_time: formStop,
       net_mins: netMins,
       holiday: formHoliday,
+      sick_leave: formSickLeave,
       breaks: nextBreaks,
     }));
     returnToWeekdays();
@@ -539,6 +544,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         start_time: formStart,
         stop_time: formStop,
         holiday: formHoliday,
+        sick_leave: formSickLeave,
         net_mins: netMins,
         breaks: nextBreaks,
       },
@@ -611,6 +617,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     const nextStart = "09:00";
     const nextStop = "17:54";
     const nextHoliday = false;
+    const nextSickLeave = false;
     const nextNetMins = computeNetMins(nextStart, nextStop, nextBreaks);
     const previousDaySnapshot: DayData = {
       ...currentDay,
@@ -623,6 +630,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       stop_time: nextStop,
       net_mins: nextNetMins,
       holiday: nextHoliday,
+      sick_leave: nextSickLeave,
       breaks: nextBreaks.map((item) => ({ ...item })),
     }));
     playUiSound("fillSwoosh");
@@ -635,6 +643,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           start_time: nextStart,
           stop_time: nextStop,
           holiday: nextHoliday,
+          sick_leave: nextSickLeave,
           net_mins: nextNetMins,
           breaks: nextBreaks,
         },
@@ -665,6 +674,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         stop_time: "",
         net_mins: 0,
         holiday: false,
+        sick_leave: false,
         comp_mins: 0,
         comp_note: "",
         breaks: [],
@@ -788,21 +798,50 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                       className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
                     />
                   </label>
-                  <label className="flex items-start gap-2.5 text-sm">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={formHoliday}
-                      disabled={!selectedDay || readOnly}
-                      onChange={(event) => setFormHoliday(event.target.checked)}
-                    />
-                    <span>
-                      <span className="block font-medium text-slate-100">Public holiday</span>
-                      <span className="mt-1 block text-xs font-normal leading-snug text-slate-400">
-                        Mark the day as a public holiday. If you log hours, they count as overtime (same rule as weekend).
-                      </span>
-                    </span>
-                  </label>
+                  <div>
+                    <span className="mb-1.5 block text-xs text-slate-200/90">Day type</span>
+                    <div
+                      role="radiogroup"
+                      aria-label="Day type"
+                      className="grid grid-cols-3 gap-1 rounded-lg border border-white/15 bg-white/[0.04] p-1"
+                    >
+                      {([
+                        { key: "normal", label: "Normal", active: "bg-white/15 text-slate-50 shadow-sm" },
+                        { key: "holiday", label: "Holiday", active: "bg-amber-500/25 text-amber-50 shadow-sm" },
+                        { key: "sick", label: "Sick leave", active: "bg-teal-500/25 text-teal-50 shadow-sm" },
+                      ] as const).map((opt) => {
+                        const isActive =
+                          opt.key === "holiday" ? formHoliday : opt.key === "sick" ? formSickLeave : !formHoliday && !formSickLeave;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={isActive}
+                            disabled={!selectedDay || readOnly}
+                            onClick={() => {
+                              setFormHoliday(opt.key === "holiday");
+                              setFormSickLeave(opt.key === "sick");
+                            }}
+                            className={`rounded-md px-2 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                              isActive ? opt.active : "text-slate-300/70 hover:text-slate-100"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formHoliday ? (
+                      <p className="mt-1.5 text-xs leading-snug text-slate-400">
+                        Excused from your target. Hours logged count as overtime (same as a weekend).
+                      </p>
+                    ) : formSickLeave ? (
+                      <p className="mt-1.5 text-xs leading-snug text-slate-400">
+                        Excused from your target. Hours logged don&apos;t count as overtime.
+                      </p>
+                    ) : null}
+                  </div>
 
                   {selectedDaySupportsBreaks ? (
                     <div className="rounded-xl border border-white/15 bg-white/5 p-3">
@@ -975,8 +1014,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   function renderDayCard(day: DayData, index: number) {
     const isSelected = selectedDay?.date === day.date;
     const revealed = index < revealedDayCount;
-    const isRelaxDay = isWeekendDate(day.date) || day.holiday;
-    const premiumOvertimeDay = isPremiumOvertimeDay(day.date, day.net_mins, day.holiday);
+    const isSickLeave = day.sick_leave;
+    const isRelaxDay = isWeekendDate(day.date) || day.holiday || isSickLeave;
+    // Sick leave is excused but never earns overtime, so no worked hours show on the bar.
+    const premiumOvertimeDay = !isSickLeave && isPremiumOvertimeDay(day.date, day.net_mins, day.holiday);
     const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
     const overtimeWorkedMinsWeekday = premiumOvertimeDay
       ? Math.max(0, day.net_mins)
@@ -1006,7 +1047,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     const dur = (pct: number) => (pct > 0 ? Math.max(minDurMs, Math.round(pct * msPerPct)) : 0);
 
     if (isRelaxDay) {
-      const otWork = Math.max(0, day.net_mins);
+      const otWork = isSickLeave ? 0 : Math.max(0, day.net_mins);
       const barTotalMins = TARGET_MINS + otWork + overtimeCompMins;
       restPct = (TARGET_MINS / barTotalMins) * 100;
       algaePct = (otWork / barTotalMins) * 100;
@@ -1036,6 +1077,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     const isSat = isSaturdayDate(day.date);
     const isSun = isSundayDate(day.date);
     const isPh = day.holiday;
+    const isSl = isSickLeave;
 
     return (
       <article
@@ -1043,7 +1085,8 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         className={`liquid-day-card rounded-xl p-3 transition-all duration-300 ease-out ${
           isSat ? "liquid-day-card--sat" : ""
         } ${isSun ? "liquid-day-card--sun" : ""} ${isPh ? "liquid-day-card--ph" : ""} ${
-          isSelected ? "day-card-selected" : ""
+          isSl ? "liquid-day-card--sl" : ""
+        } ${isSelected ? "day-card-selected" : ""
         } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
         style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
       >
@@ -1073,6 +1116,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   PH
                 </span>
               ) : null}
+              {isSl ? (
+                <span className="shrink-0 rounded border border-teal-400/45 bg-teal-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-100/95">
+                  SL
+                </span>
+              ) : null}
             </div>
             <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={displayDonePct}>
               {(value) => <p className="shrink-0 text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
@@ -1081,11 +1129,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
             {(value) => (
               <p className="mt-1 text-sm font-medium">
-                {day.holiday
-                  ? day.net_mins > 0
-                    ? `Public holiday · ${fmtHM(Math.round(value))} worked`
-                    : "Public holiday"
-                  : `${fmtHM(Math.round(value))} worked`}
+                {day.sick_leave
+                  ? "Sick leave"
+                  : day.holiday
+                    ? day.net_mins > 0
+                      ? `Public holiday · ${fmtHM(Math.round(value))} worked`
+                      : "Public holiday"
+                    : `${fmtHM(Math.round(value))} worked`}
               </p>
             )}
           </AnimatedNumber>

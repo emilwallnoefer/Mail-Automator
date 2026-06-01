@@ -44,7 +44,11 @@ export function getDayOvertimeContributionMins(
   netMins: number,
   holiday: boolean,
   compMins: number,
+  sickLeave = false,
 ): number {
+  // Sick leave is excused from the target but never earns overtime, regardless
+  // of any hours logged — so it always contributes nothing to the bank.
+  if (sickLeave) return 0;
   if (holiday && netMins === 0) return 0;
   const premium = isPremiumOvertimeDay(date, netMins, holiday);
   const overtime = premium ? Math.max(0, netMins) : Math.max(0, netMins - TIME_TRACKER_TARGET_MINS);

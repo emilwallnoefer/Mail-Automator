@@ -565,6 +565,15 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
+.liquid-day-card.liquid-day-card--sl {
+  border-top: 3px solid rgba(45, 212, 191, 0.82);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 4px 0 rgba(45, 212, 191, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
 .day-ready-sweep-beam {
   position: absolute;
   inset: 0;
@@ -1260,6 +1269,15 @@ html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
     0 26px 56px rgba(7, 54, 66, 0.1),
     0 8px 22px rgba(7, 54, 66, 0.05),
     inset 0 4px 0 rgba(181, 137, 0, 0.16),
+    inset 0 1px 0 rgba(253, 246, 227, 0.85);
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sl {
+  border-top: 3px solid rgba(42, 161, 152, 0.8);
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 4px 0 rgba(42, 161, 152, 0.16),
     inset 0 1px 0 rgba(253, 246, 227, 0.85);
 }
 
