@@ -14,6 +14,7 @@ export type WeekDay = {
   stop_time: string;
   net_mins: number;
   holiday: boolean;
+  sick_leave: boolean;
   comp_mins: number;
   comp_note: string;
   breaks: Array<{ name: string; mins: number }>;
@@ -77,17 +78,21 @@ export async function computeOvertimeBankMinsForUser(
   userId: string,
 ) {
   const [logsAllRes, compAllRes] = await Promise.all([
-    supabase.from("time_day_logs").select("work_date, net_mins, holiday").eq("user_id", userId),
+    supabase
+      .from("time_day_logs")
+      .select("work_date, net_mins, holiday, sick_leave")
+      .eq("user_id", userId),
     supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
   ]);
   if (logsAllRes.error) throw new Error(logsAllRes.error.message);
   if (compAllRes.error) throw new Error(compAllRes.error.message);
 
-  const allWorkByDate = new Map<string, { net: number; holiday: boolean }>();
+  const allWorkByDate = new Map<string, { net: number; holiday: boolean; sickLeave: boolean }>();
   for (const row of logsAllRes.data ?? []) {
     allWorkByDate.set(row.work_date, {
       net: sanitizeMins(row.net_mins),
       holiday: Boolean(row.holiday),
+      sickLeave: Boolean(row.sick_leave),
     });
   }
   const allCompByDate = new Map<string, number>();
@@ -105,6 +110,7 @@ export async function computeOvertimeBankMinsForUser(
       work?.net ?? 0,
       work?.holiday ?? false,
       comp,
+      work?.sickLeave ?? false,
     );
   }
 
@@ -186,7 +192,7 @@ export async function fetchWeekForUser(
   const [logsWeekRes, compWeekRes] = await Promise.all([
     supabase
       .from("time_day_logs")
-      .select("id, work_date, start_time, stop_time, net_mins, holiday")
+      .select("id, work_date, start_time, stop_time, net_mins, holiday, sick_leave")
       .eq("user_id", userId)
       .gte("work_date", weekStart)
       .lte("work_date", weekEnd)
@@ -238,6 +244,7 @@ export async function fetchWeekForUser(
       stop_time: log?.stop_time ?? "",
       net_mins: sanitizeMins(log?.net_mins),
       holiday: Boolean(log?.holiday),
+      sick_leave: Boolean(log?.sick_leave),
       comp_mins: comp?.mins ?? 0,
       comp_note: comp?.note ?? "",
       breaks: log ? breaksByLogId.get(log.id) ?? [] : [],
@@ -267,6 +274,7 @@ type RpcWeekPayload = {
     stop_time: string | null;
     net_mins: number | null;
     holiday: boolean | null;
+    sick_leave: boolean | null;
   }>;
   comp?: Array<{
     work_date: string;
@@ -336,6 +344,7 @@ export async function fetchCurrentUserWeek(
       stop_time: log?.stop_time ?? "",
       net_mins: sanitizeMins(log?.net_mins),
       holiday: Boolean(log?.holiday),
+      sick_leave: Boolean(log?.sick_leave),
       comp_mins: comp?.mins ?? 0,
       comp_note: comp?.note ?? "",
       breaks: log ? breaksByLogId.get(log.id) ?? [] : [],
@@ -382,7 +391,7 @@ export async function sumNetMinsForUserInRange(
 
 /**
  * Count how many weekdays (Mon-Fri) in the week are "missing":
- * not a holiday, and total logged + comp < target.
+ * not a holiday or sick day, and total logged + comp < target.
  */
 export function countMissingWeekdays(days: WeekDay[]): number {
   let missing = 0;
@@ -390,7 +399,7 @@ export function countMissingWeekdays(days: WeekDay[]): number {
     const date = new Date(day.date);
     const dow = (date.getDay() + 6) % 7;
     if (dow >= 5) continue;
-    if (day.holiday) continue;
+    if (day.holiday || day.sick_leave) continue;
     if (day.net_mins + day.comp_mins >= TARGET_MINS) continue;
     missing += 1;
   }
