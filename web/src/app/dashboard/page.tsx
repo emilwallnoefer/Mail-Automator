@@ -10,21 +10,24 @@ import { redirect } from "next/navigation";
 export default async function DashboardPage() {
   if (!isSupabaseConfigured()) redirect("/login");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verify the session locally (no Auth-server round-trip). Middleware already
+  // ran the authoritative `getUser()` for this request and redirected away any
+  // unauthenticated visitor, so re-validating here only adds latency to the SSR
+  // critical path. Reading the JWT claims is enough to resolve role/email and
+  // seed the first week — same pattern as `/api/time-tracker`.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims ?? null;
 
-  if (!user) redirect("/login");
+  if (!claims) redirect("/login");
 
-  const userRoleRaw =
-    user.user_metadata &&
-    typeof user.user_metadata === "object" &&
-    !Array.isArray(user.user_metadata) &&
-    "role" in user.user_metadata
-      ? (user.user_metadata as Record<string, unknown>).role
+  const userMetadata =
+    claims.user_metadata && typeof claims.user_metadata === "object" && !Array.isArray(claims.user_metadata)
+      ? (claims.user_metadata as Record<string, unknown>)
       : null;
+  const userRoleRaw = userMetadata && "role" in userMetadata ? userMetadata.role : null;
+  const email = typeof claims.email === "string" ? claims.email : null;
   const initialRole = normalizeUserRole(userRoleRaw);
-  const isAdmin = isAdminEmail(user.email);
+  const isAdmin = isAdminEmail(email);
 
   let initialWeek: WeekResponse | null = null;
   if (initialRole === "sales" || initialRole === "hr") {
@@ -40,7 +43,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardShell
-      email={user.email ?? "Signed in"}
+      email={email ?? "Signed in"}
       initialRole={initialRole}
       isAdmin={isAdmin}
       initialWeek={initialWeek}
