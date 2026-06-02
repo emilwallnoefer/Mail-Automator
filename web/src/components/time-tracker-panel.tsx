@@ -232,6 +232,12 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
   const initialWeekSeededRef = useRef(false);
+  // Tracks which day the editor form has already been seeded for, so that
+  // background week refreshes don't overwrite in-progress edits.
+  const seededFormDateRef = useRef<string | null>(null);
+  // Monotonic counter so a slow background refresh can't overwrite the result
+  // of a newer one (e.g. when saving several days in quick succession).
+  const refreshSeqRef = useRef(0);
 
   if (!initialWeekSeededRef.current) {
     initialWeekSeededRef.current = true;
@@ -326,20 +332,30 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   }, [fetchWeekData]);
 
   useEffect(() => {
-    if (!selectedDay) return;
-    setSelectedDate(selectedDay.date);
-    setFormStart(selectedDay.start_time ?? "");
-    setFormStop(selectedDay.stop_time ?? "");
-    setFormHoliday(Boolean(selectedDay.holiday));
-    setFormSickLeave(Boolean(selectedDay.sick_leave));
-    const useBreakCounter = selectedDay.date >= currentWeekStartKey;
+    // Only seed the form when a day is freshly opened. Keying on the date
+    // string (not the `selectedDay` object) means background week refreshes
+    // — which replace the `data` object and therefore `selectedDay` — no
+    // longer clobber values the user is actively editing.
+    if (!editorOpen || !selectedDate) {
+      seededFormDateRef.current = null;
+      return;
+    }
+    if (seededFormDateRef.current === selectedDate) return;
+    const day = data?.days.find((item) => item.date === selectedDate);
+    if (!day) return; // details may still be loading; seed once they arrive.
+    seededFormDateRef.current = selectedDate;
+    setFormStart(day.start_time ?? "");
+    setFormStop(day.stop_time ?? "");
+    setFormHoliday(Boolean(day.holiday));
+    setFormSickLeave(Boolean(day.sick_leave));
+    const useBreakCounter = day.date >= currentWeekStartKey;
     if (useBreakCounter) {
-      const totalBreakMins = (selectedDay.breaks ?? []).reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0);
+      const totalBreakMins = (day.breaks ?? []).reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0);
       setFormBreaks(totalBreakMins > 0 ? [{ name: "Break", mins: totalBreakMins }] : []);
       return;
     }
-    setFormBreaks(selectedDay.breaks?.map((item) => ({ ...item })) ?? []);
-  }, [selectedDay, currentWeekStartKey]);
+    setFormBreaks(day.breaks?.map((item) => ({ ...item })) ?? []);
+  }, [editorOpen, selectedDate, data, currentWeekStartKey]);
 
   useEffect(() => {
     let active = true;
@@ -412,10 +428,17 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   }, [editorOpen]);
 
   const refreshWeek = useCallback(async () => {
-    const weekData = await fetchWeekData(weekStart, { force: true });
-    applyWeekData(weekData);
-    prefetchNearbyWeeks(weekStart);
-  }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
+    // Background reconciliation after a mutation. Unlike `applyWeekData`, this
+    // must NOT close the editor or reset the selected day: the user may have
+    // already opened another day while the previous save's POST was in flight.
+    const seq = ++refreshSeqRef.current;
+    const targetWeek = weekStart;
+    const weekData = await fetchWeekData(targetWeek, { force: true });
+    // Drop the result if a newer refresh started or the week changed meanwhile.
+    if (seq !== refreshSeqRef.current) return;
+    setData((prev) => (prev && prev.week_start !== targetWeek ? prev : weekData));
+    prefetchNearbyWeeks(targetWeek);
+  }, [fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
   const invalidateWeekCaches = useCallback(() => {
     weekCacheRef.current.clear();
