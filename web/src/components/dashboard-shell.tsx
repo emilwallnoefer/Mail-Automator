@@ -711,39 +711,12 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   </motion.button>
                 ) : null}
 
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.35 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    if (activeModule !== "time") playUiSound("switchWhoosh");
-                    setActiveModule("time");
-                    handleBeginAutomating();
-                  }}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
-                >
-                  <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
-                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
-                    <IconClock className="h-5 w-5" />
-                  </span>
-                  <span className="text-lg font-semibold text-white">Time Tracker</span>
-                  <span className="mt-2 text-sm leading-relaxed text-slate-400">
-                    Workdays, breaks, compensation time, and overtime in one place.
-                  </span>
-                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-200/90">
-                    Continue
-                    <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                  </span>
-                </motion.button>
-
                 {availableModules.includes("settings") ? (
                   <motion.button
                     type="button"
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15, duration: 0.35 }}
+                    transition={{ delay: 0.1, duration: 0.35 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       if (activeModule !== "settings") playUiSound("switchWhoosh");
@@ -766,6 +739,33 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     </span>
                   </motion.button>
                 ) : null}
+
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.35 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    if (activeModule !== "time") playUiSound("switchWhoosh");
+                    setActiveModule("time");
+                    handleBeginAutomating();
+                  }}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
+                >
+                  <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
+                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
+                    <IconClock className="h-5 w-5" />
+                  </span>
+                  <span className="text-lg font-semibold text-white">Time Tracker</span>
+                  <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Workdays, breaks, compensation time, and overtime in one place.
+                  </span>
+                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-200/90">
+                    Continue
+                    <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  </span>
+                </motion.button>
 
               </div>
             </div>
