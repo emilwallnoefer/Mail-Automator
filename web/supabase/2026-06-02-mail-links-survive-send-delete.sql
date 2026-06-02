@@ -25,3 +25,4 @@ alter table public.mail_send_links
 alter table public.mail_send_links
   add constraint mail_send_links_send_id_fkey
   foreign key (send_id) references public.mail_sends (id) on delete set null;
+c
