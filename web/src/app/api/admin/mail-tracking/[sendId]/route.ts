@@ -123,3 +123,29 @@ export async function GET(_request: Request, context: { params: Promise<{ sendId
     links: linksOut,
   });
 }
+
+export async function DELETE(_request: Request, context: { params: Promise<{ sendId: string }> }) {
+  const guard = await guardAdmin();
+  if (!guard.ok) return guard.response;
+
+  const { sendId } = await context.params;
+  if (!sendId || !SEND_ID_REGEX.test(sendId)) {
+    return NextResponse.json({ error: "Invalid send id" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  // Links and clicks cascade-delete via FK (on delete cascade), so removing the
+  // send row is enough to wipe the whole generation and its tracking history.
+  const { data: deleted, error: deleteError } = await admin
+    .from("mail_sends")
+    .delete()
+    .eq("id", sendId)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  if (!deleted) return NextResponse.json({ error: "Send not found" }, { status: 404 });
+
+  return NextResponse.json({ deleted: true, id: sendId });
+}

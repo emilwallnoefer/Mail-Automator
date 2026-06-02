@@ -1093,7 +1093,54 @@ html[data-theme="light"] .text-rose-100\/95 { color: rgba(160, 35, 36, 0.98); }
 html[data-theme="light"] .text-rose-200 { color: #b62b2b; }
 html[data-theme="light"] .text-rose-300 { color: #c0312f; }
 
-html[data-theme="light"] .text-indigo-100\/95 { color: rgba(53, 65, 145, 0.98); }
+html[data-theme="light"] .text-indigo-100\/95 { color: rgba(15, 110, 106, 0.98); }
+
+/* ---- Accent surfaces: neon cyan / indigo fills+borders+gradients -> creamy solarized turquoise ----
+ * The text accents above are remapped, but Tailwind's cyan/indigo *fills*, *borders*,
+ * *rings* and *gradient stops* otherwise render raw (neon cyan #22d3ee, blue indigo #818cf8).
+ * Pull them onto the Solarized turquoise (cyan #2aa198 / deep #0f6e6a) so accents read creamy. */
+/* Solid fills */
+html[data-theme="light"] .bg-cyan-300 { background-color: #3aa99c; }
+html[data-theme="light"] .bg-cyan-400\/90 { background-color: rgba(42, 161, 152, 0.92); }
+html[data-theme="light"] .bg-cyan-400\/95 { background-color: rgba(42, 161, 152, 0.96); }
+html[data-theme="light"] .bg-cyan-400\/30 { background-color: rgba(42, 161, 152, 0.3); }
+html[data-theme="light"] .bg-cyan-400\/25 { background-color: rgba(42, 161, 152, 0.25); }
+html[data-theme="light"] .bg-cyan-400\/15 { background-color: rgba(42, 161, 152, 0.15); }
+html[data-theme="light"] .bg-cyan-400\/10 { background-color: rgba(42, 161, 152, 0.1); }
+html[data-theme="light"] .bg-cyan-500\/30 { background-color: rgba(15, 110, 106, 0.3); }
+html[data-theme="light"] .bg-cyan-500\/25 { background-color: rgba(15, 110, 106, 0.25); }
+html[data-theme="light"] .bg-cyan-500\/20 { background-color: rgba(15, 110, 106, 0.2); }
+html[data-theme="light"] .bg-cyan-500\/15 { background-color: rgba(15, 110, 106, 0.15); }
+html[data-theme="light"] .bg-teal-500\/25 { background-color: rgba(42, 161, 152, 0.25); }
+html[data-theme="light"] .bg-teal-500\/20 { background-color: rgba(42, 161, 152, 0.2); }
+html[data-theme="light"] .bg-indigo-500\/15 { background-color: rgba(42, 161, 152, 0.16); }
+/* Borders */
+html[data-theme="light"] .border-cyan-300\/70 { border-color: rgba(42, 161, 152, 0.7); }
+html[data-theme="light"] .border-cyan-300\/60 { border-color: rgba(42, 161, 152, 0.6); }
+html[data-theme="light"] .border-cyan-300\/55 { border-color: rgba(42, 161, 152, 0.55); }
+html[data-theme="light"] .border-cyan-300\/50 { border-color: rgba(42, 161, 152, 0.5); }
+html[data-theme="light"] .border-cyan-300\/45 { border-color: rgba(42, 161, 152, 0.45); }
+html[data-theme="light"] .border-cyan-300\/40 { border-color: rgba(42, 161, 152, 0.4); }
+html[data-theme="light"] .border-cyan-400 { border-color: #2aa198; }
+html[data-theme="light"] .border-cyan-400\/80 { border-color: rgba(42, 161, 152, 0.8); }
+html[data-theme="light"] .border-cyan-400\/40 { border-color: rgba(42, 161, 152, 0.4); }
+html[data-theme="light"] .border-cyan-400\/35 { border-color: rgba(42, 161, 152, 0.35); }
+html[data-theme="light"] .border-cyan-400\/25 { border-color: rgba(42, 161, 152, 0.25); }
+html[data-theme="light"] .border-cyan-500 { border-color: #0f6e6a; }
+html[data-theme="light"] .border-cyan-500\/25 { border-color: rgba(15, 110, 106, 0.25); }
+html[data-theme="light"] .border-teal-400\/45 { border-color: rgba(42, 161, 152, 0.45); }
+html[data-theme="light"] .border-indigo-400\/35 { border-color: rgba(42, 161, 152, 0.4); }
+/* Rings + outlines */
+html[data-theme="light"] .ring-cyan-300\/60 { --tw-ring-color: rgba(42, 161, 152, 0.6); }
+html[data-theme="light"] .ring-cyan-300\/40 { --tw-ring-color: rgba(42, 161, 152, 0.4); }
+html[data-theme="light"] .outline-cyan-400\/90 { outline-color: rgba(42, 161, 152, 0.9); }
+html[data-theme="light"] .outline-cyan-400\/80 { outline-color: rgba(42, 161, 152, 0.8); }
+html[data-theme="light"] .outline-cyan-200 { outline-color: #2aa198; }
+/* Gradient stops: avatar/button cyan->indigo becomes light->deep turquoise */
+html[data-theme="light"] .from-cyan-300 { --tw-gradient-from: #7ac7ba var(--tw-gradient-from-position); }
+html[data-theme="light"] .from-cyan-400\/30 { --tw-gradient-from: rgba(95, 179, 168, 0.3) var(--tw-gradient-from-position); }
+html[data-theme="light"] .to-indigo-400 { --tw-gradient-to: #3a968a var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-indigo-500\/30 { --tw-gradient-to: rgba(58, 150, 138, 0.3) var(--tw-gradient-to-position); }
 
 /* ---- Borders: white-alpha -> base01-alpha; slate-900 -> base1 ---- */
 html[data-theme="light"] .border-white\/5 { border-color: rgba(88, 110, 117, 0.08); }
@@ -1153,7 +1200,7 @@ html[data-theme="light"] .shadow-black\/50 { --tw-shadow-color: rgba(7, 54, 66, 
 html[data-theme="light"] .aurora-bg {
   background:
     radial-gradient(45rem 45rem at 0% 0%, rgba(181, 137, 0, 0.12), transparent 60%),
-    radial-gradient(40rem 40rem at 95% 15%, rgba(38, 139, 210, 0.1), transparent 55%),
+    radial-gradient(40rem 40rem at 95% 15%, rgba(95, 179, 168, 0.1), transparent 55%),
     radial-gradient(35rem 35rem at 40% 90%, rgba(133, 153, 0, 0.1), transparent 55%),
     linear-gradient(130deg, #fdf6e3 0%, #fdf6e3 45%, #eee8d5 100%);
   filter: saturate(100%);
@@ -1183,8 +1230,8 @@ html[data-theme="light"] .aurora-bg::after {
       transparent 1px,
       transparent 44px
     ),
-    radial-gradient(100rem 46rem at -8% -16%, rgba(38, 139, 210, 0.08), transparent 74%),
-    linear-gradient(150deg, rgba(38, 139, 210, 0.05), rgba(38, 139, 210, 0) 70%);
+    radial-gradient(100rem 46rem at -8% -16%, rgba(95, 179, 168, 0.08), transparent 74%),
+    linear-gradient(150deg, rgba(95, 179, 168, 0.05), rgba(95, 179, 168, 0) 70%);
   mix-blend-mode: multiply;
   opacity: 0.4;
 }
@@ -1203,7 +1250,7 @@ html[data-theme="light"] .glass-card {
 html[data-theme="light"] .glass-card::before {
   background:
     radial-gradient(26rem 16rem at 12% 8%, rgba(181, 137, 0, 0.08), transparent 70%),
-    radial-gradient(22rem 14rem at 86% 72%, rgba(38, 139, 210, 0.06), transparent 74%);
+    radial-gradient(22rem 14rem at 86% 72%, rgba(95, 179, 168, 0.06), transparent 74%);
   mix-blend-mode: multiply;
 }
 
@@ -1242,7 +1289,7 @@ html[data-theme="light"] .liquid-day-card {
 html[data-theme="light"] .liquid-day-card::before {
   background:
     radial-gradient(22rem 16rem at 12% 10%, rgba(181, 137, 0, 0.1), transparent 68%),
-    radial-gradient(16rem 12rem at 76% 72%, rgba(38, 139, 210, 0.08), transparent 70%);
+    radial-gradient(16rem 12rem at 76% 72%, rgba(95, 179, 168, 0.08), transparent 70%);
   mix-blend-mode: multiply;
 }
 
@@ -1311,7 +1358,7 @@ html[data-theme="light"] .day-progress {
 }
 
 html[data-theme="light"] .day-progress-topdown {
-  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgba(38, 139, 210, 0.03));
+  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgba(95, 179, 168, 0.03));
 }
 
 html[data-theme="light"] .day-progress-sand {
@@ -1371,7 +1418,7 @@ html[data-theme="light"] .dashboard-mesh-fade {
 html[data-theme="light"] .underwater-panel::before {
   background:
     radial-gradient(40rem 30rem at 15% 25%, rgba(42, 161, 152, 0.08), transparent 65%),
-    radial-gradient(36rem 26rem at 80% 80%, rgba(38, 139, 210, 0.08), transparent 65%);
+    radial-gradient(36rem 26rem at 80% 80%, rgba(95, 179, 168, 0.08), transparent 65%);
 }
 
 html[data-theme="light"] .underwater-panel::after {
@@ -1437,7 +1484,7 @@ html[data-theme="light"] .freshness-flash {
 /* Tone down typing/write glows on paper. */
 html[data-theme="light"] .write-glow-live {
   text-shadow:
-    0 0 6px rgba(38, 139, 210, 0.28),
+    0 0 6px rgba(95, 179, 168, 0.28),
     0 0 14px rgba(42, 161, 152, 0.16);
 }
 
@@ -1446,11 +1493,11 @@ html[data-theme="light"] .day-ready-sweep-beam::before {
   background:
     linear-gradient(
       135deg,
-      rgba(38, 139, 210, 0) 42%,
-      rgba(38, 139, 210, 0.12) 49%,
+      rgba(95, 179, 168, 0) 42%,
+      rgba(95, 179, 168, 0.12) 49%,
       rgba(42, 161, 152, 0.28) 51.5%,
-      rgba(38, 139, 210, 0.12) 54%,
-      rgba(38, 139, 210, 0) 61%
+      rgba(95, 179, 168, 0.12) 54%,
+      rgba(95, 179, 168, 0) 61%
     ),
     radial-gradient(28% 24% at 50% 50%, rgba(42, 161, 152, 0.22), rgba(42, 161, 152, 0) 72%);
   mix-blend-mode: multiply;
