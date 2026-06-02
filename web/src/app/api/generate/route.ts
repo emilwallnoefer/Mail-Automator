@@ -5,6 +5,16 @@ import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/secur
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+const disciplineSchema = z.enum([
+  "intro",
+  "aiim",
+  "ut",
+  "tether",
+  "surveying",
+  "rad_sensor",
+  "gas_sensor",
+]);
+
 const generateSchema = z.object({
   mail_type: z.enum(["pre", "post"]),
   template_variant: z.enum(["lausanne", "abroad"]).optional(),
@@ -16,6 +26,11 @@ const generateSchema = z.object({
   use_case: z.string().optional(),
   date: z.string().optional().default(""),
   location: z.string().optional().default(""),
+  day_count: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  day1_disciplines: z.array(disciplineSchema).max(7).optional(),
+  day2_disciplines: z.array(disciplineSchema).max(7).optional(),
+  day3_disciplines: z.array(disciplineSchema).max(7).optional(),
+  lausanne_site: z.enum(["tridel", "tank_bern", "aigle_bridge", "montetan"]).optional(),
   custom_opener_note: z.string().optional(),
   industry_course_ids: z.string().optional(),
   include_certification_note: z.boolean().optional(),
@@ -69,7 +84,8 @@ export async function POST(request: Request) {
 
     const requiredBase: Array<keyof MailInput> = ["mail_type", "language", "recipient_name"];
     const requiredPost: Array<keyof MailInput> = ["training_type", "company_name", "use_case"];
-    const requiredPreBase: Array<keyof MailInput> = ["template_variant", "training_type", "date"];
+    const requiredPreBase: Array<keyof MailInput> = ["template_variant", "day_count", "date"];
+    // Lausanne flight site is optional; abroad still needs a location.
     const requiredPre: Array<keyof MailInput> =
       payload.template_variant === "abroad" ? [...requiredPreBase, "location"] : requiredPreBase;
     const required = payload.mail_type === "pre" ? [...requiredBase, ...requiredPre] : [...requiredBase, ...requiredPost];

@@ -17,18 +17,36 @@ import industryLinks from "@/mail-config/industry-training-links.json";
 import trainingLinks from "@/mail-config/training-links.json";
 import usefulLinksPolicy from "@/mail-config/useful-links-policy.json";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
+import {
+  buildAgendaBlock,
+  facilityPrepBlock,
+  flightSiteLine,
+  type LausanneSite,
+  type TrainingDiscipline,
+} from "@/lib/training-disciplines";
+
+/** Post-training mail still uses these two coarse presets. */
+export type PostTrainingType = "intro_1day" | "aiim_3day";
 
 export type MailInput = {
   mail_type: "pre" | "post";
   template_variant?: "lausanne" | "abroad";
   language: MailLanguage;
-  training_type?: "intro_1day" | "aiim_3day";
+  /** Post-mail only. Pre-mails use day_count + per-day disciplines instead. */
+  training_type?: PostTrainingType;
   recipient_name: string;
   recipient_optional?: string;
   company_name: string;
   use_case?: string;
   date: string;
   location: string;
+  /** Pre-mail: number of training days (1–3) and the disciplines taught each day. */
+  day_count?: 1 | 2 | 3;
+  day1_disciplines?: TrainingDiscipline[];
+  day2_disciplines?: TrainingDiscipline[];
+  day3_disciplines?: TrainingDiscipline[];
+  /** Pre-mail Lausanne: which flight site the practical sessions use. */
+  lausanne_site?: LausanneSite;
   custom_opener_note?: string;
   industry_course_ids?: string;
   include_certification_note?: boolean;
@@ -115,14 +133,7 @@ function extractSubjectAndBody(templateText: string) {
   return { subject, body };
 }
 
-function trimPretrainingDays(body: string, trainingType?: string) {
-  if (trainingType === "intro_1day") {
-    body = body.replace(/\n?<!-- DAY2_START -->[\s\S]*?<!-- DAY2_END -->\n?/g, "\n");
-    body = body.replace(/\n?<!-- DAY3_START -->[\s\S]*?<!-- DAY3_END -->\n?/g, "\n");
-  }
-  body = body.replace(/<!-- DAY[123]_(START|END) -->\n?/g, "");
-  return body;
-}
+
 
 function replacePlaceholders(text: string, replacements: Record<string, string>) {
   let result = text;
@@ -536,8 +547,10 @@ export function renderMail(input: MailInput): RenderResult {
   const template = templates[templateId];
   if (!template) throw new Error(`Template not found: ${templateId}`);
 
-  let { subject, body } = extractSubjectAndBody(template);
-  if (templateId.startsWith("pre_")) body = trimPretrainingDays(body, input.training_type);
+  const extracted = extractSubjectAndBody(template);
+  const body = extracted.body;
+  let subject = extracted.subject;
+  const isPre = templateId.startsWith("pre_");
 
   const catalog = (industryLinks.courses as Course[]) ?? [];
   const selected = inferIndustryCourseIds(input, catalog);
@@ -554,13 +567,18 @@ export function renderMail(input: MailInput): RenderResult {
     TRAINING_DATE: input.date || "",
     LOCATION: input.location || "",
     CUSTOM_OPENER_NOTE: input.custom_opener_note || "",
-    TRAINING_MATERIALS_BLOCK: buildTrainingMaterialsBlock(input.language, includedChangeIds),
-    USEFUL_LINKS_BLOCK:
-      input.included_change_ids && input.included_change_ids.length > 0
+    AGENDA_BLOCK: isPre ? buildAgendaBlock(input) : "",
+    FLIGHT_SITE_LINE: isPre ? flightSiteLine(input) : "",
+    FACILITY_PREP_BLOCK: isPre ? facilityPrepBlock(input) : "",
+    TRAINING_MATERIALS_BLOCK: isPre ? "" : buildTrainingMaterialsBlock(input.language, includedChangeIds),
+    USEFUL_LINKS_BLOCK: isPre
+      ? ""
+      : input.included_change_ids && input.included_change_ids.length > 0
         ? buildUsefulLinksBlockFromChanges(input.language, includedChangeIds)
         : buildUsefulLinksBlock(input.language, selected, input),
-    INDUSTRY_TRAINING_BLOCK:
-      input.included_change_ids && input.included_change_ids.length > 0
+    INDUSTRY_TRAINING_BLOCK: isPre
+      ? ""
+      : input.included_change_ids && input.included_change_ids.length > 0
         ? ""
         : buildIndustryTrainingBlock(input.language, selected, catalog),
     CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note),

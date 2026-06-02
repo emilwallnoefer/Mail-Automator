@@ -31,6 +31,13 @@ import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui
 import { createClient } from "@/lib/supabase/client";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
+import {
+  TRAINING_DISCIPLINES,
+  DISCIPLINE_LABEL,
+  LAUSANNE_SITE_OPTIONS,
+  type LausanneSite,
+  type TrainingDiscipline,
+} from "@/lib/training-disciplines";
 
 type DashboardShellProps = {
   email: string;
@@ -68,22 +75,35 @@ function isSameGeneratedDraft(previous: GenerateResponse | null, next: GenerateR
   return prevChanges.every((value, index) => value === nextChanges[index]);
 }
 
+/** Post-training mail still uses these two coarse presets. */
+type PostTrainingType = "intro_1day" | "aiim_3day";
+
 type FormState = {
   mail_type: "" | "pre" | "post";
   template_variant: "" | "lausanne" | "abroad";
   language: "" | MailLanguage;
-  training_type: "" | "intro_1day" | "aiim_3day";
+  /** Post-mail only. Pre-mails use day_count + per-day disciplines instead. */
+  training_type: "" | PostTrainingType;
   recipient_name: string;
   recipient_optional: string;
   company_name: string;
   use_case: string;
   date: string;
   location: string;
+  /** Pre-mail: number of training days and the disciplines taught each day. */
+  day_count: 0 | 1 | 2 | 3;
+  day1_disciplines: TrainingDiscipline[];
+  day2_disciplines: TrainingDiscipline[];
+  day3_disciplines: TrainingDiscipline[];
+  /** Pre-mail Lausanne: which flight site the practical sessions use. */
+  lausanne_site: "" | LausanneSite;
   to: string;
   included_change_ids: string[];
   /** Closing name in generated training emails; synced from Settings. */
   signature_name: string;
 };
+
+const DAY_DISCIPLINE_KEYS = ["day1_disciplines", "day2_disciplines", "day3_disciplines"] as const;
 
 const INITIAL_FORM_STATE: FormState = {
   mail_type: "",
@@ -96,6 +116,11 @@ const INITIAL_FORM_STATE: FormState = {
   use_case: "",
   date: "",
   location: "",
+  day_count: 0,
+  day1_disciplines: [],
+  day2_disciplines: [],
+  day3_disciplines: [],
+  lausanne_site: "",
   to: "",
   included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
   signature_name: MAIL_SIGNATURE_DEFAULT_NAME,
@@ -223,21 +248,33 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const previousPreviewWritingRef = useRef(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
-  const shouldShowVariant = shouldShowLanguage && form.mail_type === "pre";
-  const shouldShowTrainingType =
-    form.mail_type === "post"
-      ? shouldShowLanguage
-      : shouldShowVariant && Boolean(form.template_variant);
-  const shouldShowRecipient =
-    form.mail_type === "post" ? shouldShowTrainingType && Boolean(form.training_type) : Boolean(form.training_type);
-  const shouldShowCompany = form.mail_type === "post" && shouldShowRecipient && Boolean(form.recipient_name);
-  const shouldShowUseCase = form.mail_type === "post" && shouldShowCompany && Boolean(form.company_name);
-  const shouldShowDate =
-    form.mail_type === "pre" ? shouldShowRecipient && Boolean(form.recipient_name) : false;
-  const isPreLausanne = form.mail_type === "pre" && form.template_variant === "lausanne";
-  const shouldShowLocation = form.mail_type === "pre" && Boolean(form.date) && !isPreLausanne;
-  const shouldShowChanges = form.mail_type === "post" ? shouldShowUseCase && Boolean(form.use_case) : false;
-  const shouldShowRecipientOptional = form.mail_type === "post" ? shouldShowChanges : shouldShowRecipient;
+  const isPre = form.mail_type === "pre";
+  const isPost = form.mail_type === "post";
+  const isPreLausanne = isPre && form.template_variant === "lausanne";
+  const isPreAbroad = isPre && form.template_variant === "abroad";
+  const preDayCount = form.day_count;
+
+  const shouldShowVariant = shouldShowLanguage && isPre;
+  const shouldShowPostTrainingType = isPost && shouldShowLanguage;
+  const shouldShowDayCount = shouldShowVariant && Boolean(form.template_variant);
+  const shouldShowDisciplines = shouldShowDayCount && preDayCount > 0;
+  const shouldShowLausanneSite = isPreLausanne && preDayCount > 0;
+  const shouldShowAbroadLocation = isPreAbroad && preDayCount > 0;
+  const preFinalSelectionDone = isPreLausanne
+    ? preDayCount > 0 // Lausanne flight site is optional, so day count is enough to proceed.
+    : isPreAbroad
+      ? Boolean(form.location)
+      : false;
+
+  const shouldShowRecipient = isPost
+    ? shouldShowPostTrainingType && Boolean(form.training_type)
+    : preFinalSelectionDone;
+  const shouldShowCompany = isPost && shouldShowRecipient && Boolean(form.recipient_name);
+  const shouldShowUseCase = isPost && shouldShowCompany && Boolean(form.company_name);
+  const shouldShowDate = isPre ? shouldShowRecipient && Boolean(form.recipient_name) : false;
+  // Resource attachments (slide decks / links) are a post-training recap concern only.
+  const shouldShowChanges = isPost && shouldShowUseCase && Boolean(form.use_case);
+  const shouldShowRecipientOptional = isPost ? shouldShowChanges : Boolean(form.date);
 
   const composerMailLang: MailLanguage =
     userRole === "us_pilot"
@@ -252,9 +289,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     !form.mail_type ||
     !languageReady ||
     !form.recipient_name ||
-    (form.mail_type === "post" && (!form.training_type || !form.company_name || !form.use_case)) ||
-    (form.mail_type === "pre" &&
-      (!form.template_variant || !form.training_type || !form.date || (form.template_variant === "abroad" && !form.location)));
+    (isPost && (!form.training_type || !form.company_name || !form.use_case)) ||
+    (isPre &&
+      (!form.template_variant || !form.day_count || !form.date || (isPreAbroad && !form.location)));
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
   });
@@ -279,18 +316,47 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     setForm((prev) => ({
       ...prev,
       template_variant: nextVariant,
+      // Lausanne uses a named flight site; abroad uses a free-text location. Reset the other.
       location:
         nextVariant === "lausanne"
           ? "Lausanne"
           : prev.location === "Lausanne"
             ? ""
             : prev.location,
+      lausanne_site: nextVariant === "lausanne" ? prev.lausanne_site : "",
     }));
     setChangesTouched(false);
   }, []);
 
-  const selectTrainingType = useCallback((nextTrainingType: FormState["training_type"]) => {
-    if (!nextTrainingType) return;
+  const selectDayCount = useCallback((nextCount: 1 | 2 | 3) => {
+    setForm((prev) => {
+      // On the first day-count pick, seed Day 1 with the Intro topic (the fundamentals day).
+      const seedDay1 =
+        prev.day_count === 0 && prev.day1_disciplines.length === 0
+          ? (["intro"] as TrainingDiscipline[])
+          : prev.day1_disciplines;
+      return {
+        ...prev,
+        day_count: nextCount,
+        day1_disciplines: seedDay1,
+        day2_disciplines: nextCount >= 2 ? prev.day2_disciplines : [],
+        day3_disciplines: nextCount >= 3 ? prev.day3_disciplines : [],
+      };
+    });
+  }, []);
+
+  const toggleDiscipline = useCallback((dayIndex: 0 | 1 | 2, discipline: TrainingDiscipline) => {
+    const key = DAY_DISCIPLINE_KEYS[dayIndex];
+    setForm((prev) => {
+      const current = prev[key];
+      const nextList = current.includes(discipline)
+        ? current.filter((d) => d !== discipline)
+        : [...current, discipline];
+      return { ...prev, [key]: nextList };
+    });
+  }, []);
+
+  const selectTrainingType = useCallback((nextTrainingType: PostTrainingType) => {
     setForm((prev) => {
       const hasAiim = prev.included_change_ids.includes("material_aiim");
       if (nextTrainingType === "intro_1day") {
@@ -502,10 +568,15 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           ...form,
           language: userRole === "us_pilot" ? "en" : form.language,
           template_variant: form.template_variant || undefined,
-          training_type: form.training_type || undefined,
+          training_type: isPost ? form.training_type || undefined : undefined,
           to: form.to || form.recipient_optional || undefined,
           recipient_optional: form.recipient_optional || undefined,
-          included_change_ids: changesTouched ? form.included_change_ids : undefined,
+          day_count: isPre && form.day_count ? form.day_count : undefined,
+          day1_disciplines: isPre ? form.day1_disciplines : undefined,
+          day2_disciplines: isPre && form.day_count >= 2 ? form.day2_disciplines : undefined,
+          day3_disciplines: isPre && form.day_count >= 3 ? form.day3_disciplines : undefined,
+          lausanne_site: isPreLausanne ? form.lausanne_site || undefined : undefined,
+          included_change_ids: isPost && changesTouched ? form.included_change_ids : undefined,
           signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
         }),
       });
@@ -913,7 +984,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 </ComposerChoiceRow>
               </ProgressiveField>
 
-              <ProgressiveField show={shouldShowTrainingType}>
+              <ProgressiveField show={shouldShowPostTrainingType}>
                 <ComposerChoiceRow label="Training type">
                   <button
                     type="button"
@@ -932,6 +1003,92 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     AIIM (3 days)
                   </button>
                 </ComposerChoiceRow>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowDayCount}>
+                <ComposerChoiceRow label="Training days" columns={3}>
+                  {([1, 2, 3] as const).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={form.day_count === n}
+                      className={composerSegmentClass(form.day_count === n)}
+                      onClick={() => selectDayCount(n)}
+                    >
+                      {n === 1 ? "1 day" : `${n} days`}
+                    </button>
+                  ))}
+                </ComposerChoiceRow>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowDisciplines}>
+                <div className="space-y-2.5">
+                  {Array.from({ length: preDayCount }).map((_, dayIdx) => {
+                    const dayKey = DAY_DISCIPLINE_KEYS[dayIdx];
+                    const selectedForDay = form[dayKey];
+                    return (
+                      <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} topics`}>
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                          Day {dayIdx + 1} — topics
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {TRAINING_DISCIPLINES.map((discipline) => {
+                            const active = selectedForDay.includes(discipline);
+                            return (
+                              <button
+                                key={discipline}
+                                type="button"
+                                aria-pressed={active}
+                                className={composerSegmentClass(active)}
+                                onClick={() => toggleDiscipline(dayIdx as 0 | 1 | 2, discipline)}
+                              >
+                                {DISCIPLINE_LABEL[discipline][composerMailLang]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[11px] text-slate-400/80">
+                    Intro covers the fundamentals (safety, setup, core flight). Add or remove topics per day.
+                  </p>
+                </div>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowLausanneSite}>
+                <ComposerChoiceRow label="Flight site (Lausanne, optional)">
+                  {LAUSANNE_SITE_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={form.lausanne_site === option.id}
+                      className={composerSegmentClass(form.lausanne_site === option.id)}
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          lausanne_site: prev.lausanne_site === option.id ? "" : option.id,
+                        }))
+                      }
+                    >
+                      {option.label[composerMailLang]}
+                    </button>
+                  ))}
+                </ComposerChoiceRow>
+              </ProgressiveField>
+
+              <ProgressiveField show={shouldShowAbroadLocation}>
+                <div>
+                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                    Training location
+                  </p>
+                  <input
+                    placeholder="City / country (Required)"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </div>
               </ProgressiveField>
             </div>
 
@@ -974,14 +1131,6 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   placeholder={form.mail_type === "pre" ? "Training Date (Required)" : "Training Date (Optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowLocation}>
-                <input
-                  placeholder={form.mail_type === "pre" ? "Location (Required)" : "Location (Optional)"}
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
