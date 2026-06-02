@@ -8,6 +8,7 @@ import {
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
+import { getAccent, setAccent as persistAccent, ACCENTS, type Accent } from "@/lib/accent";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
 import type { UserRole } from "@/lib/user-role";
 
@@ -78,6 +79,7 @@ export function SettingsPanel({
   const [mailSigSaving, setMailSigSaving] = useState(false);
   const [uiSoundsOn, setUiSoundsOn] = useState(true);
   const [theme, setThemeState] = useState<Theme>("dark");
+  const [accent, setAccentState] = useState<Accent>("amber");
 
   useEffect(() => {
     setUiSoundsOn(getUiSoundsEnabled());
@@ -97,6 +99,16 @@ export function SettingsPanel({
     }
     window.addEventListener("ma-theme-changed", onThemeChanged);
     return () => window.removeEventListener("ma-theme-changed", onThemeChanged);
+  }, []);
+
+  useEffect(() => {
+    setAccentState(getAccent());
+    function onAccentChanged(e: Event) {
+      const d = (e as CustomEvent<{ accent?: Accent }>).detail;
+      if (d?.accent) setAccentState(d.accent);
+    }
+    window.addEventListener("ma-accent-changed", onAccentChanged);
+    return () => window.removeEventListener("ma-accent-changed", onAccentChanged);
   }, []);
 
   useEffect(() => {
@@ -607,6 +619,50 @@ export function SettingsPanel({
                       </button>
                     </div>
                   </div>
+
+                  {theme === "light" ? (
+                    <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/40 p-4">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Accent</p>
+                      <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                        {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
+                      </p>
+                      <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                        Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Stored on this device.
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {ACCENTS.map((a) => {
+                          const selected = a.value === accent;
+                          const swatch = a.swatch;
+                          return (
+                            <button
+                              key={a.value}
+                              type="button"
+                              aria-pressed={selected}
+                              aria-label={a.label}
+                              onClick={() => {
+                                setAccentState(a.value);
+                                persistAccent(a.value);
+                              }}
+                              className={`flex flex-col items-center gap-2 rounded-lg border p-2.5 transition ${
+                                selected
+                                  ? "border-cyan-400/80 bg-cyan-400/15"
+                                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                              }`}
+                            >
+                              <span
+                                className="h-7 w-7 rounded-full shadow-sm ring-1 ring-inset ring-black/10"
+                                style={{ background: swatch }}
+                                aria-hidden
+                              />
+                              <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-slate-200/85">
+                                {a.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
