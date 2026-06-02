@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
-import { WeekStepper } from "@/components/week-stepper";
 import { FreshnessPill } from "@/components/freshness-pill";
 
 type Recipient = {
@@ -19,10 +18,11 @@ type Recipient = {
 };
 
 type OverviewResponse = {
-  scope: "week" | "all";
+  scope: "week" | "all" | "recent";
   query: string;
   week_start: string | null;
   recipients: Recipient[];
+  total?: number;
   totals: {
     mails_sent: number;
     recipients: number;
@@ -88,11 +88,20 @@ type LinkLeaderboardResponse = {
 };
 
 type TimelinePeriod = "day" | "week" | "month" | "year";
+type BucketMail = {
+  send_id: string;
+  recipient_name: string;
+  company_name: string | null;
+  subject: string;
+  real_clicks: number;
+  bot_clicks: number;
+};
 type TimelineBucket = {
   bucket_start: string;
   mails_sent: number;
   real_clicks: number;
   bot_clicks: number;
+  mails?: BucketMail[];
 };
 type TimelineResponse = {
   period: TimelinePeriod;
@@ -296,6 +305,17 @@ function formatBucketTick(iso: string, period: TimelinePeriod) {
     return date.toLocaleDateString(undefined, { day: "numeric" });
   }
   return date.toLocaleDateString(undefined, { month: "short" });
+}
+
+function formatBucketFullLabel(iso: string, period: TimelinePeriod) {
+  const date = new Date(iso);
+  if (period === "day") {
+    return date.toLocaleString(undefined, { weekday: "short", hour: "numeric" });
+  }
+  if (period === "year") {
+    return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }
+  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
 function shouldShowBucketTick(index: number, total: number, period: TimelinePeriod) {
@@ -653,36 +673,85 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
   );
 }
 
+const RECIPIENTS_PAGE_SIZE = 10;
+
 function RecipientsTab({ showBots }: { showBots: boolean }) {
-  const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
   const [search, setSearch] = useState("");
-  const [data, setData] = useState<OverviewResponse | null>(null);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totals, setTotals] = useState<OverviewResponse["totals"] | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [detailBySend, setDetailBySend] = useState<Record<string, SendDetailResponse | "loading" | { error: string }>>(
     {},
   );
+  const requestIdRef = useRef(0);
+  const loadedCountRef = useRef(0);
 
-  const load = useCallback(async (args: { week?: string; query?: string }) => {
+  useEffect(() => {
+    loadedCountRef.current = recipients.length;
+  }, [recipients]);
+
+  // Latest recipients ordered by recency, paged with offset/limit.
+  const fetchRecent = useCallback(
+    async (opts: { offset: number; limit: number; append: boolean }) => {
+      const requestId = ++requestIdRef.current;
+      if (opts.append) setLoadingMore(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          mode: "recent",
+          offset: String(opts.offset),
+          limit: String(opts.limit),
+        });
+        const response = await fetch(`/api/admin/mail-tracking?${params.toString()}`);
+        const payload = (await response.json()) as OverviewResponse | { error: string };
+        if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracking.");
+        if (requestId !== requestIdRef.current) return;
+        const data = payload as OverviewResponse;
+        setRecipients((prev) => (opts.append ? [...prev, ...data.recipients] : data.recipients));
+        setTotal(data.total ?? data.totals.recipients);
+        setTotals(data.totals);
+        setTruncated(Boolean(data.totals.truncated));
+        setUpdatedAt(Date.now());
+      } catch (err) {
+        if (requestId !== requestIdRef.current) return;
+        setError((err as Error).message || "Failed to load tracking.");
+      } finally {
+        if (requestId !== requestIdRef.current) return;
+        if (opts.append) setLoadingMore(false);
+        else setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const fetchSearch = useCallback(async (query: string) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (args.query && args.query.trim().length > 0) {
-        params.set("q", args.query.trim());
-      } else if (args.week) {
-        params.set("week", args.week);
-      }
+      const params = new URLSearchParams({ q: query });
       const response = await fetch(`/api/admin/mail-tracking?${params.toString()}`);
       const payload = (await response.json()) as OverviewResponse | { error: string };
       if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracking.");
-      setData(payload as OverviewResponse);
+      if (requestId !== requestIdRef.current) return;
+      const data = payload as OverviewResponse;
+      setRecipients(data.recipients);
+      setTotal(data.totals.recipients);
+      setTotals(data.totals);
+      setTruncated(Boolean(data.totals.truncated));
       setUpdatedAt(Date.now());
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError((err as Error).message || "Failed to load tracking.");
     } finally {
+      if (requestId !== requestIdRef.current) return;
       setLoading(false);
     }
   }, []);
@@ -690,22 +759,14 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
   useEffect(() => {
     const trimmed = search.trim();
     const handle = setTimeout(() => {
-      if (trimmed.length > 0) void load({ query: trimmed });
-      else void load({ week: weekStart });
+      if (trimmed.length > 0) void fetchSearch(trimmed);
+      else void fetchRecent({ offset: 0, limit: RECIPIENTS_PAGE_SIZE, append: false });
     }, trimmed.length > 0 ? 300 : 0);
     return () => clearTimeout(handle);
-  }, [load, weekStart, search]);
-
-  const weekRangeLabel = useMemo(() => {
-    const start = fromDateKey(weekStart);
-    const end = addDays(start, 6);
-    const fmt = (d: Date) =>
-      d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    return `${fmt(start)} – ${fmt(end)}`;
-  }, [weekStart]);
+  }, [fetchRecent, fetchSearch, search]);
 
   const isSearchMode = search.trim().length > 0;
-  const filteredRecipients = data?.recipients ?? [];
+  const hasMore = !isSearchMode && recipients.length < total;
 
   const loadSendDetail = useCallback(async (sendId: string) => {
     setDetailBySend((prev) => ({ ...prev, [sendId]: "loading" }));
@@ -729,16 +790,34 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
     [detailBySend, loadSendDetail],
   );
 
+  const deleteSend = useCallback(
+    async (sendId: string) => {
+      const response = await fetch(`/api/admin/mail-tracking/${encodeURIComponent(sendId)}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Failed to delete mail generation.");
+      // Drop the cached detail and refresh, keeping the same number of rows loaded.
+      setDetailBySend((prev) => {
+        const next = { ...prev };
+        delete next[sendId];
+        return next;
+      });
+      const trimmed = search.trim();
+      if (trimmed.length > 0) await fetchSearch(trimmed);
+      else
+        await fetchRecent({
+          offset: 0,
+          limit: Math.max(RECIPIENTS_PAGE_SIZE, loadedCountRef.current),
+          append: false,
+        });
+    },
+    [fetchRecent, fetchSearch, search],
+  );
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {!isSearchMode ? (
-          <WeekStepper
-            onPrev={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
-            onToday={() => setWeekStart(toDateKey(getMonday()))}
-            onNext={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
-          />
-        ) : null}
         <div className="relative min-w-[180px] flex-1">
           <input
             type="search"
@@ -753,8 +832,8 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] text-slate-400">
           {isSearchMode
-            ? `All-time search · ${data?.totals.recipients ?? 0} recipient${data?.totals.recipients === 1 ? "" : "s"} matching "${search.trim()}"`
-            : weekRangeLabel}
+            ? `All-time search · ${total} recipient${total === 1 ? "" : "s"} matching "${search.trim()}"`
+            : `Latest recipients · showing ${recipients.length} of ${total}`}
         </p>
         <FreshnessPill updatedAt={updatedAt} loading={loading} />
       </div>
@@ -765,34 +844,36 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
         </p>
       ) : null}
 
-      {isSearchMode && data?.totals.truncated ? (
+      {truncated ? (
         <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Showing the most recent matches. Refine the search to narrow further.
+          {isSearchMode
+            ? "Showing the most recent matches. Refine the search to narrow further."
+            : "Older sends beyond the scan limit aren't paginated. Use search to find a specific recipient."}
         </p>
       ) : null}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatTile
           label="Mails sent"
-          value={data?.totals.mails_sent ?? 0}
-          hint={isSearchMode ? "Matching search" : "This week"}
+          value={totals?.mails_sent ?? 0}
+          hint={isSearchMode ? "Matching search" : "All time"}
           info="Number of Gmail drafts tracked in the current scope."
         />
         <StatTile
           label="Recipients"
-          value={data?.totals.recipients ?? 0}
+          value={totals?.recipients ?? 0}
           hint="Distinct"
           info="Distinct recipients — counted by lowercased name + company so capitalisation doesn't split entries."
         />
         <StatTile
           label="Real clicks"
-          value={data?.totals.real_clicks ?? 0}
+          value={totals?.real_clicks ?? 0}
           hint="Humans"
           info="Clicks that did not match the scanner heuristic. These are most likely real recipients opening the link."
         />
         <StatTile
           label="Scanner clicks"
-          value={data?.totals.bot_clicks ?? 0}
+          value={totals?.bot_clicks ?? 0}
           hint="Bots"
           info="Likely corporate link scanners — Outlook ATP, Mimecast, Proofpoint, etc. Hidden unless Scanners is on."
         />
@@ -811,22 +892,22 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {loading && !data ? (
+            {loading && recipients.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
                   Loading tracking…
                 </td>
               </tr>
-            ) : filteredRecipients.length === 0 ? (
+            ) : recipients.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
                   {isSearchMode
                     ? "No tracked emails match this search across the full history."
-                    : "No tracked emails this week. Tracking activates when a Gmail draft is created from the generator."}
+                    : "No tracked emails yet. Tracking activates when a Gmail draft is created from the generator."}
                 </td>
               </tr>
             ) : (
-              filteredRecipients.map((recipient) => (
+              recipients.map((recipient) => (
                 <RecipientRow
                   key={recipient.key}
                   recipient={recipient}
@@ -834,12 +915,30 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
                   onToggle={() => toggleRecipient(recipient.key, recipient.send_ids)}
                   showBots={showBots}
                   detailBySend={detailBySend}
+                  onDeleteSend={deleteSend}
                 />
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {hasMore ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() =>
+              void fetchRecent({ offset: recipients.length, limit: RECIPIENTS_PAGE_SIZE, append: true })
+            }
+            disabled={loadingMore}
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+          >
+            {loadingMore
+              ? "Loading…"
+              : `+${Math.min(RECIPIENTS_PAGE_SIZE, total - recipients.length)} older`}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1644,6 +1743,21 @@ function MailClickTimelineChart({
   period: TimelinePeriod;
   showBots: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [hover, setHover] = useState<{ index: number; x: number; y: number; w: number; h: number } | null>(null);
+
+  const handlePointer = useCallback((index: number, event: { clientX: number; clientY: number }) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHover({
+      index,
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      w: rect.width,
+      h: rect.height,
+    });
+  }, []);
+
   if (loading && !data) {
     return (
       <div className="flex h-72 items-center justify-center rounded-xl border border-white/10 bg-slate-950/40 text-sm text-slate-300/80">
@@ -1688,7 +1802,11 @@ function MailClickTimelineChart({
         <StatTile label="Scanner clicks" value={data?.totals.bot_clicks ?? 0} hint="Hidden unless enabled" />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40 p-3">
+      <div ref={containerRef} className="relative">
+      <div
+        className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40 p-3"
+        onMouseLeave={() => setHover(null)}
+      >
         <div className="min-w-[720px]">
           <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Mail click timeline chart">
             {Array.from({ length: 4 }, (_, index) => {
@@ -1719,9 +1837,22 @@ function MailClickTimelineChart({
               const y = marginTop + plotHeight - totalHeight;
               const realY = marginTop + plotHeight - realHeight;
               const label = formatBucketTick(bucket.bucket_start, period);
-              const visibleClicks = showBots ? bucket.real_clicks + bucket.bot_clicks : bucket.real_clicks;
+              const isHovered = hover?.index === index;
+              // Full-height transparent hit area so the whole column is hoverable,
+              // not just the (often short) bar itself.
+              const hitX = marginLeft + index * (barWidth + gap) - gap / 2;
+              const hitWidth = barWidth + gap;
               return (
                 <g key={bucket.bucket_start}>
+                  {isHovered ? (
+                    <rect
+                      x={hitX}
+                      y={marginTop}
+                      width={hitWidth}
+                      height={plotHeight}
+                      className="fill-white/5"
+                    />
+                  ) : null}
                   <rect
                     x={x}
                     y={y}
@@ -1729,9 +1860,7 @@ function MailClickTimelineChart({
                     height={Math.max(totalHeight, 2)}
                     rx="4"
                     className="fill-amber-500/25"
-                  >
-                    <title>{`${label}: ${visibleClicks} visible clicks, ${bucket.mails_sent} mails sent`}</title>
-                  </rect>
+                  />
                   <rect
                     x={x}
                     y={realY}
@@ -1739,9 +1868,7 @@ function MailClickTimelineChart({
                     height={Math.max(realHeight, 2)}
                     rx="4"
                     className="fill-amber-300"
-                  >
-                    <title>{`${label}: ${bucket.real_clicks} real clicks`}</title>
-                  </rect>
+                  />
                   {showBots && bucket.bot_clicks > 0 ? (
                     <rect
                       x={x}
@@ -1750,9 +1877,7 @@ function MailClickTimelineChart({
                       height={Math.max(botHeight, 2)}
                       rx="4"
                       className="fill-slate-500/80"
-                    >
-                      <title>{`${label}: ${bucket.bot_clicks} scanner clicks`}</title>
-                    </rect>
+                    />
                   ) : null}
                   {shouldShowBucketTick(index, buckets.length, period) ? (
                     <text
@@ -1764,6 +1889,15 @@ function MailClickTimelineChart({
                       {label}
                     </text>
                   ) : null}
+                  <rect
+                    x={hitX}
+                    y={marginTop}
+                    width={hitWidth}
+                    height={plotHeight}
+                    className="cursor-pointer fill-transparent"
+                    onMouseEnter={(event) => handlePointer(index, event)}
+                    onMouseMove={(event) => handlePointer(index, event)}
+                  />
                 </g>
               );
             })}
@@ -1779,10 +1913,98 @@ function MailClickTimelineChart({
           </svg>
         </div>
       </div>
+        {hover && buckets[hover.index] ? (
+          <TimelineTooltip
+            bucket={buckets[hover.index]}
+            period={period}
+            showBots={showBots}
+            x={hover.x}
+            y={hover.y}
+            containerWidth={hover.w}
+            containerHeight={hover.h}
+          />
+        ) : null}
+      </div>
 
       <p className="text-[11px] text-slate-400">
-        X-axis: time. Y-axis: clicks from all tracked emails and links. Amber shows real clicks; gray adds scanner clicks when enabled.
+        X-axis: time. Y-axis: clicks from all tracked emails and links. Amber shows real clicks; gray adds scanner clicks when enabled. Hover a column to see which mails the clicks came from.
       </p>
+    </div>
+  );
+}
+
+function TimelineTooltip({
+  bucket,
+  period,
+  showBots,
+  x,
+  y,
+  containerWidth,
+  containerHeight,
+}: {
+  bucket: TimelineBucket;
+  period: TimelinePeriod;
+  showBots: boolean;
+  x: number;
+  y: number;
+  containerWidth: number;
+  containerHeight: number;
+}) {
+  const visibleClicks = showBots ? bucket.real_clicks + bucket.bot_clicks : bucket.real_clicks;
+  const mails = (bucket.mails ?? []).filter((mail) =>
+    showBots ? mail.real_clicks + mail.bot_clicks > 0 : mail.real_clicks > 0,
+  );
+
+  // Flip horizontally past the midpoint, and place above the pointer when it is
+  // in the lower half — keeps the card inside the chart area.
+  const alignRight = x > containerWidth / 2;
+  const placeAbove = y > containerHeight / 2;
+  const style: CSSProperties = {
+    left: alignRight ? undefined : x + 12,
+    right: alignRight ? containerWidth - x + 12 : undefined,
+    top: placeAbove ? undefined : y + 12,
+    bottom: placeAbove ? containerHeight - y + 12 : undefined,
+  };
+
+  return (
+    <div
+      className="pointer-events-none absolute z-20 w-64 rounded-lg border border-white/15 bg-slate-950/95 p-3 text-xs shadow-xl shadow-black/40"
+      style={style}
+    >
+      <p className="font-semibold text-slate-100">{formatBucketFullLabel(bucket.bucket_start, period)}</p>
+      <p className="mt-0.5 text-[11px] text-slate-400">
+        <span className="text-amber-200">{visibleClicks}</span> {showBots ? "click" : "real click"}
+        {visibleClicks === 1 ? "" : "s"}
+        {!showBots && bucket.bot_clicks > 0 ? (
+          <span className="text-slate-500"> · +{bucket.bot_clicks} scanner</span>
+        ) : null}
+        <span className="text-slate-500"> · {bucket.mails_sent} sent</span>
+      </p>
+      {mails.length > 0 ? (
+        <ul className="mt-2 space-y-1.5 border-t border-white/10 pt-2">
+          {mails.map((mail) => {
+            const mailClicks = showBots ? mail.real_clicks + mail.bot_clicks : mail.real_clicks;
+            return (
+              <li key={mail.send_id} className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-slate-100">{mail.recipient_name}</p>
+                  <p className="truncate text-[10px] text-slate-500">
+                    {mail.company_name ? `${mail.company_name} · ` : ""}
+                    {mail.subject}
+                  </p>
+                </div>
+                <span className="shrink-0 tabular-nums text-amber-200">{mailClicks}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mt-2 border-t border-white/10 pt-2 text-[11px] text-slate-500">
+          {visibleClicks > 0
+            ? "Click sources unavailable for this bucket."
+            : "No clicks in this period."}
+        </p>
+      )}
     </div>
   );
 }
@@ -1793,12 +2015,14 @@ function RecipientRow({
   onToggle,
   showBots,
   detailBySend,
+  onDeleteSend,
 }: {
   recipient: Recipient;
   isOpen: boolean;
   onToggle: () => void;
   showBots: boolean;
   detailBySend: Record<string, SendDetailResponse | "loading" | { error: string }>;
+  onDeleteSend: (sendId: string) => Promise<void>;
 }) {
   const visibleClicks = showBots
     ? recipient.real_clicks + recipient.bot_clicks
@@ -1862,7 +2086,14 @@ function RecipientRow({
                     </div>
                   );
                 }
-                return <SendDetailBlock key={sendId} detail={detail} showBots={showBots} />;
+                return (
+                  <SendDetailBlock
+                    key={sendId}
+                    detail={detail}
+                    showBots={showBots}
+                    onDeleteSend={onDeleteSend}
+                  />
+                );
               })}
             </div>
           </td>
@@ -1872,7 +2103,32 @@ function RecipientRow({
   );
 }
 
-function SendDetailBlock({ detail, showBots }: { detail: SendDetailResponse; showBots: boolean }) {
+function SendDetailBlock({
+  detail,
+  showBots,
+  onDeleteSend,
+}: {
+  detail: SendDetailResponse;
+  showBots: boolean;
+  onDeleteSend: (sendId: string) => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDeleteSend(detail.send.id);
+      // On success this block unmounts as the list refreshes; no further state.
+    } catch (err) {
+      setDeleteError((err as Error).message || "Failed to delete.");
+      setDeleting(false);
+      setConfirming(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -1886,10 +2142,51 @@ function SendDetailBlock({ detail, showBots }: { detail: SendDetailResponse; sho
             {detail.send.recipient_email ? ` · ${detail.send.recipient_email}` : ""}
           </p>
         </div>
-        <span className="text-[11px] text-slate-300/80" title={fmtAbsolute(detail.send.created_at)}>
-          {fmtRelative(detail.send.created_at)}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-[11px] text-slate-300/80" title={fmtAbsolute(detail.send.created_at)}>
+            {fmtRelative(detail.send.created_at)}
+          </span>
+          {confirming ? (
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded border border-rose-400/40 bg-rose-500/20 px-2 py-1 text-[11px] font-medium text-rose-100 hover:bg-rose-500/30 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Confirm delete"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                disabled={deleting}
+                className="rounded border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-slate-300 hover:bg-white/10 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="rounded border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-slate-400 hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-200"
+              title="Delete this mail generation and its tracking data"
+            >
+              Delete
+            </button>
+          )}
+        </div>
       </div>
+      {confirming && !deleting ? (
+        <p className="mt-2 text-[11px] text-rose-200/80">
+          This permanently removes this mail generation and all of its click tracking. This cannot be undone.
+        </p>
+      ) : null}
+      {deleteError ? (
+        <p className="mt-2 rounded border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+          {deleteError}
+        </p>
+      ) : null}
       <ClickedLinksList links={detail.links} showBots={showBots} />
     </div>
   );

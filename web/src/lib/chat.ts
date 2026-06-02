@@ -149,13 +149,27 @@ export async function fetchChatHistory(opts: FetchHistoryOptions = {}): Promise<
   return ((data ?? []) as ChatMessageRow[]).slice().reverse();
 }
 
-export async function fetchAllVotes(): Promise<ChatVoteRow[]> {
+/**
+ * Fetch votes for a specific set of messages. Scoped to the message ids the
+ * widget currently has loaded so we never read the entire chat_message_votes
+ * table (which grows unbounded with every vote ever cast). Ids are chunked to
+ * stay under PostgREST's URL-length limit on the `in` filter.
+ */
+export async function fetchVotesForMessages(messageIds: string[]): Promise<ChatVoteRow[]> {
+  if (messageIds.length === 0) return [];
   const supabase = client();
-  const { data, error } = await supabase
-    .from("chat_message_votes")
-    .select("message_id, user_id, vote");
-  if (error) throw error;
-  return (data ?? []) as ChatVoteRow[];
+  const CHUNK = 200;
+  const out: ChatVoteRow[] = [];
+  for (let i = 0; i < messageIds.length; i += CHUNK) {
+    const chunk = messageIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("chat_message_votes")
+      .select("message_id, user_id, vote")
+      .in("message_id", chunk);
+    if (error) throw error;
+    out.push(...((data ?? []) as ChatVoteRow[]));
+  }
+  return out;
 }
 
 type SendInput = {

@@ -28,6 +28,8 @@ type RecipientPayload = {
 };
 
 const SEARCH_RESULT_LIMIT = 200;
+const RECENT_PAGE_DEFAULT = 10;
+const RECENT_PAGE_MAX = 100;
 
 export async function GET(request: Request) {
   const guard = await guardAdmin();
@@ -35,8 +37,13 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim();
+  const mode = url.searchParams.get("mode");
 
   const admin = createAdminClient();
+
+  if (query.length === 0 && mode === "recent") {
+    return recentRecipients(admin, url);
+  }
 
   if (query.length > 0) {
     const { data, error } = await admin.rpc("mail_recipient_search", {
@@ -90,6 +97,49 @@ export async function GET(request: Request) {
     query: "",
     week_start: toDateString(weekStartDate),
     recipients: payload.recipients ?? [],
+    totals: {
+      mails_sent: payload.totals?.mails_sent ?? 0,
+      recipients: payload.totals?.recipients ?? 0,
+      real_clicks: payload.totals?.real_clicks ?? 0,
+      bot_clicks: payload.totals?.bot_clicks ?? 0,
+      truncated: false,
+    },
+  });
+}
+
+type RecentPayload = RecipientPayload & { total?: number };
+
+// All-time recipient list ordered by recency (most recent send first), paged
+// with limit/offset so the UI can show the latest N and load older ones on
+// demand. The grouping, per-page click stats and all-time totals are all done
+// set-based in the mail_recipient_recent RPC, so we never pull the full
+// mail_sends table into the Node process.
+async function recentRecipients(admin: ReturnType<typeof createAdminClient>, url: URL) {
+  const limitRaw = Number.parseInt(url.searchParams.get("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0
+    ? Math.min(limitRaw, RECENT_PAGE_MAX)
+    : RECENT_PAGE_DEFAULT;
+  const offsetRaw = Number.parseInt(url.searchParams.get("offset") ?? "", 10);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? offsetRaw : 0;
+
+  const { data, error } = await admin.rpc("mail_recipient_recent", {
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const payload = (data ?? {
+    recipients: [],
+    total: 0,
+    totals: { mails_sent: 0, recipients: 0, real_clicks: 0, bot_clicks: 0 },
+  }) as RecentPayload;
+
+  return NextResponse.json({
+    scope: "recent" as const,
+    query: "",
+    week_start: null,
+    recipients: payload.recipients ?? [],
+    total: payload.total ?? payload.totals?.recipients ?? 0,
     totals: {
       mails_sent: payload.totals?.mails_sent ?? 0,
       recipients: payload.totals?.recipients ?? 0,

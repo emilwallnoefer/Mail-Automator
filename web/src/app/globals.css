@@ -1153,7 +1153,7 @@ html[data-theme="light"] .shadow-black\/50 { --tw-shadow-color: rgba(7, 54, 66, 
 html[data-theme="light"] .aurora-bg {
   background:
     radial-gradient(45rem 45rem at 0% 0%, rgba(181, 137, 0, 0.12), transparent 60%),
-    radial-gradient(40rem 40rem at 95% 15%, rgba(38, 139, 210, 0.1), transparent 55%),
+    radial-gradient(40rem 40rem at 95% 15%, rgba(95, 179, 168, 0.1), transparent 55%),
     radial-gradient(35rem 35rem at 40% 90%, rgba(133, 153, 0, 0.1), transparent 55%),
     linear-gradient(130deg, #fdf6e3 0%, #fdf6e3 45%, #eee8d5 100%);
   filter: saturate(100%);
@@ -1183,8 +1183,8 @@ html[data-theme="light"] .aurora-bg::after {
       transparent 1px,
       transparent 44px
     ),
-    radial-gradient(100rem 46rem at -8% -16%, rgba(38, 139, 210, 0.08), transparent 74%),
-    linear-gradient(150deg, rgba(38, 139, 210, 0.05), rgba(38, 139, 210, 0) 70%);
+    radial-gradient(100rem 46rem at -8% -16%, rgba(95, 179, 168, 0.08), transparent 74%),
+    linear-gradient(150deg, rgba(95, 179, 168, 0.05), rgba(95, 179, 168, 0) 70%);
   mix-blend-mode: multiply;
   opacity: 0.4;
 }
@@ -1203,7 +1203,7 @@ html[data-theme="light"] .glass-card {
 html[data-theme="light"] .glass-card::before {
   background:
     radial-gradient(26rem 16rem at 12% 8%, rgba(181, 137, 0, 0.08), transparent 70%),
-    radial-gradient(22rem 14rem at 86% 72%, rgba(38, 139, 210, 0.06), transparent 74%);
+    radial-gradient(22rem 14rem at 86% 72%, rgba(95, 179, 168, 0.06), transparent 74%);
   mix-blend-mode: multiply;
 }
 
@@ -1242,7 +1242,7 @@ html[data-theme="light"] .liquid-day-card {
 html[data-theme="light"] .liquid-day-card::before {
   background:
     radial-gradient(22rem 16rem at 12% 10%, rgba(181, 137, 0, 0.1), transparent 68%),
-    radial-gradient(16rem 12rem at 76% 72%, rgba(38, 139, 210, 0.08), transparent 70%);
+    radial-gradient(16rem 12rem at 76% 72%, rgba(95, 179, 168, 0.08), transparent 70%);
   mix-blend-mode: multiply;
 }
 
@@ -1311,7 +1311,7 @@ html[data-theme="light"] .day-progress {
 }
 
 html[data-theme="light"] .day-progress-topdown {
-  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgba(38, 139, 210, 0.03));
+  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgba(95, 179, 168, 0.03));
 }
 
 html[data-theme="light"] .day-progress-sand {
@@ -1371,7 +1371,7 @@ html[data-theme="light"] .dashboard-mesh-fade {
 html[data-theme="light"] .underwater-panel::before {
   background:
     radial-gradient(40rem 30rem at 15% 25%, rgba(42, 161, 152, 0.08), transparent 65%),
-    radial-gradient(36rem 26rem at 80% 80%, rgba(38, 139, 210, 0.08), transparent 65%);
+    radial-gradient(36rem 26rem at 80% 80%, rgba(95, 179, 168, 0.08), transparent 65%);
 }
 
 html[data-theme="light"] .underwater-panel::after {
@@ -1437,7 +1437,7 @@ html[data-theme="light"] .freshness-flash {
 /* Tone down typing/write glows on paper. */
 html[data-theme="light"] .write-glow-live {
   text-shadow:
-    0 0 6px rgba(38, 139, 210, 0.28),
+    0 0 6px rgba(95, 179, 168, 0.28),
     0 0 14px rgba(42, 161, 152, 0.16);
 }
 
@@ -1446,11 +1446,11 @@ html[data-theme="light"] .day-ready-sweep-beam::before {
   background:
     linear-gradient(
       135deg,
-      rgba(38, 139, 210, 0) 42%,
-      rgba(38, 139, 210, 0.12) 49%,
+      rgba(95, 179, 168, 0) 42%,
+      rgba(95, 179, 168, 0.12) 49%,
       rgba(42, 161, 152, 0.28) 51.5%,
-      rgba(38, 139, 210, 0.12) 54%,
-      rgba(38, 139, 210, 0) 61%
+      rgba(95, 179, 168, 0.12) 54%,
+      rgba(95, 179, 168, 0) 61%
     ),
     radial-gradient(28% 24% at 50% 50%, rgba(42, 161, 152, 0.22), rgba(42, 161, 152, 0) 72%);
   mix-blend-mode: multiply;
