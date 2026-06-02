@@ -135,8 +135,11 @@ export async function DELETE(_request: Request, context: { params: Promise<{ sen
 
   const admin = createAdminClient();
 
-  // Links and clicks cascade-delete via FK (on delete cascade), so removing the
-  // send row is enough to wipe the whole generation and its tracking history.
+  // Deleting the send removes it from every panel view. Its mail_send_links
+  // rows are detached (send_id -> null via `on delete set null`), NOT deleted,
+  // so any /r/<id> link already in a recipient's inbox keeps resolving. Clicks
+  // stay attached to those surviving link rows. See
+  // supabase/2026-06-02-mail-links-survive-send-delete.sql.
   const { data: deleted, error: deleteError } = await admin
     .from("mail_sends")
     .delete()
