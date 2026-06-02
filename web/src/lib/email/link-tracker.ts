@@ -139,7 +139,11 @@ export async function rewriteHtmlForTracking(
   const rewritten = html.replace(
     TRACKABLE_ANCHOR_REGEX,
     (_match, before: string, url: string, after: string, inner: string) => {
-      const cleanUrl = url.trim();
+      // The captured href is raw HTML, so `&` arrives as `&amp;` (and
+      // similar entities). Decode before persisting/redirecting so the
+      // stored `original_url` is the real target — otherwise the /r/<id>
+      // redirect emits `...?a=1&amp;b=2`, corrupting query params.
+      const cleanUrl = decodeBasicHtml(url.trim());
       let id = idByUrl.get(cleanUrl);
       if (!id) {
         const label = extractAnchorLabel(inner) || null;
