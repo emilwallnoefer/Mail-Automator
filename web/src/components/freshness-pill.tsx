@@ -1,10 +1,15 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 export type FreshnessPillProps = {
   updatedAt: number | null;
   loading?: boolean;
   className?: string;
 };
+
+const PARTICLE_COUNT = 8;
+const PARTICLE_CYCLE_MS = 1600;
 
 export function FreshnessPill({ updatedAt, loading = false, className }: FreshnessPillProps) {
   const extra = className ? ` ${className}` : "";
@@ -17,8 +22,15 @@ export function FreshnessPill({ updatedAt, loading = false, className }: Freshne
         aria-label="Refreshing"
         aria-busy
       >
-        <span className="freshness-pill-ripple" aria-hidden />
-        <span className="freshness-pill-ripple freshness-pill-ripple--delayed" aria-hidden />
+        {Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+          const angle = (360 / PARTICLE_COUNT) * i;
+          const delay = (PARTICLE_CYCLE_MS / PARTICLE_COUNT) * i;
+          const style = {
+            "--particle-angle": `${angle}deg`,
+            "--particle-delay": `${delay}ms`,
+          } as CSSProperties;
+          return <span key={i} className="freshness-pill-particle" aria-hidden style={style} />;
+        })}
       </span>
     );
   }
