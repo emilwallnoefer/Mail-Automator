@@ -20,8 +20,8 @@ import {
   dayKeyFromIso,
   deleteChatMessage,
   editChatMessage,
-  fetchAllVotes,
   fetchChatHistory,
+  fetchVotesForMessages,
   formatChatTimestamp,
   formatDaySeparator,
   getAttachmentSignedUrl,
@@ -52,6 +52,16 @@ const NEAR_BOTTOM_THRESHOLD_PX = 80;
 const UNDO_DELETE_TIMEOUT_MS = 5000;
 /** How long an error banner sticks around before auto-dismissing. */
 const ERROR_AUTO_DISMISS_MS = 4500;
+
+/** Ids of the messages that can carry votes, deduped — used to scope vote
+ *  fetches to the currently loaded window instead of the whole table. */
+function votableMessageIds(messages: ChatMessageRow[]): string[] {
+  const ids = new Set<string>();
+  for (const m of messages) {
+    if (isVotableKind(m.kind)) ids.add(m.id);
+  }
+  return Array.from(ids);
+}
 
 type ChatWidgetProps = {
   /** Bottom offset (in rem) so we can stack above other floating prompts. */
@@ -124,10 +134,12 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
 
     (async () => {
       try {
-        const [history, allVotes] = await Promise.all([fetchChatHistory(), fetchAllVotes()]);
+        const history = await fetchChatHistory();
         if (cancelled) return;
         setMessages(history);
-        setVotes(allVotes);
+        const initialVotes = await fetchVotesForMessages(votableMessageIds(history));
+        if (cancelled) return;
+        setVotes(initialVotes);
         // If the initial page is full, assume there's more history to page in.
         setHasMoreHistory(history.length >= CHAT_PAGE_SIZE);
         setLoading(false);
@@ -196,12 +208,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
             void (async () => {
               try {
                 const last = messagesRef.current[messagesRef.current.length - 1];
-                const [missed, freshVotes] = await Promise.all([
-                  last
-                    ? fetchChatHistory({ after: last.created_at, limit: CHAT_PAGE_SIZE })
-                    : fetchChatHistory(),
-                  fetchAllVotes(),
-                ]);
+                const missed = await (last
+                  ? fetchChatHistory({ after: last.created_at, limit: CHAT_PAGE_SIZE })
+                  : fetchChatHistory());
                 if (missed.length > 0) {
                   setMessages((prev) => {
                     const seen = new Set(prev.map((m) => m.id));
@@ -210,6 +219,10 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     return [...prev, ...additions];
                   });
                 }
+                // Re-sync votes for everything currently loaded (existing window
+                // plus anything we just missed).
+                const loadedIds = votableMessageIds([...messagesRef.current, ...missed]);
+                const freshVotes = await fetchVotesForMessages(loadedIds);
                 setVotes(freshVotes);
               } catch {
                 // Best-effort: a failed re-sync just leaves the state as-is.
@@ -367,6 +380,15 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
         const additions = older.filter((m) => !seen.has(m.id));
         return [...additions, ...prev];
       });
+      // Pull in votes for the older page so its tallies render correctly.
+      const olderVotes = await fetchVotesForMessages(votableMessageIds(older));
+      if (olderVotes.length > 0) {
+        setVotes((prev) => {
+          const seen = new Set(prev.map((v) => `${v.message_id}:${v.user_id}`));
+          const additions = olderVotes.filter((v) => !seen.has(`${v.message_id}:${v.user_id}`));
+          return additions.length > 0 ? [...prev, ...additions] : prev;
+        });
+      }
       setHasMoreHistory(older.length >= CHAT_PAGE_SIZE);
       // Preserve visible position by adjusting scrollTop for the height delta.
       requestAnimationFrame(() => {
