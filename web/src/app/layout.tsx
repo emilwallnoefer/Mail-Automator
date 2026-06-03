@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 // Runs before hydration so light-mode users don't flash dark on first paint.
-const themeBootstrapScript = `try{var t=localStorage.getItem("ma_theme");if(t==="light")document.documentElement.dataset.theme="light";var a=localStorage.getItem("ma_accent_light");document.documentElement.dataset.accent=(a==="blue")?"blue":"amber";}catch(e){}`;
+const themeBootstrapScript = `try{var t=localStorage.getItem("ma_theme");if(t==="light")document.documentElement.dataset.theme="light";var a=localStorage.getItem("ma_accent_light");document.documentElement.dataset.accent=(a==="blue"||a==="glacier"||a==="sky")?a:"amber";}catch(e){}`;
 
 export default function RootLayout({
   children,

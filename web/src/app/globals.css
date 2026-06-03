@@ -1131,7 +1131,8 @@ html[data-theme="light"] .placeholder\:text-slate-400::placeholder { color: rgba
  *   --ac-deep    deeper variant (cyan-500 fills, solid deep borders, links on fills)
  *   --ac-text    text links / accent glyphs
  *   --ac-from/to gradient stops (avatars, send buttons): light -> deep, same family
- * Two schemes: Warm Amber (default) and Dusty Blue. */
+ * Schemes: Warm Amber (default), Dusty Blue, and the MacBook Air-inspired
+ * Glacier Blue and Sky Blue. */
 html[data-theme="light"] {
   --ac-strong: 181 137 0;
   --ac-deep: 154 116 0;
@@ -1145,6 +1146,22 @@ html[data-theme="light"][data-accent="blue"] {
   --ac-text: 53 97 127;
   --ac-from: 110 150 180;
   --ac-to: 53 97 127;
+}
+/* MacBook Air "Glacier Blue" — cool, icy blue with a faint teal cast. */
+html[data-theme="light"][data-accent="glacier"] {
+  --ac-strong: 75 142 168;
+  --ac-deep: 56 116 140;
+  --ac-text: 48 104 128;
+  --ac-from: 124 178 198;
+  --ac-to: 48 104 128;
+}
+/* MacBook Air "Sky Blue" — soft, slightly periwinkle blue. */
+html[data-theme="light"][data-accent="sky"] {
+  --ac-strong: 86 138 184;
+  --ac-deep: 62 110 156;
+  --ac-text: 55 100 142;
+  --ac-from: 132 174 214;
+  --ac-to: 55 100 142;
 }
 
 /* ---- Accent text: cyan -> scheme accent; amber/emerald/rose stay semantic ---- */
