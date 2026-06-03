@@ -18,7 +18,9 @@ export const metadata: Metadata = {
 };
 
 // Runs before hydration so light-mode users don't flash dark on first paint.
-const themeBootstrapScript = `try{var t=localStorage.getItem("ma_theme");if(t==="light")document.documentElement.dataset.theme="light";var a=localStorage.getItem("ma_accent_light");document.documentElement.dataset.accent=(a==="blue"||a==="glacier"||a==="sky")?a:"amber";}catch(e){}`;
+// Glacier/Sky are light-skin variants: they set data-theme="light" (so the full
+// light CSS applies) plus data-mode for the cool-blue paper + accent tint.
+const themeBootstrapScript = `try{var t=localStorage.getItem("ma_theme");var d=document.documentElement;if(t==="light"){d.dataset.theme="light";}else if(t==="glacier"||t==="sky"){d.dataset.theme="light";d.dataset.mode=t;}var a=localStorage.getItem("ma_accent_light");d.dataset.accent=(a==="blue")?"blue":"amber";}catch(e){}`;
 
 export default function RootLayout({
   children,

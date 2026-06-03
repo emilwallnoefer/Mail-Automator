@@ -7,7 +7,7 @@ import {
   MAIL_SIGNATURE_NAME_PRESETS,
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
-import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
+import { getTheme, setTheme as persistTheme, THEMES, type Theme } from "@/lib/theme";
 import { getAccent, setAccent as persistAccent, ACCENTS, type Accent } from "@/lib/accent";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
 import type { UserRole } from "@/lib/user-role";
@@ -95,7 +95,7 @@ export function SettingsPanel({
     setThemeState(getTheme());
     function onThemeChanged(e: Event) {
       const d = (e as CustomEvent<{ theme?: Theme }>).detail;
-      if (d?.theme === "light" || d?.theme === "dark") setThemeState(d.theme);
+      if (d?.theme && THEMES.some((t) => t.value === d.theme)) setThemeState(d.theme);
     }
     window.addEventListener("ma-theme-changed", onThemeChanged);
     return () => window.removeEventListener("ma-theme-changed", onThemeChanged);
@@ -584,39 +584,43 @@ export function SettingsPanel({
               {activeSection === "appearance" ? (
                 <div className="mt-5">
                   <div className="rounded-xl border border-white/15 bg-slate-950/40 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 pr-1">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Appearance</p>
-                        <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
-                          {theme === "light" ? "Solarized light" : "Dark"}
-                        </p>
-                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
-                          Switches the app between the default dark palette and a Solarized Light skin. Stored on this device.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={theme === "light"}
-                        aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-                        onClick={() => {
-                          const next: Theme = theme === "light" ? "dark" : "light";
-                          setThemeState(next);
-                          persistTheme(next);
-                        }}
-                        className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
-                          theme === "light"
-                            ? "border-amber-300/45 bg-[rgb(181_137_0)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
-                            : "border-white/15 bg-white/[0.07]"
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-1 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
-                            theme === "light" ? "translate-x-[22px]" : "translate-x-0"
-                          }`}
-                          aria-hidden
-                        />
-                      </button>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Appearance</p>
+                    <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                      {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
+                    </p>
+                    <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                      Choose the app palette — the default dark theme, the Solarized Light skin, or the MacBook Air-inspired Glacier and Sky blue light skins. Stored on this device.
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {THEMES.map((t) => {
+                        const selected = t.value === theme;
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            aria-pressed={selected}
+                            aria-label={t.label}
+                            onClick={() => {
+                              setThemeState(t.value);
+                              persistTheme(t.value);
+                            }}
+                            className={`flex flex-col items-center gap-2 rounded-lg border p-2.5 transition ${
+                              selected
+                                ? "border-cyan-400/80 bg-cyan-400/15"
+                                : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            <span
+                              className="h-7 w-7 rounded-full shadow-sm ring-1 ring-inset ring-black/10"
+                              style={{ background: t.swatch }}
+                              aria-hidden
+                            />
+                            <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-slate-200/85">
+                              {t.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

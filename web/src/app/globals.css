@@ -7,9 +7,15 @@
   --app-sticky-offset: max(5.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
 }
 
-/* Solarized Light — base3 page, base01 body text. */
+/* Solarized Light — base3 page, base01 body text.
+ * The three paper tones are routed through variables so the Glacier/Sky cool-blue
+ * appearance modes (html[data-theme="light"][data-mode="..."]) can retint the whole
+ * skin by overriding just these triplets. RGB triplets feed rgb(var(--paper-x) / a). */
 [data-theme="light"] {
-  --background: #fdf6e3;
+  --paper-3: 253 246 227; /* base3 — page bg */
+  --paper-2: 238 232 213; /* base2 — panel surface */
+  --paper-1: 229 223 202; /* base  — deeper fills / hovers */
+  --background: rgb(var(--paper-3));
   --foreground: #586e75;
 }
 
@@ -1053,33 +1059,33 @@ html[data-theme="light"] body {
 }
 
 /* ---- Surfaces: dark slate fills -> solarized paper / panel ---- */
-html[data-theme="light"] .bg-slate-950 { background-color: #fdf6e3; }
-html[data-theme="light"] .bg-slate-900 { background-color: #eee8d5; }
-html[data-theme="light"] .bg-slate-800 { background-color: #e5dfca; }
+html[data-theme="light"] .bg-slate-950 { background-color: rgb(var(--paper-3)); }
+html[data-theme="light"] .bg-slate-900 { background-color: rgb(var(--paper-2)); }
+html[data-theme="light"] .bg-slate-800 { background-color: rgb(var(--paper-1)); }
 html[data-theme="light"] .bg-slate-700\/60 { background-color: rgba(147, 161, 161, 0.32); }
 html[data-theme="light"] .bg-slate-500 { background-color: #93a1a1; }
-html[data-theme="light"] .bg-slate-300\/80 { background-color: rgba(238, 232, 213, 0.9); }
+html[data-theme="light"] .bg-slate-300\/80 { background-color: rgb(var(--paper-2) / 0.9); }
 
-html[data-theme="light"] .bg-slate-950\/20 { background-color: rgba(238, 232, 213, 0.5); }
-html[data-theme="light"] .bg-slate-950\/30 { background-color: rgba(238, 232, 213, 0.6); }
-html[data-theme="light"] .bg-slate-950\/40 { background-color: rgba(238, 232, 213, 0.65); }
-html[data-theme="light"] .bg-slate-950\/45 { background-color: rgba(238, 232, 213, 0.7); }
-html[data-theme="light"] .bg-slate-950\/50 { background-color: rgba(238, 232, 213, 0.75); }
-html[data-theme="light"] .bg-slate-950\/60 { background-color: rgba(238, 232, 213, 0.8); }
-html[data-theme="light"] .bg-slate-950\/70 { background-color: rgba(238, 232, 213, 0.85); }
-html[data-theme="light"] .bg-slate-950\/85 { background-color: rgba(253, 246, 227, 0.9); }
-html[data-theme="light"] .bg-slate-950\/90 { background-color: rgba(253, 246, 227, 0.94); }
-html[data-theme="light"] .bg-slate-950\/92 { background-color: rgba(253, 246, 227, 0.96); }
-html[data-theme="light"] .bg-slate-950\/95 { background-color: rgba(253, 246, 227, 0.98); }
+html[data-theme="light"] .bg-slate-950\/20 { background-color: rgb(var(--paper-2) / 0.5); }
+html[data-theme="light"] .bg-slate-950\/30 { background-color: rgb(var(--paper-2) / 0.6); }
+html[data-theme="light"] .bg-slate-950\/40 { background-color: rgb(var(--paper-2) / 0.65); }
+html[data-theme="light"] .bg-slate-950\/45 { background-color: rgb(var(--paper-2) / 0.7); }
+html[data-theme="light"] .bg-slate-950\/50 { background-color: rgb(var(--paper-2) / 0.75); }
+html[data-theme="light"] .bg-slate-950\/60 { background-color: rgb(var(--paper-2) / 0.8); }
+html[data-theme="light"] .bg-slate-950\/70 { background-color: rgb(var(--paper-2) / 0.85); }
+html[data-theme="light"] .bg-slate-950\/85 { background-color: rgb(var(--paper-3) / 0.9); }
+html[data-theme="light"] .bg-slate-950\/90 { background-color: rgb(var(--paper-3) / 0.94); }
+html[data-theme="light"] .bg-slate-950\/92 { background-color: rgb(var(--paper-3) / 0.96); }
+html[data-theme="light"] .bg-slate-950\/95 { background-color: rgb(var(--paper-3) / 0.98); }
 
-html[data-theme="light"] .bg-slate-900\/40 { background-color: rgba(229, 223, 202, 0.55); }
-html[data-theme="light"] .bg-slate-900\/45 { background-color: rgba(229, 223, 202, 0.6); }
-html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(229, 223, 202, 0.7); }
-html[data-theme="light"] .bg-slate-900\/80 { background-color: rgba(229, 223, 202, 0.85); }
-html[data-theme="light"] .bg-slate-900\/95 { background-color: rgba(229, 223, 202, 0.95); }
+html[data-theme="light"] .bg-slate-900\/40 { background-color: rgb(var(--paper-1) / 0.55); }
+html[data-theme="light"] .bg-slate-900\/45 { background-color: rgb(var(--paper-1) / 0.6); }
+html[data-theme="light"] .bg-slate-900\/60 { background-color: rgb(var(--paper-1) / 0.7); }
+html[data-theme="light"] .bg-slate-900\/80 { background-color: rgb(var(--paper-1) / 0.85); }
+html[data-theme="light"] .bg-slate-900\/95 { background-color: rgb(var(--paper-1) / 0.95); }
 
 /* ---- Glass tints: white-alpha highlights -> base01-alpha shadows (darker) ---- */
-html[data-theme="light"] .bg-white { background-color: #fdf6e3; }
+html[data-theme="light"] .bg-white { background-color: rgb(var(--paper-3)); }
 html[data-theme="light"] .bg-white\/5 { background-color: rgba(88, 110, 117, 0.04); }
 html[data-theme="light"] .bg-white\/8 { background-color: rgba(88, 110, 117, 0.06); }
 html[data-theme="light"] .bg-white\/10 { background-color: rgba(88, 110, 117, 0.08); }
@@ -1093,8 +1099,8 @@ html[data-theme="light"] .bg-white\/60 { background-color: rgba(88, 110, 117, 0.
 html[data-theme="light"] .hover\:bg-white\/12:hover { background-color: rgba(88, 110, 117, 0.13); }
 html[data-theme="light"] .hover\:bg-white\/15:hover { background-color: rgba(88, 110, 117, 0.16); }
 html[data-theme="light"] .hover\:bg-white\/20:hover { background-color: rgba(88, 110, 117, 0.18); }
-html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #e5dfca; }
-html[data-theme="light"] .hover\:bg-slate-900\/60:hover { background-color: rgba(229, 223, 202, 0.75); }
+html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: rgb(var(--paper-1)); }
+html[data-theme="light"] .hover\:bg-slate-900\/60:hover { background-color: rgb(var(--paper-1) / 0.75); }
 
 /* ---- Text: invert ladder (light->dark) ---- */
 html[data-theme="light"] .text-white { color: #586e75; }
@@ -1131,8 +1137,7 @@ html[data-theme="light"] .placeholder\:text-slate-400::placeholder { color: rgba
  *   --ac-deep    deeper variant (cyan-500 fills, solid deep borders, links on fills)
  *   --ac-text    text links / accent glyphs
  *   --ac-from/to gradient stops (avatars, send buttons): light -> deep, same family
- * Schemes: Warm Amber (default), Dusty Blue, and the MacBook Air-inspired
- * Glacier Blue and Sky Blue. */
+ * Two schemes: Warm Amber (default) and Dusty Blue. */
 html[data-theme="light"] {
   --ac-strong: 181 137 0;
   --ac-deep: 154 116 0;
@@ -1147,16 +1152,28 @@ html[data-theme="light"][data-accent="blue"] {
   --ac-from: 110 150 180;
   --ac-to: 53 97 127;
 }
-/* MacBook Air "Glacier Blue" — cool, icy blue with a faint teal cast. */
-html[data-theme="light"][data-accent="glacier"] {
+
+/* ---- Appearance modes: cool-blue light skins (MacBook Air) ----
+ * Glacier / Sky are the light skin with retinted paper + a fixed blue accent.
+ * They set data-theme="light" + data-mode, so they win over the data-accent
+ * blocks above by coming later in source order at equal specificity. Retinting
+ * --paper-* recolours every surface (--background derives from --paper-3). */
+html[data-theme="light"][data-mode="glacier"] {
+  /* Glacier Blue — icy, cool, faint teal cast. */
+  --paper-3: 235 242 246;
+  --paper-2: 221 233 240;
+  --paper-1: 206 223 233;
   --ac-strong: 75 142 168;
   --ac-deep: 56 116 140;
   --ac-text: 48 104 128;
   --ac-from: 124 178 198;
   --ac-to: 48 104 128;
 }
-/* MacBook Air "Sky Blue" — soft, slightly periwinkle blue. */
-html[data-theme="light"][data-accent="sky"] {
+html[data-theme="light"][data-mode="sky"] {
+  /* Sky Blue — soft, slightly periwinkle. */
+  --paper-3: 236 241 250;
+  --paper-2: 223 232 246;
+  --paper-1: 210 223 243;
   --ac-strong: 86 138 184;
   --ac-deep: 62 110 156;
   --ac-text: 55 100 142;
@@ -1258,7 +1275,7 @@ html[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
 html[data-theme="light"] .ring-white\/5 { --tw-ring-color: rgba(88, 110, 117, 0.08); }
 html[data-theme="light"] .ring-white\/10 { --tw-ring-color: rgba(88, 110, 117, 0.12); }
 html[data-theme="light"] .ring-white\/15 { --tw-ring-color: rgba(88, 110, 117, 0.16); }
-html[data-theme="light"] .ring-slate-950 { --tw-ring-color: rgba(238, 232, 213, 0.9); }
+html[data-theme="light"] .ring-slate-950 { --tw-ring-color: rgb(var(--paper-2) / 0.9); }
 
 /* SVG strokes used in chart/gridlines. */
 html[data-theme="light"] .stroke-white\/10 { stroke: rgba(88, 110, 117, 0.18); }
@@ -1268,13 +1285,13 @@ html[data-theme="light"] .stroke-white\/15 { stroke: rgba(88, 110, 117, 0.22); }
 html[data-theme="light"] .from-slate-600 { --tw-gradient-from: #93a1a1 var(--tw-gradient-from-position); }
 html[data-theme="light"] .from-slate-700 { --tw-gradient-from: #839496 var(--tw-gradient-from-position); }
 html[data-theme="light"] .from-slate-700\/80 { --tw-gradient-from: rgba(131, 148, 150, 0.88) var(--tw-gradient-from-position); }
-html[data-theme="light"] .from-slate-900\/95 { --tw-gradient-from: rgba(229, 223, 202, 0.95) var(--tw-gradient-from-position); }
-html[data-theme="light"] .via-slate-900 { --tw-gradient-via: #eee8d5 var(--tw-gradient-via-position); }
-html[data-theme="light"] .via-slate-950\/90 { --tw-gradient-via: rgba(238, 232, 213, 0.92) var(--tw-gradient-via-position); }
-html[data-theme="light"] .to-slate-800 { --tw-gradient-to: #e5dfca var(--tw-gradient-to-position); }
-html[data-theme="light"] .to-slate-900 { --tw-gradient-to: #eee8d5 var(--tw-gradient-to-position); }
-html[data-theme="light"] .to-slate-950 { --tw-gradient-to: #fdf6e3 var(--tw-gradient-to-position); }
-html[data-theme="light"] .to-slate-950\/80 { --tw-gradient-to: rgba(253, 246, 227, 0.88) var(--tw-gradient-to-position); }
+html[data-theme="light"] .from-slate-900\/95 { --tw-gradient-from: rgb(var(--paper-1) / 0.95) var(--tw-gradient-from-position); }
+html[data-theme="light"] .via-slate-900 { --tw-gradient-via: rgb(var(--paper-2)) var(--tw-gradient-via-position); }
+html[data-theme="light"] .via-slate-950\/90 { --tw-gradient-via: rgb(var(--paper-2) / 0.92) var(--tw-gradient-via-position); }
+html[data-theme="light"] .to-slate-800 { --tw-gradient-to: rgb(var(--paper-1)) var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-900 { --tw-gradient-to: rgb(var(--paper-2)) var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-950 { --tw-gradient-to: rgb(var(--paper-3)) var(--tw-gradient-to-position); }
+html[data-theme="light"] .to-slate-950\/80 { --tw-gradient-to: rgb(var(--paper-3) / 0.88) var(--tw-gradient-to-position); }
 
 /* ---- Arbitrary-value white tints used on module-tab cards and inputs ---- */
 html[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(88, 110, 117, 0.04); }
@@ -1304,7 +1321,7 @@ html[data-theme="light"] .aurora-bg {
     radial-gradient(45rem 45rem at 0% 0%, rgba(181, 137, 0, 0.12), transparent 60%),
     radial-gradient(40rem 40rem at 95% 15%, rgb(var(--ac-strong) / 0.1), transparent 55%),
     radial-gradient(35rem 35rem at 40% 90%, rgba(133, 153, 0, 0.1), transparent 55%),
-    linear-gradient(130deg, #fdf6e3 0%, #fdf6e3 45%, #eee8d5 100%);
+    linear-gradient(130deg, rgb(var(--paper-3)) 0%, rgb(var(--paper-3)) 45%, rgb(var(--paper-2)) 100%);
   filter: saturate(100%);
 }
 
@@ -1341,11 +1358,11 @@ html[data-theme="light"] .aurora-bg::after {
 /* Glass cards: light paper-tinted glass over base2. */
 html[data-theme="light"] .glass-card {
   border: 1px solid rgba(101, 123, 131, 0.2);
-  background: linear-gradient(140deg, rgba(238, 232, 213, 0.88), rgba(238, 232, 213, 0.6));
+  background: linear-gradient(140deg, rgb(var(--paper-2) / 0.88), rgb(var(--paper-2) / 0.6));
   box-shadow:
     0 22px 48px rgba(7, 54, 66, 0.1),
     0 8px 24px rgba(7, 54, 66, 0.06),
-    inset 0 1px 0 rgba(253, 246, 227, 0.8),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.8),
     inset 0 -1px 0 rgba(88, 110, 117, 0.06);
 }
 
@@ -1358,7 +1375,7 @@ html[data-theme="light"] .glass-card::before {
 
 html[data-theme="light"] .glass-card::after {
   background:
-    linear-gradient(112deg, rgba(253, 246, 227, 0.4) 0%, rgba(253, 246, 227, 0.05) 42%, rgba(253, 246, 227, 0) 72%),
+    linear-gradient(112deg, rgb(var(--paper-3) / 0.4) 0%, rgb(var(--paper-3) / 0.05) 42%, rgb(var(--paper-3) / 0) 72%),
     radial-gradient(24rem 14rem at 88% 14%, rgba(181, 137, 0, 0.04), transparent 75%);
   opacity: 0.5;
 }
@@ -1366,11 +1383,11 @@ html[data-theme="light"] .glass-card::after {
 /* Day-logger modal: cream surface, base01 text. */
 html[data-theme="light"] .day-logger-card {
   border: 1px solid rgba(101, 123, 131, 0.3);
-  background: linear-gradient(140deg, rgba(253, 246, 227, 0.96), rgba(238, 232, 213, 0.94));
+  background: linear-gradient(140deg, rgb(var(--paper-3) / 0.96), rgb(var(--paper-2) / 0.94));
   box-shadow:
     0 28px 64px rgba(7, 54, 66, 0.18),
     0 10px 28px rgba(7, 54, 66, 0.1),
-    inset 0 1px 0 rgba(253, 246, 227, 0.85),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85),
     inset 0 -1px 0 rgba(88, 110, 117, 0.06);
 }
 
@@ -1380,11 +1397,11 @@ html[data-theme="light"] .day-logger-card::after { opacity: 0.08; }
 /* Liquid day card: paper variant. */
 html[data-theme="light"] .liquid-day-card {
   border: 1px solid rgba(101, 123, 131, 0.22);
-  background: linear-gradient(142deg, rgba(238, 232, 213, 0.85), rgba(238, 232, 213, 0.55));
+  background: linear-gradient(142deg, rgb(var(--paper-2) / 0.85), rgb(var(--paper-2) / 0.55));
   box-shadow:
     0 26px 56px rgba(7, 54, 66, 0.1),
     0 8px 22px rgba(7, 54, 66, 0.05),
-    inset 0 1px 0 rgba(253, 246, 227, 0.9),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.9),
     inset 0 -1px 0 rgba(88, 110, 117, 0.06);
 }
 
@@ -1397,19 +1414,19 @@ html[data-theme="light"] .liquid-day-card::before {
 
 html[data-theme="light"] .liquid-day-card::after {
   background:
-    linear-gradient(112deg, rgba(253, 246, 227, 0.45) 0%, rgba(253, 246, 227, 0.05) 44%, rgba(253, 246, 227, 0) 72%),
+    linear-gradient(112deg, rgb(var(--paper-3) / 0.45) 0%, rgb(var(--paper-3) / 0.05) 44%, rgb(var(--paper-3) / 0) 72%),
     radial-gradient(20rem 11rem at 84% 16%, rgba(181, 137, 0, 0.04), transparent 75%);
   opacity: 0.5;
 }
 
 html[data-theme="light"] .liquid-day-card.liquid-day-card--sat {
   border-left: 3px solid rgba(108, 113, 196, 0.7);
-  background: linear-gradient(145deg, rgba(108, 113, 196, 0.16), rgba(238, 232, 213, 0.7));
+  background: linear-gradient(145deg, rgba(108, 113, 196, 0.16), rgb(var(--paper-2) / 0.7));
 }
 
 html[data-theme="light"] .liquid-day-card.liquid-day-card--sun {
   border-left: 3px solid rgba(211, 54, 130, 0.7);
-  background: linear-gradient(145deg, rgba(211, 54, 130, 0.14), rgba(238, 232, 213, 0.7));
+  background: linear-gradient(145deg, rgba(211, 54, 130, 0.14), rgb(var(--paper-2) / 0.7));
 }
 
 html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
@@ -1418,7 +1435,7 @@ html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
     0 26px 56px rgba(7, 54, 66, 0.1),
     0 8px 22px rgba(7, 54, 66, 0.05),
     inset 0 4px 0 rgba(181, 137, 0, 0.16),
-    inset 0 1px 0 rgba(253, 246, 227, 0.85);
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
 }
 
 html[data-theme="light"] .liquid-day-card.liquid-day-card--sl {
@@ -1429,21 +1446,21 @@ html[data-theme="light"] .liquid-day-card.liquid-day-card--sl {
     0 26px 56px rgba(7, 54, 66, 0.1),
     0 8px 22px rgba(7, 54, 66, 0.05),
     inset 0 4px 0 rgba(42, 161, 152, 0.16),
-    inset 0 1px 0 rgba(253, 246, 227, 0.85);
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
 }
 
 html[data-theme="light"] .day-card-selected {
   border-color: rgb(var(--ac-strong) / 0.65);
   box-shadow:
     0 30px 64px rgba(7, 54, 66, 0.18),
-    inset 0 1px 0 rgba(253, 246, 227, 0.9),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.9),
     0 0 0 1px rgb(var(--ac-strong) / 0.3);
 }
 
 /* Wave tank: solarized cyan fill on paper. */
 html[data-theme="light"] .wave-tank {
   border: 1px solid rgba(101, 123, 131, 0.25);
-  background: rgba(238, 232, 213, 0.7);
+  background: rgb(var(--paper-2) / 0.7);
 }
 
 html[data-theme="light"] .wave-fill {
@@ -1452,13 +1469,13 @@ html[data-theme="light"] .wave-fill {
 
 html[data-theme="light"] .wave-fill::before,
 html[data-theme="light"] .wave-fill::after {
-  background: rgba(238, 232, 213, 0.55);
+  background: rgb(var(--paper-2) / 0.55);
 }
 
 /* Day progress bar: tone background for paper, keep accent gradients. */
 html[data-theme="light"] .day-progress {
   border: 1px solid rgba(101, 123, 131, 0.22);
-  background: rgba(238, 232, 213, 0.65);
+  background: rgb(var(--paper-2) / 0.65);
 }
 
 html[data-theme="light"] .day-progress-topdown {
@@ -1489,7 +1506,7 @@ html[data-theme="light"] .mail-composer-select {
 }
 
 html[data-theme="light"] .mail-composer-select option {
-  background-color: #eee8d5;
+  background-color: rgb(var(--paper-2));
   color: #586e75;
 }
 
@@ -1501,7 +1518,7 @@ html[data-theme="light"] .mail-composer-select:focus-visible {
 @media (hover: hover) {
   html[data-theme="light"] .chat-actions-row {
     border: 1px solid rgba(101, 123, 131, 0.2);
-    background: rgba(253, 246, 227, 0.96);
+    background: rgb(var(--paper-3) / 0.96);
     box-shadow: 0 12px 30px -10px rgba(7, 54, 66, 0.25);
   }
 }
@@ -1515,7 +1532,7 @@ html[data-theme="light"] .dashboard-mesh {
 }
 
 html[data-theme="light"] .dashboard-mesh-fade {
-  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgba(253, 246, 227, 0.65), transparent 65%);
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgb(var(--paper-3) / 0.65), transparent 65%);
 }
 
 /* Underwater panel pseudo-elements: soften caustics. */
