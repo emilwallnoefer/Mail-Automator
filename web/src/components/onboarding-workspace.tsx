@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type OnboardingItem = {
   id: string;
@@ -60,6 +60,10 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
 
   const progressByItem = useMemo(() => store.progress ?? {}, [store.progress]);
 
+  // Becomes true once we've reconciled localStorage with the server copy. We hold
+  // off persisting to the server until then so the first reconcile doesn't race.
+  const hydratedRef = useRef(false);
+
   useEffect(() => {
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(store));
@@ -67,6 +71,75 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
       // Ignore write errors (private mode/storage quota).
     }
   }, [store, storageKey]);
+
+  // On mount, reconcile with the server-side store so admins can see progress and
+  // it follows the user across devices. Whichever side was updated most recently
+  // wins; if the local copy is newer we push it up below.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/onboarding/progress");
+        if (res.ok && !cancelled) {
+          const data = (await res.json()) as {
+            progress?: Record<string, number>;
+            started_at?: string | null;
+            updated_at?: string | null;
+          };
+          const serverProgress = data.progress ?? {};
+          const serverUpdated = data.updated_at ? Date.parse(data.updated_at) : 0;
+          const localUpdated = store.updatedAt ? Date.parse(store.updatedAt) : 0;
+          const serverHasData = Object.keys(serverProgress).length > 0;
+          const adoptServer = serverHasData && serverUpdated >= localUpdated;
+          if (adoptServer) {
+            setStore({
+              progress: serverProgress,
+              startedAt: data.started_at ?? undefined,
+              updatedAt: data.updated_at ?? undefined,
+            });
+          } else if (Object.keys(store.progress ?? {}).length > 0) {
+            // Local copy is newer (or server is empty): seed the server with it. The
+            // store is unchanged so the debounced effect below won't fire on its own.
+            void fetch("/api/onboarding/progress", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                progress: store.progress ?? {},
+                started_at: store.startedAt ?? null,
+              }),
+            }).catch(() => {});
+          }
+        }
+      } catch {
+        // Offline / not signed in: fall back to localStorage only.
+      } finally {
+        if (!cancelled) hydratedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally run once on mount; we read `store` only for the initial compare.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced push of the local store to the server after each change.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const handle = window.setTimeout(() => {
+      void fetch("/api/onboarding/progress", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          progress: store.progress ?? {},
+          started_at: store.startedAt ?? null,
+        }),
+      }).catch(() => {
+        // Best-effort; localStorage already holds the source of truth locally.
+      });
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [store]);
 
   const totalEstimatedMinutes = useMemo(
     () => sections.reduce((acc, section) => acc + section.items.reduce((innerAcc, item) => innerAcc + item.estimatedMinutes, 0), 0),

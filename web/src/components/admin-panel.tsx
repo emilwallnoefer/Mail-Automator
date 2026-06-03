@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
 import { AdminInsightsPanel } from "@/components/admin-insights-panel";
 import { MailTrackingPanel } from "@/components/mail-tracking-panel";
+import { AdminOnboardingPanel } from "@/components/admin-onboarding-panel";
 import { WeekStepper } from "@/components/week-stepper";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { FreshnessPill } from "@/components/freshness-pill";
@@ -37,7 +38,7 @@ type UsersResponse = {
   users: AdminUser[];
 };
 
-type AdminTab = "users" | "overview" | "insights" | "mail_tracking";
+type AdminTab = "users" | "overview" | "insights" | "mail_tracking" | "onboarding";
 
 const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
   { value: "sales", label: "Sales" },
@@ -70,6 +71,12 @@ const ADMIN_TABS: Array<{ id: AdminTab; label: string; subtitle: string; help: s
     label: "Mail tracking",
     subtitle: "Click telemetry per recipient and link",
     help: "Tracking links rewrite outbound HTML at Gmail draft creation. Scanner clicks (Outlook ATP, Mimecast, etc.) are flagged and hidden unless the Scanners checkbox is on.",
+  },
+  {
+    id: "onboarding",
+    label: "Onboarding",
+    subtitle: "Pilot training completion per user",
+    help: "Per-user onboarding completion, minute-weighted across all training sections. Progress syncs from each pilot's onboarding workspace. Click a row to see the per-section breakdown.",
   },
   {
     id: "users",
@@ -185,7 +192,10 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   }, [loadOverview, weekStart]);
 
   useEffect(() => {
-    if (!canManageUsers && (tab === "users" || tab === "insights" || tab === "mail_tracking")) {
+    if (
+      !canManageUsers &&
+      (tab === "users" || tab === "insights" || tab === "mail_tracking" || tab === "onboarding")
+    ) {
       setTab("overview");
     }
   }, [canManageUsers, tab]);
@@ -392,6 +402,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
       {tab === "insights" && canManageUsers ? <AdminInsightsPanel /> : null}
 
       {tab === "mail_tracking" && canManageUsers ? <MailTrackingPanel /> : null}
+
+      {tab === "onboarding" && canManageUsers ? <AdminOnboardingPanel /> : null}
 
       {tab === "users" && canManageUsers ? (
         <div className="mt-5 space-y-4">
