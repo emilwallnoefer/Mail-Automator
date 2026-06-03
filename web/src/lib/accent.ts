@@ -3,20 +3,18 @@
 // Light-theme accent scheme. Only affects the Solarized Light skin; the dark
 // theme ignores it. Mirrors the persistence/bootstrap pattern in theme.ts.
 
-export type Accent = "amber" | "blue" | "glacier" | "sky";
+export type Accent = "amber" | "blue";
 
 export const ACCENTS: { value: Accent; label: string; swatch: string }[] = [
   { value: "amber", label: "Warm amber", swatch: "#b58900" },
   { value: "blue", label: "Dusty blue", swatch: "#3e6d8e" },
-  { value: "glacier", label: "Glacier blue", swatch: "#6fa8c7" },
-  { value: "sky", label: "Sky blue", swatch: "#7eb1d6" },
 ];
 
 const ACCENT_STORAGE_KEY = "ma_accent_light";
 const DEFAULT_ACCENT: Accent = "amber";
 
 function isAccent(v: unknown): v is Accent {
-  return v === "amber" || v === "blue" || v === "glacier" || v === "sky";
+  return v === "amber" || v === "blue";
 }
 
 function readStoredAccent(): Accent {
