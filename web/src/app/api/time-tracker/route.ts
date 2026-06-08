@@ -68,6 +68,12 @@ const postPayloadSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("save_day"), day: dayInputSchema }),
   z.object({ action: z.literal("reset_day"), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
   z.object({ action: z.literal("fill_missing"), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  z.object({
+    action: z.literal("set_comp"),
+    work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    mins: z.number().int().min(0).max(1440),
+    note: z.string().max(500).optional(),
+  }),
   z.object({ action: z.literal("import_json"), data: importPayloadSchema }),
   z.object({ action: z.literal("export_json") }),
 ]);
@@ -409,6 +415,45 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, comp_mins: next });
+  }
+
+  if (payload.action === "set_comp") {
+    // Direct write of a compensation value. The client computes the target
+    // minutes (and toggles to 0 to clear), so this is a single round-trip with
+    // no read-modify-write — unlike `fill_missing`, which derives the value
+    // server-side. The overtime-bank cache is refreshed by DB trigger.
+    const date = payload.work_date;
+    if (!date || !isDateKey(date)) return NextResponse.json({ error: "Invalid work_date" }, { status: 400 });
+
+    const mins = sanitizeMins(payload.mins);
+    const snapshotErr = await requireSnapshot(`before_set_comp_${date}`);
+    if (snapshotErr) return snapshotErr;
+
+    if (mins > 0) {
+      const note = sanitizeText(payload.note, { maxLen: 500, allowNewlines: true }) || "auto-fill";
+      const upsertCompRes = await supabase
+        .from("time_comp_adjustments")
+        .upsert(
+          {
+            user_id: authedUser.id,
+            work_date: date,
+            mins,
+            note,
+            source: "ui",
+          },
+          { onConflict: "user_id,work_date" },
+        );
+      if (upsertCompRes.error) return NextResponse.json({ error: upsertCompRes.error.message }, { status: 500 });
+    } else {
+      const deleteCompRes = await supabase
+        .from("time_comp_adjustments")
+        .delete()
+        .eq("user_id", authedUser.id)
+        .eq("work_date", date);
+      if (deleteCompRes.error) return NextResponse.json({ error: deleteCompRes.error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, comp_mins: mins });
   }
 
   if (payload.action === "import_json") {

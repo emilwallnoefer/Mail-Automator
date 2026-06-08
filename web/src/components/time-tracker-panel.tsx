@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { createPortal } from "react-dom";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 import {
+  getDayOvertimeContributionMins,
   isPremiumOvertimeDay,
   isSaturdayDate,
   isSundayDate,
@@ -14,6 +15,10 @@ import {
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 const PREFETCH_WEEKS_EACH_SIDE = 1;
 const PREFETCH_IDLE_FALLBACK_MS = 600;
+// After a burst of edits settles, run a single background reconcile against the
+// server instead of one forced refetch per click. Keeps rapid compensate /
+// overtime entry instant and free of mid-edit "snap back" hiccups.
+const RECONCILE_DEBOUNCE_MS = 700;
 
 type DayBreak = {
   name: string;
@@ -94,6 +99,30 @@ function computeNetMins(startTime: string, stopTime: string, breaks: DayBreak[])
   if (diff < 0) diff += 24 * 60;
   const breakMins = breaks.reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0);
   return Math.max(0, diff - breakMins);
+}
+
+/**
+ * How much a single day's edit shifts the cumulative overtime bank. Mirrors the
+ * server-side rule exactly (`getDayOvertimeContributionMins`, also recomputed by
+ * the DB trigger), so the optimistic bank we show matches what a later reconcile
+ * refetch returns — no flicker when the server value lands.
+ */
+function bankDeltaForDay(prev: DayData, next: DayData) {
+  const before = getDayOvertimeContributionMins(
+    prev.date,
+    prev.net_mins,
+    prev.holiday,
+    prev.comp_mins,
+    prev.sick_leave,
+  );
+  const after = getDayOvertimeContributionMins(
+    next.date,
+    next.net_mins,
+    next.holiday,
+    next.comp_mins,
+    next.sick_leave,
+  );
+  return after - before;
 }
 
 function toDateKey(date: Date) {
@@ -433,16 +462,53 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     // already opened another day while the previous save's POST was in flight.
     const seq = ++refreshSeqRef.current;
     const targetWeek = weekStart;
-    const weekData = await fetchWeekData(targetWeek, { force: true });
+    const previous = weekCacheRef.current.get(targetWeek);
+    // Reconcile hours / comp / bank only — never re-fetch the slow Google
+    // Sheets travel data here. Re-pulling travel on every save was the main
+    // source of the post-edit lag; we carry the already-loaded travel forward.
+    const fresh = await fetchWeekData(targetWeek, { force: true, includeTravel: false });
     // Drop the result if a newer refresh started or the week changed meanwhile.
     if (seq !== refreshSeqRef.current) return;
-    setData((prev) => (prev && prev.week_start !== targetWeek ? prev : weekData));
+    const merged: WeekResponse = previous?.includes_travel
+      ? {
+          ...fresh,
+          travel_by_date: previous.travel_by_date,
+          travel_debug: previous.travel_debug,
+          includes_travel: true,
+        }
+      : fresh;
+    weekCacheRef.current.set(targetWeek, merged);
+    setData((prev) => (prev && prev.week_start !== targetWeek ? prev : merged));
     prefetchNearbyWeeks(targetWeek);
   }, [fetchWeekData, prefetchNearbyWeeks, weekStart]);
 
-  const invalidateWeekCaches = useCallback(() => {
-    weekCacheRef.current.clear();
-    weekInflightRef.current.clear();
+  // Debounced, coalesced background reconcile. A burst of compensate / save
+  // clicks schedules at most one server refetch once writes have settled,
+  // instead of the old "force-refresh after every click" which fought the
+  // optimistic UI and caused the bars to snap back mid-entry.
+  const pendingWritesRef = useRef(0);
+  const reconcileTimerRef = useRef<number | null>(null);
+
+  const runReconcile = useCallback(() => {
+    if (pendingWritesRef.current > 0) {
+      reconcileTimerRef.current = window.setTimeout(runReconcile, RECONCILE_DEBOUNCE_MS);
+      return;
+    }
+    reconcileTimerRef.current = null;
+    void refreshWeek().catch(() => {
+      // Keep the optimistic UI if the background sync fails.
+    });
+  }, [refreshWeek]);
+
+  const scheduleReconcile = useCallback(() => {
+    if (reconcileTimerRef.current != null) window.clearTimeout(reconcileTimerRef.current);
+    reconcileTimerRef.current = window.setTimeout(runReconcile, RECONCILE_DEBOUNCE_MS);
+  }, [runReconcile]);
+
+  useEffect(() => {
+    return () => {
+      if (reconcileTimerRef.current != null) window.clearTimeout(reconcileTimerRef.current);
+    };
   }, []);
 
   const ensureWeekDetails = useCallback(async () => {
@@ -483,7 +549,8 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   }, [editorOpen, returnToWeekdays]);
 
   const patchDayInCurrentWeek = useCallback(
-    (date: string, updater: (day: DayData) => DayData) => {
+    (date: string, updater: (day: DayData) => DayData, options?: { bankDeltaMins?: number }) => {
+      const bankDelta = options?.bankDeltaMins ?? 0;
       setData((prev) => {
         if (!prev) return prev;
         const dayIndex = prev.days.findIndex((day) => day.date === date);
@@ -498,11 +565,26 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         const nextWeek: WeekResponse = {
           ...prev,
           week_hours_mins: prev.week_hours_mins + weekHoursDelta,
+          overtime_bank_mins: prev.overtime_bank_mins + bankDelta,
           days: nextDays,
         };
         weekCacheRef.current.set(weekStart, nextWeek);
         return nextWeek;
       });
+
+      // The overtime bank is a single cumulative total shown identically on
+      // every week, so keep all other cached weeks in step with the same delta.
+      // This avoids wiping the prefetch cache on each edit (the old behavior),
+      // which is what made week navigation stutter after compensating.
+      if (bankDelta) {
+        for (const [key, week] of weekCacheRef.current) {
+          if (key === weekStart) continue;
+          weekCacheRef.current.set(key, {
+            ...week,
+            overtime_bank_mins: week.overtime_bank_mins + bankDelta,
+          });
+        }
+      }
     },
     [weekStart],
   );
@@ -516,6 +598,20 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     const payload = (await response.json()) as T & { error?: string };
     if (!response.ok) throw new Error(payload.error || "Action failed");
     return payload as T;
+  }
+
+  // Fire a write and tie it into the debounced reconcile. The UI is already
+  // updated optimistically by the caller, so this never blocks interaction;
+  // it only tracks in-flight writes so the single reconcile waits for the
+  // burst to finish before refetching the authoritative server state.
+  async function commitWrite<T extends Record<string, unknown>>(body: unknown): Promise<T> {
+    pendingWritesRef.current += 1;
+    try {
+      return await postAction<T>(body);
+    } finally {
+      pendingWritesRef.current -= 1;
+      scheduleReconcile();
+    }
   }
 
   function handleSaveDay() {
@@ -547,20 +643,34 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       ...selectedDay,
       breaks: selectedDay.breaks.map((item) => ({ ...item })),
     };
-
-    // Optimistic save: close editor and update card immediately.
-    patchDayInCurrentWeek(date, (day) => ({
-      ...day,
+    const nextDaySnapshot: DayData = {
+      ...previousDaySnapshot,
       start_time: formStart,
       stop_time: formStop,
       net_mins: netMins,
       holiday: formHoliday,
       sick_leave: formSickLeave,
       breaks: nextBreaks,
-    }));
+    };
+    const bankDelta = bankDeltaForDay(previousDaySnapshot, nextDaySnapshot);
+
+    // Optimistic save: close editor and update card (and bank) immediately.
+    patchDayInCurrentWeek(
+      date,
+      (day) => ({
+        ...day,
+        start_time: formStart,
+        stop_time: formStop,
+        net_mins: netMins,
+        holiday: formHoliday,
+        sick_leave: formSickLeave,
+        breaks: nextBreaks,
+      }),
+      { bankDeltaMins: bankDelta },
+    );
     returnToWeekdays();
 
-    void postAction<{ ok: boolean }>({
+    void commitWrite<{ ok: boolean }>({
       action: "save_day",
       day: {
         work_date: date,
@@ -573,18 +683,18 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       },
     })
       .then(() => {
-        invalidateWeekCaches();
-        void refreshWeek().catch(() => {
-          // Keep optimistic UI if the background sync fails.
-        });
         setToast({ kind: "ok", message: "Day saved." });
       })
       .catch((error) => {
-        // Roll back optimistic values if persistence failed.
-        patchDayInCurrentWeek(date, () => ({
-          ...previousDaySnapshot,
-          breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
-        }));
+        // Roll back optimistic values (and the bank) if persistence failed.
+        patchDayInCurrentWeek(
+          date,
+          () => ({
+            ...previousDaySnapshot,
+            breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
+          }),
+          { bankDeltaMins: -bankDelta },
+        );
         setToast({ kind: "error", message: `Save failed. ${String((error as Error).message)}` });
       });
   }
@@ -592,41 +702,47 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   async function handleFillMissing(date: string) {
     if (readOnly) return;
     const currentDay = data?.days.find((day) => day.date === date);
-    const worked = Math.max(0, currentDay?.net_mins ?? 0);
-    const currentComp = Math.max(0, currentDay?.comp_mins ?? 0);
-    const previousCompNote = currentDay?.comp_note ?? "";
+    if (!currentDay) return;
+    const worked = Math.max(0, currentDay.net_mins);
+    const currentComp = Math.max(0, currentDay.comp_mins);
+    const previousCompNote = currentDay.comp_note ?? "";
     const need = Math.max(0, TARGET_MINS - worked);
+    // Toggle: clear if already fully compensated, otherwise top up to target.
     const optimisticNext = currentComp === need ? 0 : need;
-
-    // Optimistic local update so the bar starts animating immediately.
-    patchDayInCurrentWeek(date, (day) => ({
-      ...day,
+    const nextNote = optimisticNext > 0 ? "auto-fill" : "";
+    const bankDelta = bankDeltaForDay(currentDay, {
+      ...currentDay,
       comp_mins: optimisticNext,
-      comp_note: optimisticNext > 0 ? "auto-fill" : "",
-    }));
+      comp_note: nextNote,
+    });
+
+    // Fully optimistic: update the day, the week's bank, and every cached
+    // week's bank instantly. The value is computed here, so the backend write
+    // is a single direct `set_comp` (no read-modify-write, no forced reload).
+    patchDayInCurrentWeek(
+      date,
+      (day) => ({ ...day, comp_mins: optimisticNext, comp_note: nextNote }),
+      { bankDeltaMins: bankDelta },
+    );
     playUiSound("fillSwoosh");
 
     try {
-      const payload = await postAction<{ ok: boolean; comp_mins: number }>({ action: "fill_missing", work_date: date });
-      if (payload.comp_mins !== optimisticNext) {
-        patchDayInCurrentWeek(date, (day) => ({
-          ...day,
-          comp_mins: payload.comp_mins,
-          comp_note: payload.comp_mins > 0 ? "auto-fill" : "",
-        }));
-      }
-      invalidateWeekCaches();
-      void refreshWeek().catch(() => {
-        // Keep optimistic UI if the background sync fails.
+      await commitWrite<{ ok: boolean; comp_mins: number }>({
+        action: "set_comp",
+        work_date: date,
+        mins: optimisticNext,
       });
-      setToast({ kind: "ok", message: "Missing time updated." });
     } catch (error) {
-      // Rollback optimistic value if request failed.
-      patchDayInCurrentWeek(date, (day) => ({
-        ...day,
-        comp_mins: currentComp,
-        comp_note: currentComp > 0 ? previousCompNote : "",
-      }));
+      // Roll back the optimistic value and bank if the request failed.
+      patchDayInCurrentWeek(
+        date,
+        (day) => ({
+          ...day,
+          comp_mins: currentComp,
+          comp_note: currentComp > 0 ? previousCompNote : "",
+        }),
+        { bankDeltaMins: -bankDelta },
+      );
       setToast({ kind: "error", message: (error as Error).message });
     }
   }
@@ -646,20 +762,34 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       ...currentDay,
       breaks: currentDay.breaks.map((item) => ({ ...item })),
     };
-
-    patchDayInCurrentWeek(date, (day) => ({
-      ...day,
+    const nextDaySnapshot: DayData = {
+      ...previousDaySnapshot,
       start_time: nextStart,
       stop_time: nextStop,
       net_mins: nextNetMins,
       holiday: nextHoliday,
       sick_leave: nextSickLeave,
       breaks: nextBreaks.map((item) => ({ ...item })),
-    }));
+    };
+    const bankDelta = bankDeltaForDay(previousDaySnapshot, nextDaySnapshot);
+
+    patchDayInCurrentWeek(
+      date,
+      (day) => ({
+        ...day,
+        start_time: nextStart,
+        stop_time: nextStop,
+        net_mins: nextNetMins,
+        holiday: nextHoliday,
+        sick_leave: nextSickLeave,
+        breaks: nextBreaks.map((item) => ({ ...item })),
+      }),
+      { bankDeltaMins: bankDelta },
+    );
     playUiSound("fillSwoosh");
 
     try {
-      await postAction<{ ok: boolean }>({
+      await commitWrite<{ ok: boolean }>({
         action: "save_day",
         day: {
           work_date: date,
@@ -671,16 +801,16 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           breaks: nextBreaks,
         },
       });
-      invalidateWeekCaches();
-      void refreshWeek().catch(() => {
-        // Keep optimistic UI if the background sync fails.
-      });
       setToast({ kind: "ok", message: "Day filled." });
     } catch (error) {
-      patchDayInCurrentWeek(date, () => ({
-        ...previousDaySnapshot,
-        breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
-      }));
+      patchDayInCurrentWeek(
+        date,
+        () => ({
+          ...previousDaySnapshot,
+          breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
+        }),
+        { bankDeltaMins: -bankDelta },
+      );
       setToast({ kind: "error", message: `Fill day failed. ${String((error as Error).message)}` });
     }
   }
@@ -688,27 +818,40 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   async function handleResetDay() {
     if (readOnly) return;
     if (!selectedDay) return;
+    const date = selectedDay.date;
+    const previousDaySnapshot: DayData = {
+      ...selectedDay,
+      breaks: selectedDay.breaks.map((item) => ({ ...item })),
+    };
+    const clearedDay: DayData = {
+      ...previousDaySnapshot,
+      start_time: "",
+      stop_time: "",
+      net_mins: 0,
+      holiday: false,
+      sick_leave: false,
+      comp_mins: 0,
+      comp_note: "",
+      breaks: [],
+    };
+    const bankDelta = bankDeltaForDay(previousDaySnapshot, clearedDay);
+
+    // Optimistic reset: clear the day + bank and close the editor immediately.
     setSaving(true);
+    patchDayInCurrentWeek(date, () => ({ ...clearedDay, breaks: [] }), { bankDeltaMins: bankDelta });
+    returnToWeekdays();
     try {
-      await postAction<{ ok: boolean }>({ action: "reset_day", work_date: selectedDay.date });
-      patchDayInCurrentWeek(selectedDay.date, (day) => ({
-        ...day,
-        start_time: "",
-        stop_time: "",
-        net_mins: 0,
-        holiday: false,
-        sick_leave: false,
-        comp_mins: 0,
-        comp_note: "",
-        breaks: [],
-      }));
-      invalidateWeekCaches();
-      void refreshWeek().catch(() => {
-        // Keep reset UI if the background sync fails.
-      });
-      returnToWeekdays();
+      await commitWrite<{ ok: boolean }>({ action: "reset_day", work_date: date });
       setToast({ kind: "ok", message: "Day reset." });
     } catch (error) {
+      patchDayInCurrentWeek(
+        date,
+        () => ({
+          ...previousDaySnapshot,
+          breaks: previousDaySnapshot.breaks.map((item) => ({ ...item })),
+        }),
+        { bankDeltaMins: -bankDelta },
+      );
       setToast({ kind: "error", message: (error as Error).message });
     } finally {
       setSaving(false);
@@ -722,6 +865,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         setToast({ kind: "error", message: detail.error });
         return;
       }
+      // A JSON import rewrites days across many weeks, so the cached/prefetched
+      // neighbor weeks can't be patched incrementally — drop them and let them
+      // refetch on next visit. (Single-day edits keep their caches in step.)
+      weekCacheRef.current.clear();
+      weekInflightRef.current.clear();
       void refreshWeek()
         .then(() => {
           setToast({
