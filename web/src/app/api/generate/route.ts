@@ -7,7 +7,8 @@ import { z } from "zod";
 
 const disciplineSchema = z.enum([
   "intro",
-  "aiim",
+  "aiim_1",
+  "aiim_2",
   "ut",
   "tether",
   "surveying",
@@ -27,9 +28,9 @@ const generateSchema = z.object({
   date: z.string().optional().default(""),
   location: z.string().optional().default(""),
   day_count: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
-  day1_disciplines: z.array(disciplineSchema).max(7).optional(),
-  day2_disciplines: z.array(disciplineSchema).max(7).optional(),
-  day3_disciplines: z.array(disciplineSchema).max(7).optional(),
+  day1_disciplines: z.array(disciplineSchema).max(8).optional(),
+  day2_disciplines: z.array(disciplineSchema).max(8).optional(),
+  day3_disciplines: z.array(disciplineSchema).max(8).optional(),
   day1_site: z.enum(["tridel", "tank_bern", "aigle_bridge", "montetan"]).optional(),
   day2_site: z.enum(["tridel", "tank_bern", "aigle_bridge", "montetan"]).optional(),
   day3_site: z.enum(["tridel", "tank_bern", "aigle_bridge", "montetan"]).optional(),

@@ -11,7 +11,8 @@ import type { MailLanguage } from "@/lib/change-options";
 
 export type TrainingDiscipline =
   | "intro"
-  | "aiim"
+  | "aiim_1"
+  | "aiim_2"
   | "ut"
   | "tether"
   | "surveying"
@@ -37,7 +38,8 @@ export type PreAgendaInput = {
 
 export const TRAINING_DISCIPLINES: TrainingDiscipline[] = [
   "intro",
-  "aiim",
+  "aiim_1",
+  "aiim_2",
   "ut",
   "tether",
   "surveying",
@@ -47,7 +49,8 @@ export const TRAINING_DISCIPLINES: TrainingDiscipline[] = [
 
 export const DISCIPLINE_LABEL: Record<TrainingDiscipline, Localized> = {
   intro: { en: "Intro", de: "Einführung", fr: "Intro" },
-  aiim: { en: "AIIM", de: "AIIM", fr: "AIIM" },
+  aiim_1: { en: "AIIM Part 1", de: "AIIM Teil 1", fr: "AIIM Partie 1" },
+  aiim_2: { en: "AIIM Part 2", de: "AIIM Teil 2", fr: "AIIM Partie 2" },
   ut: { en: "UT", de: "UT", fr: "UT" },
   tether: { en: "Tether", de: "Tether", fr: "Tether" },
   surveying: { en: "Surveying", de: "Surveying", fr: "Surveying" },
@@ -100,7 +103,8 @@ export const BASELINE_PRE_CHANGE_IDS = ["material_intro", "useful_knowledge_base
 /** Discipline → default pre-reading resource IDs (from change-options). */
 export const DISCIPLINE_PRE_CHANGE_IDS: Record<TrainingDiscipline, string[]> = {
   intro: ["material_intro"],
-  aiim: ["material_aiim"],
+  aiim_1: ["material_aiim"],
+  aiim_2: ["material_aiim"],
   ut: ["useful_intro_ut", "useful_ut_advanced", "useful_ut_probe"],
   tether: ["useful_tether"],
   surveying: ["useful_scan_bim", "useful_faro_deck"],
@@ -129,26 +133,37 @@ const DISCIPLINE_BULLETS: Record<TrainingDiscipline, LocalizedList> = {
       "Introduction au workflow de données dans Inspector",
     ],
   },
-  aiim: {
+  aiim_1: {
     en: [
       "AIIM method: plan, prepare, execute, post-process",
       "Recon / local / systematic inspection methodology",
-      "Mission planning and risk mitigation",
       "Practice flight{SITE_CLAUSE} (AIIM scenario)",
-      "Data download and reporting in Inspector",
     ],
     de: [
       "AIIM-Methodik: planen, vorbereiten, durchführen, nachbearbeiten",
       "Methodik für Reco-, lokale und systematische Inspektionen",
-      "Missionsplanung und Risikominderung",
       "Praxisflug{SITE_CLAUSE} (AIIM-Szenario)",
-      "Daten-Download und Reporting in Inspector",
     ],
     fr: [
       "Méthode AIIM : planifier, préparer, exécuter, post-traiter",
       "Méthodologie d'inspection reco / locale / systématique",
-      "Planification de mission et réduction des risques",
       "Vol pratique{SITE_CLAUSE} (scénario AIIM)",
+    ],
+  },
+  aiim_2: {
+    en: [
+      "Mission planning and risk mitigation",
+      "Practice flight{SITE_CLAUSE} (advanced AIIM scenario)",
+      "Data download and reporting in Inspector",
+    ],
+    de: [
+      "Missionsplanung und Risikominderung",
+      "Praxisflug{SITE_CLAUSE} (fortgeschrittenes AIIM-Szenario)",
+      "Daten-Download und Reporting in Inspector",
+    ],
+    fr: [
+      "Planification de mission et réduction des risques",
+      "Vol pratique{SITE_CLAUSE} (scénario AIIM avancé)",
       "Téléchargement des données et reporting dans Inspector",
     ],
   },
@@ -254,6 +269,66 @@ const DISCIPLINE_BULLETS: Record<TrainingDiscipline, LocalizedList> = {
   },
 };
 
+/**
+ * AIIM is offered as two selectable parts. When Part 1 and Part 2 fall on the
+ * same day they collapse back into a single "AIIM" topic with the original,
+ * unsplit agenda below; only when they land on separate days does each part
+ * render its own (split) bullets via DISCIPLINE_BULLETS.
+ */
+const AIIM_COMBINED_LABEL: Localized = { en: "AIIM", de: "AIIM", fr: "AIIM" };
+
+const AIIM_COMBINED_BULLETS: LocalizedList = {
+  en: [
+    "AIIM method: plan, prepare, execute, post-process",
+    "Recon / local / systematic inspection methodology",
+    "Mission planning and risk mitigation",
+    "Practice flight{SITE_CLAUSE} (AIIM scenario)",
+    "Data download and reporting in Inspector",
+  ],
+  de: [
+    "AIIM-Methodik: planen, vorbereiten, durchführen, nachbearbeiten",
+    "Methodik für Reco-, lokale und systematische Inspektionen",
+    "Missionsplanung und Risikominderung",
+    "Praxisflug{SITE_CLAUSE} (AIIM-Szenario)",
+    "Daten-Download und Reporting in Inspector",
+  ],
+  fr: [
+    "Méthode AIIM : planifier, préparer, exécuter, post-traiter",
+    "Méthodologie d'inspection reco / locale / systématique",
+    "Planification de mission et réduction des risques",
+    "Vol pratique{SITE_CLAUSE} (scénario AIIM)",
+    "Téléchargement des données et reporting dans Inspector",
+  ],
+};
+
+/**
+ * Resolve a day's selected disciplines into agenda title labels and bullets,
+ * collapsing AIIM Part 1 + Part 2 into one combined block when both share the
+ * day. Discipline order is preserved; the collapsed block takes the slot of
+ * whichever AIIM part appears first.
+ */
+function daySegments(
+  disciplines: TrainingDiscipline[],
+  lang: MailLanguage,
+): { labels: string[]; bullets: string[] } {
+  const aiimCombined = disciplines.includes("aiim_1") && disciplines.includes("aiim_2");
+  const labels: string[] = [];
+  const bullets: string[] = [];
+  let aiimEmitted = false;
+  for (const d of disciplines) {
+    if ((d === "aiim_1" || d === "aiim_2") && aiimCombined) {
+      if (aiimEmitted) continue;
+      labels.push(AIIM_COMBINED_LABEL[lang]);
+      bullets.push(...AIIM_COMBINED_BULLETS[lang]);
+      aiimEmitted = true;
+      continue;
+    }
+    labels.push(DISCIPLINE_LABEL[d][lang]);
+    bullets.push(...DISCIPLINE_BULLETS[d][lang]);
+  }
+  return { labels, bullets };
+}
+
 function dayWord(language: MailLanguage, n: number): string {
   if (language === "de") return `Tag ${n}`;
   if (language === "fr") return `Jour ${n}`;
@@ -305,16 +380,14 @@ export function buildAgendaBlock(input: PreAgendaInput): string {
 
   for (let dayIdx = 0; dayIdx < dayCount; dayIdx += 1) {
     const disciplines = disciplinesForDay(input, dayIdx);
-    const topicLabels = disciplines.map((d) => DISCIPLINE_LABEL[d][lang]);
+    const { labels, bullets } = daySegments(disciplines, lang);
 
-    const title = topicLabels.length
-      ? `${dayWord(lang, dayIdx + 1)} - ${topicLabels.join(" / ")}`
+    const title = labels.length
+      ? `${dayWord(lang, dayIdx + 1)} - ${labels.join(" / ")}`
       : dayWord(lang, dayIdx + 1);
     sections.push(title);
 
     const clause = siteClause(siteForDay(input, dayIdx), lang);
-    const bullets: string[] = [];
-    for (const d of disciplines) bullets.push(...DISCIPLINE_BULLETS[d][lang]);
     for (const bullet of bullets) sections.push(`* ${bullet.replace("{SITE_CLAUSE}", clause)}`);
     sections.push("");
   }
