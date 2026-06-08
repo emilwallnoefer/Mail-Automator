@@ -792,7 +792,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
 
         {!showComposer && (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            // Render the workspace home settled on first paint (no entrance fade/slide,
+            // which read as the page "redrawing" on every load). `initial={false}` keeps
+            // the click-to-open exit transition below working via `beginAnimating`.
+            initial={false}
             animate={beginAnimating ? { opacity: 0, scale: 0.98, y: -8 } : { opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex min-h-[min(72vh,640px)] flex-col justify-center"
@@ -821,9 +824,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 {availableModules.includes("mail") ? (
                   <motion.button
                     type="button"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05, duration: 0.35 }}
+                    initial={false}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       if (activeModule !== "mail") playUiSound("switchWhoosh");
@@ -850,9 +851,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 {availableModules.includes("settings") ? (
                   <motion.button
                     type="button"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1, duration: 0.35 }}
+                    initial={false}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       if (activeModule !== "settings") playUiSound("switchWhoosh");
@@ -878,9 +877,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
 
                 <motion.button
                   type="button"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.35 }}
+                  initial={false}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     if (activeModule !== "time") playUiSound("switchWhoosh");
