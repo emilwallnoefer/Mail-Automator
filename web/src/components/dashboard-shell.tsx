@@ -95,8 +95,10 @@ type FormState = {
   day1_disciplines: TrainingDiscipline[];
   day2_disciplines: TrainingDiscipline[];
   day3_disciplines: TrainingDiscipline[];
-  /** Pre-mail Lausanne: which flight site the practical sessions use. */
-  lausanne_site: "" | LausanneSite;
+  /** Pre-mail Lausanne: the flight site (asset) used on each day. */
+  day1_site: "" | LausanneSite;
+  day2_site: "" | LausanneSite;
+  day3_site: "" | LausanneSite;
   to: string;
   included_change_ids: string[];
   /** Closing name in generated training emails; synced from Settings. */
@@ -104,6 +106,7 @@ type FormState = {
 };
 
 const DAY_DISCIPLINE_KEYS = ["day1_disciplines", "day2_disciplines", "day3_disciplines"] as const;
+const DAY_SITE_KEYS = ["day1_site", "day2_site", "day3_site"] as const;
 
 const INITIAL_FORM_STATE: FormState = {
   mail_type: "",
@@ -120,7 +123,9 @@ const INITIAL_FORM_STATE: FormState = {
   day1_disciplines: [],
   day2_disciplines: [],
   day3_disciplines: [],
-  lausanne_site: "",
+  day1_site: "",
+  day2_site: "",
+  day3_site: "",
   to: "",
   included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
   signature_name: MAIL_SIGNATURE_DEFAULT_NAME,
@@ -323,7 +328,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           : prev.location === "Lausanne"
             ? ""
             : prev.location,
-      lausanne_site: nextVariant === "lausanne" ? prev.lausanne_site : "",
+      day1_site: nextVariant === "lausanne" ? prev.day1_site : "",
+      day2_site: nextVariant === "lausanne" ? prev.day2_site : "",
+      day3_site: nextVariant === "lausanne" ? prev.day3_site : "",
     }));
     setChangesTouched(false);
   }, []);
@@ -341,6 +348,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         day1_disciplines: seedDay1,
         day2_disciplines: nextCount >= 2 ? prev.day2_disciplines : [],
         day3_disciplines: nextCount >= 3 ? prev.day3_disciplines : [],
+        day2_site: nextCount >= 2 ? prev.day2_site : "",
+        day3_site: nextCount >= 3 ? prev.day3_site : "",
       };
     });
   }, []);
@@ -575,7 +584,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           day1_disciplines: isPre ? form.day1_disciplines : undefined,
           day2_disciplines: isPre && form.day_count >= 2 ? form.day2_disciplines : undefined,
           day3_disciplines: isPre && form.day_count >= 3 ? form.day3_disciplines : undefined,
-          lausanne_site: isPreLausanne ? form.lausanne_site || undefined : undefined,
+          day1_site: isPreLausanne ? form.day1_site || undefined : undefined,
+          day2_site: isPreLausanne && form.day_count >= 2 ? form.day2_site || undefined : undefined,
+          day3_site: isPreLausanne && form.day_count >= 3 ? form.day3_site || undefined : undefined,
           included_change_ids: isPost && changesTouched ? form.included_change_ids : undefined,
           signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
         }),
@@ -1057,24 +1068,40 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               </ProgressiveField>
 
               <ProgressiveField show={shouldShowLausanneSite}>
-                <ComposerChoiceRow label="Flight site (Lausanne, optional)">
-                  {LAUSANNE_SITE_OPTIONS.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      aria-pressed={form.lausanne_site === option.id}
-                      className={composerSegmentClass(form.lausanne_site === option.id)}
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          lausanne_site: prev.lausanne_site === option.id ? "" : option.id,
-                        }))
-                      }
-                    >
-                      {option.label[composerMailLang]}
-                    </button>
-                  ))}
-                </ComposerChoiceRow>
+                <div className="space-y-2.5">
+                  {Array.from({ length: preDayCount }).map((_, dayIdx) => {
+                    const siteKey = DAY_SITE_KEYS[dayIdx];
+                    const selectedSite = form[siteKey];
+                    return (
+                      <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} flight site`}>
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                          Day {dayIdx + 1} — flight site (Lausanne, optional)
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {LAUSANNE_SITE_OPTIONS.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              aria-pressed={selectedSite === option.id}
+                              className={composerSegmentClass(selectedSite === option.id)}
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  [siteKey]: prev[siteKey] === option.id ? "" : option.id,
+                                }))
+                              }
+                            >
+                              {option.label[composerMailLang]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[11px] text-slate-400/80">
+                    Each day can use a different asset. The location is woven into that day&apos;s agenda, and any safety gear is added automatically.
+                  </p>
+                </div>
               </ProgressiveField>
 
               <ProgressiveField show={shouldShowAbroadLocation}>

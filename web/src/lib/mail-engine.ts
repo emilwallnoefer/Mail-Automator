@@ -45,8 +45,10 @@ export type MailInput = {
   day1_disciplines?: TrainingDiscipline[];
   day2_disciplines?: TrainingDiscipline[];
   day3_disciplines?: TrainingDiscipline[];
-  /** Pre-mail Lausanne: which flight site the practical sessions use. */
-  lausanne_site?: LausanneSite;
+  /** Pre-mail Lausanne: the flight site (asset) used on each day. */
+  day1_site?: LausanneSite;
+  day2_site?: LausanneSite;
+  day3_site?: LausanneSite;
   custom_opener_note?: string;
   industry_course_ids?: string;
   include_certification_note?: boolean;
