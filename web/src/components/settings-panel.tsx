@@ -589,9 +589,9 @@ export function SettingsPanel({
                       {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
                     </p>
                     <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
-                      Choose the app palette — the default dark theme, the Solarized Light skin, or the MacBook Air-inspired Glacier and Sky blue light skins. Stored on this device.
+                      Choose the app palette — the default dark theme, the softened Solarized Light skin, or the clean pastel Glacier blue skin. Synced to your account, so it follows you across devices.
                     </p>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-3 gap-2">
                       {THEMES.map((t) => {
                         const selected = t.value === theme;
                         return (
@@ -631,7 +631,7 @@ export function SettingsPanel({
                         {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
                       </p>
                       <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
-                        Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Stored on this device.
+                        Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Synced to your account.
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {ACCENTS.map((a) => {
