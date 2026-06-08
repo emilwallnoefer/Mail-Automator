@@ -7,16 +7,17 @@
   --app-sticky-offset: max(5.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
 }
 
-/* Solarized Light — base3 page, base01 body text.
- * The three paper tones are routed through variables so the Glacier/Sky cool-blue
- * appearance modes (html[data-theme="light"][data-mode="..."]) can retint the whole
+/* Solarized Light — softened. The original base3 cream (253 246 227) read too
+ * strong/yellow, so the paper tones are eased toward a calmer warm off-white.
+ * The three paper tones are routed through variables so the Glacier cool-blue
+ * appearance mode (html[data-theme="light"][data-mode="blue"]) can retint the whole
  * skin by overriding just these triplets. RGB triplets feed rgb(var(--paper-x) / a). */
 [data-theme="light"] {
-  --paper-3: 253 246 227; /* base3 — page bg */
-  --paper-2: 238 232 213; /* base2 — panel surface */
-  --paper-1: 229 223 202; /* base  — deeper fills / hovers */
+  --paper-3: 252 250 245; /* page bg — soft warm off-white, much less cream than base3 */
+  --paper-2: 244 241 233; /* panel surface */
+  --paper-1: 235 231 221; /* deeper fills / hovers */
   --background: rgb(var(--paper-3));
-  --foreground: #586e75;
+  --foreground: #5b6c71; /* slightly lighter body text to match the calmer paper */
 }
 
 html {
@@ -1153,32 +1154,24 @@ html[data-theme="light"][data-accent="blue"] {
   --ac-to: 53 97 127;
 }
 
-/* ---- Appearance modes: cool-blue light skins (MacBook Air) ----
- * Glacier / Sky are the light skin with retinted paper + a fixed blue accent.
- * They set data-theme="light" + data-mode, so they win over the data-accent
- * blocks above by coming later in source order at equal specificity. Retinting
- * --paper-* recolours every surface (--background derives from --paper-3). */
-html[data-theme="light"][data-mode="glacier"] {
-  /* Glacier Blue — icy, cool, faint teal cast. */
-  --paper-3: 235 242 246;
-  --paper-2: 221 233 240;
-  --paper-1: 206 223 233;
-  --ac-strong: 75 142 168;
-  --ac-deep: 56 116 140;
-  --ac-text: 48 104 128;
-  --ac-from: 124 178 198;
-  --ac-to: 48 104 128;
-}
-html[data-theme="light"][data-mode="sky"] {
-  /* Sky Blue — soft, slightly periwinkle. */
-  --paper-3: 236 241 250;
-  --paper-2: 223 232 246;
-  --paper-1: 210 223 243;
-  --ac-strong: 86 138 184;
-  --ac-deep: 62 110 156;
-  --ac-text: 55 100 142;
-  --ac-from: 132 174 214;
-  --ac-to: 55 100 142;
+/* ---- Appearance mode: Glacier blue light skin ----
+ * One clean pastel cool-blue skin (the former Glacier + Sky merged). It sets
+ * data-theme="light" + data-mode="blue", so it wins over the data-accent blocks
+ * above by coming later in source order at equal specificity. Retinting --paper-*
+ * recolours every surface (--background derives from --paper-3).
+ *
+ * Design intent: crisp + minimal. A near-white page lifts contrast against the
+ * pastel-blue panels (sharper separation than the old low-contrast tints), and a
+ * clean — not neon — blue accent stays readable as link/fill text. */
+html[data-theme="light"][data-mode="blue"] {
+  --paper-3: 247 250 253; /* page — near white, faint cool cast */
+  --paper-2: 230 240 250; /* panel surface — pastel blue */
+  --paper-1: 213 228 245; /* deeper fills / hovers */
+  --ac-strong: 60 128 204; /* fills / dots */
+  --ac-deep: 38 98 168;    /* deep fills / solid borders */
+  --ac-text: 32 86 152;    /* links / accent glyphs — strong contrast */
+  --ac-from: 104 168 230;  /* gradient: light */
+  --ac-to: 38 98 168;      /* gradient: deep */
 }
 
 /* ---- Accent text: cyan -> scheme accent; amber/emerald/rose stay semantic ---- */

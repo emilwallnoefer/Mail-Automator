@@ -1,29 +1,36 @@
 "use client";
 
-// Appearance mode. `dark` and `light` (Solarized) are the base skins; `glacier`
-// and `sky` are MacBook Air-inspired cool-blue variants of the light skin — they
-// reuse the entire light CSS via data-theme="light" and add a data-mode tint.
-export type Theme = "dark" | "light" | "glacier" | "sky";
+import { syncAppearanceToServer } from "@/lib/appearance-sync";
+
+// Appearance mode. `dark` and `light` (softened Solarized) are the base skins;
+// `blue` is a clean pastel cool-blue variant of the light skin — it reuses the
+// entire light CSS via data-theme="light" and adds a data-mode="blue" tint.
+export type Theme = "dark" | "light" | "blue";
 
 export const THEMES: { value: Theme; label: string; swatch: string }[] = [
   { value: "dark", label: "Dark", swatch: "#0f172a" },
-  { value: "light", label: "Solarized light", swatch: "#fdf6e3" },
-  { value: "glacier", label: "Glacier blue", swatch: "#8ebfd6" },
-  { value: "sky", label: "Sky blue", swatch: "#9cc0ea" },
+  { value: "light", label: "Solarized light", swatch: "#fcfaf5" },
+  { value: "blue", label: "Glacier blue", swatch: "#a9cdf0" },
 ];
 
 const THEME_STORAGE_KEY = "ma_theme";
 const DEFAULT_THEME: Theme = "dark";
 
 function isTheme(v: unknown): v is Theme {
-  return v === "dark" || v === "light" || v === "glacier" || v === "sky";
+  return v === "dark" || v === "light" || v === "blue";
+}
+
+// Map any stored value to a current theme. Legacy "glacier"/"sky" (the old split
+// cool-blue skins) now collapse into the single "blue" mode.
+function normalizeStoredTheme(v: unknown): Theme {
+  if (v === "glacier" || v === "sky") return "blue";
+  return isTheme(v) ? v : DEFAULT_THEME;
 }
 
 function readStoredTheme(): Theme {
   if (typeof window === "undefined") return DEFAULT_THEME;
   try {
-    const v = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isTheme(v) ? v : DEFAULT_THEME;
+    return normalizeStoredTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
   } catch {
     return DEFAULT_THEME;
   }
@@ -34,10 +41,10 @@ let themeCache: Theme | null = null;
 function applyThemeAttribute(theme: Theme): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (theme === "glacier" || theme === "sky") {
+  if (theme === "blue") {
     // Light skin + cool-blue tint. Mirrors the pre-hydration bootstrap script.
     root.dataset.theme = "light";
-    root.dataset.mode = theme;
+    root.dataset.mode = "blue";
   } else if (theme === "light") {
     root.dataset.theme = "light";
     delete root.dataset.mode;
@@ -64,6 +71,7 @@ export function setTheme(theme: Theme): void {
     // Ignore quota / private mode.
   }
   applyThemeAttribute(theme);
+  syncAppearanceToServer({ theme });
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ma-theme-changed", { detail: { theme } }));
   }

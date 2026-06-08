@@ -1,5 +1,7 @@
 "use client";
 
+import { syncAppearanceToServer } from "@/lib/appearance-sync";
+
 // Light-theme accent scheme. Only affects the Solarized Light skin; the dark
 // theme ignores it. Mirrors the persistence/bootstrap pattern in theme.ts.
 
@@ -51,6 +53,7 @@ export function setAccent(accent: Accent): void {
     // Ignore quota / private mode.
   }
   applyAccentAttribute(accent);
+  syncAppearanceToServer({ accent });
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ma-accent-changed", { detail: { accent } }));
   }
