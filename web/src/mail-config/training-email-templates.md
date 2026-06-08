@@ -106,16 +106,17 @@ SUBJECT: Training agenda - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Hello {{RECIPIENT_NAME}},
 
-I am looking forward to the training with you on {{TRAINING_DATE}} in {{LOCATION}}. To ensure everything runs smoothly, please find below the agenda.
+I'm looking forward to our training on {{TRAINING_DATE}} in {{LOCATION}}. Below is the agenda so we're set for a smooth start.
 
 {{AGENDA_BLOCK}}
 
-The training will start at 9am.
+The training starts at 9:00 AM.
 
 {{FACILITY_PREP_BLOCK}}
 
-Note on training materials: After the training, you will receive the complete training package, sample datasets, and all files generated during the training days.
-If you have any further questions, please let me know.
+After the training, you'll receive the complete training package: the slide decks, sample datasets, and every file we create during the sessions.
+
+If anything comes up beforehand, just let me know.
 
 Best regards,
 {{SIGNATURE_NAME}}
@@ -129,15 +130,17 @@ SUBJECT: Trainingsagenda - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Hallo {{RECIPIENT_NAME}},
 
-ich freue mich auf die Schulung mit euch am {{TRAINING_DATE}} in {{LOCATION}}. Damit alles reibungslos läuft, hier die Agenda.
+ich freue mich auf unser Training am {{TRAINING_DATE}} in {{LOCATION}}. Hier ist die Agenda, damit wir gut vorbereitet starten können.
 
 {{AGENDA_BLOCK}}
 
-Das Training beginnt um 9 Uhr.
+Das Training beginnt um 9:00 Uhr.
 
 {{FACILITY_PREP_BLOCK}}
 
-Hinweis zu Unterlagen: Nach der Schulung erhaltet ihr das komplette Trainingspaket, Beispieldatensätze sowie alle am Trainingstag erzeugten Dateien.
+Nach dem Training erhaltet ihr das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
+
+Falls vorab etwas aufkommt, meldet euch einfach.
 
 Viele Grüße,
 {{SIGNATURE_NAME}}
@@ -151,16 +154,17 @@ SUBJECT: Training agenda - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Hello {{RECIPIENT_NAME}},
 
-I am looking forward to the training with you on {{TRAINING_DATE}} in Lausanne. To ensure everything runs smoothly, please find below the agenda.
+I'm looking forward to our training on {{TRAINING_DATE}} in Lausanne. Below is the agenda so we're set for a smooth start.
 
 {{AGENDA_BLOCK}}
 
-The training will start at 9am.
+The training starts at 9:00 AM.
 
 {{FLIGHT_SITE_LINE}}
 
-Note on training materials: After the training, you will receive the complete training package, sample datasets, and all files generated during the training days.
-If you have any further questions, please let me know.
+After the training, you'll receive the complete training package: the slide decks, sample datasets, and every file we create during the sessions.
+
+If anything comes up beforehand, just let me know.
 
 Best regards,
 {{SIGNATURE_NAME}}
@@ -174,20 +178,19 @@ SUBJECT: Trainingsagenda - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Hallo {{RECIPIENT_NAME}},
 
-ich freue mich auf das Training mit Ihnen am {{TRAINING_DATE}} in Lausanne. Damit alles reibungslos abläuft, finden Sie unten die Agenda.
+ich freue mich auf unser Training am {{TRAINING_DATE}} in Lausanne. Hier ist die Agenda, damit wir gut vorbereitet starten können.
 
 {{AGENDA_BLOCK}}
 
-Das Training beginnt um 09:00 Uhr.
+Das Training beginnt um 9:00 Uhr.
 
 {{FLIGHT_SITE_LINE}}
 
-Hinweis zu den Trainings-Folien:
-Nach dem Training erhalten Sie das vollständige Trainingspaket, Beispieldatensätze sowie alle Dateien, die während der Trainingstage erstellt wurden.
+Nach dem Training erhaltet ihr das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
 
-Falls Sie weitere Fragen haben, lassen Sie es mich gerne wissen.
+Falls vorab etwas aufkommt, meldet euch einfach.
 
-Freundliche Grüße,
+Viele Grüße,
 {{SIGNATURE_NAME}}
 Flyability Pilot & Trainer
 
@@ -247,17 +250,17 @@ SUBJECT: Programme de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Bonjour {{RECIPIENT_NAME}},
 
-Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à {{LOCATION}}. Pour que tout se passe au mieux, vous trouverez ci-dessous le programme.
+Je me réjouis de notre formation le {{TRAINING_DATE}} à {{LOCATION}}. Voici le programme pour que tout démarre sans accroc.
 
 {{AGENDA_BLOCK}}
 
-La formation commence à 9h.
+La formation commence à 9h00.
 
 {{FACILITY_PREP_BLOCK}}
 
-Note sur les supports : après la formation, vous recevrez le pack complet, des jeux de données d'exemple ainsi que tous les fichiers produits pendant les jours de formation.
+Après la formation, vous recevrez le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
 
-Pour toute question, n'hésitez pas à me contacter.
+Si quoi que ce soit se présente d'ici là, n'hésitez pas à me le dire.
 
 Cordialement,
 {{SIGNATURE_NAME}}
@@ -271,17 +274,17 @@ SUBJECT: Programme de formation - {{COMPANY_NAME}} - {{TRAINING_DATE}}
 
 Bonjour {{RECIPIENT_NAME}},
 
-Je me réjouis de la formation avec vous le {{TRAINING_DATE}} à Lausanne. Pour que tout se passe au mieux, vous trouverez ci-dessous le programme.
+Je me réjouis de notre formation le {{TRAINING_DATE}} à Lausanne. Voici le programme pour que tout démarre sans accroc.
 
 {{AGENDA_BLOCK}}
 
-La formation commence à 9h.
+La formation commence à 9h00.
 
 {{FLIGHT_SITE_LINE}}
 
-Note sur les supports : après la formation, vous recevrez le pack complet, des jeux de données d'exemple ainsi que tous les fichiers produits pendant les jours de formation.
+Après la formation, vous recevrez le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
 
-Pour toute question, n'hésitez pas à me contacter.
+Si quoi que ce soit se présente d'ici là, n'hésitez pas à me le dire.
 
 Cordialement,
 {{SIGNATURE_NAME}}
