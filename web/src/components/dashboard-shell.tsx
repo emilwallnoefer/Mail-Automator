@@ -245,6 +245,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const [currentDeployKey, setCurrentDeployKey] = useState("local-dev");
   const [animatedPreviewSubject, setAnimatedPreviewSubject] = useState("");
   const [animatedPreviewBody, setAnimatedPreviewBody] = useState("");
+  // Current Time Tracker week, warmed in the background on dashboard load so the
+  // Time Logger opens instantly. Seeded from the SSR week when available.
+  const [prefetchedWeek, setPrefetchedWeek] = useState<WeekResponse | null>(initialWeek);
+  const weekPrefetchedRef = useRef(false);
   const previousPreviewWritingRef = useRef(false);
 
   const shouldShowLanguage = Boolean(form.mail_type);
@@ -389,6 +393,56 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
 
   const canManageUsers = isAdmin;
   const adminModuleLabel = canManageUsers ? "Admin" : "Team time";
+
+  // Warm the Time Tracker's current week as soon as the dashboard loads, so the
+  // Time Logger shows data immediately on open instead of fetching on mount.
+  // Deliberately light: one idle-time request, no travel-sheet lookup, run once,
+  // and skipped entirely when the SSR already seeded the current week.
+  useEffect(() => {
+    if (weekPrefetchedRef.current) return;
+    if (!availableModules.includes("time")) return;
+
+    const monday = new Date();
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    const weekKey = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(
+      monday.getDate(),
+    ).padStart(2, "0")}`;
+
+    // Already have this exact week from SSR — nothing to warm.
+    if (initialWeek?.week_start === weekKey) {
+      weekPrefetchedRef.current = true;
+      return;
+    }
+    weekPrefetchedRef.current = true;
+
+    let cancelled = false;
+    let timeoutHandle: number | undefined;
+    const run = () => {
+      fetch(`/api/time-tracker?weekStart=${encodeURIComponent(weekKey)}&includeTravel=0`)
+        .then((res) => (res.ok ? (res.json() as Promise<WeekResponse>) : null))
+        .then((week) => {
+          if (!cancelled && week?.week_start) setPrefetchedWeek(week);
+        })
+        .catch(() => {
+          // Best-effort warm-up; the panel still fetches on open if this fails.
+        });
+    };
+
+    const idle = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+    }).requestIdleCallback;
+    if (typeof idle === "function") {
+      idle(run, { timeout: 2000 });
+    } else {
+      timeoutHandle = window.setTimeout(run, 800);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timeoutHandle != null) window.clearTimeout(timeoutHandle);
+    };
+  }, [availableModules, initialWeek]);
 
   useEffect(() => {
     function onMailSignatureSaved(event: Event) {
@@ -862,7 +916,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {activeModule === "time" ? (
-                    <TimeTrackerPanel initialWeek={initialWeek} />
+                    <TimeTrackerPanel initialWeek={prefetchedWeek} />
                   ) : activeModule === "admin" ? (
                     <AdminPanel canManageUsers={canManageUsers} />
                   ) : activeModule === "settings" ? (
