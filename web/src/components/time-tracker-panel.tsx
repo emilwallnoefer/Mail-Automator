@@ -979,9 +979,9 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           aria-hidden="true"
           onClick={() => returnToWeekdays()}
         />
-        <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6">
+        <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6 max-h-[100dvh]">
           <div
-            className="glass-card day-logger-card day-logger-dialog my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92vh,880px)] overflow-y-auto scroll-mt-24"
+            className="glass-card day-logger-card day-logger-dialog my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92dvh,880px)] overflow-y-auto scroll-mt-24"
             role="dialog"
             aria-modal="true"
             aria-labelledby="day-logger-title"
