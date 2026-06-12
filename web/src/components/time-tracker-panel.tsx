@@ -1069,12 +1069,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         />
         <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6 max-h-[100dvh]">
           <div
-            className="glass-card day-logger-card day-logger-dialog my-auto w-full max-w-3xl rounded-2xl p-4 shadow-2xl shadow-black/50 md:p-5 pointer-events-auto max-h-[min(92dvh,880px)] overflow-y-auto scroll-mt-24"
+            className="glass-card day-logger-card day-logger-dialog my-auto flex w-full max-w-3xl flex-col rounded-2xl shadow-2xl shadow-black/50 pointer-events-auto max-h-[min(92dvh,880px)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="day-logger-title"
             onClick={(event) => event.stopPropagation()}
           >
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 scroll-mt-24">
             <div className="grid auto-rows-min items-start gap-4 lg:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between gap-2">
@@ -1423,6 +1424,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   </div>
                 ) : null}
               </aside>
+            </div>
             </div>
           </div>
         </div>
