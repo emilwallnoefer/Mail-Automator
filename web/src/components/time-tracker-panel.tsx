@@ -162,6 +162,14 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 
 function getWeekDayKeys(weekStart: string) {
   const start = getMonday(weekStart);
@@ -339,6 +347,86 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       if (!blob) throw new Error("Could not render image.");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setToast({ kind: "ok", message: "Compensation breakdown copied as image." });
+    } catch (error) {
+      setToast({ kind: "error", message: `Copy failed. ${String((error as Error).message)}` });
+    }
+  }
+
+  // Build the breakdown as plain text + an HTML table. Odoo can't take pasted
+  // PNGs, but its rich-text fields accept HTML (and plain-text fields fall
+  // back to the text form), so we put both on the clipboard at once.
+  function buildCompTextFormats() {
+    const dayName = selectedDay ? dayLabel(selectedDay.date) : "";
+    const title = `Compensation from${dayName ? ` — ${dayName}` : ""}`;
+    const place = (source: (typeof compSourceRows)[number]) =>
+      [source.client, source.location].filter(Boolean).join(" · ") || "No travel info";
+
+    const text = [
+      title,
+      "",
+      ...compSourceRows.map(
+        (source) =>
+          `• ${dayLabel(source.date)} — ${place(source)}: ${fmtHM(source.mins)} (of ${fmtHM(
+            source.earned,
+          )} overtime)`,
+      ),
+      "",
+      `Total compensated: ${fmtHM(compTotalMins)}`,
+    ].join("\n");
+
+    const cell = "padding:6px 12px;border-bottom:1px solid #e5e7eb";
+    const head = "padding:6px 12px;border-bottom:2px solid #d1d5db;text-align:left";
+    const rowsHtml = compSourceRows
+      .map(
+        (source) =>
+          `<tr>` +
+          `<td style="${cell};white-space:nowrap">${escapeHtml(dayLabel(source.date))}</td>` +
+          `<td style="${cell}">${escapeHtml(place(source))}</td>` +
+          `<td style="${cell};text-align:right;white-space:nowrap">${escapeHtml(fmtHM(source.mins))}</td>` +
+          `<td style="${cell};text-align:right;white-space:nowrap;color:#6b7280">of ${escapeHtml(
+            fmtHM(source.earned),
+          )} overtime</td>` +
+          `</tr>`,
+      )
+      .join("");
+    const html =
+      `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111827">` +
+      `<p style="margin:0 0 8px;font-weight:600">${escapeHtml(title)}</p>` +
+      `<table style="border-collapse:collapse;font-size:13px">` +
+      `<thead><tr>` +
+      `<th style="${head}">Day</th>` +
+      `<th style="${head}">Client / Location</th>` +
+      `<th style="${head};text-align:right">Compensated</th>` +
+      `<th style="${head};text-align:right">Day overtime</th>` +
+      `</tr></thead>` +
+      `<tbody>${rowsHtml}</tbody>` +
+      `<tfoot><tr>` +
+      `<td colspan="2" style="padding:6px 12px;font-weight:600">Total compensated</td>` +
+      `<td style="padding:6px 12px;text-align:right;font-weight:600">${escapeHtml(fmtHM(compTotalMins))}</td>` +
+      `<td></td>` +
+      `</tr></tfoot>` +
+      `</table></div>`;
+
+    return { text, html };
+  }
+
+  async function handleCopyCompSourcesText() {
+    if (!compSourceRows.length) return;
+    const { text, html } = buildCompTextFormats();
+    try {
+      if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([text], { type: "text/plain" }),
+            "text/html": new Blob([html], { type: "text/html" }),
+          }),
+        ]);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error("Clipboard isn't available in this browser.");
+      }
+      setToast({ kind: "ok", message: "Compensation breakdown copied as text." });
     } catch (error) {
       setToast({ kind: "error", message: `Copy failed. ${String((error as Error).message)}` });
     }
@@ -1237,15 +1325,26 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   <div className="mt-4 border-t border-white/10 pt-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleCopyCompSourcesPng();
-                        }}
-                        className="shrink-0 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-                      >
-                        Copy PNG
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleCopyCompSourcesText();
+                          }}
+                          className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                        >
+                          Copy Text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleCopyCompSourcesPng();
+                          }}
+                          className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                        >
+                          Copy PNG
+                        </button>
+                      </div>
                     </div>
                     <ul className="mt-2 space-y-2 text-sm">
                       {compSourceRows.map((source) => (
@@ -1269,18 +1368,31 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                     <div aria-hidden className="pointer-events-none fixed -left-[12000px] top-0">
                       <div
                         ref={exportCardRef}
-                        className="w-[460px] rounded-2xl border border-white/10 bg-[#0b1524] p-6"
-                        style={{ fontFamily: "var(--font-geist-sans), Arial, sans-serif" }}
+                        className="w-[460px] overflow-hidden rounded-2xl border border-white/20 p-6"
+                        style={{
+                          fontFamily: "var(--font-geist-sans), Arial, sans-serif",
+                          // Opaque re-creation of the underwater glass panel:
+                          // backdrop-filter can't be screenshotted, so the cyan
+                          // glows + glass sheen are baked into solid gradients.
+                          background:
+                            "radial-gradient(26rem 16rem at 12% 6%, rgba(219,245,255,0.12), transparent 70%)," +
+                            "radial-gradient(40rem 30rem at 16% 26%, rgba(34,211,238,0.16), transparent 65%)," +
+                            "radial-gradient(36rem 26rem at 86% 88%, rgba(56,189,248,0.16), transparent 65%)," +
+                            "linear-gradient(140deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 60%)," +
+                            "linear-gradient(180deg, #0b1f2c, #061320)",
+                          boxShadow:
+                            "0 22px 48px rgba(6,17,36,0.5), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(255,255,255,0.08)",
+                        }}
                       >
                         <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-300/80">
                           Time Tracker
                         </p>
                         <h3 className="mt-1 text-lg font-semibold text-white">Compensation from</h3>
                         {selectedDay ? (
-                          <p className="mt-0.5 text-sm text-slate-400">for {dayLabel(selectedDay.date)}</p>
+                          <p className="mt-0.5 text-sm text-slate-300/80">for {dayLabel(selectedDay.date)}</p>
                         ) : null}
 
-                        <div className="mt-5 overflow-hidden rounded-xl border border-white/10">
+                        <div className="mt-5 overflow-hidden rounded-xl border border-white/15 bg-white/[0.05]">
                           {compSourceRows.map((source, index) => (
                             <div
                               key={source.date}
@@ -1290,13 +1402,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                             >
                               <div className="min-w-0">
                                 <p className="font-medium text-slate-100">{dayLabel(source.date)}</p>
-                                <p className="mt-0.5 text-xs text-slate-400">
+                                <p className="mt-0.5 text-xs text-slate-300/80">
                                   {[source.client, source.location].filter(Boolean).join(" · ") || "No travel info"}
                                 </p>
                               </div>
                               <div className="shrink-0 text-right">
-                                <p className="font-semibold tabular-nums text-cyan-300">{fmtHM(source.mins)}</p>
-                                <p className="mt-0.5 text-xs text-slate-400">of {fmtHM(source.earned)} overtime</p>
+                                <p className="font-semibold tabular-nums text-cyan-200">{fmtHM(source.mins)}</p>
+                                <p className="mt-0.5 text-xs text-slate-300/80">of {fmtHM(source.earned)} overtime</p>
                               </div>
                             </div>
                           ))}
