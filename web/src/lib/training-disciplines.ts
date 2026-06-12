@@ -16,6 +16,7 @@ export type TrainingDiscipline =
   | "ut"
   | "tether"
   | "surveying"
+  | "faro_connect"
   | "rad_sensor"
   | "gas_sensor";
 export type LausanneSite = "tridel" | "tank_bern" | "aigle_bridge" | "montetan";
@@ -43,6 +44,7 @@ export const TRAINING_DISCIPLINES: TrainingDiscipline[] = [
   "ut",
   "tether",
   "surveying",
+  "faro_connect",
   "rad_sensor",
   "gas_sensor",
 ];
@@ -54,6 +56,7 @@ export const DISCIPLINE_LABEL: Record<TrainingDiscipline, Localized> = {
   ut: { en: "UT", de: "UT", fr: "UT" },
   tether: { en: "Tether", de: "Tether", fr: "Tether" },
   surveying: { en: "Surveying", de: "Surveying", fr: "Surveying" },
+  faro_connect: { en: "FARO Connect", de: "FARO Connect", fr: "FARO Connect" },
   rad_sensor: { en: "Radiation sensor", de: "Strahlungssensor", fr: "Capteur de radiation" },
   gas_sensor: { en: "Gas sensor", de: "Gassensor", fr: "Capteur de gaz" },
 };
@@ -108,6 +111,7 @@ export const DISCIPLINE_PRE_CHANGE_IDS: Record<TrainingDiscipline, string[]> = {
   ut: ["useful_intro_ut", "useful_ut_advanced", "useful_ut_probe"],
   tether: ["useful_tether"],
   surveying: ["useful_scan_bim", "useful_faro_deck"],
+  faro_connect: ["useful_faro_deck", "useful_faro_online"],
   rad_sensor: ["useful_rad_video"],
   gas_sensor: ["useful_gas_sensor"],
 };
@@ -225,6 +229,26 @@ const DISCIPLINE_BULLETS: Record<TrainingDiscipline, LocalizedList> = {
       "Vol de cartographie pratique{SITE_CLAUSE}",
       "Traitement de nuages de points avec FARO Connect",
       "Géoréférencement et livrables surveying finaux",
+    ],
+  },
+  faro_connect: {
+    en: [
+      "FARO Connect workflow overview, from capture to a clean point cloud",
+      "Importing and registering Elios 3 scan exports in FARO Connect",
+      "Cleaning and correcting the point cloud",
+      "Georeferencing and customer-ready deliverables",
+    ],
+    de: [
+      "Überblick über den FARO-Connect-Workflow, von der Aufnahme bis zur sauberen Punktwolke",
+      "Import und Registrierung von Elios-3-Scan-Exports in FARO Connect",
+      "Bereinigung und Korrektur der Punktwolke",
+      "Georeferenzierung und kundenfähige Ergebnisse",
+    ],
+    fr: [
+      "Vue d'ensemble du workflow FARO Connect, de la capture au nuage de points propre",
+      "Import et recalage des exports de scan Elios 3 dans FARO Connect",
+      "Nettoyage et correction du nuage de points",
+      "Géoréférencement et livrables prêts pour le client",
     ],
   },
   rad_sensor: {
