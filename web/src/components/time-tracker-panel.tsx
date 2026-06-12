@@ -64,6 +64,11 @@ export type WeekResponse = {
     fetched_dates: number;
     week_matches: number;
   };
+  // Per compensated day, the overtime-earning days that fund it (FIFO).
+  // Keyed by the compensated day's date; each source carries the earning
+  // day's date and the minutes drawn from it. Client/location for a source
+  // are looked up from `travel_by_date`.
+  comp_sources?: Record<string, Array<{ date: string; mins: number; earned: number }>>;
   includes_travel?: boolean;
   includes_bank?: boolean;
 };
@@ -285,6 +290,28 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     if (!selectedDate) return null;
     return data?.travel_by_date?.[selectedDate] ?? null;
   }, [data?.travel_by_date, selectedDate]);
+
+  // Overtime-earning days that fund the selected day's compensation, joined
+  // with the travel client/location for each source day (when the sheet has
+  // a row for it).
+  const compSourceRows = useMemo(() => {
+    if (!selectedDate) return [];
+    const sources = data?.comp_sources?.[selectedDate];
+    if (!sources?.length) return [];
+    return sources
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((source) => {
+        const travel = data?.travel_by_date?.[source.date];
+        return {
+          date: source.date,
+          mins: source.mins,
+          earned: source.earned,
+          client: travel?.client || "",
+          location: travel?.location || "",
+        };
+      });
+  }, [data?.comp_sources, data?.travel_by_date, selectedDate]);
 
   const [formStart, setFormStart] = useState("");
   const [formStop, setFormStop] = useState("");
@@ -1175,6 +1202,27 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                     </div>
                   </div>
                 )}
+                {selectedDay && selectedDay.comp_mins > 0 && compSourceRows.length > 0 ? (
+                  <div className="mt-4 border-t border-white/10 pt-4">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
+                    <ul className="mt-2 space-y-2 text-sm">
+                      {compSourceRows.map((source) => (
+                        <li key={source.date} className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block">{dayLabel(source.date)}</span>
+                            <span className="block text-xs text-slate-300/75">
+                              {[source.client, source.location].filter(Boolean).join(" · ") || "No travel info"}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block tabular-nums text-cyan-200/95">{fmtHM(source.mins)}</span>
+                            <span className="block text-xs text-slate-300/75">of {fmtHM(source.earned)} overtime</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </aside>
             </div>
           </div>

@@ -5,7 +5,13 @@ import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/secur
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { TIME_TRACKER_TARGET_MINS } from "@/lib/time-tracker-rules";
-import { fetchCurrentUserWeek, getWeekStartDate, sanitizeMins } from "@/lib/time-tracker-queries";
+import {
+  computeCompSourcesForUser,
+  fetchCurrentUserWeek,
+  getWeekStartDate,
+  sanitizeMins,
+  type CompSource,
+} from "@/lib/time-tracker-queries";
 
 const TARGET_MINS = TIME_TRACKER_TARGET_MINS;
 
@@ -226,6 +232,23 @@ export async function GET(request: Request) {
     };
   }
 
+  // Attribute each compensated day in this week to the overtime-earning days
+  // that fund it (FIFO over the user's full history). Computed on every load —
+  // not gated behind the slow travel fetch — so it stays fresh through the
+  // background reconcile that runs after a compensate (which loads with
+  // includeTravel=0). It's a DB-only scan; the per-source client/location
+  // lookup happens client-side from travel_by_date.
+  let compSources: Record<string, CompSource[]> = {};
+  const userId = String(claims.sub ?? "");
+  if (userId) {
+    try {
+      compSources = await computeCompSourcesForUser(supabase, userId, weekStart, weekEnd);
+    } catch {
+      // Non-blocking: the tracker stays usable even if attribution fails.
+      compSources = {};
+    }
+  }
+
   return NextResponse.json({
     week_start: weekStart,
     week_end: weekEnd,
@@ -235,6 +258,7 @@ export async function GET(request: Request) {
     days: weekDays,
     travel_by_date: travelByDate,
     travel_debug: travelDebug,
+    comp_sources: compSources,
     includes_travel: includeTravel,
     includes_bank: includesBank,
   });

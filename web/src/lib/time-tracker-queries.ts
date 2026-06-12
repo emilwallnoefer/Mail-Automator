@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getDayOvertimeContributionMins,
+  isPremiumOvertimeDay,
   TIME_TRACKER_TARGET_MINS,
 } from "@/lib/time-tracker-rules";
 
@@ -115,6 +116,100 @@ export async function computeOvertimeBankMinsForUser(
   }
 
   return overtimeBankMins;
+}
+
+export type CompSource = { date: string; mins: number; earned: number };
+
+/**
+ * Attribute each compensated day to the overtime-earning days that fund it.
+ *
+ * The overtime bank is a single cumulative pool: every day contributes
+ * `earned overtime − comp spent`. To answer "where did this day's
+ * compensation come from", we replay the user's whole history as a FIFO
+ * ledger — the oldest unspent overtime is cashed in first — and record which
+ * earning days each compensated day draws from.
+ *
+ * Returns a map keyed by compensated `work_date`. Only comp dates within
+ * [rangeStart, rangeEnd] are returned (callers only need the visible week),
+ * but the replay walks the full history so cross-week sources are attributed
+ * correctly. A comp day not fully covered by earned overtime (e.g. logged
+ * before the overtime was earned) is attributed up to whatever the pool
+ * holds; any uncovered remainder is simply omitted.
+ */
+export async function computeCompSourcesForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<Record<string, CompSource[]>> {
+  const [logsRes, compRes] = await Promise.all([
+    supabase
+      .from("time_day_logs")
+      .select("work_date, net_mins, holiday, sick_leave")
+      .eq("user_id", userId),
+    supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
+  ]);
+  if (logsRes.error) throw new Error(logsRes.error.message);
+  if (compRes.error) throw new Error(compRes.error.message);
+
+  const workByDate = new Map<string, { net: number; holiday: boolean; sickLeave: boolean }>();
+  for (const row of logsRes.data ?? []) {
+    workByDate.set(row.work_date, {
+      net: sanitizeMins(row.net_mins),
+      holiday: Boolean(row.holiday),
+      sickLeave: Boolean(row.sick_leave),
+    });
+  }
+  const compByDate = new Map<string, number>();
+  for (const row of compRes.data ?? []) {
+    compByDate.set(row.work_date, sanitizeMins(row.mins));
+  }
+
+  // Earned-overtime "lots", oldest first. A day's earned overtime is the
+  // positive part *before* any comp on the same day is subtracted — mirrors
+  // the earned side of getDayOvertimeContributionMins. `earned` keeps the
+  // day's full overtime so the UI can show "X drawn of Y earned".
+  const lots: Array<{ date: string; remaining: number; earned: number }> = [];
+  for (const date of Array.from(workByDate.keys()).sort()) {
+    const work = workByDate.get(date)!;
+    if (work.sickLeave) continue;
+    if (work.holiday && work.net === 0) continue;
+    const premium = isPremiumOvertimeDay(date, work.net, work.holiday);
+    const earned = premium ? Math.max(0, work.net) : Math.max(0, work.net - TARGET_MINS);
+    if (earned > 0) lots.push({ date, remaining: earned, earned });
+  }
+
+  // Spend comp days oldest first, each drawing from the oldest available lot.
+  const earnedByDate = new Map(lots.map((lot) => [lot.date, lot.earned]));
+  const sources: Record<string, CompSource[]> = {};
+  let lotIdx = 0;
+  for (const compDate of Array.from(compByDate.keys()).sort()) {
+    let need = compByDate.get(compDate) ?? 0;
+    if (need <= 0) continue;
+    const inRange = compDate >= rangeStart && compDate <= rangeEnd;
+    const perSource = new Map<string, number>();
+    while (need > 0 && lotIdx < lots.length) {
+      const lot = lots[lotIdx];
+      if (lot.remaining <= 0) {
+        lotIdx += 1;
+        continue;
+      }
+      const take = Math.min(need, lot.remaining);
+      lot.remaining -= take;
+      need -= take;
+      if (inRange) perSource.set(lot.date, (perSource.get(lot.date) ?? 0) + take);
+      if (lot.remaining === 0) lotIdx += 1;
+    }
+    if (inRange && perSource.size > 0) {
+      sources[compDate] = Array.from(perSource.entries()).map(([date, mins]) => ({
+        date,
+        mins,
+        earned: earnedByDate.get(date) ?? mins,
+      }));
+    }
+  }
+
+  return sources;
 }
 
 export async function getOvertimeBankMinsForUser(
