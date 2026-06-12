@@ -315,26 +315,26 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       });
   }, [data?.comp_sources, data?.travel_by_date, selectedDate]);
 
-  const compSourcesRef = useRef<HTMLDivElement>(null);
+  const exportCardRef = useRef<HTMLDivElement>(null);
+  const compTotalMins = useMemo(
+    () => compSourceRows.reduce((sum, source) => sum + source.mins, 0),
+    [compSourceRows],
+  );
 
   async function handleCopyCompSourcesPng() {
-    const node = compSourcesRef.current;
+    const node = exportCardRef.current;
     if (!node || !compSourceRows.length) return;
     try {
       if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
         throw new Error("Clipboard images aren't supported in this browser.");
       }
-      // Capture the live DOM so the image inherits the panel's real fonts,
-      // colors, and current theme. Fill the translucent surface with the
-      // page background so it reads the same as on screen, and drop the
-      // export button itself from the shot.
-      const backgroundColor =
-        getComputedStyle(document.body).backgroundColor || "#020617";
+      // Capture the dedicated, print-clean export card (an off-screen node)
+      // rather than the live panel section, so the image gets its own tidy
+      // borders/spacing. Transparent background keeps the card's rounded
+      // corners; it carries its own solid surface color.
       const blob = await toBlob(node, {
         pixelRatio: Math.max(2, window.devicePixelRatio || 1),
-        backgroundColor,
-        filter: (element) =>
-          !(element instanceof HTMLElement && element.dataset.exportExclude === "true"),
+        cacheBust: true,
       });
       if (!blob) throw new Error("Could not render image.");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -1234,12 +1234,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   </div>
                 )}
                 {selectedDay && selectedDay.comp_mins > 0 && compSourceRows.length > 0 ? (
-                  <div ref={compSourcesRef} className="mt-4 border-t border-white/10 pt-4">
+                  <div className="mt-4 border-t border-white/10 pt-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
                       <button
                         type="button"
-                        data-export-exclude="true"
                         onClick={() => {
                           void handleCopyCompSourcesPng();
                         }}
@@ -1264,6 +1263,51 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                         </li>
                       ))}
                     </ul>
+
+                    {/* Off-screen, print-clean card captured by "Copy PNG". Kept laid
+                        out (not display:none) so html-to-image can render it. */}
+                    <div aria-hidden className="pointer-events-none fixed -left-[12000px] top-0">
+                      <div
+                        ref={exportCardRef}
+                        className="w-[460px] rounded-2xl border border-white/10 bg-[#0b1524] p-6"
+                        style={{ fontFamily: "var(--font-geist-sans), Arial, sans-serif" }}
+                      >
+                        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-300/80">
+                          Time Tracker
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold text-white">Compensation from</h3>
+                        {selectedDay ? (
+                          <p className="mt-0.5 text-sm text-slate-400">for {dayLabel(selectedDay.date)}</p>
+                        ) : null}
+
+                        <div className="mt-5 overflow-hidden rounded-xl border border-white/10">
+                          {compSourceRows.map((source, index) => (
+                            <div
+                              key={source.date}
+                              className={`flex items-baseline justify-between gap-4 px-4 py-3 ${
+                                index > 0 ? "border-t border-white/10" : ""
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-slate-100">{dayLabel(source.date)}</p>
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  {[source.client, source.location].filter(Boolean).join(" · ") || "No travel info"}
+                                </p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <p className="font-semibold tabular-nums text-cyan-300">{fmtHM(source.mins)}</p>
+                                <p className="mt-0.5 text-xs text-slate-400">of {fmtHM(source.earned)} overtime</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-4 flex items-baseline justify-between border-t border-white/10 pt-3">
+                          <span className="text-sm font-medium text-slate-300">Total compensated</span>
+                          <span className="text-base font-semibold tabular-nums text-white">{fmtHM(compTotalMins)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
               </aside>
