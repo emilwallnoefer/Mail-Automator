@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { toBlob } from "html-to-image";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 import {
   getDayOvertimeContributionMins,
@@ -161,6 +162,7 @@ function dayLabel(dateKey: string) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+
 function getWeekDayKeys(weekStart: string) {
   const start = getMonday(weekStart);
   return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(start, index)));
@@ -312,6 +314,35 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         };
       });
   }, [data?.comp_sources, data?.travel_by_date, selectedDate]);
+
+  const compSourcesRef = useRef<HTMLDivElement>(null);
+
+  async function handleCopyCompSourcesPng() {
+    const node = compSourcesRef.current;
+    if (!node || !compSourceRows.length) return;
+    try {
+      if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+        throw new Error("Clipboard images aren't supported in this browser.");
+      }
+      // Capture the live DOM so the image inherits the panel's real fonts,
+      // colors, and current theme. Fill the translucent surface with the
+      // page background so it reads the same as on screen, and drop the
+      // export button itself from the shot.
+      const backgroundColor =
+        getComputedStyle(document.body).backgroundColor || "#020617";
+      const blob = await toBlob(node, {
+        pixelRatio: Math.max(2, window.devicePixelRatio || 1),
+        backgroundColor,
+        filter: (element) =>
+          !(element instanceof HTMLElement && element.dataset.exportExclude === "true"),
+      });
+      if (!blob) throw new Error("Could not render image.");
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      setToast({ kind: "ok", message: "Compensation breakdown copied as image." });
+    } catch (error) {
+      setToast({ kind: "error", message: `Copy failed. ${String((error as Error).message)}` });
+    }
+  }
 
   const [formStart, setFormStart] = useState("");
   const [formStop, setFormStop] = useState("");
@@ -1203,8 +1234,20 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   </div>
                 )}
                 {selectedDay && selectedDay.comp_mins > 0 && compSourceRows.length > 0 ? (
-                  <div className="mt-4 border-t border-white/10 pt-4">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
+                  <div ref={compSourcesRef} className="mt-4 border-t border-white/10 pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
+                      <button
+                        type="button"
+                        data-export-exclude="true"
+                        onClick={() => {
+                          void handleCopyCompSourcesPng();
+                        }}
+                        className="shrink-0 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                      >
+                        Copy PNG
+                      </button>
+                    </div>
                     <ul className="mt-2 space-y-2 text-sm">
                       {compSourceRows.map((source) => (
                         <li key={source.date} className="flex items-baseline justify-between gap-3">
