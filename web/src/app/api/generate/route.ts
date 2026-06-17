@@ -12,6 +12,7 @@ const disciplineSchema = z.enum([
   "ut",
   "tether",
   "surveying",
+  "faro_connect",
   "rad_sensor",
   "gas_sensor",
 ]);
