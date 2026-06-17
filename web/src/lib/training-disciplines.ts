@@ -454,15 +454,19 @@ export function flightSiteLine(input: PreAgendaInput): string {
   return lines.join("\n");
 }
 
-/** Abroad-only: the "please prepare" block; second bullet depends on day count. */
-export function facilityPrepBlock(input: PreAgendaInput): string {
+/**
+ * Abroad-only: the "please prepare" block; second bullet depends on day count.
+ * `singular` switches German/French address from plural (ihr/vous) to singular (du/tu)
+ * for a single named recipient.
+ */
+export function facilityPrepBlock(input: PreAgendaInput, singular = false): string {
   if (input.template_variant !== "abroad") return "";
   const lang = input.language;
   const multiDay = resolveDayCount(input) >= 2;
 
   const header: Localized = {
     en: "Before the training, please have ready:",
-    de: "Bitte stellt vor dem Training bereit:",
+    de: singular ? "Bitte stelle vor dem Training bereit:" : "Bitte stellt vor dem Training bereit:",
     fr: "Avant la formation, merci de prévoir :",
   };
   const theoryRoom: Localized = {
@@ -477,8 +481,12 @@ export function facilityPrepBlock(input: PreAgendaInput): string {
   };
   const flightMulti: Localized = {
     en: "Access to an asset representative of where you will use the drone after the training, so the practice mirrors your real operations as closely as possible",
-    de: "Zugang zu einem Objekt, das repräsentativ für den späteren Einsatzort der Drohne ist, damit die Praxis möglichst nah an eurem realen Einsatz ist",
-    fr: "L'accès à un actif représentatif de l'endroit où vous utiliserez le drone après la formation, afin que la pratique soit au plus proche de vos opérations réelles",
+    de: singular
+      ? "Zugang zu einem Objekt, das repräsentativ für den späteren Einsatzort der Drohne ist, damit die Praxis möglichst nah an deinem realen Einsatz ist"
+      : "Zugang zu einem Objekt, das repräsentativ für den späteren Einsatzort der Drohne ist, damit die Praxis möglichst nah an eurem realen Einsatz ist",
+    fr: singular
+      ? "L'accès à un actif représentatif de l'endroit où tu utiliseras le drone après la formation, afin que la pratique soit au plus proche de tes opérations réelles"
+      : "L'accès à un actif représentatif de l'endroit où vous utiliserez le drone après la formation, afin que la pratique soit au plus proche de vos opérations réelles",
   };
 
   const flightBullet = multiDay ? flightMulti[lang] : flightSingle[lang];

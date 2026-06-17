@@ -60,7 +60,7 @@ Hallo {{RECIPIENT_NAME}},
 
 {{CUSTOM_OPENER_NOTE}}
 
-wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainings-Folien, die wir verwendet haben. Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.
+wie ich es während unserer Schulung versprochen habe, {{#sg}}erhältst du{{/sg}}{{#pl}}erhaltet ihr{{/pl}} hier die Zusammenfassungs-E-Mail mit allen nützlichen Links zu den Trainings-Folien, die wir verwendet haben. {{#sg}}Bitte speichere diese E-Mail und halte sie griffbereit, damit du jederzeit auf die Informationen zurückgreifen kannst.{{/sg}}{{#pl}}Bitte speichert diese E-Mail und haltet sie griffbereit, damit ihr jederzeit auf die Informationen zurückgreifen könnt.{{/pl}}
 
 ---
 
@@ -83,7 +83,7 @@ wie ich es während unserer Schulung versprochen habe, erhaltet ihr hier die Zus
 
 ## 📄 Feedback
 
-Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in **5 Minuten** kurz Feedback geben könnt. Scannt einfach den **QR-Code** unten und sagt mir, was euch gefallen hat und was nicht.
+{{#sg}}Wenn dir die Schulung gefallen hat, würde ich mich sehr freuen, wenn du mir in **5 Minuten** kurz Feedback geben kannst. Scanne einfach den **QR-Code** unten und sag mir, was dir gefallen hat und was nicht.{{/sg}}{{#pl}}Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir in **5 Minuten** kurz Feedback geben könnt. Scannt einfach den **QR-Code** unten und sagt mir, was euch gefallen hat und was nicht.{{/pl}}
 
 ![Feedback Schulung]({{FEEDBACK_QR_IMAGE_URL}})
 
@@ -91,8 +91,9 @@ Wenn euch die Schulung gefallen hat, würde ich mich sehr freuen, wenn ihr mir i
 
 🚀 Viel Erfolg beim Fliegen!
 
-Ich wünsche euch viel Erfolg bei euren Drohneninspektionen.
-Zögert nicht, euch bei Fragen jederzeit bei mir zu melden.
+{{#sg}}Ich wünsche dir viel Erfolg bei deinen Drohneninspektionen.
+Zögere nicht, dich bei Fragen jederzeit bei mir zu melden.{{/sg}}{{#pl}}Ich wünsche euch viel Erfolg bei euren Drohneninspektionen.
+Zögert nicht, euch bei Fragen jederzeit bei mir zu melden.{{/pl}}
 
 Mit freundlichen Grüßen,
 {{SIGNATURE_NAME}}
@@ -138,9 +139,9 @@ Das Training beginnt um 9:00 Uhr.
 
 {{FACILITY_PREP_BLOCK}}
 
-Nach dem Training erhaltet ihr das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
+Nach dem Training {{#sg}}erhältst du{{/sg}}{{#pl}}erhaltet ihr{{/pl}} das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
 
-Falls vorab etwas aufkommt, meldet euch einfach.
+Falls vorab etwas aufkommt, {{#sg}}melde dich{{/sg}}{{#pl}}meldet euch{{/pl}} einfach.
 
 Viele Grüße,
 {{SIGNATURE_NAME}}
@@ -186,9 +187,9 @@ Das Training beginnt um 9:00 Uhr.
 
 {{FLIGHT_SITE_LINE}}
 
-Nach dem Training erhaltet ihr das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
+Nach dem Training {{#sg}}erhältst du{{/sg}}{{#pl}}erhaltet ihr{{/pl}} das komplette Trainingspaket: die Foliensätze, Beispieldatensätze und alle Dateien, die wir während der Sessions erstellen.
 
-Falls vorab etwas aufkommt, meldet euch einfach.
+Falls vorab etwas aufkommt, {{#sg}}melde dich{{/sg}}{{#pl}}meldet euch{{/pl}} einfach.
 
 Viele Grüße,
 {{SIGNATURE_NAME}}
@@ -204,7 +205,7 @@ Bonjour {{RECIPIENT_NAME}},
 
 {{CUSTOM_OPENER_NOTE}}
 
-Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers tous les diaporamas de formation utiles que nous avons utilisés. Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.
+Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les liens vers tous les diaporamas de formation utiles que nous avons utilisés. {{#sg}}Conserve cet e-mail à portée de main pour pouvoir y revenir chaque fois que tu as besoin d'informations.{{/sg}}{{#pl}}Conservez cet e-mail à portée de main pour pouvoir y revenir chaque fois que vous avez besoin d'informations.{{/pl}}
 
 ---
 
@@ -227,7 +228,7 @@ Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les lie
 
 ## 📄 Feedback
 
-Si la formation vous a plu, je vous serais très reconnaissant de prendre **5 minutes** pour me donner un retour rapide. Scannez simplement le **code QR** ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.
+{{#sg}}Si la formation t'a plu, je te serais très reconnaissant de prendre **5 minutes** pour me donner un retour rapide. Scanne simplement le **code QR** ci-dessous et dis-moi ce qui t'a plu et ce qui ne t'a pas plu.{{/sg}}{{#pl}}Si la formation vous a plu, je vous serais très reconnaissant de prendre **5 minutes** pour me donner un retour rapide. Scannez simplement le **code QR** ci-dessous et dites-moi ce qui vous a plu et ce qui ne vous a pas plu.{{/pl}}
 
 ![Retour formation]({{FEEDBACK_QR_IMAGE_URL}})
 
@@ -235,8 +236,9 @@ Si la formation vous a plu, je vous serais très reconnaissant de prendre **5 mi
 
 🚀 Bons vols.
 
-Je vous souhaite beaucoup de succès dans vos inspections par drone.
-N'hésitez pas à me contacter pour toute question.
+{{#sg}}Je te souhaite beaucoup de succès dans tes inspections par drone.
+N'hésite pas à me contacter pour toute question.{{/sg}}{{#pl}}Je vous souhaite beaucoup de succès dans vos inspections par drone.
+N'hésitez pas à me contacter pour toute question.{{/pl}}
 
 Cordialement,
 {{SIGNATURE_NAME}}
@@ -258,9 +260,9 @@ La formation commence à 9h00.
 
 {{FACILITY_PREP_BLOCK}}
 
-Après la formation, vous recevrez le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
+Après la formation, {{#sg}}tu recevras{{/sg}}{{#pl}}vous recevrez{{/pl}} le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
 
-Si quoi que ce soit se présente d'ici là, n'hésitez pas à me le dire.
+Si quoi que ce soit se présente d'ici là, {{#sg}}n'hésite pas à me le dire.{{/sg}}{{#pl}}n'hésitez pas à me le dire.{{/pl}}
 
 Cordialement,
 {{SIGNATURE_NAME}}
@@ -282,9 +284,9 @@ La formation commence à 9h00.
 
 {{FLIGHT_SITE_LINE}}
 
-Après la formation, vous recevrez le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
+Après la formation, {{#sg}}tu recevras{{/sg}}{{#pl}}vous recevrez{{/pl}} le pack complet : les supports de présentation, des jeux de données d'exemple et tous les fichiers créés pendant les sessions.
 
-Si quoi que ce soit se présente d'ici là, n'hésitez pas à me le dire.
+Si quoi que ce soit se présente d'ici là, {{#sg}}n'hésite pas à me le dire.{{/sg}}{{#pl}}n'hésitez pas à me le dire.{{/pl}}
 
 Cordialement,
 {{SIGNATURE_NAME}}

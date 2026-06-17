@@ -137,6 +137,30 @@ function extractSubjectAndBody(templateText: string) {
 
 
 
+/** Number of distinct names in the recipient field ("Marco" → 1, "Marco and Hans" → 2). */
+function recipientCount(raw: string): number {
+  return (raw || "")
+    .split(/\s*(?:,|&|\+|\/|\bund\b|\band\b|\bet\b)\s*/i)
+    .map((t) => t.trim())
+    .filter(Boolean).length;
+}
+
+/** Exactly one named recipient → write the mail in the singular (du / tu / "a trained pilot"). */
+function isSingularRecipient(raw: string): boolean {
+  return recipientCount(raw) === 1;
+}
+
+/**
+ * Resolves grammatical-number blocks in templates:
+ *   {{#sg}}…{{/sg}} is kept only for a single recipient,
+ *   {{#pl}}…{{/pl}} is kept only for multiple recipients.
+ */
+function applyGrammaticalNumber(text: string, singular: boolean): string {
+  return text
+    .replace(/\{\{#sg\}\}([\s\S]*?)\{\{\/sg\}\}/g, singular ? "$1" : "")
+    .replace(/\{\{#pl\}\}([\s\S]*?)\{\{\/pl\}\}/g, singular ? "" : "$1");
+}
+
 function replacePlaceholders(text: string, replacements: Record<string, string>) {
   let result = text;
   for (const [key, value] of Object.entries(replacements)) {
@@ -520,15 +544,21 @@ function buildUsefulLinksBlockFromChanges(language: MailLanguage, selectedChange
   return hasContent ? body : "";
 }
 
-function certificationNote(language: MailLanguage, enabled?: boolean) {
+function certificationNote(language: MailLanguage, enabled?: boolean, singular?: boolean) {
   if (!enabled) return "";
   if (language === "de") {
-    return "## Zertifizierungshinweis\n\nEs freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid.";
+    return singular
+      ? "## Zertifizierungshinweis\n\nEs freut mich, dir mitzuteilen, dass du das Training erfolgreich absolviert hast. Dein Zertifikat dient als offizieller Nachweis in unserer Datenbank, dass du ein ausgebildeter Pilot bist."
+      : "## Zertifizierungshinweis\n\nEs freut mich, euch mitzuteilen, dass ihr das Training erfolgreich absolviert habt. Die Zertifikate dienen als offizieller Nachweis in unserer Datenbank, dass ihr ausgebildete Piloten seid.";
   }
   if (language === "fr") {
-    return "## Note sur la certification\n\nJe suis heureux de vous confirmer que vous avez terminé la formation avec succès. Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés.";
+    return singular
+      ? "## Note sur la certification\n\nJe suis heureux de te confirmer que tu as terminé la formation avec succès. Ton certificat fait foi officiellement dans nos dossiers : tu es un pilote formé."
+      : "## Note sur la certification\n\nJe suis heureux de vous confirmer que vous avez terminé la formation avec succès. Vos certificats font foi officiellement dans nos dossiers : vous êtes des pilotes formés.";
   }
-  return "## Certification note\n\nI am happy to confirm that you successfully completed the training. Your certificates act as official proof in our records that you are trained pilots.";
+  return singular
+    ? "## Certification note\n\nI am happy to confirm that you successfully completed the training. Your certificate acts as official proof in our records that you are a trained pilot."
+    : "## Certification note\n\nI am happy to confirm that you successfully completed the training. Your certificates act as official proof in our records that you are trained pilots.";
 }
 
 function simulatorNote(language: MailLanguage, enabled?: boolean) {
@@ -553,6 +583,7 @@ export function renderMail(input: MailInput): RenderResult {
   const body = extracted.body;
   let subject = extracted.subject;
   const isPre = templateId.startsWith("pre_");
+  const singular = isSingularRecipient(input.recipient_name);
 
   const catalog = (industryLinks.courses as Course[]) ?? [];
   const selected = inferIndustryCourseIds(input, catalog);
@@ -571,7 +602,7 @@ export function renderMail(input: MailInput): RenderResult {
     CUSTOM_OPENER_NOTE: input.custom_opener_note || "",
     AGENDA_BLOCK: isPre ? buildAgendaBlock(input) : "",
     FLIGHT_SITE_LINE: isPre ? flightSiteLine(input) : "",
-    FACILITY_PREP_BLOCK: isPre ? facilityPrepBlock(input) : "",
+    FACILITY_PREP_BLOCK: isPre ? facilityPrepBlock(input, singular) : "",
     TRAINING_MATERIALS_BLOCK: isPre ? "" : buildTrainingMaterialsBlock(input.language, includedChangeIds),
     USEFUL_LINKS_BLOCK: isPre
       ? ""
@@ -583,14 +614,14 @@ export function renderMail(input: MailInput): RenderResult {
       : input.included_change_ids && input.included_change_ids.length > 0
         ? ""
         : buildIndustryTrainingBlock(input.language, selected, catalog),
-    CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note),
+    CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note, singular),
     SIMULATOR_NOTE_BLOCK: simulatorNote(input.language, input.include_simulator_note),
     COMPANY_CONTEXT_LINE: "",
     SIGNATURE_NAME: (input.signature_name && input.signature_name.trim()) || MAIL_SIGNATURE_DEFAULT_NAME,
   };
 
-  subject = normalize(replacePlaceholders(subject, replacements)).trim();
-  const markdownBody = replacePlaceholders(body, replacements);
+  subject = normalize(replacePlaceholders(applyGrammaticalNumber(subject, singular), replacements)).trim();
+  const markdownBody = replacePlaceholders(applyGrammaticalNumber(body, singular), replacements);
   return {
     template_id: templateId,
     subject,
