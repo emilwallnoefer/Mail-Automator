@@ -189,6 +189,18 @@ body {
   opacity: 0.12;
 }
 
+/* Week-picker overlay: same blue-slate hue as the app's modals but nearly
+ * opaque, so it reads as a solid sheet laid over the week (no day cards
+ * bleeding through). */
+.calendar-card {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(140deg, rgba(20, 30, 54, 0.985), rgba(15, 23, 42, 0.985));
+  box-shadow:
+    0 28px 64px rgba(2, 8, 23, 0.72),
+    0 10px 28px rgba(2, 8, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 .day-logger-overlay {
   animation: dayLoggerOverlayIn 180ms ease-out both;
 }
@@ -1386,6 +1398,16 @@ html[data-theme="light"] .day-logger-card {
 
 html[data-theme="light"] .day-logger-card::before { opacity: 0.1; }
 html[data-theme="light"] .day-logger-card::after { opacity: 0.08; }
+
+/* Week-picker overlay: paper surface in light mode, matching the day-logger modal. */
+html[data-theme="light"] .calendar-card {
+  border: 1px solid rgba(101, 123, 131, 0.3);
+  background: linear-gradient(140deg, rgb(var(--paper-3) / 0.985), rgb(var(--paper-2) / 0.985));
+  box-shadow:
+    0 28px 64px rgba(7, 54, 66, 0.18),
+    0 10px 28px rgba(7, 54, 66, 0.1),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
+}
 
 /* Liquid day card: paper variant. */
 html[data-theme="light"] .liquid-day-card {

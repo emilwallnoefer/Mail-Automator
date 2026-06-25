@@ -176,6 +176,27 @@ function getWeekDayKeys(weekStart: string) {
   return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(start, index)));
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+// Six Monday-aligned week rows that fully cover the given month, so the picker
+// always renders a stable 6×7 grid regardless of which weekday the 1st lands on.
+function buildMonthWeeks(monthRef: string) {
+  const ref = fromDateKey(monthRef);
+  const firstOfMonth = new Date(ref.getFullYear(), ref.getMonth(), 1);
+  const gridStart = getMonday(toDateKey(firstOfMonth));
+  return Array.from({ length: 6 }, (_, week) =>
+    Array.from({ length: 7 }, (_, day) => addDays(gridStart, week * 7 + day)),
+  );
+}
+
+function addMonths(monthRef: string, delta: number) {
+  const ref = fromDateKey(monthRef);
+  return toDateKey(new Date(ref.getFullYear(), ref.getMonth() + delta, 1));
+}
+
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2;
 }
@@ -269,6 +290,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   const [revealedDayCount, setRevealedDayCount] = useState(7);
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarView, setCalendarView] = useState<"year" | "month">("year");
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<string>(() => toDateKey(getMonday()));
+  const calendarRef = useRef<HTMLDivElement | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorPortalReady, setEditorPortalReady] = useState(false);
   const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
@@ -289,6 +315,21 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
       weekCacheRef.current.set(initialWeek.week_start, initialWeek);
     }
   }
+
+  // When the picker opens it starts on the year view, synced to the active
+  // week's year. While open, dismiss it on Escape.
+  useEffect(() => {
+    if (!calendarOpen) return;
+    setCalendarView("year");
+    setCalendarYear(fromDateKey(weekStart).getFullYear());
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setCalendarOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // weekStart is intentionally only read on open, not tracked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarOpen]);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -1018,9 +1059,203 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   const panelDateLabel = selectedDay ? dayLabel(selectedDay.date) : "Select a day";
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
+  const calendarTodayKey = toDateKey(new Date());
+  const calendarMonthWeeks = useMemo(() => buildMonthWeeks(calendarMonth), [calendarMonth]);
   const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
   const weekdayDays = useMemo(() => (activeWeekData?.days ?? []).slice(0, 5), [activeWeekData?.days]);
   const weekendDays = useMemo(() => (activeWeekData?.days ?? []).slice(5, 7), [activeWeekData?.days]);
+
+  const calendarOverlay = calendarOpen ? (
+    <>
+      <div
+        className="day-logger-overlay absolute inset-0 z-30 rounded-2xl bg-slate-950/20 backdrop-blur-[2px]"
+        aria-hidden="true"
+        onClick={() => setCalendarOpen(false)}
+      />
+      <div className="day-logger-dialog-wrap absolute inset-0 z-40 flex items-start justify-end overflow-y-auto p-3 pointer-events-none sm:p-4">
+      <div
+        ref={calendarRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Jump to a week"
+        style={{ zoom: 0.7 }}
+        className="calendar-card day-logger-dialog flex w-full max-w-[880px] flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/60 pointer-events-auto max-h-[min(94vh,920px)]"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            {calendarView === "month" ? (
+              <button
+                type="button"
+                onClick={() => setCalendarView("year")}
+                className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+                aria-label="Back to year view"
+              >
+                <span aria-hidden>&lsaquo;</span> {fromDateKey(calendarMonth).getFullYear()}
+              </button>
+            ) : null}
+            <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              {calendarView === "year"
+                ? calendarYear
+                : `${MONTH_NAMES[fromDateKey(calendarMonth).getMonth()]} ${fromDateKey(calendarMonth).getFullYear()}`}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                if (calendarView === "year") setCalendarYear(now.getFullYear());
+                else setCalendarMonth(toDateKey(new Date(now.getFullYear(), now.getMonth(), 1)));
+              }}
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              aria-label={calendarView === "year" ? "Previous year" : "Previous month"}
+              onClick={() => {
+                if (calendarView === "year") setCalendarYear((y) => y - 1);
+                else setCalendarMonth((m) => addMonths(m, -1));
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-200 transition hover:bg-white/15"
+            >
+              <span aria-hidden>&lsaquo;</span>
+            </button>
+            <button
+              type="button"
+              aria-label={calendarView === "year" ? "Next year" : "Next month"}
+              onClick={() => {
+                if (calendarView === "year") setCalendarYear((y) => y + 1);
+                else setCalendarMonth((m) => addMonths(m, 1));
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-200 transition hover:bg-white/15"
+            >
+              <span aria-hidden>&rsaquo;</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Close calendar"
+              onClick={() => setCalendarOpen(false)}
+              className="group ml-1 flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
+            >
+              <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
+                ×
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+          {calendarView === "year" ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
+              {MONTH_NAMES.map((name, monthIdx) => {
+                const monthKey = `${calendarYear}-${String(monthIdx + 1).padStart(2, "0")}-01`;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => {
+                      setCalendarMonth(monthKey);
+                      setCalendarView("month");
+                    }}
+                    className="group rounded-xl p-1.5 text-left transition hover:bg-white/[0.06]"
+                  >
+                    <p className="mb-1.5 text-lg font-semibold text-rose-300/90 transition group-hover:text-rose-200">{name}</p>
+                    <div className="grid grid-cols-7 text-center text-xs text-slate-400/70">
+                      {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                        <span key={i} className="py-0.5">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 text-center text-sm tabular-nums">
+                      {buildMonthWeeks(monthKey)
+                        .flat()
+                        .map((day) => {
+                          const dayKey = toDateKey(day);
+                          const inMonth = day.getMonth() === monthIdx;
+                          const isToday = dayKey === calendarTodayKey;
+                          return (
+                            <span
+                              key={dayKey}
+                              className={`py-1 ${!inMonth ? "text-transparent" : isToday ? "font-semibold text-white" : "text-slate-200/80"}`}
+                            >
+                              {inMonth && isToday ? (
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white">
+                                  {day.getDate()}
+                                </span>
+                              ) : (
+                                day.getDate()
+                              )}
+                            </span>
+                          );
+                        })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div>
+              <div className="mb-1 grid grid-cols-7 text-center text-xs uppercase tracking-wide text-slate-300/70">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <span key={d} className="py-1">
+                    {d}
+                  </span>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                {calendarMonthWeeks.map((week) => {
+                  const rowMonday = toDateKey(getMonday(toDateKey(week[0])));
+                  const isSelectedWeek = rowMonday === weekStart;
+                  return (
+                    <button
+                      key={rowMonday}
+                      type="button"
+                      onClick={() => {
+                        setWeekStart(rowMonday);
+                        setCalendarOpen(false);
+                      }}
+                      className={`grid w-full grid-cols-7 gap-1 rounded-xl border px-1 py-1 text-center transition ${
+                        isSelectedWeek
+                          ? "border-cyan-300/50 bg-cyan-400/15"
+                          : "border-transparent hover:border-white/15 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      {week.map((day) => {
+                        const dayKey = toDateKey(day);
+                        const inMonth = day.getMonth() === fromDateKey(calendarMonth).getMonth();
+                        const isToday = dayKey === calendarTodayKey;
+                        return (
+                          <span
+                            key={dayKey}
+                            className={`flex h-9 items-center justify-center rounded-lg text-sm tabular-nums ${
+                              inMonth ? "text-slate-100" : "text-slate-500"
+                            }`}
+                          >
+                            {isToday ? (
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 font-semibold text-white">
+                                {day.getDate()}
+                              </span>
+                            ) : (
+                              day.getDate()
+                            )}
+                          </span>
+                        );
+                      })}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-center text-xs text-slate-400">Click a week to jump the Hour Logger to it.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      </div>
+    </>
+  ) : null;
 
   const dayLoggerOverlay =
     editorPortalReady && editorOpen ? (
@@ -1706,6 +1941,20 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end sm:gap-2">
             <button
               type="button"
+              onClick={() => setCalendarOpen((open) => !open)}
+              aria-haspopup="dialog"
+              aria-expanded={calendarOpen}
+              aria-label="Open calendar to jump to a week"
+              title="Jump to a week"
+              className="flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-slate-200 transition hover:bg-white/15"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
+                <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                <path d="M3 9h18M8 2.5v4M16 2.5v4" />
+              </svg>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 const prev = addDays(fromDateKey(weekStart), -7);
                 setWeekStart(toDateKey(prev));
@@ -1861,6 +2110,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         </div>
         {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
         </div>
+        {calendarOverlay}
       </div>
     </section>
     {dayLoggerOverlay ? createPortal(dayLoggerOverlay, document.body) : null}
