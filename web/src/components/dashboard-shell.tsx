@@ -30,6 +30,7 @@ import { AdminPanel } from "@/components/admin-panel";
 import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
+import { LATEST_RELEASE } from "@/lib/release-notes";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 import {
   TRAINING_DISCIPLINES,
@@ -48,7 +49,12 @@ type DashboardShellProps = {
 
 type ModuleKey = "mail" | "time" | "settings" | "admin";
 
-const PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY = "ma_program_readme_prompt_seen_deploy_v1";
+// One-time flag: the first-launch README prompt is for brand-new users only,
+// so it keys on "seen ever" rather than the deploy/version (which used to
+// re-trigger it on every release).
+const PROGRAM_README_PROMPT_SEEN_KEY = "ma_program_readme_prompt_seen_v1";
+// Tracks the last release whose "What's new" popup the user dismissed.
+const WHATS_NEW_SEEN_VERSION_KEY = "ma_whats_new_seen_version_v1";
 const SUBJECT_WRITE_STEP = 2;
 const BODY_WRITE_STEP = 10;
 const SUBJECT_WRITE_INTERVAL_MS = 20;
@@ -246,8 +252,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
   const [roleSaving, setRoleSaving] = useState(false);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
-  const [currentDeployKey, setCurrentDeployKey] = useState("local-dev");
   const [animatedPreviewSubject, setAnimatedPreviewSubject] = useState("");
   const [animatedPreviewBody, setAnimatedPreviewBody] = useState("");
   // Current Time Tracker week, warmed in the background on dashboard load so the
@@ -487,21 +493,28 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }, [userRole]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch("/api/app-meta");
-        const payload = (await response.json()) as { deploy_key?: string };
-        const deployKey = String(payload.deploy_key || "local-dev");
-        setCurrentDeployKey(deployKey);
-        const seenDeployKey = window.localStorage.getItem(PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY) || "";
-        if (seenDeployKey !== deployKey) {
-          setShowProgramReadmePrompt(true);
-        }
-      } catch {
-        // If meta fetch fails, keep prompt behavior permissive.
+    try {
+      const firstLaunchSeen = window.localStorage.getItem(PROGRAM_README_PROMPT_SEEN_KEY);
+      if (!firstLaunchSeen) {
+        // Brand-new user: show the one-time first-launch README prompt, and mark
+        // the current release as already seen so they only ever get the
+        // "What's new" popup for *future* releases (everything is new to them now).
         setShowProgramReadmePrompt(true);
+        try {
+          window.localStorage.setItem(WHATS_NEW_SEEN_VERSION_KEY, LATEST_RELEASE.version);
+        } catch {
+          // Ignore storage errors.
+        }
+        return;
       }
-    })();
+      // Returning user: surface the "What's new" popup once per release.
+      const seenVersion = window.localStorage.getItem(WHATS_NEW_SEEN_VERSION_KEY) || "";
+      if (seenVersion !== LATEST_RELEASE.version) {
+        setShowWhatsNew(true);
+      }
+    } catch {
+      // Storage blocked (e.g. private mode): stay quiet rather than nagging.
+    }
   }, []);
 
   useEffect(() => {
@@ -595,7 +608,16 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   function dismissProgramReadmePrompt() {
     setShowProgramReadmePrompt(false);
     try {
-      window.localStorage.setItem(PROGRAM_README_PROMPT_SEEN_DEPLOY_KEY, currentDeployKey);
+      window.localStorage.setItem(PROGRAM_README_PROMPT_SEEN_KEY, "1");
+    } catch {
+      // Ignore storage errors to avoid blocking interaction.
+    }
+  }
+
+  function dismissWhatsNew() {
+    setShowWhatsNew(false);
+    try {
+      window.localStorage.setItem(WHATS_NEW_SEEN_VERSION_KEY, LATEST_RELEASE.version);
     } catch {
       // Ignore storage errors to avoid blocking interaction.
     }
@@ -1391,7 +1413,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         </AnimatePresence>
 
       </section>
-      <ChatWidget bottomOffsetRem={showProgramReadmePrompt ? 11 : 1} isAdmin={isAdmin} />
+      <ChatWidget
+        bottomOffsetRem={showProgramReadmePrompt ? 11 : showWhatsNew ? 12 : 1}
+        isAdmin={isAdmin}
+      />
       {showProgramReadmePrompt ? (
         <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-white/20 bg-slate-950/92 p-3 shadow-xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
@@ -1422,6 +1447,38 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           >
             Open program README
           </button>
+        </div>
+      ) : null}
+      {showWhatsNew ? (
+        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-white/20 bg-slate-950/92 p-3 shadow-xl backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-cyan-200/75">
+                What&apos;s new · {LATEST_RELEASE.date}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">{LATEST_RELEASE.title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissWhatsNew}
+              className="group shrink-0 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+              aria-label="Dismiss what's new"
+            >
+              <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
+                X
+              </span>
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1 text-xs text-slate-300/85">
+            {LATEST_RELEASE.highlights.map((highlight, index) => (
+              <li key={index} className="flex gap-2">
+                <span className="text-cyan-300/80" aria-hidden>
+                  •
+                </span>
+                <span>{highlight}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {userRole == null ? (

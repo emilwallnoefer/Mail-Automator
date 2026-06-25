@@ -358,7 +358,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   // line is simply "date / travel / hours".
   function buildCompTextFormats() {
     const place = (source: (typeof compSourceRows)[number]) =>
-      [source.client, source.location].filter(Boolean).join(" · ") || "No travel info";
+      source.client || "No travel info";
 
     const lines = compSourceRows.map(
       (source) => `${dayLabel(source.date)} / ${place(source)} / ${fmtHM(source.mins)}`,
