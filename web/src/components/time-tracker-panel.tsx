@@ -352,60 +352,23 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     }
   }
 
-  // Build the breakdown as plain text + an HTML table. Odoo can't take pasted
-  // PNGs, but its rich-text fields accept HTML (and plain-text fields fall
-  // back to the text form), so we put both on the clipboard at once.
+  // Build the breakdown as plain text + a matching HTML form. Odoo can't take
+  // pasted PNGs, but its rich-text fields accept HTML (and plain-text fields
+  // fall back to the text form), so we put both on the clipboard at once. Each
+  // line is simply "date / travel / hours".
   function buildCompTextFormats() {
-    const dayName = selectedDay ? dayLabel(selectedDay.date) : "";
-    const title = `Compensation from${dayName ? ` — ${dayName}` : ""}`;
     const place = (source: (typeof compSourceRows)[number]) =>
       [source.client, source.location].filter(Boolean).join(" · ") || "No travel info";
 
-    const text = [
-      title,
-      "",
-      ...compSourceRows.map(
-        (source) =>
-          `• ${dayLabel(source.date)} — ${place(source)}: ${fmtHM(source.mins)} (of ${fmtHM(
-            source.earned,
-          )} overtime)`,
-      ),
-      "",
-      `Total compensated: ${fmtHM(compTotalMins)}`,
-    ].join("\n");
+    const lines = compSourceRows.map(
+      (source) => `${dayLabel(source.date)} / ${place(source)} / ${fmtHM(source.mins)}`,
+    );
 
-    const cell = "padding:6px 12px;border-bottom:1px solid #e5e7eb";
-    const head = "padding:6px 12px;border-bottom:2px solid #d1d5db;text-align:left";
-    const rowsHtml = compSourceRows
-      .map(
-        (source) =>
-          `<tr>` +
-          `<td style="${cell};white-space:nowrap">${escapeHtml(dayLabel(source.date))}</td>` +
-          `<td style="${cell}">${escapeHtml(place(source))}</td>` +
-          `<td style="${cell};text-align:right;white-space:nowrap">${escapeHtml(fmtHM(source.mins))}</td>` +
-          `<td style="${cell};text-align:right;white-space:nowrap;color:#6b7280">of ${escapeHtml(
-            fmtHM(source.earned),
-          )} overtime</td>` +
-          `</tr>`,
-      )
-      .join("");
+    const text = lines.join("\n");
     const html =
       `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111827">` +
-      `<p style="margin:0 0 8px;font-weight:600">${escapeHtml(title)}</p>` +
-      `<table style="border-collapse:collapse;font-size:13px">` +
-      `<thead><tr>` +
-      `<th style="${head}">Day</th>` +
-      `<th style="${head}">Client / Location</th>` +
-      `<th style="${head};text-align:right">Compensated</th>` +
-      `<th style="${head};text-align:right">Day overtime</th>` +
-      `</tr></thead>` +
-      `<tbody>${rowsHtml}</tbody>` +
-      `<tfoot><tr>` +
-      `<td colspan="2" style="padding:6px 12px;font-weight:600">Total compensated</td>` +
-      `<td style="padding:6px 12px;text-align:right;font-weight:600">${escapeHtml(fmtHM(compTotalMins))}</td>` +
-      `<td></td>` +
-      `</tr></tfoot>` +
-      `</table></div>`;
+      lines.map((line) => escapeHtml(line)).join("<br>") +
+      `</div>`;
 
     return { text, html };
   }
