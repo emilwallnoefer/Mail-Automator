@@ -130,7 +130,7 @@ Diaporama couvrant l'ensemble du workflow FARO Connect, de la capture au nuage d
 Comme référence pendant le post-traitement.
 
 ### ID: useful_water_wastewater_deck
-LABEL: Formation eau et eaux usées Elios 3
+LABEL: Water and Wastewater AIIM Training
 LINK: WATER_WASTEWATER_DECK_URL
 DESC:
 Diaporama sur les risques, considérations de sécurité, bonnes pratiques de vol et géoréférencement par cibles dans égouts et conduites souterraines. À utiliser avant des missions similaires.
@@ -178,7 +178,7 @@ DESC:
 Cours Academy sur les workflows eaux usées - réseaux d'égouts, stations de traitement, points d'accès et rapports d'inspection. À utiliser avant des missions similaires.
 
 ### ID: thinkific_faro_connect
-LABEL: Cours en ligne FARO Connect
+LABEL: Cours FARO Connect
 LINK: (Thinkific - Flyability Academy FARO Connect)
 DESC:
 Cours Academy guidé avec exercices pratiques sur FARO Connect à partir d'exports Elios 3, de l'import aux livrables clients. À suivre à son rythme.

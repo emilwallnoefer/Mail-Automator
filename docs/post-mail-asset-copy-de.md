@@ -130,7 +130,7 @@ Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigie
 Als Referenz bei der Nachbearbeitung.
 
 ### ID: useful_water_wastewater_deck
-LABEL: Wasser- und Abwasser-Training Elios 3
+LABEL: Water and Wastewater AIIM Training
 LINK: WATER_WASTEWATER_DECK_URL
 DESC:
 Foliensatz zu Risiken, Sicherheitsaspekten, Flug-Best-Practices und Target-basierter Georeferenzierung in Kanälen und unterirdischen Leitungen. Vor ähnlichen Einsätzen nutzen.
@@ -178,7 +178,7 @@ DESC:
 Academy-Kurs zu Abwasser-Workflows - Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte. Vor ähnlichen Einsätzen nutzen.
 
 ### ID: thinkific_faro_connect
-LABEL: FARO Connect Online-Kurs
+LABEL: FARO Connect Kurs
 LINK: (Thinkific - Flyability Academy FARO Connect)
 DESC:
 Geführter Academy-Kurs mit praktischen FARO-Connect-Übungen an Elios-3-Exports, vom Import bis zu kundenfähigen Ergebnissen. Im eigenen Tempo durcharbeiten.

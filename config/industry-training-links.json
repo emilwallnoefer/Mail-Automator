@@ -42,9 +42,9 @@
     },
     {
       "id": "faro_connect",
-      "label_en": "FARO Connect Online Course",
-      "label_de": "FARO Connect Online-Kurs",
-      "label_fr": "Cours en ligne FARO Connect",
+      "label_en": "FARO Connect Course",
+      "label_de": "FARO Connect Kurs",
+      "label_fr": "Cours FARO Connect",
       "url": "https://flyabilityacademy.thinkific.com/courses/Faro-connect-online-course",
       "keywords": ["faro", "point cloud", "scan", "bim", "surveying"]
     }

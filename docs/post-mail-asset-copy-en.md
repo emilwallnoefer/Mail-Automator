@@ -130,7 +130,7 @@ Deck covering the full FARO Connect workflow, from capture to a corrected and cl
 Reference while post-processing.
 
 ### ID: useful_water_wastewater_deck
-LABEL: Water and Wastewater Training Elios 3
+LABEL: Water and Wastewater AIIM Training
 LINK: WATER_WASTEWATER_DECK_URL
 DESC:
 Slide deck covering risks, safety considerations, flight best practices, and target-based georeferencing in sewers and underground pipes. Use before similar jobs.
@@ -178,7 +178,7 @@ DESC:
 Academy course on wastewater workflows - sewer networks, treatment plants, access points, and inspection reporting. Use before similar jobs.
 
 ### ID: thinkific_faro_connect
-LABEL: FARO Connect Online Course
+LABEL: FARO Connect Course
 LINK: (Thinkific - Flyability Academy FARO Connect)
 DESC:
 Guided Academy course with hands-on FARO Connect exercises on Elios 3 exports, from ingest to customer-ready deliverables. Work through at your own pace.

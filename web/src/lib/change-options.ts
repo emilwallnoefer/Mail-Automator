@@ -339,9 +339,9 @@ const usefulOptions: ChangeOption[] = [
     id: "useful_water_wastewater_deck",
     category: "useful_link",
     resourceSection: "other_trainings",
-    label_en: "Water and Wastewater Training Elios 3",
-    label_de: "Wasser- und Abwasser-Training Elios 3",
-    label_fr: "Formation eau et eaux usées Elios 3",
+    label_en: "Water and Wastewater AIIM Training",
+    label_de: "Water and Wastewater AIIM Training",
+    label_fr: "Water and Wastewater AIIM Training",
     desc_en:
       "Slide deck covering risks, safety considerations, flight best practices, and target-based georeferencing in sewers and underground pipes. Use before similar jobs.",
     desc_de:
@@ -467,15 +467,15 @@ const usefulOptions: ChangeOption[] = [
     id: "useful_ut_probe",
     category: "useful_link",
     resourceSection: "other_trainings",
-    label_en: "Flyability guide to UT probe selection - slide deck",
-    label_de: "Flyability-Leitfaden zur UT-Sondenauswahl - Foliensatz",
-    label_fr: "Guide Flyability - choix des sondes UT - diaporama",
+    label_en: "Flyability guide to UT probe selection",
+    label_de: "Flyability-Leitfaden zur UT-Sondenauswahl",
+    label_fr: "Guide Flyability - choix des sondes UT",
     desc_en:
-      "Decision guide comparing dual-crystal and single-crystal UT probes with selection criteria by surface, coating, and environment\nuse before mission prep.",
+      "Decision guide comparing dual-crystal and single-crystal UT probes with selection criteria by surface, coating, and environment. Use during mission prep.",
     desc_de:
-      "Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung\nvor der Missionsvorbereitung nutzen.",
+      "Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung. Während der Missionsvorbereitung nutzen.",
     desc_fr:
-      "Guide de décision comparant sondes UT double et simple cristal avec critères de choix selon surface, revêtement et environnement\nà consulter avant la préparation.",
+      "Guide de décision comparant sondes UT double et simple cristal avec critères de choix selon surface, revêtement et environnement. À consulter pendant la préparation.",
     default_checked: false,
     link_key: "UT_PROBE_SELECTION_GUIDE_URL",
   },
