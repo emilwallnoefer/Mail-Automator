@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-06-30",
+    date: "Jun 30, 2026",
+    title: "Post-training Add-ons + refreshed resources",
+    highlights: [
+      "New “Add on’s” section: paste a link to the collected flight data.",
+      "Cleaner after-training asset titles and descriptions (EN/DE/FR).",
+    ],
+  },
+  {
     version: "2026-06-25",
     date: "Jun 25, 2026",
     title: "Cleaner compensation copy",
