@@ -82,12 +82,6 @@ The `web/README.md` has the most detailed env-var reference and the cron/team-ch
 - Mail templates and link policies live in repo root (`templates/training-email-templates.md`, `config/*.json`) and are consumed by the **Python** CLI, not by the web app. The web app's mail generation lives in `web/src/lib/mail-engine.ts` and `web/src/mail-config/` (note the duplicated `training-email-templates.md` etc. inside `web/src/mail-config/` — this is the runtime copy used by `/api/generate`).
 - `.cursor/commands/mail.md` describes the `/mail` Cursor command contract. The hard rule there ("never auto-send, never create draft before explicit `confirm draft`") applies to any equivalent flow added in this repo.
 
-## Release notes ("What's new" popup) — REQUIRED on every feature commit
+## Release notes ("What's new" popup)
 
-The dashboard shows returning users a "What's new" popup driven by `web/src/lib/release-notes.ts`. The popup is keyed by `version` in localStorage and only re-fires when a **new entry with a new `version`** is added — so a feature that ships without a release-notes entry is invisible to users.
-
-**Whenever you commit/merge/push a user-facing feature or notable change, you MUST add a matching entry in the same change.** Do not skip this on commit/merge/push.
-
-- Add the entry to the **top** of the `RELEASE_NOTES` array (newest first); the first element is `LATEST_RELEASE`, which is what the popup renders.
-- `version`: today's date as `YYYY-MM-DD` (bumping it is what re-triggers the popup). `date`: a human header like `Jun 30, 2026`. `title`: one short headline. `highlights`: a few terse, few-word bullets — a glance, not a changelog.
-- Purely internal changes (refactors, build/CI, docs) don't need an entry — only things a user would notice.
+When you commit/merge/push a **user-facing** feature, add a `RELEASE_NOTES` entry in the same change (`web/src/lib/release-notes.ts`) — otherwise the dashboard "What's new" popup won't surface it. Prepend it to the array (the first element, `LATEST_RELEASE`, is what renders): `version` = today's `YYYY-MM-DD` (a new version is what re-fires the popup), a human `date`, a short `title`, and a few terse `highlights`. Skip only purely internal changes (refactors/CI/docs).
