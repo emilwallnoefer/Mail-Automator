@@ -385,8 +385,8 @@ function buildIndustryTrainingBlock(language: MailLanguage, selectedIds: string[
 }
 
 function usefulLinksMainHeader(lang: MailLanguage) {
-  if (lang === "de") return "## 🔗 Weitere nützliche Links";
-  if (lang === "fr") return "## 🔗 Autres liens utiles";
+  if (lang === "de") return "## 🔗 Software & Lernressourcen";
+  if (lang === "fr") return "## 🔗 Logiciels et ressources d'apprentissage";
   return "## 🔗 Software & learning resources";
 }
 

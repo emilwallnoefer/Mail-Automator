@@ -21,22 +21,20 @@ Erscheinen unter `📂 Trainings-Folien` in der E-Mail.
 LABEL: Einführungstraining für die Elios 3
 LINK: INTRO_TRAINING_URL
 DESC:
-Trainings-Foliensatz von Tag 1 mit allen Funktionen der Drohne und der Fernsteuerung, damit neue Pilotinnen und Piloten die Elios 3 sicher bedienen können.
+Trainings-Foliensatz mit allen Funktionen der Drohne und der Fernsteuerung, damit neue Pilotinnen und Piloten die Elios 3 sicher bedienen können.
 Zum Einarbeiten weiterer Kolleginnen und Kollegen intern nutzen.
 
 ### ID: material_aiim
 LABEL: Indoor Aerial Inspection Methodology (AIIM) Training
 LINK: AIIM_TRAINING_URL
 DESC:
-Foliensatz zu allen wichtigen Schritten der Flugvorbereitung und den verschiedenen Inspektionsarten: Erkundungs-, Inspektions- und Kartierungsflug.
-Vor jedem komplexen Einsatz als Referenz nutzen.
+Foliensatz zu allen wichtigen Schritten der Flugvorbereitung und den verschiedenen Inspektionsarten: Erkundungs-, Inspektions- und Kartierungsflug. Vor jedem komplexen Einsatz als Referenz nutzen.
 
 ### ID: material_method_statement
 LABEL: Method Statement Vorlage
 LINK: METHOD_STATEMENT_URL
 DESC:
-Vorlage, um vor einem Flug möglichst viele Informationen beim Kunden oder Auftraggeber abzuholen.
-So nutzen oder an eure Bedürfnisse anpassen.
+Vorlage, um vor einem Flug möglichst viele Informationen beim Kunden oder Auftraggeber abzuholen. So nutzen oder an eure Bedürfnisse anpassen.
 
 ### ID: material_risk_assessment
 LABEL: Leitfaden zur Risikobewertung
@@ -54,9 +52,9 @@ An eure Bedürfnisse anpassen, um ein eigenes Verfahren aufzubauen.
 
 ---
 
-## 2. Weitere nützliche Links
+## 2. Software & Lernressourcen
 
-Erscheinen unter `🔗 Weitere nützliche Links` (keine Unterüberschrift in der E-Mail).
+Erscheinen unter `🔗 Software & Lernressourcen` (keine Unterüberschrift in der E-Mail).
 
 ### ID: useful_knowledge_base
 LABEL: Flyability Knowledge Base
@@ -107,115 +105,89 @@ Vor eurem ersten Scan-to-BIM-Workflow nutzen.
 Erscheinen unter `### 📑 Weitere Trainings-Folien`.
 
 ### ID: useful_intro_ut
-LABEL: UT-Einführungstraining Elios 3 - Foliensatz
+LABEL: UT-Einführungstraining Elios 3
 LINK: INTRO_UT_TRAINING_URL
 DESC:
-Leichter Einführungsfoliensatz zu Hardware, erster Inbetriebnahme und Ultraschall-Grundlagen des UT-Payloads
-vor den ersten UT-Einsätzen nutzen.
+Leichter Einführungsfoliensatz zu Hardware, erster Inbetriebnahme und Ultraschall-Grundlagen des UT-Payloads. Vor den ersten UT-Einsätzen nutzen.
 
 ### ID: useful_ut_advanced
-LABEL: UT-Fortgeschrittenentraining Elios 3 - Foliensatz
+LABEL: UT-Fortgeschrittenentraining Elios 3
 LINK: UT_ADVANCED_ELIO3_DECK_URL
 DESC:
-Vollständiger UT-Payload-Foliensatz zu Sondentechnologie, Dual-Crystal-Mechanik, Messtheorie und Inspektionsmethodik
-für jeden UT-Einsatz nutzbar.
+Vollständiger UT-Payload-Foliensatz zu Sondentechnologie, Dual-Crystal-Mechanik, Messtheorie und Inspektionsmethodik. Für jeden UT-Einsatz nutzbar.
 
 ### ID: useful_ut_probe
-LABEL: Flyability-Leitfaden zur UT-Sondenauswahl - Foliensatz
+LABEL: Flyability-Leitfaden zur UT-Sondenauswahl
 LINK: UT_PROBE_SELECTION_GUIDE_URL
 DESC:
-Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung
-vor der Missionsvorbereitung nutzen.
+Entscheidungsleitfaden mit Vergleich von Dual- und Single-Crystal-UT-Sonden und Auswahlkriterien nach Oberfläche, Beschichtung und Umgebung. Während der Missionsvorbereitung nutzen.
 
 ### ID: useful_faro_deck
-LABEL: FARO Connect Training - Foliensatz
+LABEL: FARO Connect Training (Vermessung)
 LINK: FARO_CONNECT_DECK_URL
 DESC:
 Foliensatz zum gesamten FARO-Connect-Workflow, von der Aufnahme bis zur korrigierten, sauberen Punktwolke.
-Als Referenz beim Verarbeiten.
+Als Referenz bei der Nachbearbeitung.
 
 ### ID: useful_water_wastewater_deck
-LABEL: Water & Wastewater Training - Foliensatz
+LABEL: Wasser- und Abwasser-Training Elios 3
 LINK: WATER_WASTEWATER_DECK_URL
 DESC:
-Foliensatz zu Risiken, Sicherheitsaspekten, Flug-Best-Practices und Target-basierter Georeferenzierung in Kanälen und unterirdischen Leitungen
-als Referenz vor ähnlichen Einsätzen.
+Foliensatz zu Risiken, Sicherheitsaspekten, Flug-Best-Practices und Target-basierter Georeferenzierung in Kanälen und unterirdischen Leitungen. Vor ähnlichen Einsätzen nutzen.
 
 ### ID: useful_cement_deck
-LABEL: Zementwerk- & Ofeninspektion - Foliensatz
+LABEL: Cement AIIM Training
 LINK: CEMENT_ONLINE_DECK_URL
 DESC:
-Foliensatz zu Zementanlagen, Risikopunkten, Flug-Best-Practices und Inspektionsbeispielen an Ofen, Kühler und typischen Anlagen
-als Referenz vor ähnlichen Einsätzen.
+Foliensatz zu Zementanlagen, Risikopunkten, Flug-Best-Practices und Inspektionsbeispielen an Ofen, Kühler und typischen Anlagen.
 
 ---
 
-## 4. Online-Schulungen
+## 4. Online-Plattform
 
-Erscheinen unter `### 💻 Online-Schulungen`.
-
-### ID: useful_faro_online
-LABEL: FARO Connect Online-Kurs
-LINK: FARO_CONNECT_ONLINE_COURSE_URL
-DESC:
-Selbstgeführter Academy-Kurs mit Modulen und Quizfragen zur Punktwolkenverarbeitung und zum FARO-Connect-Workflow von A bis Z
-im eigenen Tempo durcharbeiten.
+Erscheinen unter `### 💻 Online-Plattform`.
 
 ### ID: thinkific_regulation
 LABEL: Regulatorik Kurs
 LINK: (Thinkific - Flyability Academy Regulation)
 DESC:
-Academy-Kurs mit Modulen zu Luftfahrtregeln, Luftraumklassen, Behördengenehmigungen und operativer Compliance
-vor regulierten Flügen nützlich.
+Academy-Kurs mit Modulen zu Luftfahrtregeln, Luftraumklassen, Behördengenehmigungen und operativer Compliance. Vor regulierten Flügen nutzen.
 
 ### ID: thinkific_gas_sensor
 LABEL: Gas Sensor Kurs
 LINK: (Thinkific - Flyability Academy Gas sensor)
 DESC:
-Academy-Kurs zum Gas-Sensor-Payload - Montage, Einsatz im Flug, Alarmschwellen und Ablesen brennbarer Gastrends
-vor den ersten Gas-Einsätzen nutzen.
+Academy-Kurs zum Gas-Sensor-Payload - Montage, Einsatz im Flug, Alarmschwellen und Ablesen brennbarer Gastrends. Vor dem ersten Einsatz nutzen.
 
 ### ID: thinkific_cement
 LABEL: Zement-Industrie Kurs
 LINK: (Thinkific - Flyability Academy Cement)
 DESC:
-Academy-Kurs zu Zementwerk-Inspektionen mit der Elios 3 - Öfen, Kühler, Silos und typische heiße, staubige Anlagen
-vor dem Einsatz vor Ort nützlich.
+Academy-Kurs zu Zementwerk-Inspektionen mit der Elios 3 - Öfen, Kühler, Silos und typische heiße, staubige Anlagen. Vor dem Einsatz vor Ort nutzen.
 
 ### ID: thinkific_mining
 LABEL: Bergbau Kurs
 LINK: (Thinkific - Flyability Academy Mining)
 DESC:
-Academy-Kurs zu Untertage-Inspektionen im Bergbau - Strecken, Abbaukammern, Überhauen, Erzrutschen und Gebirgssicherung
-vor dem Einsatz vor Ort nützlich.
+Academy-Kurs zu Untertage-Inspektionen im Bergbau - Strecken, Abbaukammern, Überhauen, Erzrutschen und Gebirgssicherung. Vor dem Einsatz vor Ort nutzen.
 
 ### ID: thinkific_wastewater
 LABEL: Abwasser Kurs
 LINK: (Thinkific - Flyability Academy Wastewater)
 DESC:
-Academy-Kurs zu Abwasser-Workflows - Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte
-vor ähnlichen Einsätzen nützlich.
+Academy-Kurs zu Abwasser-Workflows - Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte. Vor ähnlichen Einsätzen nutzen.
 
 ### ID: thinkific_faro_connect
 LABEL: FARO Connect Online-Kurs
 LINK: (Thinkific - Flyability Academy FARO Connect)
 DESC:
-Geführter Academy-Kurs mit praktischen FARO-Connect-Übungen an Elios-3-Exports, vom Import bis zu kundenfähigen Ergebnissen
-im eigenen Tempo durcharbeiten.
-
-### ID: useful_wastewater_course
-LABEL: Wastewater Online-Kurs
-LINK: WASTEWATER_ONLINE_COURSE_URL
-DESC:
-Academy-Kurs zu Abwasser-Workflows - Kanalnetze, Kläranlagen, Zugangspunkte und Inspektionsberichte
-vor ähnlichen Einsätzen nützlich.
+Geführter Academy-Kurs mit praktischen FARO-Connect-Übungen an Elios-3-Exports, vom Import bis zu kundenfähigen Ergebnissen. Im eigenen Tempo durcharbeiten.
 
 ### ID: useful_academy_hub
 LABEL: Flyability Academy
 LINK: FLYABILITY_ACADEMY_HUB_URL
 DESC:
-Unsere Academy mit kostenlosen, branchenspezifischen Modulen, um das Beste aus euren Elios-3-Inspektionen herauszuholen.
-Nach dem Training zum Vertiefen nutzen.
+Unsere aktuelle Academy bietet kostenlose, branchenspezifische Module, um das Beste aus euren Elios-3-Inspektionen herauszuholen. Nach dem Training zum Vertiefen nutzen.
 
 ---
 
@@ -224,21 +196,20 @@ Nach dem Training zum Vertiefen nutzen.
 Erscheinen unter `### 🎬 Schulungsvideos` (Abschnitts-Intro unten).
 
 ### SECTION_INTRO (videos)
-Kurze Videos zu Payloads, Stromversorgung, Tether und Akkus - für Piloten und Unterstützung vor Ort, bevor solche Einsätze anstehen.
+Kurze Videos zum richtigen Umgang mit den Flyability-Payloads und dem Zubehör.
+Vor der ersten Verwendung ansehen.
 
 ### ID: useful_gas_sensor
 LABEL: Gas Sensor Quick-Start-Guide
 LINK: GAS_SENSOR_QUICKSTART_URL
 DESC:
-Knowledge-Base-Quick-Start zum Gas-Sensor - Montage, Preflight, Alarmschwellen und Ablesen im Flug
-vor den ersten Gas-Einsätzen ansehen.
+Knowledge-Base-Quick-Start zu Gas-Sensor-Montage, Preflight, Alarmschwellen und Ablesen im Flug. Vor dem ersten Einsatz ansehen.
 
 ### ID: useful_rad_video
 LABEL: Elios 3 RAD-Sensor Schulungsvideo
 LINK: RAD_SENSOR_VIDEO_URL
 DESC:
-Tutorial-Video zum Elios-3-Strahlungssensor - Montage, Flugverhalten, Datenhinweise, Aufnahme und Praxis vor Ort
-vor den ersten RAD-Einsätzen ansehen.
+Tutorial-Video zum Elios-3-Strahlungssensor - Montage, Flugverhalten, Datenhinweise, Aufnahme und Praxis vor Ort. Vor dem ersten Einsatz ansehen.
 
 ### ID: useful_battery
 LABEL: High-Capacity-Akku Start-Guide
@@ -259,4 +230,4 @@ LABEL: Flyability-Zelt Falt-Tutorial
 LINK: TENT_FOLDING_TUTORIAL_URL
 DESC:
 Schritt-für-Schritt-Video, wie das Flyability-Zelt wieder in die Tasche gefaltet wird, ohne Stoff oder Stangen zu beschädigen
-vor dem Zusammenpacken vor Ort ansehen.
+Vor dem Zusammenpacken vor Ort ansehen.

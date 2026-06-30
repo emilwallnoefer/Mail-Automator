@@ -92,14 +92,12 @@ function estimateTrainingMinutes(id: string): number {
     useful_water_wastewater_deck: 90,
     useful_cement_deck: 90,
 
-    useful_faro_online: 180,
     thinkific_regulation: 150,
     thinkific_gas_sensor: 120,
     thinkific_cement: 120,
     thinkific_mining: 120,
     thinkific_wastewater: 120,
     thinkific_faro_connect: 180,
-    useful_wastewater_course: 180,
     useful_academy_hub: 30,
 
     useful_gas_sensor: 25,

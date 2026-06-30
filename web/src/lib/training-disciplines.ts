@@ -111,7 +111,7 @@ export const DISCIPLINE_PRE_CHANGE_IDS: Record<TrainingDiscipline, string[]> = {
   ut: ["useful_intro_ut", "useful_ut_advanced", "useful_ut_probe"],
   tether: ["useful_tether"],
   surveying: ["useful_scan_bim", "useful_faro_deck"],
-  faro_connect: ["useful_faro_deck", "useful_faro_online"],
+  faro_connect: ["useful_faro_deck", "thinkific_faro_connect"],
   rad_sensor: ["useful_rad_video"],
   gas_sensor: ["useful_gas_sensor"],
 };
