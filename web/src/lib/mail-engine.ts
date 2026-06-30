@@ -584,17 +584,17 @@ function addonsBlock(language: MailLanguage, datasetsUrl?: string, singular?: bo
     const intro = singular
       ? "Unten findest du den Link, um alle Flugdaten herunterzuladen, die wir während des Trainings gemeinsam aufgenommen haben. Das Zertifikat über deine Teilnahme am Training liegt dieser E-Mail als Anhang bei."
       : "Unten findet ihr den Link, um alle Flugdaten herunterzuladen, die wir während des Trainings gemeinsam aufgenommen haben. Das Zertifikat über eure Teilnahme am Training liegt dieser E-Mail als Anhang bei.";
-    return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Flugdaten herunterladen](${url})**`;
+    return `## 📄 Add on's\n\n${intro}\n\n➡️ **[Flugdaten herunterladen](${url})**`;
   }
   if (language === "fr") {
     const intro = singular
       ? "Tu trouveras ci-dessous le lien pour télécharger toutes les données de vol que nous avons collectées ensemble pendant la formation. Le certificat attestant ta participation à la formation est joint à cet e-mail."
       : "Vous trouverez ci-dessous le lien pour télécharger toutes les données de vol que nous avons collectées ensemble pendant la formation. Le certificat attestant votre participation à la formation est joint à cet e-mail.";
-    return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Télécharger les données de vol](${url})**`;
+    return `## 📄 Add on's\n\n${intro}\n\n➡️ **[Télécharger les données de vol](${url})**`;
   }
   const intro =
     "Below you'll find the link to download all the flight data we collected together during the training. The certificate confirming your training attendance is attached to this email.";
-  return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Download your flight data](${url})**`;
+  return `## 📄 Add on's\n\n${intro}\n\n➡️ **[Download your flight data](${url})**`;
 }
 
 export function renderMail(input: MailInput): RenderResult {
