@@ -33,6 +33,10 @@ As I promised during our training, here is the recap email with links to all the
 
 ---
 
+{{ADDONS_BLOCK}}
+
+---
+
 ## 📄 Feedback
 
 If you enjoyed the training, I'd be super thankful if you could take **5 minutes** to give me some quick feedback. Just scan the **QR code** below and tell me what you liked and what you didn't.
@@ -78,6 +82,10 @@ wie ich es während unserer Schulung versprochen habe, {{#sg}}erhältst du{{/sg}
 
 {{CERTIFICATION_NOTE_BLOCK}}
 {{SIMULATOR_NOTE_BLOCK}}
+
+---
+
+{{ADDONS_BLOCK}}
 
 ---
 
@@ -223,6 +231,10 @@ Comme promis pendant notre formation, voici l'e-mail récapitulatif avec les lie
 
 {{CERTIFICATION_NOTE_BLOCK}}
 {{SIMULATOR_NOTE_BLOCK}}
+
+---
+
+{{ADDONS_BLOCK}}
 
 ---
 

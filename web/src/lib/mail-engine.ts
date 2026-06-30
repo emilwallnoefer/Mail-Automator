@@ -53,6 +53,8 @@ export type MailInput = {
   industry_course_ids?: string;
   include_certification_note?: boolean;
   include_simulator_note?: boolean;
+  /** Post-mail only. Link to the flight data collected during the training; renders the Add-ons section. */
+  datasets_link?: string;
   include_customer_toolkit?: boolean;
   company_research_text?: string;
   included_change_ids?: string[];
@@ -573,6 +575,28 @@ function simulatorNote(language: MailLanguage, enabled?: boolean) {
   return `## Note for colleagues who missed the training\n\nColleagues who could not attend can still obtain certification through simulator training in the tablet app. They can complete the [Introductory Training Course](${course}).`;
 }
 
+/** Post-mail Add-ons section: download link for the collected flight data + certificate-attached note. */
+function addonsBlock(language: MailLanguage, datasetsUrl?: string, singular?: boolean) {
+  const url = (datasetsUrl ?? "").trim();
+  if (!/^https?:\/\//i.test(url)) return "";
+
+  if (language === "de") {
+    const intro = singular
+      ? "Unten findest du den Link, um alle Flugdaten herunterzuladen, die wir während des Trainings gemeinsam aufgenommen haben. Das Zertifikat über deine Teilnahme am Training liegt dieser E-Mail als Anhang bei."
+      : "Unten findet ihr den Link, um alle Flugdaten herunterzuladen, die wir während des Trainings gemeinsam aufgenommen haben. Das Zertifikat über eure Teilnahme am Training liegt dieser E-Mail als Anhang bei.";
+    return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Flugdaten herunterladen](${url})**`;
+  }
+  if (language === "fr") {
+    const intro = singular
+      ? "Tu trouveras ci-dessous le lien pour télécharger toutes les données de vol que nous avons collectées ensemble pendant la formation. Le certificat attestant ta participation à la formation est joint à cet e-mail."
+      : "Vous trouverez ci-dessous le lien pour télécharger toutes les données de vol que nous avons collectées ensemble pendant la formation. Le certificat attestant votre participation à la formation est joint à cet e-mail.";
+    return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Télécharger les données de vol](${url})**`;
+  }
+  const intro =
+    "Below you'll find the link to download all the flight data we collected together during the training. The certificate confirming your training attendance is attached to this email.";
+  return `## 📄 Add-ons\n\n${intro}\n\n➡️ **[Download your flight data](${url})**`;
+}
+
 export function renderMail(input: MailInput): RenderResult {
   const templates = parseTemplates(readTemplates());
   const templateId = chooseTemplateId(input);
@@ -616,6 +640,7 @@ export function renderMail(input: MailInput): RenderResult {
         : buildIndustryTrainingBlock(input.language, selected, catalog),
     CERTIFICATION_NOTE_BLOCK: certificationNote(input.language, input.include_certification_note, singular),
     SIMULATOR_NOTE_BLOCK: simulatorNote(input.language, input.include_simulator_note),
+    ADDONS_BLOCK: isPre ? "" : addonsBlock(input.language, input.datasets_link, singular),
     COMPANY_CONTEXT_LINE: "",
     SIGNATURE_NAME: (input.signature_name && input.signature_name.trim()) || MAIL_SIGNATURE_DEFAULT_NAME,
   };

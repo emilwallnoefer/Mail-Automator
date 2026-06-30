@@ -107,6 +107,8 @@ type FormState = {
   day3_site: "" | LausanneSite;
   to: string;
   included_change_ids: string[];
+  /** Post-mail only. Link to the collected flight data; renders the Add-ons section. */
+  datasets_link: string;
   /** Closing name in generated training emails; synced from Settings. */
   signature_name: string;
 };
@@ -134,6 +136,7 @@ const INITIAL_FORM_STATE: FormState = {
   day3_site: "",
   to: "",
   included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
+  datasets_link: "",
   signature_name: MAIL_SIGNATURE_DEFAULT_NAME,
 };
 
@@ -664,6 +667,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           day2_site: isPreLausanne && form.day_count >= 2 ? form.day2_site || undefined : undefined,
           day3_site: isPreLausanne && form.day_count >= 3 ? form.day3_site || undefined : undefined,
           included_change_ids: isPost && changesTouched ? form.included_change_ids : undefined,
+          datasets_link: isPost ? form.datasets_link.trim() || undefined : undefined,
           signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
         }),
       });
@@ -1328,6 +1332,19 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       </div>
                     </details>
                   ))}
+                </div>
+              </ProgressiveField>
+              <ProgressiveField show={shouldShowChanges}>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300/80">Add-ons</label>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    placeholder="Link to collected flight data (Optional)"
+                    value={form.datasets_link}
+                    onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
                 </div>
               </ProgressiveField>
             </div>
