@@ -1,4 +1,6 @@
 import { generateBriefDraft } from "@/lib/mail-brief-llm";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { readWorkspaceSettings } from "@/lib/workspace-settings";
 import { recipientCount, renderBriefMail } from "@/lib/mail-engine";
 import { sanitizeNullableText, sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
@@ -56,12 +58,22 @@ export async function POST(request: Request) {
 
     const hasDatasetsLink = /^https?:\/\//i.test((datasets_link ?? "").trim());
 
+    // Read the admin-selected model (workspace-wide config). Non-sensitive read via the
+    // service key, same pattern the reminder cron uses; falls back to env/default on error.
+    let configuredModel: string | null = null;
+    try {
+      configuredModel = (await readWorkspaceSettings(createAdminClient())).mail_brief_model;
+    } catch {
+      /* keep default */
+    }
+
     const llm = await generateBriefDraft({
       language,
       recipient_name,
       brief,
       recipient_count: recipientCount(recipient_name),
       has_datasets_link: hasDatasetsLink,
+      model: configuredModel,
     });
 
     const result = renderBriefMail(
@@ -77,6 +89,14 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ...result,
       selected_change_ids: llm.selected_change_ids,
+      // The LLM prose, so the client can re-render with edited assets without another LLM call.
+      brief_content: {
+        subject: llm.subject,
+        opener: llm.opener,
+        recap_intro: llm.recap_intro,
+        feedback_ask: llm.feedback_ask,
+        closing: llm.closing,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate draft.";

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { FreshnessPill } from "@/components/freshness-pill";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
+import { DEFAULT_MAIL_BRIEF_MODEL, MAIL_BRIEF_MODELS } from "@/lib/mail-brief-model";
 
 type Insights = {
   generated_at: string;
@@ -11,6 +12,7 @@ type Insights = {
     reminder_paused: boolean;
     reminder_paused_at: string | null;
     reminder_paused_by: string | null;
+    mail_brief_model: string | null;
     updated_at: string;
   };
   reminders: {
@@ -100,6 +102,7 @@ export function AdminInsightsPanel() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const [pausePending, setPausePending] = useState(false);
+  const [modelPending, setModelPending] = useState(false);
   const [actionPending, setActionPending] = useState<null | "dry" | "test">(null);
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
@@ -147,6 +150,29 @@ export function AdminInsightsPanel() {
     },
     [],
   );
+
+  const setBriefModel = useCallback(async (model: string) => {
+    setModelPending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/workspace-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mail_brief_model: model }),
+      });
+      const payload = (await response.json()) as
+        | { settings: Insights["settings"] }
+        | { error: string };
+      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to update.");
+      setData((prev) =>
+        prev ? { ...prev, settings: (payload as { settings: Insights["settings"] }).settings } : prev,
+      );
+    } catch (err) {
+      setError((err as Error).message || "Failed to update.");
+    } finally {
+      setModelPending(false);
+    }
+  }, []);
 
   const runDryRun = useCallback(async () => {
     setActionPending("dry");
@@ -408,6 +434,35 @@ export function AdminInsightsPanel() {
             >
               {pausePending ? "Saving…" : settings?.reminder_paused ? "Resume" : "Pause"}
             </button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-slate-100">Mail brief model</p>
+                <InfoTooltip label="About the mail brief model">
+                  Which Claude model writes emails in the composer&apos;s AI Brief mode. Opus 4.8 gives the
+                  best prose; Sonnet 5 is faster and cheaper. Applies workspace-wide, immediately.
+                </InfoTooltip>
+              </div>
+              <p className="text-xs text-slate-400">Used only by AI Brief mode; Guided mode is unaffected.</p>
+            </div>
+            <select
+              value={settings?.mail_brief_model ?? DEFAULT_MAIL_BRIEF_MODEL}
+              onChange={(event) => {
+                void setBriefModel(event.target.value);
+              }}
+              disabled={modelPending || !settings}
+              className="shrink-0 rounded-lg border border-white/15 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-100 transition disabled:opacity-60"
+            >
+              {MAIL_BRIEF_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { CHANGE_OPTIONS, type MailLanguage } from "@/lib/change-options";
+import { DEFAULT_MAIL_BRIEF_MODEL, isMailBriefModel } from "@/lib/mail-brief-model";
 
 /**
  * Brief mode: instead of the structured selection form, a pilot writes a free-text brief
@@ -14,14 +15,16 @@ import { CHANGE_OPTIONS, type MailLanguage } from "@/lib/change-options";
  * emits or formats links, so tracking can never break — see `renderBriefMail`.
  */
 
-const DEFAULT_MODEL = "claude-opus-4-8";
-/** Models compatible with this call (adaptive thinking + structured outputs) that you may A/B. */
-const ALLOWED_MODELS = new Set(["claude-opus-4-8", "claude-sonnet-5"]);
-
-/** Chooses the model from MAIL_BRIEF_MODEL, falling back to Opus 4.8 for anything unrecognized. */
-function resolveModel(): string {
-  const configured = (process.env.MAIL_BRIEF_MODEL ?? "").trim();
-  return ALLOWED_MODELS.has(configured) ? configured : DEFAULT_MODEL;
+/**
+ * Chooses the model, in order: the admin workspace setting (`explicit`), then the
+ * `MAIL_BRIEF_MODEL` env var, then the built-in default (Opus 4.8). Anything not on
+ * the allowlist is ignored so a stale value can never send an unsupported model.
+ */
+function resolveModel(explicit?: string | null): string {
+  if (isMailBriefModel(explicit)) return explicit;
+  const env = (process.env.MAIL_BRIEF_MODEL ?? "").trim();
+  if (isMailBriefModel(env)) return env;
+  return DEFAULT_MAIL_BRIEF_MODEL;
 }
 
 /** Structured JSON the model must return. All fields required, no extras (structured-output rules). */
@@ -45,6 +48,8 @@ export type BriefLlmInput = {
   recipient_count: number;
   /** Whether a collected-data download link will be attached (so the model can mention it). */
   has_datasets_link: boolean;
+  /** Admin-selected model (workspace setting); falls back to env / default when unset or invalid. */
+  model?: string | null;
 };
 
 /** JSON Schema handed to the API. Kept in sync with `briefLlmResultSchema`. */
@@ -169,7 +174,7 @@ export async function generateBriefDraft(input: BriefLlmInput): Promise<BriefLlm
 
   const message = await client.messages.create({
     // Roomy budget so adaptive-thinking tokens can't crowd out the JSON body and truncate it.
-    model: resolveModel(),
+    model: resolveModel(input.model),
     max_tokens: 4096,
     thinking: { type: "adaptive" },
     // Stable prefix (system + templates + catalog) is cached; the per-email brief is the volatile suffix.

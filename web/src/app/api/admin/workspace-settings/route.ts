@@ -6,6 +6,7 @@ import {
   readWorkspaceSettings,
   writeWorkspaceSettings,
 } from "@/lib/workspace-settings";
+import { MAIL_BRIEF_MODEL_IDS } from "@/lib/mail-brief-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +20,17 @@ export async function GET() {
   return NextResponse.json({ settings });
 }
 
-const patchBodySchema = z.object({
-  reminder_paused: z.boolean(),
-});
+const patchBodySchema = z
+  .object({
+    reminder_paused: z.boolean().optional(),
+    mail_brief_model: z
+      .enum(MAIL_BRIEF_MODEL_IDS as unknown as [string, ...string[]])
+      .nullable()
+      .optional(),
+  })
+  .refine((body) => body.reminder_paused !== undefined || body.mail_brief_model !== undefined, {
+    message: "No settings to update.",
+  });
 
 export async function PATCH(request: Request) {
   const guard = await guardAdmin();
@@ -34,11 +43,7 @@ export async function PATCH(request: Request) {
 
   const admin = createAdminClient();
   try {
-    const settings = await writeWorkspaceSettings(
-      admin,
-      { reminder_paused: parsed.data.reminder_paused },
-      guard.user.email,
-    );
+    const settings = await writeWorkspaceSettings(admin, parsed.data, guard.user.email);
     return NextResponse.json({ settings });
   } catch (error) {
     return NextResponse.json(

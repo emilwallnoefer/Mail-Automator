@@ -14,11 +14,13 @@ import {
 } from "react";
 import {
   CHANGE_OPTIONS,
+  type ChangeOption,
   DEFAULT_INCLUDED_CHANGE_IDS,
   getChangeOptionLabelDesc,
   getOtherTrainingsOptionsInOrder,
   getThinkificOnlineCoursesInOrder,
   type MailLanguage,
+  type ResourceSectionId,
   resourceSectionLabel,
   RESOURCE_SECTION_ORDER,
 } from "@/lib/change-options";
@@ -60,6 +62,15 @@ const BODY_WRITE_STEP = 10;
 const SUBJECT_WRITE_INTERVAL_MS = 20;
 const BODY_WRITE_INTERVAL_MS = 17;
 
+/** The LLM-written prose of a Brief-mode email, held so assets can be re-rendered without another LLM call. */
+type BriefContent = {
+  subject: string;
+  opener: string;
+  recap_intro: string;
+  feedback_ask: string;
+  closing: string;
+};
+
 type GenerateResponse = {
   template_id: string;
   subject: string;
@@ -67,6 +78,8 @@ type GenerateResponse = {
   html_body: string;
   selected_change_ids?: string[];
   inline_attachments?: Array<{ contentId: string; mimeType: string; base64: string }>;
+  /** Present only for Brief-mode results. */
+  brief_content?: BriefContent;
 };
 
 function isSameGeneratedDraft(previous: GenerateResponse | null, next: GenerateResponse) {
@@ -155,6 +168,78 @@ function ProgressiveField({ show, children }: { show: boolean; children: ReactNo
         </motion.div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+type GroupedChangeOptions = {
+  materials: ChangeOption[];
+  usefulSections: Array<{ sectionId: ResourceSectionId; options: ChangeOption[] }>;
+};
+
+/** Accordion checklist of every mail asset, grouped by section. Shared by the guided form and the Brief-mode asset editor. */
+function AssetChecklist({
+  grouped,
+  selectedIds,
+  lang,
+  onToggle,
+  onDetailsToggle,
+}: {
+  grouped: GroupedChangeOptions;
+  selectedIds: string[];
+  lang: MailLanguage;
+  onToggle: (id: string, checked: boolean) => void;
+  onDetailsToggle: (event: SyntheticEvent<HTMLDetailsElement>) => void;
+}) {
+  const renderOption = (option: ChangeOption) => {
+    const checked = selectedIds.includes(option.id);
+    const { label, desc } = getChangeOptionLabelDesc(option, lang);
+    return (
+      <label key={option.id} className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={checked}
+          onChange={(e) => onToggle(option.id, e.target.checked)}
+        />
+        <span>
+          <span className="block">{label}</span>
+          <span className="text-xs text-slate-300/80">{desc}</span>
+        </span>
+      </label>
+    );
+  };
+
+  return (
+    <div className="space-y-2 text-sm">
+      <details
+        className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+        onToggle={onDetailsToggle}
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+          <span>Training slide decks</span>
+          <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+        </summary>
+        <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+          {grouped.materials.map(renderOption)}
+        </div>
+      </details>
+
+      {grouped.usefulSections.map((section) => (
+        <details
+          key={section.sectionId}
+          className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+          onToggle={onDetailsToggle}
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+            <span>{resourceSectionLabel(section.sectionId, lang)}</span>
+            <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+          </summary>
+          <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+            {section.options.map(renderOption)}
+          </div>
+        </details>
+      ))}
+    </div>
   );
 }
 
@@ -253,6 +338,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const [mailGenMode, setMailGenMode] = useState<"guided" | "brief">("guided");
   /** Free-text brief for the AI ("brief") generator. */
   const [briefText, setBriefText] = useState("");
+  /** Prose from the last Brief-mode generation, kept so assets can be re-rendered without the LLM. */
+  const [briefContent, setBriefContent] = useState<BriefContent | null>(null);
+  /** Whether the Brief-mode asset editor is open, and whether a re-render is in flight. */
+  const [editingAssets, setEditingAssets] = useState(false);
+  const [savingAssets, setSavingAssets] = useState(false);
   const [activeModule, setActiveModule] = useState<ModuleKey>(
     initialRole === "sales" || initialRole === "hr" ? "time" : "mail",
   );
@@ -732,18 +822,46 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
       if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
       const generated = data as GenerateResponse;
       setResult(generated);
-      if (generated.selected_change_ids && generated.selected_change_ids.length > 0) {
-        setForm((prev) => ({
-          ...prev,
-          included_change_ids: generated.selected_change_ids ?? prev.included_change_ids,
-        }));
-        setChangesTouched(false);
-      }
+      setBriefContent(generated.brief_content ?? null);
+      setEditingAssets(false);
+      setForm((prev) => ({
+        ...prev,
+        included_change_ids: generated.selected_change_ids ?? [],
+      }));
+      setChangesTouched(false);
       setDraftInfo(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveBriefAssets() {
+    if (!briefContent) return;
+    setSavingAssets(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/render-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: userRole === "us_pilot" ? "en" : form.language || "en",
+          recipient_name: form.recipient_name,
+          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
+          datasets_link: form.datasets_link.trim() || undefined,
+          prose: briefContent,
+          selected_change_ids: form.included_change_ids,
+        }),
+      });
+      const data = (await response.json()) as GenerateResponse | { error: string };
+      if (!response.ok) throw new Error((data as { error: string }).error || "Update failed");
+      setResult(data as GenerateResponse);
+      setDraftInfo(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingAssets(false);
     }
   }
 
@@ -813,6 +931,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     setDraftInfo(null);
     setChangesTouched(false);
     setBriefText("");
+    setBriefContent(null);
+    setEditingAssets(false);
   }
 
   const handleResourceDetailsToggle = useCallback((e: SyntheticEvent<HTMLDetailsElement>) => {
@@ -1107,6 +1227,52 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
                   />
                 </div>
+
+                {result && briefContent ? (
+                  <div className="space-y-2 border-t border-white/10 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditingAssets((open) => !open)}
+                      aria-expanded={editingAssets}
+                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                    >
+                      <span>Edit assets</span>
+                      <span className={`text-xs text-slate-400 transition ${editingAssets ? "rotate-180" : ""}`}>▼</span>
+                    </button>
+                    {editingAssets ? (
+                      <div className="space-y-3">
+                        <p className="text-[11px] leading-4 text-slate-400/80">
+                          Add or remove assets, then save. This re-renders the email — it does not re-run the AI, so the
+                          written text stays exactly as it is.
+                        </p>
+                        <AssetChecklist
+                          grouped={groupedChangeOptions}
+                          selectedIds={form.included_change_ids}
+                          lang={composerMailLang}
+                          onDetailsToggle={handleResourceDetailsToggle}
+                          onToggle={(id, checked) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              included_change_ids: checked
+                                ? [...prev.included_change_ids, id]
+                                : prev.included_change_ids.filter((existing) => existing !== id),
+                            }));
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleSaveBriefAssets();
+                          }}
+                          disabled={savingAssets}
+                          className="h-10 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70"
+                        >
+                          {savingAssets ? "Saving…" : "Save changes"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               ) : (
               <>
@@ -1370,92 +1536,21 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
-                <div className="space-y-2 text-sm">
-                  <details
-                    className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
-                    onToggle={handleResourceDetailsToggle}
-                  >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
-                      <span>Training slide decks</span>
-                      <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
-                    </summary>
-                    <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
-                      {groupedChangeOptions.materials.map((option) => {
-                        const checked = form.included_change_ids.includes(option.id);
-                        const { label, desc } = getChangeOptionLabelDesc(option, composerMailLang);
-                        return (
-                          <label
-                            key={option.id}
-                            className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={checked}
-                              onChange={(e) => {
-                                setChangesTouched(true);
-                                setForm((prev) => ({
-                                  ...prev,
-                                  included_change_ids: e.target.checked
-                                    ? [...prev.included_change_ids, option.id]
-                                    : prev.included_change_ids.filter((id) => id !== option.id),
-                                }));
-                              }}
-                            />
-                            <span>
-                              <span className="block">{label}</span>
-                              <span className="text-xs text-slate-300/80">{desc}</span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </details>
-
-                  {groupedChangeOptions.usefulSections.map((section) => (
-                    <details
-                      key={section.sectionId}
-                      className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
-                      onToggle={handleResourceDetailsToggle}
-                    >
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
-                        <span>{resourceSectionLabel(section.sectionId, composerMailLang)}</span>
-                        <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
-                      </summary>
-                      <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
-                        {section.options.map((option) => {
-                          const checked = form.included_change_ids.includes(option.id);
-                          const { label, desc } = getChangeOptionLabelDesc(option, composerMailLang);
-                          return (
-                            <label
-                              key={option.id}
-                              className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2"
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={checked}
-                                onChange={(e) => {
-                                  setChangesTouched(true);
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    included_change_ids: e.target.checked
-                                      ? [...prev.included_change_ids, option.id]
-                                      : prev.included_change_ids.filter((id) => id !== option.id),
-                                  }));
-                                }}
-                              />
-                              <span>
-                                <span className="block">{label}</span>
-                                <span className="text-xs text-slate-300/80">{desc}</span>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </details>
-                  ))}
-                </div>
+                <AssetChecklist
+                  grouped={groupedChangeOptions}
+                  selectedIds={form.included_change_ids}
+                  lang={composerMailLang}
+                  onDetailsToggle={handleResourceDetailsToggle}
+                  onToggle={(id, checked) => {
+                    setChangesTouched(true);
+                    setForm((prev) => ({
+                      ...prev,
+                      included_change_ids: checked
+                        ? [...prev.included_change_ids, id]
+                        : prev.included_change_ids.filter((existing) => existing !== id),
+                    }));
+                  }}
+                />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
                 <div className="space-y-1">

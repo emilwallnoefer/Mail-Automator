@@ -26,6 +26,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       "Settings → Mail generation: switch the composer to AI brief mode.",
       "Write a short brief; Claude drafts the email in your voice.",
+      "After generating, “Edit assets” to add/remove links without re-running the AI.",
       "Asset links stay exact and click-tracked. Guided mode unchanged.",
     ],
   },
