@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-01-admin",
+    date: "Jul 1, 2026",
+    title: "Admin panel, reorganised",
+    highlights: [
+      "New left-nav layout matching Settings — one section per job.",
+      "Overview adds a mail click-through stat; Users & roles gains search.",
+      "Reminder controls and the Mail brief model moved to clearer homes.",
+      "New Audit log: who changed roles, paused reminders, or switched the model.",
+    ],
+  },
+  {
     version: "2026-07-01",
     date: "Jul 1, 2026",
     title: "New: AI brief mode for emails",

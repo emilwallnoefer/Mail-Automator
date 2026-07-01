@@ -3,6 +3,7 @@ import { z } from "zod";
 import { guardAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeUserRole, type UserRole } from "@/lib/user-role";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 type ListedUser = {
   id: string;
@@ -78,6 +79,7 @@ export async function PATCH(request: Request) {
     current.data.user.user_metadata && typeof current.data.user.user_metadata === "object"
       ? (current.data.user.user_metadata as Record<string, unknown>)
       : {};
+  const previousRole = normalizeUserRole(existingMetadata.role);
 
   const nextMetadata = { ...existingMetadata, role };
 
@@ -86,6 +88,16 @@ export async function PATCH(request: Request) {
   });
   if (updateRes.error) {
     return NextResponse.json({ error: updateRes.error.message }, { status: 500 });
+  }
+
+  // Record the role change in the admin audit trail (best-effort; never blocks).
+  if (previousRole !== role) {
+    await recordAdminAudit(admin, {
+      actor_email: guard.user.email,
+      action: "role_change",
+      target: current.data.user.email ?? user_id,
+      detail: { from: previousRole, to: role },
+    });
   }
 
   return NextResponse.json({

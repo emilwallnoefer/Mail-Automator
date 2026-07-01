@@ -7,6 +7,7 @@ import {
   writeWorkspaceSettings,
 } from "@/lib/workspace-settings";
 import { MAIL_BRIEF_MODEL_IDS } from "@/lib/mail-brief-model";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,22 @@ export async function PATCH(request: Request) {
   const admin = createAdminClient();
   try {
     const settings = await writeWorkspaceSettings(admin, parsed.data, guard.user.email);
+
+    // Record the intent in the admin audit trail (best-effort; never blocks).
+    if (parsed.data.reminder_paused !== undefined) {
+      await recordAdminAudit(admin, {
+        actor_email: guard.user.email,
+        action: parsed.data.reminder_paused ? "reminder_pause" : "reminder_resume",
+      });
+    }
+    if (parsed.data.mail_brief_model !== undefined) {
+      await recordAdminAudit(admin, {
+        actor_email: guard.user.email,
+        action: "mail_brief_model_change",
+        detail: { model: parsed.data.mail_brief_model },
+      });
+    }
+
     return NextResponse.json({ settings });
   } catch (error) {
     return NextResponse.json(

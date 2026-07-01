@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { TimeTrackerPanel } from "@/components/time-tracker-panel";
-import { AdminInsightsPanel } from "@/components/admin-insights-panel";
+import { AdminOverviewStats } from "@/components/admin-overview-stats";
+import { AdminReminderControls } from "@/components/admin-reminder-controls";
+import { AdminMailSettings } from "@/components/admin-mail-settings";
+import { AdminAuditLog } from "@/components/admin-audit-log";
 import { MailTrackingPanel } from "@/components/mail-tracking-panel";
 import { AdminOnboardingPanel } from "@/components/admin-onboarding-panel";
 import { WeekStepper } from "@/components/week-stepper";
-import { InfoTooltip } from "@/components/info-tooltip";
 import { FreshnessPill } from "@/components/freshness-pill";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
@@ -38,7 +47,15 @@ type UsersResponse = {
   users: AdminUser[];
 };
 
-type AdminTab = "users" | "overview" | "insights" | "mail_tracking" | "onboarding";
+type AdminSection =
+  | "overview"
+  | "time"
+  | "onboarding"
+  | "mail_tracking"
+  | "users"
+  | "reminders"
+  | "mail_ai"
+  | "audit";
 
 const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
   { value: "sales", label: "Sales" },
@@ -49,41 +66,28 @@ const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
 ];
 
 export type AdminPanelProps = {
-  /** When false, the Users & roles tab is hidden (HR read-only view). */
+  /** When false, only the read-only Team time section is available (HR view). */
   canManageUsers?: boolean;
 };
 
-const ADMIN_TABS: Array<{ id: AdminTab; label: string; subtitle: string; help: string }> = [
-  {
-    id: "overview",
-    label: "Time",
-    subtitle: "Weekly totals per user",
-    help: "Per-user weekly time totals, overtime bank, and missing day count. Click a row to drill into a specific user's week.",
-  },
-  {
-    id: "insights",
-    label: "Insights",
-    subtitle: "Workspace KPIs and reminder controls",
-    help: "Aggregate workspace metrics plus the Monday reminder cron settings (pause, dry run, send test).",
-  },
-  {
-    id: "mail_tracking",
-    label: "Mail tracking",
-    subtitle: "Click telemetry per recipient and link",
-    help: "Tracking links rewrite outbound HTML at Gmail draft creation. Scanner clicks (Outlook ATP, Mimecast, etc.) are flagged and hidden unless the Scanners checkbox is on.",
-  },
-  {
-    id: "onboarding",
-    label: "Onboarding",
-    subtitle: "Pilot training completion per user",
-    help: "Per-user onboarding completion, minute-weighted across all training sections. Progress syncs from each pilot's onboarding workspace. Click a row to see the per-section breakdown.",
-  },
-  {
-    id: "users",
-    label: "Users",
-    subtitle: "Manage workspace roles",
-    help: "Roles are stored in Supabase user_metadata.role. Changes take effect on the user's next dashboard load.",
-  },
+const ADMIN_SECTIONS: Array<{ id: AdminSection; label: string; adminOnly: boolean }> = [
+  { id: "overview", label: "Overview", adminOnly: true },
+  { id: "time", label: "Time", adminOnly: false },
+  { id: "onboarding", label: "Onboarding", adminOnly: true },
+  { id: "mail_tracking", label: "Mail tracking", adminOnly: true },
+  { id: "users", label: "Users & roles", adminOnly: true },
+  { id: "reminders", label: "Reminders", adminOnly: true },
+  { id: "mail_ai", label: "Mail & AI", adminOnly: true },
+  { id: "audit", label: "Audit log", adminOnly: true },
+];
+
+const BUBBLES: Array<{ left: string; size: string; duration: string; delay: string }> = [
+  { left: "7%", size: "8px", duration: "9.5s", delay: "0s" },
+  { left: "24%", size: "7px", duration: "11s", delay: "-2.2s" },
+  { left: "39%", size: "10px", duration: "10.2s", delay: "-1.4s" },
+  { left: "57%", size: "8px", duration: "12.4s", delay: "-3.6s" },
+  { left: "73%", size: "9px", duration: "9.2s", delay: "-2.8s" },
+  { left: "88%", size: "11px", duration: "13.5s", delay: "-5s" },
 ];
 
 function fmtHM(mins: number) {
@@ -125,10 +129,12 @@ function addDays(value: Date, delta: number) {
 }
 
 export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
-  const [tab, setTab] = useState<AdminTab>("overview");
+  const [section, setSection] = useState<AdminSection>(canManageUsers ? "overview" : "time");
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [userFilter, setUserFilter] = useState("");
   const [rolePending, setRolePending] = useState<Record<string, boolean>>({});
   const [roleError, setRoleError] = useState<string | null>(null);
 
@@ -143,6 +149,11 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   const [drilldownEmail, setDrilldownEmail] = useState<string>("");
 
   const usersFetchedRef = useRef(false);
+
+  const visibleSections = useMemo(
+    () => ADMIN_SECTIONS.filter((entry) => canManageUsers || !entry.adminOnly),
+    [canManageUsers],
+  );
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
@@ -160,45 +171,43 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
     }
   }, []);
 
-  const loadOverview = useCallback(
-    async (week: string) => {
-      setOverviewLoading(true);
-      setOverviewError(null);
-      try {
-        const response = await fetch(`/api/admin/time-overview?week=${encodeURIComponent(week)}`);
-        const payload = (await response.json()) as TimeOverviewResponse | { error: string };
-        if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load overview.");
-        setOverview(payload as TimeOverviewResponse);
-        setOverviewUpdatedAt(Date.now());
-      } catch (error) {
-        setOverviewError((error as Error).message || "Failed to load overview.");
-      } finally {
-        setOverviewLoading(false);
-      }
-    },
-    [],
-  );
+  const loadOverview = useCallback(async (week: string) => {
+    setOverviewLoading(true);
+    setOverviewError(null);
+    try {
+      const response = await fetch(`/api/admin/time-overview?week=${encodeURIComponent(week)}`);
+      const payload = (await response.json()) as TimeOverviewResponse | { error: string };
+      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load overview.");
+      setOverview(payload as TimeOverviewResponse);
+      setOverviewUpdatedAt(Date.now());
+    } catch (error) {
+      setOverviewError((error as Error).message || "Failed to load overview.");
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
 
+  // Lazy-load the users table the first time the section opens.
   useEffect(() => {
     if (!canManageUsers) return;
-    if (tab !== "users") return;
+    if (section !== "users") return;
     if (usersFetchedRef.current) return;
     usersFetchedRef.current = true;
     void loadUsers();
-  }, [loadUsers, canManageUsers, tab]);
+  }, [loadUsers, canManageUsers, section]);
 
+  // Load (and reload on week change) the time overview only while it's shown.
   useEffect(() => {
+    if (section !== "time") return;
     void loadOverview(weekStart);
-  }, [loadOverview, weekStart]);
+  }, [loadOverview, section, weekStart]);
 
+  // Snap HR / non-admins back to the only section they may see.
   useEffect(() => {
-    if (
-      !canManageUsers &&
-      (tab === "users" || tab === "insights" || tab === "mail_tracking" || tab === "onboarding")
-    ) {
-      setTab("overview");
+    if (!canManageUsers && section !== "time") {
+      setSection("time");
     }
-  }, [canManageUsers, tab]);
+  }, [canManageUsers, section]);
 
   const changeRole = useCallback(async (userId: string, next: UserRole | null) => {
     setRolePending((prev) => ({ ...prev, [userId]: true }));
@@ -230,10 +239,19 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
     const end = addDays(start, 6);
     const fmt = (d: Date) =>
       d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    return `${fmt(start)} \u2013 ${fmt(end)}`;
+    return `${fmt(start)} – ${fmt(end)}`;
   }, [weekStart]);
 
-  const activeTab = useMemo(() => ADMIN_TABS.find((entry) => entry.id === tab), [tab]);
+  const filteredUsers = useMemo(() => {
+    const needle = userFilter.trim().toLowerCase();
+    if (!needle) return users;
+    return users.filter((user) => user.email.toLowerCase().includes(needle));
+  }, [users, userFilter]);
+
+  const activeLabel = useMemo(
+    () => visibleSections.find((entry) => entry.id === section)?.label ?? "Admin",
+    [visibleSections, section],
+  );
 
   if (drilldownUserId) {
     const apiBase = `/api/admin/time-user?user_id=${encodeURIComponent(drilldownUserId)}`;
@@ -253,245 +271,283 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
           </button>
           <p className="text-xs text-slate-400">Read-only view</p>
         </div>
-        <TimeTrackerPanel
-          readOnly
-          apiBase={apiBase}
-          viewingLabel={drilldownEmail || drilldownUserId}
-        />
+        <TimeTrackerPanel readOnly apiBase={apiBase} viewingLabel={drilldownEmail || drilldownUserId} />
       </section>
     );
   }
 
   return (
-    <section className="glass-card hourlogger-surface rounded-2xl p-4 md:p-5">
-      <header className="space-y-2 border-b border-white/5 pb-3">
-        {canManageUsers ? (
-          <nav
-            className="inline-flex w-full overflow-x-auto rounded-lg border border-white/10 bg-white/5 p-0.5 text-xs sm:w-auto"
-            role="tablist"
-            aria-label="Admin tabs"
-          >
-            {ADMIN_TABS.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === entry.id}
-                onClick={() => setTab(entry.id)}
-                className={`whitespace-nowrap rounded-md px-3 py-1.5 transition ${
-                  tab === entry.id
-                    ? "bg-amber-400/15 text-amber-100"
-                    : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
-                }`}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </nav>
-        ) : (
-          <p className="text-[10px] uppercase tracking-[0.22em] text-amber-200/80">
-            Team time overview
-          </p>
-        )}
-        {canManageUsers && activeTab ? (
-          <div className="flex items-center gap-1.5">
-            <p className="text-xs text-slate-400">{activeTab.subtitle}</p>
-            <InfoTooltip label={`About ${activeTab.label}`}>{activeTab.help}</InfoTooltip>
-          </div>
-        ) : null}
-      </header>
-
-      {tab === "overview" ? (
-        <div className="mt-5 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <WeekStepper
-              onPrev={() =>
-                setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))
-              }
-              onToday={() => setWeekStart(toDateKey(getMonday()))}
-              onNext={() =>
-                setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))
+    <section className="underwater-panel relative overflow-hidden rounded-2xl">
+      <div className="relative min-h-0 min-w-0 w-full">
+        <div className="bubble-layer pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+          {BUBBLES.map((bubble, idx) => (
+            <span
+              key={`${bubble.left}-${idx}`}
+              className="bubble"
+              style={
+                {
+                  "--bubble-left": bubble.left,
+                  "--bubble-size": bubble.size,
+                  "--bubble-duration": bubble.duration,
+                  "--bubble-delay": bubble.delay,
+                } as CSSProperties
               }
             />
-            <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
-            <FreshnessPill updatedAt={overviewUpdatedAt} loading={overviewLoading} />
-          </div>
+          ))}
+        </div>
 
-          {overviewError ? (
-            <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {overviewError}
-            </p>
-          ) : null}
+        <section className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 overflow-hidden rounded-2xl">
+          <div className="flex min-h-[min(70vh,560px)] flex-col md:flex-row">
+            <nav
+              className="shrink-0 border-b border-white/10 bg-slate-950/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-white/10"
+              aria-label="Admin sections"
+            >
+              <div className="border-b border-white/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
+                <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-slate-100 md:text-lg">
+                  {canManageUsers ? "Admin" : "Team time"}
+                </h1>
+              </div>
+              <ul
+                className="max-h-[42vh] overflow-y-auto px-0 py-3 md:max-h-[calc(70vh-88px)] md:py-4"
+                role="list"
+              >
+                {visibleSections.map((entry) => {
+                  const active = section === entry.id;
+                  return (
+                    <li key={entry.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSection(entry.id)}
+                        className={`flex w-full items-center border-l-[3px] px-3 py-2.5 text-left text-sm transition ${
+                          active
+                            ? "border-amber-400 bg-amber-400/15 font-medium text-amber-100"
+                            : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                        }`}
+                      >
+                        <span className="truncate">{entry.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
 
-          <div className="relative">
-            {overviewUpdatedAt != null ? (
-              <span key={`sweep-${overviewUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
-            ) : null}
-            <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
-                <tr>
-                  <th className="px-3 py-2">User</th>
-                  <th className="px-3 py-2">Role</th>
-                  <th className="px-3 py-2 text-right">Weekly total</th>
-                  <th className="px-3 py-2 text-right">Overtime bank</th>
-                  <th className="px-3 py-2 text-right">Missing days</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {overviewLoading && !overview ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                      Loading overview...
-                    </td>
-                  </tr>
-                ) : overview?.users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                      No users found.
-                    </td>
-                  </tr>
-                ) : (
-                  overview?.users.map((user) => (
-                    <tr key={user.user_id} className="border-t border-white/5 align-middle">
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-slate-100">{user.email || user.user_id}</span>
-                          {user.error ? (
-                            <span className="text-[10px] text-rose-300">{user.error}</span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-300">
-                        {userRoleLabel(user.role)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtHM(user.weekly_total_mins)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtSignedHM(user.overtime_bank_mins)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {user.missing_days > 0 ? (
-                          <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
-                            {user.missing_days}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">0</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDrilldownUserId(user.user_id);
-                            setDrilldownEmail(user.email);
-                          }}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
-                        >
-                          View week
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-white/5 bg-slate-950/20 p-4 md:border-t-0 md:p-6">
+              <h2 className="text-xl font-semibold tracking-tight text-slate-50 md:text-2xl">
+                {activeLabel}
+              </h2>
+
+              {section === "overview" && canManageUsers ? <AdminOverviewStats /> : null}
+
+              {section === "reminders" && canManageUsers ? <AdminReminderControls /> : null}
+
+              {section === "mail_ai" && canManageUsers ? <AdminMailSettings /> : null}
+
+              {section === "audit" && canManageUsers ? <AdminAuditLog /> : null}
+
+              {section === "onboarding" && canManageUsers ? (
+                <div className="mt-5">
+                  <AdminOnboardingPanel />
+                </div>
+              ) : null}
+
+              {section === "mail_tracking" && canManageUsers ? (
+                <div className="mt-5">
+                  <MailTrackingPanel />
+                </div>
+              ) : null}
+
+              {section === "time" ? (
+                <div className="mt-5 space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <WeekStepper
+                      onPrev={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), -7)))}
+                      onToday={() => setWeekStart(toDateKey(getMonday()))}
+                      onNext={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
+                    />
+                    <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
+                    <FreshnessPill updatedAt={overviewUpdatedAt} loading={overviewLoading} />
+                  </div>
+
+                  {overviewError ? (
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                      {overviewError}
+                    </p>
+                  ) : null}
+
+                  <div className="relative">
+                    {overviewUpdatedAt != null ? (
+                      <span key={`sweep-${overviewUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
+                    ) : null}
+                    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+                          <tr>
+                            <th className="px-3 py-2">User</th>
+                            <th className="px-3 py-2">Role</th>
+                            <th className="px-3 py-2 text-right">Weekly total</th>
+                            <th className="px-3 py-2 text-right">Overtime bank</th>
+                            <th className="px-3 py-2 text-right">Missing days</th>
+                            <th className="px-3 py-2" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {overviewLoading && !overview ? (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                                Loading overview...
+                              </td>
+                            </tr>
+                          ) : overview?.users.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                                No users found.
+                              </td>
+                            </tr>
+                          ) : (
+                            overview?.users.map((user) => (
+                              <tr key={user.user_id} className="border-t border-white/5 align-middle">
+                                <td className="px-3 py-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm text-slate-100">{user.email || user.user_id}</span>
+                                    {user.error ? (
+                                      <span className="text-[10px] text-rose-300">{user.error}</span>
+                                    ) : null}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 text-xs text-slate-300">{userRoleLabel(user.role)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{fmtHM(user.weekly_total_mins)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{fmtSignedHM(user.overtime_bank_mins)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">
+                                  {user.missing_days > 0 ? (
+                                    <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
+                                      {user.missing_days}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400">0</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDrilldownUserId(user.user_id);
+                                      setDrilldownEmail(user.email);
+                                    }}
+                                    className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                                  >
+                                    View week
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {section === "users" && canManageUsers ? (
+                <div className="mt-5 space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="search"
+                      value={userFilter}
+                      onChange={(event) => setUserFilter(event.target.value)}
+                      placeholder="Filter by email"
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-3 pr-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-400/40 focus:outline-none sm:w-64"
+                    />
+                    <FreshnessPill updatedAt={usersUpdatedAt} loading={usersLoading} />
+                  </div>
+                  {usersError ? (
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                      {usersError}
+                    </p>
+                  ) : null}
+                  {roleError ? (
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                      {roleError}
+                    </p>
+                  ) : null}
+
+                  <div className="relative">
+                    {usersUpdatedAt != null ? (
+                      <span key={`sweep-${usersUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
+                    ) : null}
+                    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+                          <tr>
+                            <th className="px-3 py-2">Email</th>
+                            <th className="px-3 py-2">Current role</th>
+                            <th className="px-3 py-2">Last sign-in</th>
+                            <th className="px-3 py-2">Change role</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usersLoading && users.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                                Loading users...
+                              </td>
+                            </tr>
+                          ) : filteredUsers.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                                {users.length === 0 ? "No users found." : "No users match your filter."}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredUsers.map((user) => {
+                              const pending = Boolean(rolePending[user.id]);
+                              const currentValue: UserRole | "none" = user.role ?? "none";
+                              return (
+                                <tr key={user.id} className="border-t border-white/5">
+                                  <td className="px-3 py-2 text-sm text-slate-100">{user.email || user.id}</td>
+                                  <td className="px-3 py-2 text-xs text-slate-300">{userRoleLabel(user.role)}</td>
+                                  <td className="px-3 py-2 text-xs text-slate-400">
+                                    {user.last_sign_in_at
+                                      ? new Date(user.last_sign_in_at).toLocaleString()
+                                      : "-"}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <select
+                                      value={currentValue}
+                                      disabled={pending}
+                                      onChange={(event) => {
+                                        const value = event.target.value as UserRole | "none";
+                                        const next = value === "none" ? null : value;
+                                        void changeRole(user.id, next);
+                                      }}
+                                      className="rounded-lg border border-white/20 bg-slate-900/80 px-2 py-1 text-xs text-slate-100"
+                                    >
+                                      {ROLE_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {pending ? (
+                                      <span className="ml-2 text-[10px] text-slate-400">Saving...</span>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
-        </div>
-      ) : null}
-
-      {tab === "insights" && canManageUsers ? <AdminInsightsPanel /> : null}
-
-      {tab === "mail_tracking" && canManageUsers ? <MailTrackingPanel /> : null}
-
-      {tab === "onboarding" && canManageUsers ? <AdminOnboardingPanel /> : null}
-
-      {tab === "users" && canManageUsers ? (
-        <div className="mt-5 space-y-4">
-          <div className="flex justify-end">
-            <FreshnessPill updatedAt={usersUpdatedAt} loading={usersLoading} />
-          </div>
-          {usersError ? (
-            <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {usersError}
-            </p>
-          ) : null}
-          {roleError ? (
-            <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {roleError}
-            </p>
-          ) : null}
-
-          <div className="relative">
-            {usersUpdatedAt != null ? (
-              <span key={`sweep-${usersUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
-            ) : null}
-            <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
-                <tr>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Current role</th>
-                  <th className="px-3 py-2">Last sign-in</th>
-                  <th className="px-3 py-2">Change role</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersLoading && users.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                      Loading users...
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
-                      No users found.
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => {
-                    const pending = Boolean(rolePending[user.id]);
-                    const currentValue: UserRole | "none" = user.role ?? "none";
-                    return (
-                      <tr key={user.id} className="border-t border-white/5">
-                        <td className="px-3 py-2 text-sm text-slate-100">{user.email || user.id}</td>
-                        <td className="px-3 py-2 text-xs text-slate-300">{userRoleLabel(user.role)}</td>
-                        <td className="px-3 py-2 text-xs text-slate-400">
-                          {user.last_sign_in_at
-                            ? new Date(user.last_sign_in_at).toLocaleString()
-                            : "-"}
-                        </td>
-                        <td className="px-3 py-2">
-                          <select
-                            value={currentValue}
-                            disabled={pending}
-                            onChange={(event) => {
-                              const value = event.target.value as UserRole | "none";
-                              const next = value === "none" ? null : value;
-                              void changeRole(user.id, next);
-                            }}
-                            className="rounded-lg border border-white/20 bg-slate-900/80 px-2 py-1 text-xs text-slate-100"
-                          >
-                            {ROLE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          {pending ? (
-                            <span className="ml-2 text-[10px] text-slate-400">Saving...</span>
-                          ) : null}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        </div>
-      ) : null}
+        </section>
+      </div>
     </section>
   );
 }
