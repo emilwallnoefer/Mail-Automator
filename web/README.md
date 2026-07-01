@@ -9,6 +9,8 @@ Key variables consumed by the app (set these in `.env.local` for local dev and i
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase **service role key**. Server-only; never expose to the client. Used exclusively by admin-only API routes (`/api/admin/*`) to list users and view everyone's time data.
 - `ADMIN_EMAILS` — comma-separated list of emails granted the Admin module. Example: `ADMIN_EMAILS=you@flyability.com,ops@flyability.com`. Only users signed in with one of these emails see the Admin tab and can call `/api/admin/*`. Compared case-insensitively.
 - Google Sheets variables (`GOOGLE_SHEETS_*`) — travel-sheet integration for the Time Tracker.
+- `ANTHROPIC_API_KEY` — API key from [console.anthropic.com](https://console.anthropic.com). **Server-only.** Used by the mail **Brief mode** (`/api/generate-brief`) to have Claude write a training email from a free-text brief. Referenced only from `src/lib/mail-brief-llm.ts` (`"server-only"`). Pay-as-you-go; a single email costs a few cents. If unset, Brief mode returns an error but the structured "Guided" generator (`/api/generate`) still works.
+- `MAIL_BRIEF_MODEL` — optional. Which Claude model Brief mode uses. Allowed values: `claude-opus-4-8` (default; best prose) or `claude-sonnet-5` (faster/cheaper, near-Opus). Anything else falls back to `claude-opus-4-8`. Lets you A/B the two without a code change.
 - `RESEND_API_KEY` — API key from [Resend](https://resend.com/api-keys). Used by the weekly "log your time" reminder email job.
 - `RESEND_FROM` — verified sender identity used for reminder emails, e.g. `Time Tracker <noreply@flyability.com>`. The domain must be verified in Resend first.
 - `RESEND_REPLY_TO` — optional `Reply-To` header for reminder emails (e.g. an HR mailbox).

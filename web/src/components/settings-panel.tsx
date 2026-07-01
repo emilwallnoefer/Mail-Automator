@@ -16,6 +16,7 @@ export type SettingsSectionId =
   | "gmail"
   | "travel_mapping"
   | "mail_signature"
+  | "mail_generation"
   | "time_data"
   | "appearance"
   | "interface_sounds"
@@ -26,6 +27,7 @@ const SETTINGS_NAV: { id: SettingsSectionId; label: string; pilotOnly?: boolean 
   { id: "gmail", label: "Gmail", pilotOnly: true },
   { id: "travel_mapping", label: "Travel mapping", pilotOnly: true },
   { id: "mail_signature", label: "Mail signature", pilotOnly: true },
+  { id: "mail_generation", label: "Mail generation", pilotOnly: true },
   { id: "time_data", label: "Time data" },
   { id: "appearance", label: "Appearance" },
   { id: "interface_sounds", label: "Interface sounds" },
@@ -77,6 +79,8 @@ export function SettingsPanel({
   const [mailSigPreset, setMailSigPreset] = useState<string>(MAIL_SIGNATURE_NAME_PRESETS[0]);
   const [mailSigCustom, setMailSigCustom] = useState("");
   const [mailSigSaving, setMailSigSaving] = useState(false);
+  const [mailGenMode, setMailGenMode] = useState<"guided" | "brief">("guided");
+  const [mailGenSaving, setMailGenSaving] = useState(false);
   const [uiSoundsOn, setUiSoundsOn] = useState(true);
   const [theme, setThemeState] = useState<Theme>("dark");
   const [accent, setAccentState] = useState<Accent>("amber");
@@ -114,11 +118,16 @@ export function SettingsPanel({
   useEffect(() => {
     (async () => {
       if (isSalesOnly) return;
-      const [gmailResponse, mappingResponse, sigResponse] = await Promise.all([
+      const [gmailResponse, mappingResponse, sigResponse, genResponse] = await Promise.all([
         fetch("/api/gmail/status"),
         fetch("/api/settings/travel-mapping"),
         fetch("/api/settings/mail-signature"),
+        fetch("/api/settings/mail-generation"),
       ]);
+      if (genResponse.ok) {
+        const gen = (await genResponse.json()) as { mode?: string };
+        setMailGenMode(gen.mode === "brief" ? "brief" : "guided");
+      }
       if (gmailResponse.ok) {
         const data = (await gmailResponse.json()) as { connected: boolean; gmail_email?: string | null };
         setGmailStatus(data);
@@ -170,6 +179,30 @@ export function SettingsPanel({
       setError((err as Error).message);
     } finally {
       setMappingSaving(false);
+    }
+  }
+
+  async function handleSaveMailGeneration(mode: "guided" | "brief") {
+    const previous = mailGenMode;
+    setMailGenMode(mode); // optimistic
+    setMailGenSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/settings/mail-generation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const data = (await response.json()) as { error?: string; mode?: string };
+      if (!response.ok) throw new Error(data.error || "Could not save mail generation mode.");
+      setMessage(mode === "brief" ? "Mail generation set to AI brief mode." : "Mail generation set to guided mode.");
+      window.dispatchEvent(new CustomEvent("mail-generation-mode-saved", { detail: { mode } }));
+    } catch (err) {
+      setMailGenMode(previous); // revert on failure
+      setError((err as Error).message);
+    } finally {
+      setMailGenSaving(false);
     }
   }
 
@@ -482,6 +515,52 @@ export function SettingsPanel({
                       {mailSigSaving ? "Saving…" : "Save"}
                     </button>
                   </div>
+                </div>
+              ) : null}
+
+              {!isSalesOnly && activeSection === "mail_generation" ? (
+                <div className="mt-5">
+                  <p className="text-sm text-slate-400">
+                    Choose how the Mail Composer writes emails. Both create Gmail drafts you review before sending.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      disabled={mailGenSaving}
+                      aria-pressed={mailGenMode === "guided"}
+                      onClick={() => void handleSaveMailGeneration("guided")}
+                      className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
+                        mailGenMode === "guided"
+                          ? "border-cyan-300/60 bg-cyan-400/15"
+                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-slate-100">Guided (structured)</span>
+                      <span className="mt-1 block text-xs text-slate-300/80">
+                        The step-by-step selection form. Deterministic — no AI, no per-email cost. Default.
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={mailGenSaving}
+                      aria-pressed={mailGenMode === "brief"}
+                      onClick={() => void handleSaveMailGeneration("brief")}
+                      className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
+                        mailGenMode === "brief"
+                          ? "border-cyan-300/60 bg-cyan-400/15"
+                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-slate-100">AI brief mode</span>
+                      <span className="mt-1 block text-xs text-slate-300/80">
+                        Write a short brief; Claude (Opus 4.8) drafts the email. Asset links stay exact and tracked.
+                        Costs a few cents per email.
+                      </span>
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-400/70">
+                    AI brief mode needs an <code>ANTHROPIC_API_KEY</code> configured on the server.
+                  </p>
                 </div>
               ) : null}
 

@@ -68,6 +68,7 @@ Required env (`web/.env.local` for dev, hosting platform for prod):
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public.
 - `SUPABASE_SERVICE_ROLE_KEY` — server-only; bypasses RLS. Referenced only from `lib/supabase/admin.ts`.
 - `ADMIN_EMAILS` — comma-separated; case-insensitive.
+- `ANTHROPIC_API_KEY` — server-only; used by mail **Brief mode** (`/api/generate-brief` → `lib/mail-brief-llm.ts`) to have Claude write an email from a free-text brief. Referenced only from `lib/mail-brief-llm.ts` (`"server-only"`). If unset, Brief mode errors; the structured `/api/generate` path is unaffected. Optional `MAIL_BRIEF_MODEL` selects the model (`claude-opus-4-8` default, or `claude-sonnet-5`; other values fall back to the default).
 - `RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO` — reminder emails.
 - `CRON_SECRET` — Vercel Cron bearer token. If unset, only admin sessions can hit cron routes.
 - `GOOGLE_SHEETS_*` — travel-sheet integration for the Time Tracker (`lib/google-sheets.ts`).

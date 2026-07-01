@@ -17,6 +17,7 @@ import industryLinks from "@/mail-config/industry-training-links.json";
 import trainingLinks from "@/mail-config/training-links.json";
 import usefulLinksPolicy from "@/mail-config/useful-links-policy.json";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
+import type { BriefLlmResult } from "@/lib/mail-brief-llm";
 import {
   buildAgendaBlock,
   facilityPrepBlock,
@@ -140,7 +141,7 @@ function extractSubjectAndBody(templateText: string) {
 
 
 /** Number of distinct names in the recipient field ("Marco" → 1, "Marco and Hans" → 2). */
-function recipientCount(raw: string): number {
+export function recipientCount(raw: string): number {
   return (raw || "")
     .split(/\s*(?:,|&|\+|\/|\bund\b|\band\b|\bet\b)\s*/i)
     .map((t) => t.trim())
@@ -649,6 +650,68 @@ export function renderMail(input: MailInput): RenderResult {
   const markdownBody = replacePlaceholders(applyGrammaticalNumber(body, singular), replacements);
   return {
     template_id: templateId,
+    subject,
+    body: normalize(stripMarkdownLinks(markdownBody)),
+    html_body: markdownToHtml(markdownBody),
+    inline_attachments: feedbackQr.attachment ? [feedbackQr.attachment] : undefined,
+  };
+}
+
+export type BriefRenderInput = {
+  language: MailLanguage;
+  recipient_name: string;
+  /** Post-mail only: link to the flight data collected during the training; renders the Add-ons section. */
+  datasets_link?: string;
+  /** Shown in the closing; defaults to the standard signature when omitted. */
+  signature_name?: string;
+};
+
+const BRIEF_GREETING: Record<MailLanguage, string> = { en: "Hello", de: "Hallo", fr: "Bonjour" };
+const BRIEF_SIGNOFF: Record<MailLanguage, string> = {
+  en: "Best regards,",
+  de: "Mit freundlichen Grüßen,",
+  fr: "Cordialement,",
+};
+const BRIEF_ROLE = "Flyability Pilot & Trainer";
+
+/**
+ * Brief mode render: hybrid of LLM prose + deterministic tracked-link blocks.
+ * The LLM (`generateBriefDraft`) supplies the human prose and the chosen asset IDs; here we
+ * render the actual click-tracked link blocks from those IDs with the SAME builders the
+ * structured post-mail path uses, so links + tracking are identical and never model-authored.
+ */
+export function renderBriefMail(input: BriefRenderInput, llm: BriefLlmResult): RenderResult {
+  const language = input.language;
+  const singular = isSingularRecipient(input.recipient_name);
+
+  // Defensive: only render blocks for asset IDs that exist in the catalog.
+  const validIds = new Set(CHANGE_OPTIONS.map((opt) => opt.id));
+  const selectedChangeIds = llm.selected_change_ids.filter((id) => validIds.has(id));
+
+  const feedbackQr = resolveFeedbackQr({ mail_type: "post", language } as MailInput);
+  const signature = (input.signature_name && input.signature_name.trim()) || MAIL_SIGNATURE_DEFAULT_NAME;
+
+  const greeting = `${BRIEF_GREETING[language]} ${input.recipient_name},`;
+  const feedbackAsk = llm.feedback_ask.trim();
+  const feedbackSection = feedbackAsk
+    ? `${feedbackAsk}\n\n![Training feedback](${feedbackQr.url})`
+    : "";
+  const signoff = `${llm.closing.trim()}\n\n${BRIEF_SIGNOFF[language]}\n${signature}\n${BRIEF_ROLE}`;
+
+  const sections = [
+    `${greeting}\n\n${llm.opener.trim()}\n\n${llm.recap_intro.trim()}`.trim(),
+    buildTrainingMaterialsBlock(language, selectedChangeIds),
+    buildUsefulLinksBlockFromChanges(language, selectedChangeIds),
+    addonsBlock(language, input.datasets_link, singular),
+    feedbackSection,
+    signoff.trim(),
+  ].filter((section) => section.trim().length > 0);
+
+  const markdownBody = sections.join("\n\n---\n\n");
+  const subject = normalize(llm.subject).trim();
+
+  return {
+    template_id: `brief_${language}`,
     subject,
     body: normalize(stripMarkdownLinks(markdownBody)),
     html_body: markdownToHtml(markdownBody),

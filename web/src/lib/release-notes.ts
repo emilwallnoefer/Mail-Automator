@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-01",
+    date: "Jul 1, 2026",
+    title: "New: AI brief mode for emails",
+    highlights: [
+      "Settings → Mail generation: switch the composer to AI brief mode.",
+      "Write a short brief; Claude drafts the email in your voice.",
+      "Asset links stay exact and click-tracked. Guided mode unchanged.",
+    ],
+  },
+  {
     version: "2026-06-30",
     date: "Jun 30, 2026",
     title: "Post-training Add-ons + refreshed resources",

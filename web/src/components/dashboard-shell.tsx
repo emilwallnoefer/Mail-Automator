@@ -249,6 +249,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [changesTouched, setChangesTouched] = useState(false);
+  /** Which mail generator the composer uses; chosen in Settings → Mail generation. */
+  const [mailGenMode, setMailGenMode] = useState<"guided" | "brief">("guided");
+  /** Free-text brief for the AI ("brief") generator. */
+  const [briefText, setBriefText] = useState("");
   const [activeModule, setActiveModule] = useState<ModuleKey>(
     initialRole === "sales" || initialRole === "hr" ? "time" : "mail",
   );
@@ -486,6 +490,25 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }, [userRole]);
 
   useEffect(() => {
+    function onMailGenModeSaved(event: Event) {
+      const detail = (event as CustomEvent<{ mode?: string }>).detail;
+      setMailGenMode(detail?.mode === "brief" ? "brief" : "guided");
+    }
+    window.addEventListener("mail-generation-mode-saved", onMailGenModeSaved);
+    return () => window.removeEventListener("mail-generation-mode-saved", onMailGenModeSaved);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (userRole === "sales" || userRole === "hr") return;
+      const response = await fetch("/api/settings/mail-generation");
+      if (!response.ok) return;
+      const data = (await response.json()) as { mode?: string };
+      setMailGenMode(data.mode === "brief" ? "brief" : "guided");
+    })();
+  }, [userRole]);
+
+  useEffect(() => {
     (async () => {
       if (userRole === "sales" || userRole === "hr") return;
       const response = await fetch("/api/gmail/status");
@@ -690,6 +713,40 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     }
   }
 
+  async function handleGenerateBrief() {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/generate-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: userRole === "us_pilot" ? "en" : form.language || "en",
+          recipient_name: form.recipient_name,
+          brief: briefText,
+          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
+          datasets_link: form.datasets_link.trim() || undefined,
+        }),
+      });
+      const data = (await response.json()) as GenerateResponse | { error: string };
+      if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
+      const generated = data as GenerateResponse;
+      setResult(generated);
+      if (generated.selected_change_ids && generated.selected_change_ids.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          included_change_ids: generated.selected_change_ids ?? prev.included_change_ids,
+        }));
+        setChangesTouched(false);
+      }
+      setDraftInfo(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function copyText(value: string) {
     await navigator.clipboard.writeText(value);
   }
@@ -755,6 +812,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     setError(null);
     setDraftInfo(null);
     setChangesTouched(false);
+    setBriefText("");
   }
 
   const handleResourceDetailsToggle = useCallback((e: SyntheticEvent<HTMLDetailsElement>) => {
@@ -987,7 +1045,72 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     </div>
                     <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 md:p-5">
             <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
-            <div className="mt-4 space-y-3">
+            {mailGenMode === "brief" ? (
+              <div className="mt-4 space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300/80">Recipient name(s)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Marco, or Marco and Hans"
+                    value={form.recipient_name}
+                    onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300/80">Recipient email</label>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    placeholder="name@company.com (Optional)"
+                    value={form.to}
+                    onChange={(e) => setForm({ ...form, to: e.target.value })}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </div>
+                {userRole !== "us_pilot" ? (
+                  <ComposerChoiceRow label="Language" columns={3}>
+                    {(["de", "en", "fr"] as const).map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        aria-pressed={form.language === lang}
+                        className={composerSegmentClass(form.language === lang)}
+                        onClick={() => setForm({ ...form, language: lang })}
+                      >
+                        {lang.toUpperCase()}
+                      </button>
+                    ))}
+                  </ComposerChoiceRow>
+                ) : null}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300/80">Training brief</label>
+                  <textarea
+                    rows={6}
+                    placeholder="Who the client was, which assets to include, and what was special about this training…"
+                    value={briefText}
+                    onChange={(e) => setBriefText(e.target.value)}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
+                  <p className="text-[11px] leading-4 text-slate-400/80">
+                    Claude (Opus 4.8) writes the email from this. The asset links stay exact and tracked.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300/80">Add-ons</label>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    placeholder="Link to collected flight data (Optional)"
+                    value={form.datasets_link}
+                    onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              ) : (
+              <>
+              <div className="mt-4 space-y-3">
               <ComposerChoiceRow label="Mail type">
                 <button
                   type="button"
@@ -1348,13 +1471,20 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 </div>
               </ProgressiveField>
             </div>
+              </>
+              )}
 
             <div className="mt-5 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => {
-                  void handleGenerate();
+                  void (mailGenMode === "brief" ? handleGenerateBrief() : handleGenerate());
                 }}
-                disabled={loading || generateDisabled}
+                disabled={
+                  loading ||
+                  (mailGenMode === "brief"
+                    ? !form.recipient_name.trim() || !briefText.trim()
+                    : generateDisabled)
+                }
                 className="h-11 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
                 type="button"
               >
