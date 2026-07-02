@@ -35,7 +35,7 @@ export async function GET() {
       users.push({
         id: user.id,
         email: user.email ?? "",
-        role: extractRoleFromMetadata(user.user_metadata),
+        role: extractRoleFromMetadata(user.app_metadata),
         created_at: user.created_at ?? null,
         last_sign_in_at: user.last_sign_in_at ?? null,
       });
@@ -75,16 +75,18 @@ export async function PATCH(request: Request) {
   if (current.error || !current.data?.user) {
     return NextResponse.json({ error: current.error?.message ?? "User not found" }, { status: 404 });
   }
-  const existingMetadata =
-    current.data.user.user_metadata && typeof current.data.user.user_metadata === "object"
-      ? (current.data.user.user_metadata as Record<string, unknown>)
+  // Role lives in app_metadata, which is writable only via the service-role key
+  // (users cannot rewrite it themselves via updateUser). See SECURITY.md T0.1.
+  const existingAppMetadata =
+    current.data.user.app_metadata && typeof current.data.user.app_metadata === "object"
+      ? (current.data.user.app_metadata as Record<string, unknown>)
       : {};
-  const previousRole = normalizeUserRole(existingMetadata.role);
+  const previousRole = normalizeUserRole(existingAppMetadata.role);
 
-  const nextMetadata = { ...existingMetadata, role };
+  const nextAppMetadata = { ...existingAppMetadata, role };
 
   const updateRes = await admin.auth.admin.updateUserById(user_id, {
-    user_metadata: nextMetadata,
+    app_metadata: nextAppMetadata,
   });
   if (updateRes.error) {
     return NextResponse.json({ error: updateRes.error.message }, { status: 500 });

@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       users.push({
         id: user.id,
         email: user.email ?? "",
-        role: extractRole(user.user_metadata),
+        role: extractRole(user.app_metadata),
       });
     }
     if (pageUsers.length < perPage) break;

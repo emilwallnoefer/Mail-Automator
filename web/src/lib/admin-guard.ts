@@ -100,9 +100,11 @@ export async function guardTimeViewer(): Promise<TimeViewerGuardSuccess | AdminG
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
+  // Role lives in app_metadata (service-role writable only), NOT user_metadata,
+  // which the user can rewrite themselves via updateUser. See SECURITY.md T0.1.
   const metadata =
-    user.user_metadata && typeof user.user_metadata === "object" && !Array.isArray(user.user_metadata)
-      ? (user.user_metadata as Record<string, unknown>)
+    user.app_metadata && typeof user.app_metadata === "object" && !Array.isArray(user.app_metadata)
+      ? (user.app_metadata as Record<string, unknown>)
       : {};
   const role = normalizeUserRole(metadata.role);
   const isAdmin = isAdminEmail(user.email);

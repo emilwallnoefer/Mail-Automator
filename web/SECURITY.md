@@ -93,3 +93,11 @@ The app records **no** security events and has **no** breach alerting. Extend th
 
 - 2026-07-02 — Audit run-1 completed; masterplan created; **T2 (detection + breach alerting) implemented** in this branch. Tier 0/1 items open.
 - 2026-07-02 — **Audit run-2 completed** (full recon fleet over the run-1 gap areas: mail-tracking, chat + Storage, Sheets, time-tracker, settings, RLS sweep). Added T0.4/T0.5 (both MEDIUM integrity) and T1.6–T1.8. Confirmed clean: mail-tracking routes (no injection/IDOR), RLS across all 16 tables, time-tracker writes, account/delete, settings, Sheets fixed-spreadsheet, company-research (not SSRF). Artifacts in `docs/security-audit/run-2/`.
+- 2026-07-02 — **All five Tier 0 fixes applied** (code changes in this branch; lint + build + typecheck pass):
+  - **T0.1** — role moved to `app_metadata` (service-role-write-only); guard + admin PATCH + insights/time-overview/onboarding/cron routes + settings page now read it there.
+  - **T0.2** — Gmail refresh token moved to a service-role `gmail_tokens` table via new `lib/gmail-tokens.ts`; callback/create-draft/status/disconnect + the time-tracker Sheets read rewired.
+  - **T0.3** — `getUser()` gate added to `generate`, `generate-brief`, `render-brief`; rate-limit IP now taken from trusted `x-real-ip`/`x-vercel-forwarded-for`.
+  - **T0.4** — markdown link/image URLs HTML-escaped + scheme-allowlisted in `markdownBlockToHtml`.
+  - **T0.5** — BEFORE INSERT trigger stamps `chat_messages.sender_email` from the JWT and nulls `done_at`/`done_by`.
+  - **⚠️ Apply these three migrations by hand** (flat, un-orchestrated): `supabase/2026-07-03-role-in-app-metadata.sql`, `2026-07-03-gmail-tokens.sql`, `2026-07-03-chat-insert-hardening.sql`. Each backfills so connected users keep working; the code reads the new locations, so **the app must not be deployed ahead of applying the migrations** (roles/Gmail would read empty until backfilled). Deploy order: apply migrations → deploy code.
+  - Remaining open: Tier 1 hardening (T1.1–T1.8).

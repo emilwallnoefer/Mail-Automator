@@ -1,6 +1,7 @@
 import { renderBriefMail } from "@/lib/mail-engine";
 import { sanitizeNullableText, sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
+import { createClient } from "@/lib/supabase/server";
 import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
       { status: 429, headers: createRateLimitHeaders(limitResult) },
     );
   }
+
+  // Require an authenticated session: this route is only ever called from the
+  // signed-in dashboard, so reject anonymous callers to prevent abuse.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const parsed = renderSchema.safeParse(await request.json());

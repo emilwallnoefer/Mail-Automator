@@ -204,7 +204,7 @@ export function AdminOverviewStats() {
             <div className="flex items-center gap-1.5">
               <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">Users by role</p>
               <InfoTooltip label="About roles">
-                Counts each role stored in <code>user_metadata.role</code>. Users with no role assigned fall under &quot;Not selected&quot;.
+                Counts each role stored in <code>app_metadata.role</code>. Users with no role assigned fall under &quot;Not selected&quot;.
               </InfoTooltip>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">

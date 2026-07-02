@@ -167,7 +167,7 @@ async function fetchWorkspaceKpis(admin: SupabaseClient): Promise<WorkspaceKpis>
     const pageUsers = data?.users ?? [];
     for (const user of pageUsers) {
       totalUsers += 1;
-      const role = extractRole(user.user_metadata);
+      const role = extractRole(user.app_metadata);
       const key = role ?? "none";
       usersByRole[key] = (usersByRole[key] ?? 0) + 1;
       if (user.last_sign_in_at) {
