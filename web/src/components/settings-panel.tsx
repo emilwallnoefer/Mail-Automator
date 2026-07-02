@@ -11,6 +11,12 @@ import { getTheme, setTheme as persistTheme, THEMES, type Theme } from "@/lib/th
 import { getAccent, setAccent as persistAccent, ACCENTS, type Accent } from "@/lib/accent";
 import { getUiSoundsEnabled, setUiSoundsEnabled as persistUiSoundsEnabled } from "@/lib/ui-sounds";
 import type { UserRole } from "@/lib/user-role";
+import { Button, Input, Select } from "@/components/ui";
+
+/* Disclosure rows + bodies for the README section (repeated 4×). */
+const README_TOGGLE_CLASS =
+  "flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12";
+const README_BODY_CLASS = "rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90";
 
 export type SettingsSectionId =
   | "gmail"
@@ -451,15 +457,15 @@ export function SettingsPanel({
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {gmailStatus.connected ? (
-                        <button
-                          type="button"
+                        <Button
+                          variant="glass-quiet"
+                          size="sm"
                           onClick={() => {
                             void handleDisconnectGmail();
                           }}
-                          className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15"
                         >
                           Disconnect Gmail
-                        </button>
+                        </Button>
                       ) : (
                         <a
                           href="/api/gmail/connect"
@@ -481,39 +487,29 @@ export function SettingsPanel({
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
                     <label className="block min-w-0 flex-1">
                       <span className="mb-1 block text-xs text-ink-2/90">Preset</span>
-                      <select
-                        value={mailSigPreset}
-                        onChange={(event) => setMailSigPreset(event.target.value)}
-                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
-                      >
+                      <Select value={mailSigPreset} onChange={(event) => setMailSigPreset(event.target.value)}>
                         {MAIL_SIGNATURE_NAME_PRESETS.map((preset) => (
                           <option key={preset} value={preset}>
                             {preset}
                           </option>
                         ))}
                         <option value={MAIL_SIGNATURE_CUSTOM_VALUE}>Custom name…</option>
-                      </select>
+                      </Select>
                     </label>
                     {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? (
                       <label className="block min-w-0 flex-1">
                         <span className="mb-1 block text-xs text-ink-2/90">Custom name</span>
-                        <input
+                        <Input
                           value={mailSigCustom}
                           onChange={(event) => setMailSigCustom(event.target.value)}
                           placeholder="Your name"
                           maxLength={120}
-                          className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                         />
                       </label>
                     ) : null}
-                    <button
-                      type="button"
-                      disabled={mailSigSaving}
-                      onClick={() => void handleSaveMailSignature()}
-                      className="rounded-lg bg-accent/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-50"
-                    >
+                    <Button variant="accent" size="sm" disabled={mailSigSaving} onClick={() => void handleSaveMailSignature()}>
                       {mailSigSaving ? "Saving…" : "Save"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -570,51 +566,49 @@ export function SettingsPanel({
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <label className="block">
                       <span className="mb-1 block text-xs text-ink-2/90">Client column</span>
-                      <input
+                      <Input
                         value={travelMapping.clientColumn}
                         onChange={(event) => {
                           const value = normalizeColumnInput(event.target.value);
                           setTravelMapping((prev) => ({ ...prev, clientColumn: value }));
                         }}
                         placeholder="P"
-                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-xs text-ink-2/90">Location column</span>
-                      <input
+                      <Input
                         value={travelMapping.locationColumn}
                         onChange={(event) => {
                           const value = normalizeColumnInput(event.target.value);
                           setTravelMapping((prev) => ({ ...prev, locationColumn: value }));
                         }}
                         placeholder="Q"
-                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-xs text-ink-2/90">Responsible column</span>
-                      <input
+                      <Input
                         value={travelMapping.responsibleColumn}
                         onChange={(event) => {
                           const value = normalizeColumnInput(event.target.value);
                           setTravelMapping((prev) => ({ ...prev, responsibleColumn: value }));
                         }}
                         placeholder="R"
-                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="glass-quiet"
+                    size="sm"
+                    className="mt-4"
                     onClick={() => {
                       void handleSaveTravelMapping();
                     }}
                     disabled={mappingSaving}
-                    className="mt-4 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                   >
                     {mappingSaving ? "Saving..." : "Save travel mapping"}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
 
@@ -625,26 +619,26 @@ export function SettingsPanel({
                     migrate old tracking history into this account. You can also export your current data.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="glass-quiet"
+                      size="sm"
                       onClick={() => {
                         importFileRef.current?.click();
                       }}
                       disabled={importing}
-                      className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                     >
                       {importing ? "Importing..." : "Upload old time tracking data"}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="glass-quiet"
+                      size="sm"
                       onClick={() => {
                         void handleExportData();
                       }}
                       disabled={exporting}
-                      className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                     >
                       {exporting ? "Exporting..." : "Export time tracking data"}
-                    </button>
+                    </Button>
                   </div>
                   <input
                     ref={importFileRef}
@@ -803,16 +797,17 @@ export function SettingsPanel({
                         className="w-full rounded-lg border border-rose-200/35 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </div>
-                    <button
-                      type="button"
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="mt-3"
                       onClick={() => {
                         void handleDeleteAccount();
                       }}
                       disabled={deletingAccount}
-                      className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-danger transition hover:bg-rose-500/30 disabled:opacity-60"
                     >
                       {deletingAccount ? "Deleting account..." : "Delete account"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -823,13 +818,13 @@ export function SettingsPanel({
                   <button
                     type="button"
                     onClick={() => toggleReadme("program")}
-                    className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
+                    className={README_TOGGLE_CLASS}
                   >
                     <span>Program functionality README</span>
                     <span>{openReadme === "program" ? "Hide" : "Show"}</span>
                   </button>
                   {openReadme === "program" ? (
-                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                    <div className={README_BODY_CLASS}>
                       <p className="font-medium text-accent-soft">What this program does</p>
                       <ul className="mt-2 list-disc space-y-1 pl-4">
                         {!isSalesOnly ? (
@@ -865,14 +860,14 @@ export function SettingsPanel({
                     <button
                       type="button"
                       onClick={() => toggleReadme("gmail")}
-                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
+                      className={README_TOGGLE_CLASS}
                     >
                       <span>Gmail setup README</span>
                       <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
                     </button>
                   ) : null}
                   {!isSalesOnly && openReadme === "gmail" ? (
-                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                    <div className={README_BODY_CLASS}>
                       <p className="font-medium text-accent-soft">What it does</p>
                       <p className="mt-1 text-ink-3/90">
                         Gmail setup enables draft creation from generated mails so users can review and send from Gmail.
@@ -895,14 +890,14 @@ export function SettingsPanel({
                     <button
                       type="button"
                       onClick={() => toggleReadme("mapping")}
-                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
+                      className={README_TOGGLE_CLASS}
                     >
                       <span>Travel mapping setup README</span>
                       <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
                     </button>
                   ) : null}
                   {!isSalesOnly && openReadme === "mapping" ? (
-                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                    <div className={README_BODY_CLASS}>
                       <p className="font-medium text-accent-soft">What it does</p>
                       <p className="mt-1 text-ink-3/90">
                         Mapping defines where Client/Location/Responsible values are read in your travel sheet.
@@ -924,13 +919,13 @@ export function SettingsPanel({
                   <button
                     type="button"
                     onClick={() => toggleReadme("import")}
-                    className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
+                    className={README_TOGGLE_CLASS}
                   >
                     <span>Time import setup README</span>
                     <span>{openReadme === "import" ? "Hide" : "Show"}</span>
                   </button>
                   {openReadme === "import" ? (
-                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                    <div className={README_BODY_CLASS}>
                       <p className="font-medium text-accent-soft">What it does</p>
                       <p className="mt-1 text-ink-3/90">
                         Import migrates old `hourlogger-data.json` records into this account&apos;s time tracker history.

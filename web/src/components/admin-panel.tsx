@@ -1,5 +1,6 @@
 "use client";
 
+import { Notice } from "@/components/ui";
 import {
   useCallback,
   useEffect,
@@ -370,9 +371,9 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                   </div>
 
                   {overviewError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
+                    <Notice>
                       {overviewError}
-                    </p>
+                    </Notice>
                   ) : null}
 
                   <div className="relative">
@@ -463,14 +464,14 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                     <FreshnessPill updatedAt={usersUpdatedAt} loading={usersLoading} />
                   </div>
                   {usersError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
+                    <Notice>
                       {usersError}
-                    </p>
+                    </Notice>
                   ) : null}
                   {roleError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
+                    <Notice>
                       {roleError}
-                    </p>
+                    </Notice>
                   ) : null}
 
                   <div className="relative">

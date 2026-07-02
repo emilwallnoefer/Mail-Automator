@@ -1,5 +1,6 @@
 "use client";
 
+import { Notice } from "@/components/ui";
 import { useCallback, useEffect, useState } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { DEFAULT_MAIL_BRIEF_MODEL, MAIL_BRIEF_MODELS } from "@/lib/mail-brief-model";
@@ -57,9 +58,9 @@ export function AdminMailSettings() {
       </p>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
+        <Notice>
           {error}
-        </p>
+        </Notice>
       ) : null}
 
       <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">

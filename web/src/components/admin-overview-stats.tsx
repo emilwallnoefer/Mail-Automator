@@ -1,5 +1,6 @@
 "use client";
 
+import { Notice } from "@/components/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { FreshnessPill } from "@/components/freshness-pill";
@@ -133,9 +134,9 @@ export function AdminOverviewStats() {
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
+        <Notice>
           {error}
-        </p>
+        </Notice>
       ) : null}
 
       <div className="relative">
