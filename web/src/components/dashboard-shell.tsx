@@ -1,46 +1,19 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { AnimatePresence } from "framer-motion";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-  type SyntheticEvent,
-} from "react";
-import {
-  CHANGE_OPTIONS,
-  type ChangeOption,
-  DEFAULT_INCLUDED_CHANGE_IDS,
-  getChangeOptionLabelDesc,
-  getOtherTrainingsOptionsInOrder,
-  getThinkificOnlineCoursesInOrder,
-  type MailLanguage,
-  type ResourceSectionId,
-  resourceSectionLabel,
-  RESOURCE_SECTION_ORDER,
-} from "@/lib/change-options";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { ChatWidget } from "@/components/chat-widget";
+import { MailComposerPanel } from "@/components/mail-composer/mail-composer-panel";
+import { useMailComposer } from "@/components/mail-composer/use-mail-composer";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
 import { AdminPanel } from "@/components/admin-panel";
-import { playUiSound, playUiSoundWithCrossfadeFill, stopUiSound } from "@/lib/ui-sounds";
+import { Notice } from "@/components/ui";
+import { playUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
-import { MAIL_SIGNATURE_DEFAULT_NAME } from "@/lib/mail-signature-presets";
 import { LATEST_RELEASE } from "@/lib/release-notes";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
-import {
-  TRAINING_DISCIPLINES,
-  DISCIPLINE_LABEL,
-  LAUSANNE_SITE_OPTIONS,
-  type LausanneSite,
-  type TrainingDiscipline,
-} from "@/lib/training-disciplines";
 
 type DashboardShellProps = {
   email: string;
@@ -57,218 +30,6 @@ type ModuleKey = "mail" | "time" | "settings" | "admin";
 const PROGRAM_README_PROMPT_SEEN_KEY = "ma_program_readme_prompt_seen_v1";
 // Tracks the last release whose "What's new" popup the user dismissed.
 const WHATS_NEW_SEEN_VERSION_KEY = "ma_whats_new_seen_version_v1";
-const SUBJECT_WRITE_STEP = 2;
-const BODY_WRITE_STEP = 10;
-const SUBJECT_WRITE_INTERVAL_MS = 20;
-const BODY_WRITE_INTERVAL_MS = 17;
-
-/** The LLM-written prose of a Brief-mode email, held so assets can be re-rendered without another LLM call. */
-type BriefContent = {
-  subject: string;
-  opener: string;
-  recap_intro: string;
-  feedback_ask: string;
-  closing: string;
-};
-
-type GenerateResponse = {
-  template_id: string;
-  subject: string;
-  body: string;
-  html_body: string;
-  selected_change_ids?: string[];
-  inline_attachments?: Array<{ contentId: string; mimeType: string; base64: string }>;
-  /** Present only for Brief-mode results. */
-  brief_content?: BriefContent;
-};
-
-function isSameGeneratedDraft(previous: GenerateResponse | null, next: GenerateResponse) {
-  if (!previous) return false;
-  if (previous.template_id !== next.template_id) return false;
-  if (previous.subject !== next.subject) return false;
-  if (previous.body !== next.body) return false;
-  if (previous.html_body !== next.html_body) return false;
-  const prevChanges = previous.selected_change_ids ?? [];
-  const nextChanges = next.selected_change_ids ?? [];
-  if (prevChanges.length !== nextChanges.length) return false;
-  return prevChanges.every((value, index) => value === nextChanges[index]);
-}
-
-/** Post-training mail still uses these two coarse presets. */
-type PostTrainingType = "intro_1day" | "aiim_3day";
-
-type FormState = {
-  mail_type: "" | "pre" | "post";
-  template_variant: "" | "lausanne" | "abroad";
-  language: "" | MailLanguage;
-  /** Post-mail only. Pre-mails use day_count + per-day disciplines instead. */
-  training_type: "" | PostTrainingType;
-  recipient_name: string;
-  recipient_optional: string;
-  company_name: string;
-  use_case: string;
-  date: string;
-  location: string;
-  /** Pre-mail: number of training days and the disciplines taught each day. */
-  day_count: 0 | 1 | 2 | 3;
-  day1_disciplines: TrainingDiscipline[];
-  day2_disciplines: TrainingDiscipline[];
-  day3_disciplines: TrainingDiscipline[];
-  /** Pre-mail Lausanne: the flight site (asset) used on each day. */
-  day1_site: "" | LausanneSite;
-  day2_site: "" | LausanneSite;
-  day3_site: "" | LausanneSite;
-  to: string;
-  included_change_ids: string[];
-  /** Post-mail only. Link to the collected flight data; renders the Add-ons section. */
-  datasets_link: string;
-  /** Closing name in generated training emails; synced from Settings. */
-  signature_name: string;
-};
-
-const DAY_DISCIPLINE_KEYS = ["day1_disciplines", "day2_disciplines", "day3_disciplines"] as const;
-const DAY_SITE_KEYS = ["day1_site", "day2_site", "day3_site"] as const;
-
-const INITIAL_FORM_STATE: FormState = {
-  mail_type: "",
-  template_variant: "",
-  language: "",
-  training_type: "",
-  recipient_name: "",
-  recipient_optional: "",
-  company_name: "",
-  use_case: "",
-  date: "",
-  location: "",
-  day_count: 0,
-  day1_disciplines: [],
-  day2_disciplines: [],
-  day3_disciplines: [],
-  day1_site: "",
-  day2_site: "",
-  day3_site: "",
-  to: "",
-  included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
-  datasets_link: "",
-  signature_name: MAIL_SIGNATURE_DEFAULT_NAME,
-};
-
-function ProgressiveField({ show, children }: { show: boolean; children: ReactNode }) {
-  return (
-    <AnimatePresence initial={false}>
-      {show ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8, height: 0 }}
-          animate={{ opacity: 1, y: 0, height: "auto" }}
-          exit={{ opacity: 0, y: -6, height: 0 }}
-          transition={{ duration: 0.2 }}
-          className="overflow-hidden"
-        >
-          {children}
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
-
-type GroupedChangeOptions = {
-  materials: ChangeOption[];
-  usefulSections: Array<{ sectionId: ResourceSectionId; options: ChangeOption[] }>;
-};
-
-/** Accordion checklist of every mail asset, grouped by section. Shared by the guided form and the Brief-mode asset editor. */
-function AssetChecklist({
-  grouped,
-  selectedIds,
-  lang,
-  onToggle,
-  onDetailsToggle,
-}: {
-  grouped: GroupedChangeOptions;
-  selectedIds: string[];
-  lang: MailLanguage;
-  onToggle: (id: string, checked: boolean) => void;
-  onDetailsToggle: (event: SyntheticEvent<HTMLDetailsElement>) => void;
-}) {
-  const renderOption = (option: ChangeOption) => {
-    const checked = selectedIds.includes(option.id);
-    const { label, desc } = getChangeOptionLabelDesc(option, lang);
-    return (
-      <label key={option.id} className="flex items-start gap-2 rounded-md border border-glass/10 bg-glass/5 p-2">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={checked}
-          onChange={(e) => onToggle(option.id, e.target.checked)}
-        />
-        <span>
-          <span className="block">{label}</span>
-          <span className="text-xs text-ink-3/80">{desc}</span>
-        </span>
-      </label>
-    );
-  };
-
-  return (
-    <div className="space-y-2 text-sm">
-      <details
-        className="group rounded-lg border border-glass/15 bg-glass/5 [&_summary::-webkit-details-marker]:hidden"
-        onToggle={onDetailsToggle}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-glass/10">
-          <span>Training slide decks</span>
-          <span className="shrink-0 text-xs text-ink-4 transition group-open:rotate-180">▼</span>
-        </summary>
-        <div className="max-h-64 space-y-2 overflow-auto border-t border-glass/10 p-3 pr-1">
-          {grouped.materials.map(renderOption)}
-        </div>
-      </details>
-
-      {grouped.usefulSections.map((section) => (
-        <details
-          key={section.sectionId}
-          className="group rounded-lg border border-glass/15 bg-glass/5 [&_summary::-webkit-details-marker]:hidden"
-          onToggle={onDetailsToggle}
-        >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-glass/10">
-            <span>{resourceSectionLabel(section.sectionId, lang)}</span>
-            <span className="shrink-0 text-xs text-ink-4 transition group-open:rotate-180">▼</span>
-          </summary>
-          <div className="max-h-64 space-y-2 overflow-auto border-t border-glass/10 p-3 pr-1">
-            {section.options.map(renderOption)}
-          </div>
-        </details>
-      ))}
-    </div>
-  );
-}
-
-function composerSegmentClass(active: boolean) {
-  return [
-    "rounded-lg border px-3 py-2.5 text-sm font-medium transition",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/90",
-    active
-      ? "border-accent/80 bg-accent/90 text-slate-900 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]"
-      : "border-glass/15 bg-glass/10 text-ink-2 hover:border-glass/25 hover:bg-glass/14",
-  ].join(" ");
-}
-
-function ComposerChoiceRow({
-  label,
-  children,
-  columns = 2,
-}: {
-  label: string;
-  children: ReactNode;
-  columns?: 2 | 3;
-}) {
-  return (
-    <div role="group" aria-label={label}>
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">{label}</p>
-      <div className={columns === 3 ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>{children}</div>
-    </div>
-  );
-}
 
 function greetingFromEmail(addr: string): string {
   const local = addr.split("@")[0]?.trim() ?? "";
@@ -325,174 +86,30 @@ function IconArrow({ className }: { className?: string }) {
   );
 }
 
+const MODULE_CARD_CLASS =
+  "group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+
 export function DashboardShell({ email, initialRole, isAdmin = false, initialWeek = null }: DashboardShellProps) {
-  const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
-  const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<GenerateResponse | null>(null);
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
-  const [changesTouched, setChangesTouched] = useState(false);
-  /** Which mail generator the composer uses; chosen in Settings → Mail generation. */
-  const [mailGenMode, setMailGenMode] = useState<"guided" | "brief">("guided");
-  /** Free-text brief for the AI ("brief") generator. */
-  const [briefText, setBriefText] = useState("");
-  /** Prose from the last Brief-mode generation, kept so assets can be re-rendered without the LLM. */
-  const [briefContent, setBriefContent] = useState<BriefContent | null>(null);
-  /** Whether the Brief-mode asset editor is open, and whether a re-render is in flight. */
-  const [editingAssets, setEditingAssets] = useState(false);
-  const [savingAssets, setSavingAssets] = useState(false);
   const [activeModule, setActiveModule] = useState<ModuleKey>(
     initialRole === "sales" || initialRole === "hr" ? "time" : "mail",
   );
   const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
   const [roleSaving, setRoleSaving] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
-  const [animatedPreviewSubject, setAnimatedPreviewSubject] = useState("");
-  const [animatedPreviewBody, setAnimatedPreviewBody] = useState("");
+  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
+    connected: false,
+  });
   // Current Time Tracker week, warmed in the background on dashboard load so the
   // Time Logger opens instantly. Seeded from the SSR week when available.
   const [prefetchedWeek, setPrefetchedWeek] = useState<WeekResponse | null>(initialWeek);
   const weekPrefetchedRef = useRef(false);
-  const previousPreviewWritingRef = useRef(false);
 
-  const shouldShowLanguage = Boolean(form.mail_type);
-  const isPre = form.mail_type === "pre";
-  const isPost = form.mail_type === "post";
-  const isPreLausanne = isPre && form.template_variant === "lausanne";
-  const isPreAbroad = isPre && form.template_variant === "abroad";
-  const preDayCount = form.day_count;
-
-  const shouldShowVariant = shouldShowLanguage && isPre;
-  const shouldShowPostTrainingType = isPost && shouldShowLanguage;
-  const shouldShowDayCount = shouldShowVariant && Boolean(form.template_variant);
-  const shouldShowDisciplines = shouldShowDayCount && preDayCount > 0;
-  const shouldShowLausanneSite = isPreLausanne && preDayCount > 0;
-  const shouldShowAbroadLocation = isPreAbroad && preDayCount > 0;
-  const preFinalSelectionDone = isPreLausanne
-    ? preDayCount > 0 // Lausanne flight site is optional, so day count is enough to proceed.
-    : isPreAbroad
-      ? Boolean(form.location)
-      : false;
-
-  const shouldShowRecipient = isPost
-    ? shouldShowPostTrainingType && Boolean(form.training_type)
-    : preFinalSelectionDone;
-  const shouldShowCompany = isPost && shouldShowRecipient && Boolean(form.recipient_name);
-  const shouldShowUseCase = isPost && shouldShowCompany && Boolean(form.company_name);
-  const shouldShowDate = isPre ? shouldShowRecipient && Boolean(form.recipient_name) : false;
-  // Resource attachments (slide decks / links) are a post-training recap concern only.
-  const shouldShowChanges = isPost && shouldShowUseCase && Boolean(form.use_case);
-  const shouldShowRecipientOptional = isPost ? shouldShowChanges : Boolean(form.date);
-
-  const composerMailLang: MailLanguage =
-    userRole === "us_pilot"
-      ? "en"
-      : form.language === "en" || form.language === "de" || form.language === "fr"
-        ? form.language
-        : "en";
-
-  const languageReady = userRole === "us_pilot" || Boolean(form.language);
-
-  const generateDisabled =
-    !form.mail_type ||
-    !languageReady ||
-    !form.recipient_name ||
-    (isPost && (!form.training_type || !form.company_name || !form.use_case)) ||
-    (isPre &&
-      (!form.template_variant || !form.day_count || !form.date || (isPreAbroad && !form.location)));
-  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
-    connected: false,
-  });
-  const [draftInfo, setDraftInfo] = useState<{ draftId: string; messageId: string } | null>(null);
-
-  const groupedChangeOptions = useMemo(() => {
-    const materials = CHANGE_OPTIONS.filter((o) => o.category === "training_material");
-    const usefulSections = RESOURCE_SECTION_ORDER.map((sectionId) => ({
-      sectionId,
-      options:
-        sectionId === "online_courses"
-          ? getThinkificOnlineCoursesInOrder(CHANGE_OPTIONS)
-          : sectionId === "other_trainings"
-            ? getOtherTrainingsOptionsInOrder(CHANGE_OPTIONS)
-            : CHANGE_OPTIONS.filter((o) => o.category === "useful_link" && o.resourceSection === sectionId),
-    })).filter((s) => s.options.length > 0);
-    return { materials, usefulSections };
-  }, []);
-
-  const selectTemplateVariant = useCallback((nextVariant: FormState["template_variant"]) => {
-    if (!nextVariant) return;
-    setForm((prev) => ({
-      ...prev,
-      template_variant: nextVariant,
-      // Lausanne uses a named flight site; abroad uses a free-text location. Reset the other.
-      location:
-        nextVariant === "lausanne"
-          ? "Lausanne"
-          : prev.location === "Lausanne"
-            ? ""
-            : prev.location,
-      day1_site: nextVariant === "lausanne" ? prev.day1_site : "",
-      day2_site: nextVariant === "lausanne" ? prev.day2_site : "",
-      day3_site: nextVariant === "lausanne" ? prev.day3_site : "",
-    }));
-    setChangesTouched(false);
-  }, []);
-
-  const selectDayCount = useCallback((nextCount: 1 | 2 | 3) => {
-    setForm((prev) => {
-      // On the first day-count pick, seed Day 1 with the Intro topic (the fundamentals day).
-      const seedDay1 =
-        prev.day_count === 0 && prev.day1_disciplines.length === 0
-          ? (["intro"] as TrainingDiscipline[])
-          : prev.day1_disciplines;
-      return {
-        ...prev,
-        day_count: nextCount,
-        day1_disciplines: seedDay1,
-        day2_disciplines: nextCount >= 2 ? prev.day2_disciplines : [],
-        day3_disciplines: nextCount >= 3 ? prev.day3_disciplines : [],
-        day2_site: nextCount >= 2 ? prev.day2_site : "",
-        day3_site: nextCount >= 3 ? prev.day3_site : "",
-      };
-    });
-  }, []);
-
-  const toggleDiscipline = useCallback((dayIndex: 0 | 1 | 2, discipline: TrainingDiscipline) => {
-    const key = DAY_DISCIPLINE_KEYS[dayIndex];
-    setForm((prev) => {
-      const current = prev[key];
-      const nextList = current.includes(discipline)
-        ? current.filter((d) => d !== discipline)
-        : [...current, discipline];
-      return { ...prev, [key]: nextList };
-    });
-  }, []);
-
-  const selectTrainingType = useCallback((nextTrainingType: PostTrainingType) => {
-    setForm((prev) => {
-      const hasAiim = prev.included_change_ids.includes("material_aiim");
-      if (nextTrainingType === "intro_1day") {
-        return {
-          ...prev,
-          training_type: nextTrainingType,
-          included_change_ids: prev.included_change_ids.filter((id) => id !== "material_aiim"),
-        };
-      }
-      if (nextTrainingType === "aiim_3day" && !hasAiim) {
-        return {
-          ...prev,
-          training_type: nextTrainingType,
-          included_change_ids: [...prev.included_change_ids, "material_aiim"],
-        };
-      }
-      return { ...prev, training_type: nextTrainingType };
-    });
-    setChangesTouched(false);
-  }, []);
+  const composer = useMailComposer(userRole);
 
   const availableModules = useMemo<ModuleKey[]>(() => {
     const base: ModuleKey[] =
@@ -557,48 +174,6 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }, [availableModules, initialWeek]);
 
   useEffect(() => {
-    function onMailSignatureSaved(event: Event) {
-      const detail = (event as CustomEvent<{ signature_name?: string }>).detail;
-      const name = typeof detail?.signature_name === "string" ? detail.signature_name.trim() : "";
-      if (!name) return;
-      setForm((prev) => ({ ...prev, signature_name: name }));
-    }
-    window.addEventListener("mail-signature-saved", onMailSignatureSaved);
-    return () => window.removeEventListener("mail-signature-saved", onMailSignatureSaved);
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      if (userRole === "sales" || userRole === "hr") return;
-      const sigResponse = await fetch("/api/settings/mail-signature");
-      if (sigResponse.ok) {
-        const sigData = (await sigResponse.json()) as { signature_name?: string };
-        const name = (sigData.signature_name ?? "").trim() || MAIL_SIGNATURE_DEFAULT_NAME;
-        setForm((prev) => ({ ...prev, signature_name: name }));
-      }
-    })();
-  }, [userRole]);
-
-  useEffect(() => {
-    function onMailGenModeSaved(event: Event) {
-      const detail = (event as CustomEvent<{ mode?: string }>).detail;
-      setMailGenMode(detail?.mode === "brief" ? "brief" : "guided");
-    }
-    window.addEventListener("mail-generation-mode-saved", onMailGenModeSaved);
-    return () => window.removeEventListener("mail-generation-mode-saved", onMailGenModeSaved);
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      if (userRole === "sales" || userRole === "hr") return;
-      const response = await fetch("/api/settings/mail-generation");
-      if (!response.ok) return;
-      const data = (await response.json()) as { mode?: string };
-      setMailGenMode(data.mode === "brief" ? "brief" : "guided");
-    })();
-  }, [userRole]);
-
-  useEffect(() => {
     (async () => {
       if (userRole === "sales" || userRole === "hr") return;
       const response = await fetch("/api/gmail/status");
@@ -634,92 +209,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }, []);
 
   useEffect(() => {
-    if (!result?.subject) {
-      setAnimatedPreviewSubject("");
-      return;
-    }
-    const text = result.subject;
-    let cursor = 0;
-    let timeoutId: number | null = null;
-    const step = () => {
-      cursor = Math.min(text.length, cursor + SUBJECT_WRITE_STEP);
-      setAnimatedPreviewSubject(text.slice(0, cursor));
-      if (cursor < text.length) timeoutId = window.setTimeout(step, SUBJECT_WRITE_INTERVAL_MS);
-    };
-    step();
-    return () => {
-      if (timeoutId != null) window.clearTimeout(timeoutId);
-    };
-  }, [result?.subject]);
-
-  useEffect(() => {
-    if (!result?.body) {
-      setAnimatedPreviewBody("");
-      return;
-    }
-    const text = result.body;
-    let cursor = 0;
-    let timeoutId: number | null = null;
-    const step = () => {
-      cursor = Math.min(text.length, cursor + BODY_WRITE_STEP);
-      setAnimatedPreviewBody(text.slice(0, cursor));
-      if (cursor < text.length) timeoutId = window.setTimeout(step, BODY_WRITE_INTERVAL_MS);
-    };
-    step();
-    return () => {
-      if (timeoutId != null) window.clearTimeout(timeoutId);
-    };
-  }, [result?.body]);
-
-  useEffect(() => {
     if (availableModules.includes(activeModule)) return;
     setActiveModule(availableModules[0]);
   }, [activeModule, availableModules]);
-
-  const previewIsWriting = Boolean(result) && (
-    animatedPreviewSubject.length < (result?.subject.length ?? 0) ||
-    animatedPreviewBody.length < (result?.body.length ?? 0)
-  );
-
-  useEffect(() => {
-    const wasWriting = previousPreviewWritingRef.current;
-    previousPreviewWritingRef.current = previewIsWriting;
-
-    if (!wasWriting && previewIsWriting) {
-      const subjectLen = result?.subject.length ?? 0;
-      const bodyLen = result?.body.length ?? 0;
-      const subjectSteps = subjectLen > 0 ? Math.ceil(subjectLen / SUBJECT_WRITE_STEP) : 0;
-      const bodySteps = bodyLen > 0 ? Math.ceil(bodyLen / BODY_WRITE_STEP) : 0;
-      const subjectMs = subjectSteps > 0 ? (subjectSteps - 1) * SUBJECT_WRITE_INTERVAL_MS : 0;
-      const bodyMs = bodySteps > 0 ? (bodySteps - 1) * BODY_WRITE_INTERVAL_MS : 0;
-      const rawEstimateMs = Math.max(subjectMs, bodyMs);
-      const paddedEstimateMs = Math.max(2200, Math.round(rawEstimateMs * 2.2));
-      playUiSoundWithCrossfadeFill("previewWrite", paddedEstimateMs, {
-        fadeInMs: 110,
-        fadeOutMs: 220,
-        crossfadeMs: 1000,
-      });
-      return;
-    }
-
-    if (wasWriting && !previewIsWriting) {
-      stopUiSound("previewWrite", { fadeOutMs: 220 });
-    }
-  }, [previewIsWriting, result?.subject, result?.body]);
-
-  useEffect(() => {
-    return () => {
-      stopUiSound("previewWrite", { fadeOutMs: 120 });
-    };
-  }, []);
-
-  function renderNeonWriteText(text: string) {
-    return text.split("").map((char, index) => (
-      <span key={`${index}-${char === "\n" ? "nl" : char}`} className="write-char-neon">
-        {char}
-      </span>
-    ));
-  }
 
   function dismissProgramReadmePrompt() {
     setShowProgramReadmePrompt(false);
@@ -742,7 +234,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   async function handleSelectRole(nextRole: UserRole) {
     if (roleSaving) return;
     setRoleSaving(true);
-    setError(null);
+    setRoleError(null);
     try {
       const supabase = createClient();
       const { error: updateError } = await supabase.auth.updateUser({ data: { role: nextRole } });
@@ -752,162 +244,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         setActiveModule("time");
       }
     } catch (err) {
-      setError((err as Error).message || "Could not save role.");
+      setRoleError((err as Error).message || "Could not save role.");
     } finally {
       setRoleSaving(false);
-    }
-  }
-
-  async function handleGenerate() {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          language: userRole === "us_pilot" ? "en" : form.language,
-          template_variant: form.template_variant || undefined,
-          training_type: isPost ? form.training_type || undefined : undefined,
-          to: form.to || form.recipient_optional || undefined,
-          recipient_optional: form.recipient_optional || undefined,
-          day_count: isPre && form.day_count ? form.day_count : undefined,
-          day1_disciplines: isPre ? form.day1_disciplines : undefined,
-          day2_disciplines: isPre && form.day_count >= 2 ? form.day2_disciplines : undefined,
-          day3_disciplines: isPre && form.day_count >= 3 ? form.day3_disciplines : undefined,
-          day1_site: isPreLausanne ? form.day1_site || undefined : undefined,
-          day2_site: isPreLausanne && form.day_count >= 2 ? form.day2_site || undefined : undefined,
-          day3_site: isPreLausanne && form.day_count >= 3 ? form.day3_site || undefined : undefined,
-          included_change_ids: isPost && changesTouched ? form.included_change_ids : undefined,
-          datasets_link: isPost ? form.datasets_link.trim() || undefined : undefined,
-          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
-        }),
-      });
-      const data = (await response.json()) as GenerateResponse | { error: string };
-      if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
-      const generated = data as GenerateResponse;
-      setResult(generated);
-      if (generated.selected_change_ids && generated.selected_change_ids.length > 0) {
-        setForm((prev) => ({
-          ...prev,
-          included_change_ids: generated.selected_change_ids ?? prev.included_change_ids,
-        }));
-        setChangesTouched(false);
-      }
-      setDraftInfo(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGenerateBrief() {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/generate-brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: userRole === "us_pilot" ? "en" : form.language || "en",
-          recipient_name: form.recipient_name,
-          brief: briefText,
-          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
-          datasets_link: form.datasets_link.trim() || undefined,
-        }),
-      });
-      const data = (await response.json()) as GenerateResponse | { error: string };
-      if (!response.ok) throw new Error((data as { error: string }).error || "Generate failed");
-      const generated = data as GenerateResponse;
-      setResult(generated);
-      setBriefContent(generated.brief_content ?? null);
-      setEditingAssets(false);
-      setForm((prev) => ({
-        ...prev,
-        included_change_ids: generated.selected_change_ids ?? [],
-      }));
-      setChangesTouched(false);
-      setDraftInfo(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSaveBriefAssets() {
-    if (!briefContent) return;
-    setSavingAssets(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/render-brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: userRole === "us_pilot" ? "en" : form.language || "en",
-          recipient_name: form.recipient_name,
-          signature_name: form.signature_name.trim() || MAIL_SIGNATURE_DEFAULT_NAME,
-          datasets_link: form.datasets_link.trim() || undefined,
-          prose: briefContent,
-          selected_change_ids: form.included_change_ids,
-        }),
-      });
-      const data = (await response.json()) as GenerateResponse | { error: string };
-      if (!response.ok) throw new Error((data as { error: string }).error || "Update failed");
-      setResult(data as GenerateResponse);
-      setDraftInfo(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSavingAssets(false);
-    }
-  }
-
-  async function copyText(value: string) {
-    await navigator.clipboard.writeText(value);
-  }
-
-  async function handleCreateDraft() {
-    if (!result) {
-      setError("Generate a draft first.");
-      return;
-    }
-
-    setDraftLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/gmail/create-draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: form.to || form.recipient_optional || undefined,
-          subject: result.subject,
-          body: result.body,
-          html_body: result.html_body,
-          inline_attachments: result.inline_attachments,
-          tracking_meta: form.recipient_name
-            ? {
-                recipient_name: form.recipient_name,
-                recipient_email: form.to || form.recipient_optional || undefined,
-                company_name: form.company_name || undefined,
-                mail_type: form.mail_type || "unknown",
-                language: form.language || undefined,
-                template_variant: form.template_variant || undefined,
-                training_type: form.training_type || undefined,
-              }
-            : undefined,
-        }),
-      });
-      const data = (await response.json()) as { draftId: string; messageId: string } | { error: string };
-      if (!response.ok) throw new Error((data as { error: string }).error || "Failed to create draft");
-      setDraftInfo(data as { draftId: string; messageId: string });
-      playUiSound("mailSend");
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setDraftLoading(false);
     }
   }
 
@@ -920,31 +259,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     }, 260);
   }
 
-  function handleResetComposer() {
-    setForm((prev) => ({
-      ...INITIAL_FORM_STATE,
-      included_change_ids: [...DEFAULT_INCLUDED_CHANGE_IDS],
-      signature_name: prev.signature_name,
-    }));
-    setResult(null);
-    setError(null);
-    setDraftInfo(null);
-    setChangesTouched(false);
-    setBriefText("");
-    setBriefContent(null);
-    setEditingAssets(false);
+  function openModuleCard(module: ModuleKey) {
+    if (activeModule !== module) playUiSound("switchWhoosh");
+    setActiveModule(module);
+    handleBeginAutomating();
   }
-
-  const handleResourceDetailsToggle = useCallback((e: SyntheticEvent<HTMLDetailsElement>) => {
-    const el = e.currentTarget;
-    if (!el.open) return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        /* nearest: only scroll enough to show expanded content; avoids hiding fields above the accordions. */
-        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-      });
-    });
-  }, []);
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-surface text-ink">
@@ -1030,12 +349,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     type="button"
                     initial={false}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      if (activeModule !== "settings") playUiSound("switchWhoosh");
-                      setActiveModule("settings");
-                      handleBeginAutomating();
-                    }}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/80"
+                    onClick={() => openModuleCard("settings")}
+                    className={`${MODULE_CARD_CLASS} hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline-violet-400/80`}
                   >
                     <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/12 blur-2xl transition group-hover:bg-violet-400/22" aria-hidden />
                     <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-violet-400/10 text-violet-200">
@@ -1057,12 +372,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     type="button"
                     initial={false}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      if (activeModule !== "mail") playUiSound("switchWhoosh");
-                      setActiveModule("mail");
-                      handleBeginAutomating();
-                    }}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80"
+                    onClick={() => openModuleCard("mail")}
+                    className={`${MODULE_CARD_CLASS} hover:border-accent/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline-accent/80`}
                   >
                     <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/15 blur-2xl transition group-hover:bg-accent/25" aria-hidden />
                     <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent-soft">
@@ -1083,12 +394,8 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   type="button"
                   initial={false}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    if (activeModule !== "time") playUiSound("switchWhoosh");
-                    setActiveModule("time");
-                    handleBeginAutomating();
-                  }}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
+                  onClick={() => openModuleCard("time")}
+                  className={`${MODULE_CARD_CLASS} hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline-emerald-400/80`}
                 >
                   <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
                   <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-positive">
@@ -1138,515 +445,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       userRole={userRole ?? "eu_pilot"}
                     />
                   ) : (
-                    <section className="underwater-panel relative grid items-start gap-6 overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-                  <div className="relative min-h-0 min-w-0 w-full lg:col-start-1 lg:row-start-1">
-                    <div className="bubble-layer pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-                      {[
-                        { left: "8%", size: "9px", duration: "9s", delay: "0s" },
-                        { left: "20%", size: "7px", duration: "11s", delay: "-2.5s" },
-                        { left: "36%", size: "10px", duration: "10s", delay: "-1.5s" },
-                        { left: "52%", size: "8px", duration: "12s", delay: "-4s" },
-                        { left: "68%", size: "9px", duration: "9.5s", delay: "-3s" },
-                        { left: "84%", size: "11px", duration: "13s", delay: "-5s" },
-                      ].map((bubble, idx) => (
-                        <span
-                          key={`${bubble.left}-${idx}`}
-                          className="bubble"
-                          style={
-                            {
-                              "--bubble-left": bubble.left,
-                              "--bubble-size": bubble.size,
-                              "--bubble-duration": bubble.duration,
-                              "--bubble-delay": bubble.delay,
-                            } as CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
-                    <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 md:p-5">
-            <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
-            {mailGenMode === "brief" ? (
-              <div className="mt-4 space-y-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-ink-3/80">Recipient name(s)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Marco, or Marco and Hans"
-                    value={form.recipient_name}
-                    onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-ink-3/80">Recipient email</label>
-                  <input
-                    type="email"
-                    inputMode="email"
-                    placeholder="name@company.com (Optional)"
-                    value={form.to}
-                    onChange={(e) => setForm({ ...form, to: e.target.value })}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                </div>
-                {userRole !== "us_pilot" ? (
-                  <ComposerChoiceRow label="Language" columns={3}>
-                    {(["de", "en", "fr"] as const).map((lang) => (
-                      <button
-                        key={lang}
-                        type="button"
-                        aria-pressed={form.language === lang}
-                        className={composerSegmentClass(form.language === lang)}
-                        onClick={() => setForm({ ...form, language: lang })}
-                      >
-                        {lang.toUpperCase()}
-                      </button>
-                    ))}
-                  </ComposerChoiceRow>
-                ) : null}
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-ink-3/80">Training brief</label>
-                  <textarea
-                    rows={6}
-                    placeholder="Who the client was, which assets to include, and what was special about this training…"
-                    value={briefText}
-                    onChange={(e) => setBriefText(e.target.value)}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                  <p className="text-[11px] leading-4 text-ink-4/80">
-                    Claude (Opus 4.8) writes the email from this. The asset links stay exact and tracked.
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-ink-3/80">Add-ons</label>
-                  <input
-                    type="url"
-                    inputMode="url"
-                    placeholder="Link to collected flight data (Optional)"
-                    value={form.datasets_link}
-                    onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                </div>
-
-                {result && briefContent ? (
-                  <div className="space-y-2 border-t border-glass/10 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditingAssets((open) => !open)}
-                      aria-expanded={editingAssets}
-                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/5 px-3 py-2 text-sm font-medium text-ink transition hover:bg-glass/10"
-                    >
-                      <span>Edit assets</span>
-                      <span className={`text-xs text-ink-4 transition ${editingAssets ? "rotate-180" : ""}`}>▼</span>
-                    </button>
-                    {editingAssets ? (
-                      <div className="space-y-3">
-                        <p className="text-[11px] leading-4 text-ink-4/80">
-                          Add or remove assets, then save. This re-renders the email — it does not re-run the AI, so the
-                          written text stays exactly as it is.
-                        </p>
-                        <AssetChecklist
-                          grouped={groupedChangeOptions}
-                          selectedIds={form.included_change_ids}
-                          lang={composerMailLang}
-                          onDetailsToggle={handleResourceDetailsToggle}
-                          onToggle={(id, checked) => {
-                            setForm((prev) => ({
-                              ...prev,
-                              included_change_ids: checked
-                                ? [...prev.included_change_ids, id]
-                                : prev.included_change_ids.filter((existing) => existing !== id),
-                            }));
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleSaveBriefAssets();
-                          }}
-                          disabled={savingAssets}
-                          className="h-10 w-full rounded-lg bg-accent/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70"
-                        >
-                          {savingAssets ? "Saving…" : "Save changes"}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-              ) : (
-              <>
-              <div className="mt-4 space-y-3">
-              <ComposerChoiceRow label="Mail type">
-                <button
-                  type="button"
-                  aria-pressed={form.mail_type === "pre"}
-                  className={composerSegmentClass(form.mail_type === "pre")}
-                  onClick={() => {
-                    setForm({ ...form, mail_type: "pre" });
-                    setChangesTouched(false);
-                  }}
-                >
-                  Before training
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={form.mail_type === "post"}
-                  className={composerSegmentClass(form.mail_type === "post")}
-                  onClick={() => {
-                    setForm({ ...form, mail_type: "post" });
-                    setChangesTouched(false);
-                  }}
-                >
-                  After training
-                </button>
-              </ComposerChoiceRow>
-
-              <ProgressiveField show={shouldShowLanguage && userRole !== "us_pilot"}>
-                <ComposerChoiceRow label="Language" columns={3}>
-                  <button
-                    type="button"
-                    aria-pressed={form.language === "de"}
-                    className={composerSegmentClass(form.language === "de")}
-                    onClick={() => {
-                      setForm({ ...form, language: "de" });
-                      setChangesTouched(false);
-                    }}
-                  >
-                    DE
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={form.language === "en"}
-                    className={composerSegmentClass(form.language === "en")}
-                    onClick={() => {
-                      setForm({ ...form, language: "en" });
-                      setChangesTouched(false);
-                    }}
-                  >
-                    EN
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={form.language === "fr"}
-                    className={composerSegmentClass(form.language === "fr")}
-                    onClick={() => {
-                      setForm({ ...form, language: "fr" });
-                      setChangesTouched(false);
-                    }}
-                  >
-                    FR
-                  </button>
-                </ComposerChoiceRow>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowVariant}>
-                <ComposerChoiceRow label="Training venue">
-                  <button
-                    type="button"
-                    aria-pressed={form.template_variant === "abroad"}
-                    className={composerSegmentClass(form.template_variant === "abroad")}
-                    onClick={() => selectTemplateVariant("abroad")}
-                  >
-                    Abroad
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={form.template_variant === "lausanne"}
-                    className={composerSegmentClass(form.template_variant === "lausanne")}
-                    onClick={() => selectTemplateVariant("lausanne")}
-                  >
-                    In Lausanne
-                  </button>
-                </ComposerChoiceRow>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowPostTrainingType}>
-                <ComposerChoiceRow label="Training type">
-                  <button
-                    type="button"
-                    aria-pressed={form.training_type === "intro_1day"}
-                    className={composerSegmentClass(form.training_type === "intro_1day")}
-                    onClick={() => selectTrainingType("intro_1day")}
-                  >
-                    Intro (1 day)
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={form.training_type === "aiim_3day"}
-                    className={composerSegmentClass(form.training_type === "aiim_3day")}
-                    onClick={() => selectTrainingType("aiim_3day")}
-                  >
-                    AIIM (3 days)
-                  </button>
-                </ComposerChoiceRow>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowDayCount}>
-                <ComposerChoiceRow label="Training days" columns={3}>
-                  {([1, 2, 3] as const).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      aria-pressed={form.day_count === n}
-                      className={composerSegmentClass(form.day_count === n)}
-                      onClick={() => selectDayCount(n)}
-                    >
-                      {n === 1 ? "1 day" : `${n} days`}
-                    </button>
-                  ))}
-                </ComposerChoiceRow>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowDisciplines}>
-                <div className="space-y-2.5">
-                  {Array.from({ length: preDayCount }).map((_, dayIdx) => {
-                    const dayKey = DAY_DISCIPLINE_KEYS[dayIdx];
-                    const selectedForDay = form[dayKey];
-                    return (
-                      <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} topics`}>
-                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
-                          Day {dayIdx + 1} — topics
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {TRAINING_DISCIPLINES.map((discipline) => {
-                            const active = selectedForDay.includes(discipline);
-                            return (
-                              <button
-                                key={discipline}
-                                type="button"
-                                aria-pressed={active}
-                                className={composerSegmentClass(active)}
-                                onClick={() => toggleDiscipline(dayIdx as 0 | 1 | 2, discipline)}
-                              >
-                                {DISCIPLINE_LABEL[discipline][composerMailLang]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="text-[11px] text-ink-4/80">
-                    Intro covers the fundamentals (safety, setup, core flight). Add or remove topics per day.
-                  </p>
-                </div>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowLausanneSite}>
-                <div className="space-y-2.5">
-                  {Array.from({ length: preDayCount }).map((_, dayIdx) => {
-                    const siteKey = DAY_SITE_KEYS[dayIdx];
-                    const selectedSite = form[siteKey];
-                    return (
-                      <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} flight site`}>
-                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
-                          Day {dayIdx + 1} — flight site (Lausanne, optional)
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {LAUSANNE_SITE_OPTIONS.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              aria-pressed={selectedSite === option.id}
-                              className={composerSegmentClass(selectedSite === option.id)}
-                              onClick={() =>
-                                setForm((prev) => ({
-                                  ...prev,
-                                  [siteKey]: prev[siteKey] === option.id ? "" : option.id,
-                                }))
-                              }
-                            >
-                              {option.label[composerMailLang]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="text-[11px] text-ink-4/80">
-                    Each day can use a different asset. The location is woven into that day&apos;s agenda, and any safety gear is added automatically.
-                  </p>
-                </div>
-              </ProgressiveField>
-
-              <ProgressiveField show={shouldShowAbroadLocation}>
-                <div>
-                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
-                    Training location
-                  </p>
-                  <input
-                    placeholder="City / country (Required)"
-                    value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                </div>
-              </ProgressiveField>
-            </div>
-
-            <div className="mt-3 grid gap-3">
-              <ProgressiveField show={shouldShowRecipient}>
-                <input
-                  placeholder="Recipient Name"
-                  value={form.recipient_name}
-                  onChange={(e) => {
-                    setForm({ ...form, recipient_name: e.target.value });
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowCompany}>
-                <input
-                  placeholder="Company Name"
-                  value={form.company_name}
-                  onChange={(e) => {
-                    setForm({ ...form, company_name: e.target.value });
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowUseCase}>
-                <input
-                  placeholder="Use Case"
-                  value={form.use_case}
-                  onChange={(e) => {
-                    setForm({ ...form, use_case: e.target.value });
-                    setChangesTouched(false);
-                  }}
-                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowDate}>
-                <input
-                  placeholder={form.mail_type === "pre" ? "Training Date (Required)" : "Training Date (Optional)"}
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowRecipientOptional}>
-                <input
-                  placeholder="Additional Recipients (Optional, comma-separated emails)"
-                  value={form.recipient_optional}
-                  onChange={(e) => setForm({ ...form, recipient_optional: e.target.value })}
-                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowChanges}>
-                <AssetChecklist
-                  grouped={groupedChangeOptions}
-                  selectedIds={form.included_change_ids}
-                  lang={composerMailLang}
-                  onDetailsToggle={handleResourceDetailsToggle}
-                  onToggle={(id, checked) => {
-                    setChangesTouched(true);
-                    setForm((prev) => ({
-                      ...prev,
-                      included_change_ids: checked
-                        ? [...prev.included_change_ids, id]
-                        : prev.included_change_ids.filter((existing) => existing !== id),
-                    }));
-                  }}
-                />
-              </ProgressiveField>
-              <ProgressiveField show={shouldShowChanges}>
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-ink-3/80">Add-ons</label>
-                  <input
-                    type="url"
-                    inputMode="url"
-                    placeholder="Link to collected flight data (Optional)"
-                    value={form.datasets_link}
-                    onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
-                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
-                  />
-                </div>
-              </ProgressiveField>
-            </div>
-              </>
-              )}
-
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              <button
-                onClick={() => {
-                  void (mailGenMode === "brief" ? handleGenerateBrief() : handleGenerate());
-                }}
-                disabled={
-                  loading ||
-                  (mailGenMode === "brief"
-                    ? !form.recipient_name.trim() || !briefText.trim()
-                    : generateDisabled)
-                }
-                className="h-11 w-full rounded-lg bg-accent/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
-                type="button"
-              >
-                {loading ? "Generating..." : "Generate draft"}
-              </button>
-              <button
-                onClick={() => {
-                  void handleCreateDraft();
-                }}
-                disabled={draftLoading || !gmailStatus.connected || !result}
-                className="h-11 w-full rounded-lg border border-accent/45 bg-accent-deep/15 px-4 text-sm font-semibold text-accent-soft transition hover:-translate-y-px hover:bg-accent-deep/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                type="button"
-              >
-                {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
-              </button>
-              <button
-                onClick={() => {
-                  handleResetComposer();
-                }}
-                className="h-11 w-full rounded-lg border border-glass/20 bg-glass/10 px-4 text-sm font-semibold text-ink transition hover:bg-glass/15 sm:w-auto"
-                type="button"
-              >
-                Reset
-              </button>
-            </div>
-            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-            {draftInfo && (
-              <p className="mt-3 text-sm text-positive">
-                Draft created: {draftInfo.draftId} ({draftInfo.messageId})
-              </p>
-            )}
-                    </div>
-                  </div>
-
-                  <div className="relative min-h-0 min-w-0 w-full lg:col-start-2 lg:row-start-1">
-                    <div className="glass-card hourlogger-surface min-w-0 w-full self-stretch rounded-2xl p-4 md:p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
-              {result && (
-                <button
-                  className="rounded-md border border-glass/20 bg-glass/10 px-3 py-1 text-xs hover:bg-glass/15"
-                  onClick={() => {
-                    void copyText(`Subject: ${result.subject}\n\n${result.body}`);
-                  }}
-                  type="button"
-                >
-                  Copy plain text
-                </button>
-              )}
-            </div>
-            {!result ? (
-              <p className="mt-4 text-sm text-ink-2/75">Generated text appears here in real time.</p>
-            ) : (
-              <div className="mt-4">
-                <div className="rounded-lg border border-glass/15 bg-panel/40 p-3">
-                  <div className="relative whitespace-pre-wrap text-xs leading-6">
-                    <p className="pointer-events-none absolute right-0 top-0 max-w-[55%] text-right text-accent-soft/95">
-                      {renderNeonWriteText(animatedPreviewSubject)}
-                    </p>
-                    <pre className="whitespace-pre-wrap text-xs leading-6">{renderNeonWriteText(animatedPreviewBody)}</pre>
-                  </div>
-                </div>
-              </div>
-            )}
-                    </div>
-                  </div>
-                    </section>
+                    <MailComposerPanel
+                      composer={composer}
+                      userRole={userRole}
+                      gmailConnected={gmailStatus.connected}
+                    />
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -1763,6 +566,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 Sales
               </button>
             </div>
+            {roleError ? <Notice className="mt-3">{roleError}</Notice> : null}
           </div>
         </div>
       ) : null}
