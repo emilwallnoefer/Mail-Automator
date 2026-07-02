@@ -389,7 +389,7 @@ export async function GET(request: Request) {
     }
     const pageUsers = data?.users ?? [];
     for (const user of pageUsers) {
-      const role = extractRole(user.user_metadata);
+      const role = extractRole(user.app_metadata);
       if (!role || !REMINDER_ROLES.has(role)) continue;
       if (!user.email) continue;
       candidates.push({

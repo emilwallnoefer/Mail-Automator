@@ -1,3 +1,4 @@
+import { deleteGmailToken } from "@/lib/gmail-tokens";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -8,6 +9,9 @@ export async function POST() {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+
+  // Remove the server-side refresh token first, then clear display metadata.
+  await deleteGmailToken(user.id);
 
   const { error } = await supabase.auth.updateUser({
     data: {

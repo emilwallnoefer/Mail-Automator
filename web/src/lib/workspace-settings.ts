@@ -14,6 +14,12 @@ export type WorkspaceSettings = {
   reminder_paused_by: string | null;
   /** Claude model for mail Brief mode; null = fall back to env / built-in default. */
   mail_brief_model: string | null;
+  /** Master on/off for breach-alert emails to admins. */
+  security_alerts_enabled: boolean;
+  /** # of failed_admin_access from one actor within the window that triggers an alert. */
+  security_alert_threshold: number;
+  /** Debounce: last time a breach alert was emailed (null = never). */
+  security_alert_last_sent_at: string | null;
   updated_at: string;
 };
 
@@ -22,6 +28,9 @@ export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   reminder_paused_at: null,
   reminder_paused_by: null,
   mail_brief_model: null,
+  security_alerts_enabled: true,
+  security_alert_threshold: 5,
+  security_alert_last_sent_at: null,
   updated_at: new Date(0).toISOString(),
 };
 
@@ -29,6 +38,8 @@ export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
 export type WorkspaceSettingsPatch = {
   reminder_paused?: boolean;
   mail_brief_model?: string | null;
+  security_alerts_enabled?: boolean;
+  security_alert_threshold?: number;
 };
 
 /**
@@ -41,7 +52,9 @@ export async function readWorkspaceSettings(
 ): Promise<WorkspaceSettings> {
   const { data, error } = await admin
     .from("workspace_settings")
-    .select("reminder_paused, reminder_paused_at, reminder_paused_by, mail_brief_model, updated_at")
+    .select(
+      "reminder_paused, reminder_paused_at, reminder_paused_by, mail_brief_model, security_alerts_enabled, security_alert_threshold, security_alert_last_sent_at, updated_at",
+    )
     .eq("id", 1)
     .maybeSingle();
   if (error) {
@@ -54,6 +67,12 @@ export async function readWorkspaceSettings(
     reminder_paused_at: data.reminder_paused_at ?? null,
     reminder_paused_by: data.reminder_paused_by ?? null,
     mail_brief_model: (data.mail_brief_model as string | null) ?? null,
+    security_alerts_enabled:
+      data.security_alerts_enabled ?? DEFAULT_WORKSPACE_SETTINGS.security_alerts_enabled,
+    security_alert_threshold:
+      (data.security_alert_threshold as number | null) ??
+      DEFAULT_WORKSPACE_SETTINGS.security_alert_threshold,
+    security_alert_last_sent_at: data.security_alert_last_sent_at ?? null,
     updated_at: data.updated_at ?? DEFAULT_WORKSPACE_SETTINGS.updated_at,
   };
 }
@@ -87,18 +106,34 @@ export async function writeWorkspaceSettings(
   const mailBriefModel =
     patch.mail_brief_model !== undefined ? patch.mail_brief_model : current.mail_brief_model;
 
+  const securityAlertsEnabled =
+    patch.security_alerts_enabled !== undefined
+      ? patch.security_alerts_enabled
+      : current.security_alerts_enabled;
+  const securityAlertThreshold =
+    patch.security_alert_threshold !== undefined
+      ? patch.security_alert_threshold
+      : current.security_alert_threshold;
+
   const row = {
     id: 1,
     reminder_paused: reminderPaused,
     reminder_paused_at: reminderPausedAt,
     reminder_paused_by: reminderPausedBy,
     mail_brief_model: mailBriefModel,
+    security_alerts_enabled: securityAlertsEnabled,
+    security_alert_threshold: securityAlertThreshold,
+    // Debounce state is managed by the alerting path, never by an admin patch;
+    // preserve whatever is currently stored.
+    security_alert_last_sent_at: current.security_alert_last_sent_at,
     updated_at: now,
   };
   const { data, error } = await admin
     .from("workspace_settings")
     .upsert(row, { onConflict: "id" })
-    .select("reminder_paused, reminder_paused_at, reminder_paused_by, mail_brief_model, updated_at")
+    .select(
+      "reminder_paused, reminder_paused_at, reminder_paused_by, mail_brief_model, security_alerts_enabled, security_alert_threshold, security_alert_last_sent_at, updated_at",
+    )
     .maybeSingle();
   if (error) {
     throw new Error(error.message);
@@ -109,6 +144,11 @@ export async function writeWorkspaceSettings(
     reminder_paused_at: data.reminder_paused_at ?? null,
     reminder_paused_by: data.reminder_paused_by ?? null,
     mail_brief_model: (data.mail_brief_model as string | null) ?? null,
+    security_alerts_enabled:
+      data.security_alerts_enabled ?? securityAlertsEnabled,
+    security_alert_threshold:
+      (data.security_alert_threshold as number | null) ?? securityAlertThreshold,
+    security_alert_last_sent_at: data.security_alert_last_sent_at ?? null,
     updated_at: data.updated_at ?? now,
   };
 }

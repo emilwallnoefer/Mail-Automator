@@ -193,6 +193,18 @@ function escapeHtmlText(s: string) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+/** Escape a URL for safe use inside an HTML attribute, and only allow http(s)/cid schemes. Returns "" if the scheme is not allowed. */
+function safeAttrUrl(raw: string, allowCid = false): string {
+  const url = String(raw ?? "").trim();
+  const ok = /^https?:\/\//i.test(url) || (allowCid && /^cid:/i.test(url));
+  if (!ok) return "";
+  return url
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 /** Gmail renders table/div borders more reliably than <hr> in some clients. */
 const EMAIL_HR =
   '<div style="height:0;line-height:0;font-size:0;border-top:2px solid #ddd;margin:20px 0;clear:both;">&nbsp;</div>';
@@ -228,16 +240,19 @@ function markdownBlockToHtml(chunk: string): string {
   if (h2 && !trimmed.includes("\n")) return formatHeading2(h2[1]!.trim());
 
   let c = trimmed;
-  c = c.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) => {
+  c = c.replace(/!\[([^\]]*)\]\(([^)\s"]+)\)/g, (_m, alt, url) => {
     const safeAlt = escapeHtmlText(String(alt ?? ""));
-    const src = String(url).trim();
+    const src = safeAttrUrl(String(url), /*allowCid*/ true);
+    if (!src) return safeAlt;
     return `<img src="${src}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:10px;border:0;" />`;
   });
   c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
     return `<span style="font-weight:600;color:#222;">${escapeHtmlText(inner)}</span>`;
   });
-  c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, label, url) => {
-    return `<a href="${url}">${escapeHtmlText(label)}</a>`;
+  c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, (_m, label, url) => {
+    const href = safeAttrUrl(String(url));
+    if (!href) return escapeHtmlText(label);
+    return `<a href="${href}">${escapeHtmlText(label)}</a>`;
   });
   const parts = c.split(/(<[^>]+>)/);
   const merged = parts

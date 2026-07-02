@@ -1,4 +1,5 @@
 import { createGmailDraft } from "@/lib/gmail";
+import { readGmailRefreshToken } from "@/lib/gmail-tokens";
 import { rewriteHtmlForTracking, resolveTrackingBaseUrl } from "@/lib/email/link-tracker";
 import { sanitizeEmailList, sanitizeNullableText, sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields: subject, body" }, { status: 400 });
   }
 
-  const refreshToken = user.user_metadata?.gmail_refresh_token as string | undefined;
+  const refreshToken = await readGmailRefreshToken(user.id);
   if (!refreshToken) return NextResponse.json({ error: "Gmail is not connected" }, { status: 400 });
 
   // Insert tracking send + rewrite outbound HTML links so each becomes

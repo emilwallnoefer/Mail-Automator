@@ -1,5 +1,6 @@
 import { generateBriefDraft } from "@/lib/mail-brief-llm";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { readWorkspaceSettings } from "@/lib/workspace-settings";
 import { recipientCount, renderBriefMail } from "@/lib/mail-engine";
 import { sanitizeNullableText, sanitizeText } from "@/lib/security/input-sanitize";
@@ -35,6 +36,15 @@ export async function POST(request: Request) {
       { status: 429, headers: createRateLimitHeaders(limitResult) },
     );
   }
+
+  // Require an authenticated session before spending on the paid LLM: this
+  // route is only ever called from the signed-in dashboard. The admin client
+  // below is still used only for the non-sensitive workspace-settings read.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const rawPayload = await request.json();

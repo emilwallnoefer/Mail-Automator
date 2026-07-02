@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { readGmailRefreshToken } from "@/lib/gmail-tokens";
 import { fetchTravelByDate, type TravelSheetColumnMapping } from "@/lib/google-sheets";
 import { sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
@@ -177,7 +178,8 @@ export async function GET(request: Request) {
   if (includeTravel) {
     try {
       const userMetadata = claims.user_metadata ?? null;
-      const refreshToken = String(userMetadata?.gmail_refresh_token ?? "");
+      // The refresh token lives server-side only (not in the JWT/user_metadata).
+      const refreshToken = claims.sub ? (await readGmailRefreshToken(String(claims.sub))) ?? "" : "";
       if (!refreshToken) {
         travelDebug = {
           status: "missing_refresh_token",

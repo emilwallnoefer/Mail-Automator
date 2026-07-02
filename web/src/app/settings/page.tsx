@@ -13,12 +13,14 @@ export default async function SettingsPage() {
 
   if (!user) redirect("/login");
 
+  // Role lives in app_metadata (service-role writable only), not user_metadata.
+  // See SECURITY.md T0.1.
   const userRoleRaw =
-    user.user_metadata &&
-    typeof user.user_metadata === "object" &&
-    !Array.isArray(user.user_metadata) &&
-    "role" in user.user_metadata
-      ? (user.user_metadata as Record<string, unknown>).role
+    user.app_metadata &&
+    typeof user.app_metadata === "object" &&
+    !Array.isArray(user.app_metadata) &&
+    "role" in user.app_metadata
+      ? (user.app_metadata as Record<string, unknown>).role
       : null;
   const userRole = normalizeUserRole(userRoleRaw);
 

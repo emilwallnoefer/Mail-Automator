@@ -14,6 +14,7 @@ import { AdminOverviewStats } from "@/components/admin-overview-stats";
 import { AdminReminderControls } from "@/components/admin-reminder-controls";
 import { AdminMailSettings } from "@/components/admin-mail-settings";
 import { AdminAuditLog } from "@/components/admin-audit-log";
+import { AdminSecurityEvents } from "@/components/admin-security-events";
 import dynamic from "next/dynamic";
 
 // The insights charts are admin-only and tab-gated; keep them out of the panel chunk.
@@ -62,7 +63,8 @@ type AdminSection =
   | "users"
   | "reminders"
   | "mail_ai"
-  | "audit";
+  | "audit"
+  | "security";
 
 const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
   { value: "sales", label: "Sales" },
@@ -86,6 +88,7 @@ const ADMIN_SECTIONS: Array<{ id: AdminSection; label: string; adminOnly: boolea
   { id: "reminders", label: "Reminders", adminOnly: true },
   { id: "mail_ai", label: "Mail & AI", adminOnly: true },
   { id: "audit", label: "Audit log", adminOnly: true },
+  { id: "security", label: "Security", adminOnly: true },
 ];
 
 const BUBBLES: Array<{ left: string; size: string; duration: string; delay: string }> = [
@@ -351,6 +354,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               {section === "mail_ai" && canManageUsers ? <AdminMailSettings /> : null}
 
               {section === "audit" && canManageUsers ? <AdminAuditLog /> : null}
+
+              {section === "security" && canManageUsers ? <AdminSecurityEvents /> : null}
 
               {section === "onboarding" && canManageUsers ? (
                 <div className="mt-5">

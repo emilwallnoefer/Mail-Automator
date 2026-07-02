@@ -1,0 +1,168 @@
+[
+  {
+    "verdict": "confirmed",
+    "title": "Privilege escalation to HR time-viewer via self-writable user_metadata.role",
+    "description": "User roles are stored in Supabase auth `user_metadata`, which the authenticated user can rewrite themselves using the anon key (`supabase.auth.updateUser({ data: { role: 'hr' } })`). `guardTimeViewer()` trusts `user_metadata.role === 'hr'` to grant access to aggregated, cross-user time-tracking and onboarding data. Any logged-in low-privilege user (sales/pilot) can therefore self-assign the `hr` role and read every employee's hours and onboarding status. Reproduction: authenticate as any non-admin user, run `await supabase.auth.updateUser({ data: { role: 'hr' } })` from the browser console, then GET `/api/admin/time-overview` and `/api/admin/onboarding` — both now return 200 with all users' data instead of 403.",
+    "root_cause": "guardTimeViewer in src/lib/admin-guard.ts does not verify the role against a server-controlled source, allowing a user who self-edits user_metadata.role to 'hr' to pass the HR authorization check.",
+    "intended_behavior": "Per CLAUDE.md the `hr` role is 'admin-assigned only' and grants read-only access to team-time endpoints. Admins assign it through /api/admin/users, which uses the service-role key. The design assumes only admins can set a user's role.",
+    "trace": [
+      { "kind": "entrypoint", "file": "web/src/app/api/admin/users/route.ts", "line": 86, "scope": "PATCH", "description": "Admin role assignment writes the role into user_metadata via admin.auth.admin.updateUserById(user_id, { user_metadata: nextMetadata }); this is the same metadata namespace a user can write to themselves." },
+      { "kind": "propagation", "file": "web/src/lib/admin-guard.ts", "line": 69, "scope": "guardTimeViewer", "description": "Reads role from user.user_metadata.role via normalizeUserRole(metadata.role) with no server-side cross-check." },
+      { "kind": "sink", "file": "web/src/lib/admin-guard.ts", "line": 72, "scope": "guardTimeViewer", "description": "Grants access when isHr is true (role === 'hr'), returning ok:true so time-overview / time-user / onboarding endpoints serve cross-user data." }
+    ],
+    "conditions": [
+      { "kind": "authentication_level", "description": "Attacker must have any valid, non-admin account in the workspace." },
+      { "kind": "system_configuration", "description": "Supabase default allows the authenticated user to update their own user_metadata via the anon key; no policy restricts the 'role' key." }
+    ],
+    "execution": {
+      "attacker_perspective": "A logged-in employee with a low-privilege role (sales, eu_pilot, us_pilot) and a normal Supabase session in the browser.",
+      "payloads": [
+        "await supabase.auth.updateUser({ data: { role: 'hr' } })",
+        "fetch('/api/admin/time-overview').then(r => r.json())",
+        "fetch('/api/admin/onboarding').then(r => r.json())"
+      ],
+      "instructions": [
+        "Log in to the dashboard as any non-admin user.",
+        "Open the browser console where the Supabase browser client is available (or replicate the auth call with the anon key + session).",
+        "Call supabase.auth.updateUser({ data: { role: 'hr' } }) to self-assign the hr role in user_metadata.",
+        "Re-issue the request (the JWT refreshes with the new metadata) and call the guardTimeViewer-protected endpoints."
+      ],
+      "expected_result": "GET /api/admin/time-overview and /api/admin/onboarding return 200 with all employees' aggregated time and onboarding data instead of 403 Forbidden."
+    },
+    "remediation": {
+      "strategy": "Stop trusting user-writable metadata for authorization. Move the role into a server-controlled store that the user cannot edit: either Supabase `app_metadata` (only the service role can write it) or a dedicated `user_roles` table with RLS. Update the admin PATCH to write there, and update guardTimeViewer / all role reads to read from that source.",
+      "code_changes": [
+        { "file_name": "web/src/app/api/admin/users/route.ts", "fixed_code": "await admin.auth.admin.updateUserById(user_id, { app_metadata: { role } }); // app_metadata is not user-writable" },
+        { "file_name": "web/src/lib/admin-guard.ts", "fixed_code": "const role = normalizeUserRole((user.app_metadata as Record<string, unknown> | undefined)?.role); // read role from app_metadata, not user_metadata" }
+      ]
+    },
+    "severity": {
+      "likelihood": { "score": "high", "reason": "Trivial to exploit with a single client-side API call available to every authenticated user; no special tooling required." },
+      "impact": { "score": "medium", "reason": "Confidential cross-user disclosure of all employees' time and onboarding data. Does not grant admin (admin is email-allowlist based) or write access, bounding the blast radius." },
+      "overall_severity": "high"
+    },
+    "confidence": { "score": "high", "reason": "Role storage in user_metadata (admin/users PATCH line 86-88) and the guardTimeViewer read of user_metadata.role (line 69-72) were both read directly. Supabase's default that user_metadata is self-writable via the anon key is well-documented behavior." }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Gmail refresh token stored in client-readable user_metadata",
+    "description": "The Gmail OAuth callback stores the long-lived Gmail `refresh_token` (scopes gmail.compose + spreadsheets.readonly) in the user's Supabase `user_metadata`. user_metadata is embedded in the user's JWT and returned to the browser by supabase.auth.getUser()/getSession(), so the refresh token is readable by any client-side JavaScript running in the user's session. Combined with the absence of any Content-Security-Policy (next.config.ts sets no headers), any XSS or malicious dependency can exfiltrate the token and gain persistent access to the victim's mailbox (create drafts, read spreadsheets) independent of the app.",
+    "root_cause": "The GET handler in src/app/api/gmail/callback/route.ts writes tokens.refresh_token into user_metadata via supabase.auth.updateUser, placing a long-lived secret in a client-readable location.",
+    "intended_behavior": "The app connects a user's Gmail so it can create drafts on their behalf; the refresh token needs to be persisted server-side for later draft creation, but should never be exposed to the browser.",
+    "trace": [
+      { "kind": "entrypoint", "file": "web/src/app/api/gmail/callback/route.ts", "line": 19, "scope": "GET", "description": "exchangeCodeForTokens(code) returns the Google refresh_token." },
+      { "kind": "propagation", "file": "web/src/app/api/gmail/callback/route.ts", "line": 25, "scope": "GET", "description": "nextMetadata.gmail_refresh_token = tokens.refresh_token stores the secret in the user_metadata object." },
+      { "kind": "sink", "file": "web/src/app/api/gmail/callback/route.ts", "line": 31, "scope": "GET", "description": "supabase.auth.updateUser({ data: nextMetadata }) persists the refresh token into user_metadata, which is serialized into the user's JWT and readable client-side." }
+    ],
+    "conditions": [
+      { "kind": "user_interaction", "description": "Victim has connected Gmail, so a refresh token exists in their user_metadata." },
+      { "kind": "environmental_dependency", "description": "A means to run JavaScript in the victim's session (XSS, malicious npm dependency) — made easier by the absence of a CSP." }
+    ],
+    "execution": {
+      "attacker_perspective": "An attacker who can execute JavaScript in a victim's authenticated session, or the victim inspecting their own session, revealing that a full-access token sits in client-reachable storage.",
+      "payloads": [
+        "const { data } = await supabase.auth.getUser(); return data.user.user_metadata.gmail_refresh_token;"
+      ],
+      "instructions": [
+        "Achieve script execution in the victim's session (e.g. via a reflected/stored XSS or a compromised client dependency; no CSP mitigates this).",
+        "Call supabase.auth.getUser() and read user_metadata.gmail_refresh_token.",
+        "Exfiltrate the token and use it with Google's OAuth token endpoint to mint access tokens with gmail.compose + spreadsheets.readonly scope."
+      ],
+      "expected_result": "Attacker obtains a long-lived Gmail refresh token granting persistent draft-creation and spreadsheet-read access to the victim's Google account, usable entirely outside the app."
+    },
+    "remediation": {
+      "strategy": "Persist OAuth tokens in a server-only table (service-role writes, RLS forced, no anon/authenticated grants) keyed by user id, and read them only in server routes. Never place them in user_metadata. Rotate any tokens already stored there.",
+      "code_changes": [
+        { "file_name": "web/src/app/api/gmail/callback/route.ts", "fixed_code": "await admin.from('gmail_tokens').upsert({ user_id: user.id, refresh_token: tokens.refresh_token, gmail_email: connectedGmail }); // service-role table, not user_metadata" }
+      ]
+    },
+    "severity": {
+      "likelihood": { "score": "low", "reason": "Requires script execution in the victim's session; no XSS sink was confirmed in this run, so exploitation depends on a separate vector." },
+      "impact": { "score": "high", "reason": "Full, persistent compromise of the victim's Gmail (draft creation) and Google Sheets read access, usable outside the application." },
+      "overall_severity": "medium"
+    },
+    "confidence": { "score": "high", "reason": "The token is written to user_metadata in callback/route.ts line 25/31 and read back from user_metadata in create-draft/route.ts line 108, both read directly. That user_metadata is exposed client-side via the JWT is standard Supabase behavior." }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Unauthenticated paid-LLM endpoint with a bypassable rate limit (cost amplification)",
+    "description": "POST /api/generate-brief is unauthenticated and invokes the Anthropic API (Claude Opus) on each call. Its only control is checkRateLimit keyed on getClientIp(), which reads the left-most value of the X-Forwarded-For header. On a proxied deployment the left-most XFF value is attacker-controlled (the platform appends the real client IP to the end), so an attacker can rotate a fake first IP on every request and never hit the 40/hour cap. The limiter is also an in-process Map, which does not persist across serverless instances, further weakening it. The result is an anonymous, internet-reachable endpoint that spends the workspace's Anthropic budget on demand (financial DoS). /api/generate and /api/render-brief share the unauthenticated + spoofable-IP pattern (cheaper, since /api/generate is deterministic).",
+    "root_cause": "getClientIp in src/lib/security/rate-limit.ts derives the rate-limit key from the client-controllable left-most X-Forwarded-For entry, and POST in src/app/api/generate-brief/route.ts applies no authentication, allowing anyone to bypass the per-IP cap and drive unbounded paid LLM calls.",
+    "intended_behavior": "Brief mode lets authenticated dashboard users generate an email from a free-text brief via Claude; the per-IP rate limit is meant to cap how often the paid model is called.",
+    "trace": [
+      { "kind": "entrypoint", "file": "web/src/app/api/generate-brief/route.ts", "line": 25, "scope": "POST", "description": "Handler accepts anonymous POST requests; there is no getUser()/guard call." },
+      { "kind": "propagation", "file": "web/src/lib/security/rate-limit.ts", "line": 31, "scope": "getClientIp", "description": "Returns forwarded.split(',')[0] — the left-most, attacker-supplied X-Forwarded-For value — used as the rate-limit key." },
+      { "kind": "sink", "file": "web/src/app/api/generate-brief/route.ts", "line": 70, "scope": "POST", "description": "generateBriefDraft(...) calls the Anthropic API; with a rotating fake XFF the 40/hour cap never trips." }
+    ],
+    "conditions": [
+      { "kind": "network_routing", "description": "Deployed behind a proxy (Vercel) that forwards/append X-Forwarded-For such that the left-most entry is client-supplied." },
+      { "kind": "third_party_dependency", "description": "ANTHROPIC_API_KEY is configured so Brief mode actually calls the paid model." }
+    ],
+    "execution": {
+      "attacker_perspective": "An anonymous attacker on the internet with no account.",
+      "payloads": [
+        "POST /api/generate-brief\nX-Forwarded-For: 10.0.0.<random>\nContent-Type: application/json\n\n{\"language\":\"en\",\"recipient_name\":\"x\",\"brief\":\"write a long email ...\"}"
+      ],
+      "instructions": [
+        "Script a loop that sends POST /api/generate-brief with a valid minimal JSON body.",
+        "On each request set a different left-most X-Forwarded-For value (e.g. random RFC1918 address).",
+        "Each request is treated as a new client, so checkRateLimit never blocks; every request triggers a paid Claude Opus completion."
+      ],
+      "expected_result": "Unbounded Anthropic API spend and sustained load driven by an unauthenticated attacker; the 40/hour per-IP limit is never enforced."
+    },
+    "remediation": {
+      "strategy": "Require authentication on the generation endpoints (or at minimum generate-brief, which is the paid path). Derive the client IP from a trusted header the platform controls (e.g. x-real-ip / x-vercel-forwarded-for) rather than the left-most X-Forwarded-For, and back the limiter with a durable store or the platform's edge firewall for any surface that must stay unauthenticated.",
+      "code_changes": [
+        { "file_name": "web/src/app/api/generate-brief/route.ts", "fixed_code": "const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });" },
+        { "file_name": "web/src/lib/security/rate-limit.ts", "fixed_code": "export function getClientIp(request: Request) { const real = request.headers.get('x-real-ip'); if (real) return real.trim(); /* fall back to XFF only if no trusted header */ }" }
+      ]
+    },
+    "severity": {
+      "likelihood": { "score": "high", "reason": "No authentication and a trivially bypassable per-IP limit; exploitable with a simple loop." },
+      "impact": { "score": "medium", "reason": "Financial denial-of-wallet on the Anthropic budget and workspace availability; no data disclosure or integrity impact." },
+      "overall_severity": "medium"
+    },
+    "confidence": { "score": "medium", "reason": "The unauthenticated handler (generate-brief line 25-70) and left-most XFF parsing (rate-limit line 31-40) were read directly. The bypass depends on Vercel's X-Forwarded-For handling appending rather than replacing client-supplied values; this is standard proxy behavior but was not dynamically tested in this run." }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Gmail OAuth callback missing state parameter (OAuth CSRF)",
+    "description": "The Gmail OAuth flow does not use a state parameter. getAuthUrl() (src/lib/gmail.ts) generates the Google consent URL without a state value, and the callback (src/app/api/gmail/callback/route.ts) never validates one. An attacker can therefore complete the connect flow with their own Google authorization code against a victim's logged-in session: the victim's account gets the attacker's Gmail refresh token stored, so drafts the victim later creates are written into the attacker's mailbox (and the attacker's connected spreadsheet is read). This is a classic OAuth login/linking CSRF.",
+    "root_cause": "getAuthUrl in src/lib/gmail.ts omits a state parameter and the GET callback in src/app/api/gmail/callback/route.ts does not generate or verify one, so a cross-site request can bind an attacker-chosen Google account to the victim's session.",
+    "intended_behavior": "A user clicks 'connect Gmail', authorizes their own Google account, and the app stores that account's token for the user.",
+    "trace": [
+      { "kind": "entrypoint", "file": "web/src/lib/gmail.ts", "line": 23, "scope": "getAuthUrl", "description": "generateAuthUrl is called with access_type/scope/prompt but no state parameter." },
+      { "kind": "propagation", "file": "web/src/app/api/gmail/callback/route.ts", "line": 7, "scope": "GET", "description": "The callback reads only the 'code' query param; it never reads or validates a 'state' param against a per-session value." },
+      { "kind": "sink", "file": "web/src/app/api/gmail/callback/route.ts", "line": 31, "scope": "GET", "description": "supabase.auth.updateUser stores the tokens from the attacker-supplied code into the victim's account with no CSRF protection." }
+    ],
+    "conditions": [
+      { "kind": "authentication_level", "description": "Victim is logged in to the dashboard when they follow the attacker's link." },
+      { "kind": "user_interaction", "description": "Victim must click an attacker-crafted callback URL carrying a valid (short-lived) Google authorization code for the attacker's account." }
+    ],
+    "execution": {
+      "attacker_perspective": "An attacker who can get a logged-in victim to click a link, and who has their own Google account to produce an authorization code.",
+      "payloads": [
+        "https://<app>/api/gmail/callback?code=<attacker_google_auth_code>"
+      ],
+      "instructions": [
+        "Attacker begins the Google consent flow for their own account and captures the returned authorization code (without redeeming it).",
+        "Attacker sends the victim a link to /api/gmail/callback?code=<that code>.",
+        "Victim (logged in) loads the link; the callback redeems the attacker's code and stores the attacker's Gmail refresh token in the victim's user_metadata."
+      ],
+      "expected_result": "The victim's account is bound to the attacker's Gmail; drafts the victim creates land in the attacker's mailbox and the attacker's spreadsheet is used, without the victim noticing the account swap."
+    },
+    "remediation": {
+      "strategy": "Add an anti-CSRF state parameter: generate a random state at connect time, store it in a signed/HttpOnly cookie, include it in generateAuthUrl, and reject the callback unless the returned state matches the cookie.",
+      "code_changes": [
+        { "file_name": "web/src/lib/gmail.ts", "fixed_code": "return client.generateAuthUrl({ access_type: 'offline', scope: GMAIL_SCOPES, prompt: 'consent', state }); // state = crypto.randomUUID(), also set as HttpOnly cookie" },
+        { "file_name": "web/src/app/api/gmail/callback/route.ts", "fixed_code": "const state = requestUrl.searchParams.get('state'); if (!state || state !== request.cookies.get('gmail_oauth_state')?.value) return NextResponse.redirect(new URL('/dashboard?gmail=error', request.url));" }
+      ]
+    },
+    "severity": {
+      "likelihood": { "score": "low", "reason": "Requires phishing a logged-in victim with a link carrying a valid, short-lived attacker authorization code." },
+      "impact": { "score": "medium", "reason": "Victim's outbound drafts are silently redirected into an attacker-controlled mailbox and the attacker's spreadsheet is read; bounded to Gmail-connected users." },
+      "overall_severity": "low"
+    },
+    "confidence": { "score": "high", "reason": "getAuthUrl (gmail.ts line 23-30) has no state arg and the callback (callback/route.ts line 5-40) reads only 'code'; both read directly." }
+  }
+]

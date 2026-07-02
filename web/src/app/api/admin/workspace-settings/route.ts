@@ -28,10 +28,17 @@ const patchBodySchema = z
       .enum(MAIL_BRIEF_MODEL_IDS as unknown as [string, ...string[]])
       .nullable()
       .optional(),
+    security_alerts_enabled: z.boolean().optional(),
+    security_alert_threshold: z.number().int().min(1).max(100).optional(),
   })
-  .refine((body) => body.reminder_paused !== undefined || body.mail_brief_model !== undefined, {
-    message: "No settings to update.",
-  });
+  .refine(
+    (body) =>
+      body.reminder_paused !== undefined ||
+      body.mail_brief_model !== undefined ||
+      body.security_alerts_enabled !== undefined ||
+      body.security_alert_threshold !== undefined,
+    { message: "No settings to update." },
+  );
 
 export async function PATCH(request: Request) {
   const guard = await guardAdmin();
@@ -58,6 +65,19 @@ export async function PATCH(request: Request) {
         actor_email: guard.user.email,
         action: "mail_brief_model_change",
         detail: { model: parsed.data.mail_brief_model },
+      });
+    }
+    if (
+      parsed.data.security_alerts_enabled !== undefined ||
+      parsed.data.security_alert_threshold !== undefined
+    ) {
+      await recordAdminAudit(admin, {
+        actor_email: guard.user.email,
+        action: "security_alerts_change",
+        detail: {
+          enabled: settings.security_alerts_enabled,
+          threshold: settings.security_alert_threshold,
+        },
       });
     }
 

@@ -29,13 +29,20 @@ function cleanupExpired() {
 }
 
 export function getClientIp(request: Request) {
+  // Prefer x-real-ip / x-vercel-forwarded-for: these are set by the hosting
+  // platform (Vercel) at the edge and cannot be forged by the client. The
+  // left-most x-forwarded-for entry is client-controllable behind a proxy, so
+  // it must never be the primary key for rate limiting — use it only as a
+  // last-resort fallback for non-Vercel environments.
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp && realIp.trim()) return realIp.trim();
+  const vercel = request.headers.get("x-vercel-forwarded-for");
+  if (vercel && vercel.trim()) return vercel.split(",")[0]!.trim();
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
   return "unknown";
 }
 

@@ -1,3 +1,4 @@
+import { readGmailRefreshToken } from "@/lib/gmail-tokens";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -10,8 +11,9 @@ export async function GET() {
   if (!user) return NextResponse.json({ connected: false }, { status: 401 });
 
   const metadata = user.user_metadata ?? {};
+  const refreshToken = await readGmailRefreshToken(user.id);
   return NextResponse.json({
-    connected: Boolean(metadata.gmail_refresh_token),
+    connected: Boolean(refreshToken),
     gmail_email: metadata.gmail_email ?? null,
   });
 }
