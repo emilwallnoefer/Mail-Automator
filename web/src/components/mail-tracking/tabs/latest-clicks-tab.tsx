@@ -153,7 +153,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
 
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/60">Recipient</p>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/60">Recipient</p>
           {recipient ? (
             <>
               <p className="truncate text-sm text-ink">{recipient.recipient_name}</p>
@@ -171,7 +171,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/60">Link</p>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/60">Link</p>
           {click.link ? (
             <a
               href={click.link.original_url}

@@ -94,7 +94,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
 
   return (
     <>
-    <section className="underwater-panel relative grid overflow-hidden rounded-2xl transition-all duration-500 ease-out gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0fr)] lg:items-start">
+    <section className="underwater-panel relative grid overflow-hidden rounded-2xl transition-[grid-template-columns,gap] duration-500 ease-out gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0fr)] lg:items-start">
       {/* One grid cell for bubbles + main card so the card stays in the wide column (not the 0fr track). */}
       <div className="relative min-h-0 min-w-0 w-full lg:col-start-1 lg:row-start-1">
         <div className="bubble-layer pointer-events-none absolute inset-0 z-0" aria-hidden="true">
@@ -113,7 +113,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
             />
           ))}
         </div>
-        <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 transition-all duration-500 ease-out md:p-5">
+        <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 transition-[width,padding] duration-500 ease-out md:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-accent-soft/80">Time Tracker</p>

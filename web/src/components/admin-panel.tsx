@@ -14,7 +14,13 @@ import { AdminOverviewStats } from "@/components/admin-overview-stats";
 import { AdminReminderControls } from "@/components/admin-reminder-controls";
 import { AdminMailSettings } from "@/components/admin-mail-settings";
 import { AdminAuditLog } from "@/components/admin-audit-log";
-import { MailTrackingPanel } from "@/components/mail-tracking-panel";
+import dynamic from "next/dynamic";
+
+// The insights charts are admin-only and tab-gated; keep them out of the panel chunk.
+const MailTrackingPanel = dynamic(
+  () => import("@/components/mail-tracking-panel").then((m) => m.MailTrackingPanel),
+  { ssr: false },
+);
 import { AdminOnboardingPanel } from "@/components/admin-onboarding-panel";
 import { WeekStepper } from "@/components/week-stepper";
 import { FreshnessPill } from "@/components/freshness-pill";
@@ -304,7 +310,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               aria-label="Admin sections"
             >
               <div className="border-b border-glass/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
-                <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-ink md:text-lg">
+                <h1 className="text-base font-semibold uppercase tracking-[0.15em] text-ink md:text-lg">
                   {canManageUsers ? "Admin" : "Team time"}
                 </h1>
               </div>

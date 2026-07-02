@@ -43,7 +43,7 @@ export function ComposerChoiceRow({
 }) {
   return (
     <div role="group" aria-label={label}>
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">{label}</p>
+      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">{label}</p>
       <div className={columns === 3 ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>{children}</div>
     </div>
   );

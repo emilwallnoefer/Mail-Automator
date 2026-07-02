@@ -53,7 +53,7 @@ export function AuthNavbar({
             FA
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-accent-soft/70">Flyability Internal</p>
+            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">Flyability Internal</p>
             <p className="truncate text-xs font-medium md:text-sm">Flya Allrounder</p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export function AuthNavbar({
                   <span className="text-[10px] opacity-80">Open</span>
                 </a>
               </div>
-              <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">Workspace</p>
+              <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">Workspace</p>
               <div className="space-y-1" role="tablist" aria-label="Workspace tabs">
                 {availableModules.includes("mail") ? (
                   <button
@@ -186,7 +186,7 @@ export function AuthNavbar({
               )}
 
               <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3/75">Logged in as</p>
+                <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/75">Logged in as</p>
                 <p className="mt-1 text-xs font-medium text-ink">
                   {userRoleLabel(userRole ?? null)}
                 </p>

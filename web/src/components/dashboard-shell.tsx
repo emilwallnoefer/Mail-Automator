@@ -1,19 +1,34 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { ChatWidget } from "@/components/chat-widget";
 import { MailComposerPanel } from "@/components/mail-composer/mail-composer-panel";
 import { useMailComposer } from "@/components/mail-composer/use-mail-composer";
-import { SettingsPanel } from "@/components/settings-panel";
 import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
-import { AdminPanel } from "@/components/admin-panel";
 import { Notice } from "@/components/ui";
 import { playUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { LATEST_RELEASE } from "@/lib/release-notes";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
+
+function PanelLoading() {
+  return <div className="min-h-[40vh] animate-pulse rounded-2xl border border-glass/10 bg-glass/5" aria-hidden />;
+}
+
+// Settings and Admin sit behind a click for every user, so their code (and the
+// admin insights charts behind AdminPanel) stays out of the dashboard's first
+// bundle. Mail/Time stay static: one of them is the landing module per role.
+const SettingsPanel = dynamic(
+  () => import("@/components/settings-panel").then((m) => m.SettingsPanel),
+  { ssr: false, loading: PanelLoading },
+);
+const AdminPanel = dynamic(
+  () => import("@/components/admin-panel").then((m) => m.AdminPanel),
+  { ssr: false, loading: PanelLoading },
+);
 
 type DashboardShellProps = {
   email: string;

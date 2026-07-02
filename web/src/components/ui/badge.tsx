@@ -19,7 +19,7 @@ export type BadgeProps = ComponentPropsWithRef<"span"> & {
 export function Badge({ tone = "neutral", className, ...props }: BadgeProps) {
   return (
     <span
-      className={cn("rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider", TONE_CLASSES[tone], className)}
+      className={cn("rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider", TONE_CLASSES[tone], className)}
       {...props}
     />
   );

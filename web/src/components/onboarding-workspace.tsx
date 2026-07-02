@@ -277,18 +277,18 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
           </div>
         </div>
         <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-glass/10">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progressPct}%` }} />
+          <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${progressPct}%` }} />
         </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
         <aside className="glass-card h-fit self-start p-4 lg:sticky lg:top-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">1. Choose section</p>
+            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">1. Choose section</p>
             <button
               type="button"
               onClick={resetProgress}
-              className="rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-[10px] text-ink-2 transition hover:bg-glass/15"
+              className="rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-[11px] text-ink-2 transition hover:bg-glass/15"
             >
               Reset
             </button>
@@ -323,7 +323,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">2. Complete trainings</p>
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">2. Complete trainings</p>
                   <h3 className="mt-1 text-lg font-semibold">{selectedSection.title}</h3>
                   <p className="mt-1 text-xs text-ink-3">
                     {selectedDone}/{selectedSection.items.length} completed ({selectedPct}%)
@@ -340,7 +340,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                   <button
                     type="button"
                     onClick={() => markSection(selectedSection.id, false)}
-                    className="rounded-md border border-glass/15 bg-glass/10 px-2.5 py-1 text-[11px] text-ink-2 transition hover:bg-glass/15"
+                    className="rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-[11px] text-ink-2 transition hover:bg-glass/15"
                   >
                     Clear
                   </button>
@@ -352,7 +352,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                   type="text"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search in this section..."
+                  placeholder="Search in this section…"
                   className="h-9 rounded-lg border border-glass/15 bg-glass/10 px-3 text-sm text-ink placeholder:text-ink-4"
                 />
                 <button
@@ -401,7 +401,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                     />
                     <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 pointer-events-none">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-accent-soft/80">
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/80">
                           Step {String(idx + 1).padStart(2, "0")}
                         </p>
                         <p className="mt-1 text-sm font-medium text-ink group-hover:text-accent-soft">

@@ -187,7 +187,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                   <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="absolute inset-0 space-y-3 overflow-y-auto px-4 py-3"
+                    className="absolute inset-0 space-y-3 overflow-y-auto overscroll-contain px-4 py-3"
                   >
                     {hasMoreHistory ? (
                       <div className="flex justify-center pb-2">

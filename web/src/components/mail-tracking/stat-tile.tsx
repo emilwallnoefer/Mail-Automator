@@ -15,7 +15,7 @@ export function StatTile({
   return (
     <div className="rounded-xl border border-glass/10 bg-glass/5 px-4 py-3">
       <div className="flex items-center gap-1.5">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/70">{label}</p>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/70">{label}</p>
         {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
       </div>
       <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</p>

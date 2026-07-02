@@ -26,11 +26,15 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  xs: "rounded-md px-2 py-1 text-xs",
+  xs: "rounded-md px-2 py-1 text-[11px]",
   sm: "rounded-lg px-3 py-2 text-xs",
   md: "rounded-lg px-3 py-2 text-sm",
   lg: "rounded-lg px-4 py-2.5 text-sm",
 };
+
+/** Shared keyboard-focus affordance (matches the composer segments' accent outline). */
+const FOCUS_CLASSES =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80";
 
 export type ButtonProps = ComponentPropsWithRef<"button"> & {
   variant?: ButtonVariant;
@@ -41,7 +45,7 @@ export function Button({ variant = "glass", size = "md", className, type = "butt
   return (
     <button
       type={type}
-      className={cn(SIZE_CLASSES[size], VARIANT_CLASSES[variant], className)}
+      className={cn(SIZE_CLASSES[size], VARIANT_CLASSES[variant], FOCUS_CLASSES, className)}
       {...props}
     />
   );

@@ -23,7 +23,7 @@ export function InfoTooltip({
         role="img"
         aria-label={label}
         tabIndex={0}
-        className="inline-flex h-3.5 w-3.5 cursor-help select-none items-center justify-center rounded-full border border-glass/20 bg-glass/5 text-[9px] font-medium text-ink-3 transition hover:bg-glass/15 focus:outline-none focus:ring-1 focus:ring-amber-300/40"
+        className="inline-flex h-3.5 w-3.5 cursor-help select-none items-center justify-center rounded-full border border-glass/20 bg-glass/5 text-[10px] font-medium text-ink-3 transition hover:bg-glass/15 focus:outline-none focus:ring-1 focus:ring-amber-300/40"
       >
         i
       </span>

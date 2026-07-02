@@ -162,7 +162,7 @@ function LinkLeaderboardTable({
                       </div>
                       <div className="truncate text-[10px] text-ink-5">
                         {row.link_key ? (
-                          <span className="mr-2 rounded bg-glass/5 px-1 py-0.5 text-[9px] uppercase tracking-wider text-ink-4">
+                          <span className="mr-2 rounded bg-glass/5 px-1 py-0.5 text-[10px] uppercase tracking-wider text-ink-4">
                             {row.link_key}
                           </span>
                         ) : null}

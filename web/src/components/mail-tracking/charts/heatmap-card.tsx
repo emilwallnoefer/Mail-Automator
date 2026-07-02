@@ -65,7 +65,7 @@ export function HeatmapCard({
       <div className="flex gap-1.5 overflow-x-auto">
         <div className="flex flex-col justify-around pr-1 pt-[18px]">
           {DOW_LABELS.map((label) => (
-            <span key={label} className="text-[9px] uppercase tracking-wider text-ink-5">
+            <span key={label} className="text-[10px] uppercase tracking-wider text-ink-5">
               {label}
             </span>
           ))}
@@ -75,7 +75,7 @@ export function HeatmapCard({
             {Array.from({ length: 24 }, (_, hour) => (
               <span
                 key={hour}
-                className={`text-[9px] text-ink-5 ${hour % 3 === 0 ? "" : "opacity-0"}`}
+                className={`text-[10px] text-ink-5 ${hour % 3 === 0 ? "" : "opacity-0"}`}
               >
                 {String(hour).padStart(2, "0")}
               </span>

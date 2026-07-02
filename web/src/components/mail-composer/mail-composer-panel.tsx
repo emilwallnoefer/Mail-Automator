@@ -295,7 +295,7 @@ export function MailComposerPanel({
                       const selectedForDay = form[dayKey];
                       return (
                         <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} topics`}>
-                          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
+                          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">
                             Day {dayIdx + 1} — topics
                           </p>
                           <div className="grid grid-cols-2 gap-2">
@@ -330,7 +330,7 @@ export function MailComposerPanel({
                       const selectedSite = form[siteKey];
                       return (
                         <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} flight site`}>
-                          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
+                          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">
                             Day {dayIdx + 1} — flight site (Lausanne, optional)
                           </p>
                           <div className="grid grid-cols-2 gap-2">
@@ -362,7 +362,7 @@ export function MailComposerPanel({
 
                 <ProgressiveField show={composer.shouldShowAbroadLocation}>
                   <div>
-                    <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
+                    <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">
                       Training location
                     </p>
                     <Input
@@ -466,7 +466,7 @@ export function MailComposerPanel({
               className="h-11 w-full rounded-lg bg-accent/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
               type="button"
             >
-              {loading ? "Generating..." : "Generate draft"}
+              {loading ? "Generating…" : "Generate draft"}
             </button>
             <button
               onClick={() => {
@@ -476,7 +476,7 @@ export function MailComposerPanel({
               className="h-11 w-full rounded-lg border border-accent/45 bg-accent-deep/15 px-4 text-sm font-semibold text-accent-soft transition hover:-translate-y-px hover:bg-accent-deep/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               type="button"
             >
-              {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
+              {draftLoading ? "Creating in Gmail…" : "Create Gmail draft"}
             </button>
             <button
               onClick={() => {

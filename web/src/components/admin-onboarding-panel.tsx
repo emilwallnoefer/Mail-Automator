@@ -156,7 +156,7 @@ export function AdminOnboardingPanel() {
                           <div className="flex items-center gap-2">
                             <div className="h-2 w-full max-w-[12rem] overflow-hidden rounded-full bg-glass/10">
                               <div
-                                className={`h-full rounded-full transition-all ${progressBarColor(user.percent)}`}
+                                className={`h-full rounded-full transition-[width] ${progressBarColor(user.percent)}`}
                                 style={{ width: `${user.percent}%` }}
                               />
                             </div>

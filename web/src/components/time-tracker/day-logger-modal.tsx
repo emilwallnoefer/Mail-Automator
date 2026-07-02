@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { toBlob } from "html-to-image";
 import { Button, Input } from "@/components/ui";
 import { playUiSound } from "@/lib/ui-sounds";
 import { dayLabel, escapeHtml, fmtHM } from "./types";
@@ -56,6 +55,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
       // rather than the live panel section, so the image gets its own tidy
       // borders/spacing. Transparent background keeps the card's rounded
       // corners; it carries its own solid surface color.
+      const { toBlob } = await import("html-to-image");
       const blob = await toBlob(node, {
         pixelRatio: Math.max(2, window.devicePixelRatio || 1),
         cacheBust: true,
@@ -214,7 +214,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                   <div className="rounded-xl border border-glass/15 bg-glass/5 p-3">
                     <div className="mb-2.5 flex items-end justify-between gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.16em] text-accent-soft/80">Breaks</p>
+                        <p className="text-xs uppercase tracking-[0.15em] text-accent-soft/80">Breaks</p>
                       </div>
                     </div>
                     {readOnly ? (
@@ -316,7 +316,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                       disabled={saving || !selectedDay}
                       className="flex-1"
                     >
-                      {saving ? "Saving..." : "Save day"}
+                      {saving ? "Saving…" : "Save day"}
                     </Button>
                     <Button
                       variant="glass-quiet"
@@ -340,7 +340,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
             </div>
 
             <aside className="h-fit self-start rounded-xl border border-glass/15 bg-glass/5 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-accent-soft/80">Travel info</p>
+              <p className="text-xs uppercase tracking-[0.15em] text-accent-soft/80">Travel info</p>
               <p className="mt-2 text-xs text-ink-3/80">{panelDateLabel}</p>
               {!selectedDay ? (
                 <p className="mt-4 text-sm text-ink-3/80">Select a day to edit details.</p>
@@ -360,15 +360,15 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
               ) : (
                 <div className="mt-4 space-y-3 text-sm">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Client</p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-ink-3/75">Client</p>
                     <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Location</p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-ink-3/75">Location</p>
                     <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Responsible</p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-ink-3/75">Responsible</p>
                     <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
                   </div>
                 </div>
@@ -376,7 +376,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
               {selectedDay && selectedDay.comp_mins > 0 && compSourceRows.length > 0 ? (
                 <div className="mt-4 border-t border-glass/10 pt-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Compensation from</p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-ink-3/75">Compensation from</p>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <Button
                         variant="glass-quiet"

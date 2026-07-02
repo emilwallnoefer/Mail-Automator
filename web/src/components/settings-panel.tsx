@@ -389,7 +389,7 @@ export function SettingsPanel({
             aria-label="Settings categories"
           >
             <div className="border-b border-glass/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
-              <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-ink md:text-lg">
+              <h1 className="text-base font-semibold uppercase tracking-[0.15em] text-ink md:text-lg">
                 Settings
               </h1>
               {showStandaloneActions ? (
@@ -607,7 +607,7 @@ export function SettingsPanel({
                     }}
                     disabled={mappingSaving}
                   >
-                    {mappingSaving ? "Saving..." : "Save travel mapping"}
+                    {mappingSaving ? "Saving…" : "Save travel mapping"}
                   </Button>
                 </div>
               ) : null}
@@ -627,7 +627,7 @@ export function SettingsPanel({
                       }}
                       disabled={importing}
                     >
-                      {importing ? "Importing..." : "Upload old time tracking data"}
+                      {importing ? "Importing…" : "Upload old time tracking data"}
                     </Button>
                     <Button
                       variant="glass-quiet"
@@ -637,7 +637,7 @@ export function SettingsPanel({
                       }}
                       disabled={exporting}
                     >
-                      {exporting ? "Exporting..." : "Export time tracking data"}
+                      {exporting ? "Exporting…" : "Export time tracking data"}
                     </Button>
                   </div>
                   <input
@@ -657,7 +657,7 @@ export function SettingsPanel({
               {activeSection === "appearance" ? (
                 <div className="mt-5">
                   <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Appearance</p>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Appearance</p>
                     <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                       {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
                     </p>
@@ -699,7 +699,7 @@ export function SettingsPanel({
 
                   {theme === "light" ? (
                     <div className="mt-3 rounded-xl border border-glass/15 bg-overlay/40 p-4">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Accent</p>
+                      <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Accent</p>
                       <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                         {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
                       </p>
@@ -748,7 +748,7 @@ export function SettingsPanel({
                   <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 pr-1">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Interface sounds</p>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Interface sounds</p>
                         <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">{uiSoundsOn ? "On" : "Off"}</p>
                         <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
                           Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
@@ -806,7 +806,7 @@ export function SettingsPanel({
                       }}
                       disabled={deletingAccount}
                     >
-                      {deletingAccount ? "Deleting account..." : "Delete account"}
+                      {deletingAccount ? "Deleting account…" : "Delete account"}
                     </Button>
                   </div>
                 </div>

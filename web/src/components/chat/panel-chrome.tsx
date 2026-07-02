@@ -103,7 +103,7 @@ export function FilterStrip({
               <span className="truncate">{item.label}</span>
               {item.count > 0 ? (
                 <span
-                  className={`ml-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[9px] font-semibold ${
+                  className={`ml-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
                     active
                       ? "bg-accent/30 text-accent-soft"
                       : "bg-glass/10 text-ink-3 group-hover:bg-glass/15"
@@ -213,7 +213,7 @@ export function PresenceAvatars({
                     className="flex items-center gap-2 px-2.5 py-1.5 text-[12px] text-ink-2"
                   >
                     <span
-                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-semibold ${
+                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${
                         isMe
                           ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
                           : "bg-gradient-to-br from-neutral to-raised text-ink"

@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-02-ui-polish",
+    date: "Jul 2, 2026",
+    title: "A faster, more consistent interface",
+    highlights: [
+      "Keyboard focus is now clearly visible on every button and field.",
+      "Ambient underwater motion pauses if your system prefers reduced motion.",
+      "Settings and Admin load on demand — the dashboard starts lighter.",
+      "Small labels are slightly larger and spacing is more uniform throughout.",
+    ],
+  },
+  {
     version: "2026-07-01-admin",
     date: "Jul 1, 2026",
     title: "Admin panel, reorganised",

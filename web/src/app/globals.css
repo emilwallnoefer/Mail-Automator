@@ -89,6 +89,12 @@
 
 html {
   scroll-padding-top: var(--app-sticky-offset);
+  /* Native form controls / scrollbars follow the active skin. */
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 @theme inline {
@@ -471,6 +477,26 @@ body {
   mix-blend-mode: screen;
   filter: blur(5px);
   animation: shimmerSweep 12s linear infinite;
+}
+
+/* Ambient decoration pauses for users who prefer reduced motion. The static
+ * gradients/tints remain, so the underwater skin keeps its look — only the
+ * perpetual drift/sweep/rise motion stops. Finite feedback animations (day
+ * reveal, refresh sweeps, freshness state changes) are intentionally not
+ * listed: they convey state and run once. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg::before,
+  .aurora-bg::after,
+  .glass-card::before,
+  .underwater-panel::before,
+  .underwater-panel::after,
+  .liquid-day-card::before,
+  .day-progress-algae::after,
+  .bubble,
+  .wave-fill::before,
+  .wave-fill::after {
+    animation: none;
+  }
 }
 
 .bubble-layer {
