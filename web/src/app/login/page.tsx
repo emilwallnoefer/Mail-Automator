@@ -112,7 +112,7 @@ export default function LoginPage() {
               disabled={loading || !supabaseConfigured}
               className="h-12 w-full rounded-xl bg-accent/90 text-sm font-semibold text-slate-950 transition hover:bg-accent disabled:opacity-70"
             >
-              {loading ? "Redirecting..." : "Continue with Google"}
+              {loading ? "Redirecting…" : "Continue with Google"}
             </button>
           </div>
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +18,15 @@ export const metadata: Metadata = {
   title: "Flya Allrounder",
   description: "Flyability internal allround workspace for mail automation and time tracking.",
 };
+
+// Browser-chrome tint follows the account's saved skin (page-bg tokens:
+// dark #020617, light paper #fcfaf5, glacier-blue page #f7fafd).
+export async function generateViewport(): Promise<Viewport> {
+  const { theme } = await resolveServerAppearance();
+  return {
+    themeColor: theme === "blue" ? "#f7fafd" : theme === "light" ? "#fcfaf5" : "#020617",
+  };
+}
 
 // Pre-hydration fallback for signed-out pages (and signed-in users who never saved
 // a preference): read the device-local cache and apply before first paint so light
