@@ -1,9 +1,46 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminEmail } from "@/lib/admin";
 import { normalizeUserRole } from "@/lib/user-role";
+import { recordSecurityEvent } from "@/lib/security/security-events";
+import { maybeAlertAdmins } from "@/lib/security/breach-alert";
+
+/**
+ * Record a blocked admin-route attempt by a logged-in-but-unauthorized user and
+ * evaluate it for a breach alert. Best-effort: never throws, so it can't turn a
+ * 403 into a 500. Only called for authenticated non-admins — anonymous 401s are
+ * noise and are intentionally not logged.
+ */
+async function reportFailedAdminAccess(email: string, route: string): Promise<void> {
+  try {
+    let ip: string | null = null;
+    let userAgent: string | null = null;
+    try {
+      const h = await headers();
+      ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+      userAgent = h.get("user-agent");
+    } catch {
+      /* headers() unavailable outside a request scope — record without them */
+    }
+
+    const admin = createAdminClient();
+    const event = {
+      kind: "failed_admin_access" as const,
+      actor_email: email,
+      ip,
+      user_agent: userAgent,
+      detail: { route },
+    };
+    await recordSecurityEvent(admin, event);
+    await maybeAlertAdmins(admin, event);
+  } catch (error) {
+    console.error("reportFailedAdminAccess threw", error);
+  }
+}
 
 export type AdminGuardSuccess = {
   ok: true;
@@ -31,6 +68,7 @@ export async function guardAdmin(): Promise<AdminGuardSuccess | AdminGuardFailur
     };
   }
   if (!isAdminEmail(user.email)) {
+    await reportFailedAdminAccess(user.email ?? "unknown", "guardAdmin");
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
@@ -70,6 +108,7 @@ export async function guardTimeViewer(): Promise<TimeViewerGuardSuccess | AdminG
   const isAdmin = isAdminEmail(user.email);
   const isHr = role === "hr";
   if (!isAdmin && !isHr) {
+    await reportFailedAdminAccess(user.email ?? "unknown", "guardTimeViewer");
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),

@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-02-security-events",
+    date: "Jul 2, 2026",
+    title: "Security event log & breach alerts",
+    highlights: [
+      "New Admin → Security tab logs blocked admin-access attempts and other security events.",
+      "Admins get an email when someone repeatedly probes admin-only areas.",
+      "Toggle the alerts and tune the threshold right from the Security tab.",
+    ],
+  },
+  {
     version: "2026-07-02-chat-unread",
     date: "Jul 2, 2026",
     title: "Team chat: unread badge + popup fix",

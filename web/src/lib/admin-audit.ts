@@ -10,7 +10,8 @@ export type AdminAuditAction =
   | "role_change"
   | "reminder_pause"
   | "reminder_resume"
-  | "mail_brief_model_change";
+  | "mail_brief_model_change"
+  | "security_alerts_change";
 
 export type AdminAuditEntry = {
   id: number;
