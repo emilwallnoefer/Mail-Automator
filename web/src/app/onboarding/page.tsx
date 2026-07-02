@@ -16,18 +16,18 @@ export default async function OnboardingPage() {
   const sections = buildOnboardingSections();
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-surface text-ink">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell relative z-[1]">
         <div className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">Pilot Resources</p>
+              <p className="text-[9px] uppercase tracking-[0.16em] text-accent-soft/70">Pilot Resources</p>
               <h1 className="text-sm font-semibold md:text-base">Onboarding</h1>
             </div>
             <a
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-1.5 text-xs transition hover:bg-white/12"
+              className="inline-flex items-center gap-2 rounded-lg border border-glass/15 bg-glass/8 px-3 py-1.5 text-xs transition hover:bg-glass/12"
             >
               Back to workspace
             </a>

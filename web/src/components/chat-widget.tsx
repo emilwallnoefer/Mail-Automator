@@ -763,12 +763,12 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
               setOpen(true);
             }}
             style={{ bottom: `${bottomOffsetRem}rem` }}
-            className="fixed right-4 z-[125] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-400/95 px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_18px_36px_-12px_rgba(34,211,238,0.55)] backdrop-blur transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+            className="fixed right-4 z-[125] inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/95 px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_18px_36px_-12px_rgba(34,211,238,0.55)] backdrop-blur transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <ChatBubbleIcon className="h-5 w-5" />
             <span className="hidden sm:inline">Team chat</span>
             {unread > 0 ? (
-              <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+              <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-ink">
                 {unread > 99 ? "99+" : unread}
               </span>
             ) : null}
@@ -792,7 +792,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-[130] bg-slate-950/45 backdrop-blur-[2px]"
+              className="fixed inset-0 z-[130] bg-overlay/45 backdrop-blur-[2px]"
               onClick={() => setOpen(false)}
               aria-hidden
             />
@@ -805,21 +805,21 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
               exit={{ opacity: 0, scale: 0.92, y: 18 }}
               transition={{ type: "spring", stiffness: 320, damping: 30 }}
               style={{ transformOrigin: "bottom right" }}
-              className="fixed bottom-5 right-5 z-[131] flex h-[calc(100vh-2.5rem)] max-h-[780px] w-[min(94vw,380px)] flex-col rounded-[2.75rem] bg-gradient-to-b from-slate-700/80 via-slate-900 to-slate-950 p-[6px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),0_10px_30px_-10px_rgba(0,0,0,0.6)] ring-1 ring-white/10"
+              className="fixed bottom-5 right-5 z-[131] flex h-[calc(100vh-2.5rem)] max-h-[780px] w-[min(94vw,380px)] flex-col rounded-[2.75rem] bg-gradient-to-b from-neutral/80 via-panel to-surface p-[6px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),0_10px_30px_-10px_rgba(0,0,0,0.6)] ring-1 ring-glass/10"
             >
               {/* Inner "screen" — content lives here; rounded slightly less than the frame so the bezel reads as a thin band. */}
-              <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.3rem] bg-slate-950 ring-1 ring-inset ring-white/5">
+              <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.3rem] bg-surface ring-1 ring-inset ring-glass/5">
                 {/* Compact one-row header: identity on the left, presence + close on the right. */}
-                <header className="flex items-center gap-2 border-b border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent px-4 py-2.5">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-cyan-400/30 to-indigo-500/30 ring-1 ring-inset ring-white/15">
-                    <ChatBubbleIcon className="h-4 w-4 text-cyan-100" />
+                <header className="flex items-center gap-2 border-b border-glass/10 bg-gradient-to-b from-white/[0.06] to-transparent px-4 py-2.5">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent-from/30 to-accent-to/30 ring-1 ring-inset ring-glass/15">
+                    <ChatBubbleIcon className="h-4 w-4 text-accent-soft" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-semibold text-white">Team chat</h2>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <h2 className="truncate text-sm font-semibold text-ink">Team chat</h2>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-4">
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          onlineCount > 0 ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" : "bg-slate-500"
+                          onlineCount > 0 ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" : "bg-neutral"
                         }`}
                         aria-hidden
                       />
@@ -836,7 +836,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     type="button"
                     onClick={() => setOpen(false)}
                     aria-label="Close"
-                    className="group grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                    className="group grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-glass/10 bg-glass/5 text-ink-3 transition hover:border-glass/20 hover:bg-glass/10 hover:text-ink"
                   >
                     <XMarkIcon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-90" />
                   </button>
@@ -858,7 +858,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                             void handleLoadOlder();
                           }}
                           disabled={loadingMore}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300 transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-glass/10 bg-glass/5 px-3 py-1 text-[11px] text-ink-3 transition hover:border-glass/20 hover:bg-glass/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {loadingMore ? (
                             <SpinnerIcon className="h-3 w-3 animate-spin" />
@@ -871,9 +871,9 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     ) : null}
 
                     {loading ? (
-                      <p className="text-center text-xs text-slate-400">Loading conversation…</p>
+                      <p className="text-center text-xs text-ink-4">Loading conversation…</p>
                     ) : visibleMessages.length === 0 ? (
-                      <p className="mt-8 text-center text-xs text-slate-400">
+                      <p className="mt-8 text-center text-xs text-ink-4">
                         {filter === "all"
                           ? "No messages yet — say hi to your team."
                           : "Nothing here. Try a different filter or post a new one below."}
@@ -950,7 +950,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
                         whileTap={{ scale: 0.95 }}
-                        className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-cyan-300/40 bg-cyan-400/90 px-3 py-1 text-[11px] font-semibold text-slate-900 shadow-[0_6px_18px_-6px_rgba(34,211,238,0.6)] backdrop-blur"
+                        className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-accent/40 bg-accent/90 px-3 py-1 text-[11px] font-semibold text-slate-900 shadow-[0_6px_18px_-6px_rgba(34,211,238,0.6)] backdrop-blur"
                       >
                         <ArrowDownIcon className="h-3 w-3" />
                         {pendingNew} new {pendingNew === 1 ? "message" : "messages"}
@@ -968,13 +968,13 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 6 }}
-                      className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/95 px-3 py-2 text-xs text-slate-200 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.7)]"
+                      className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-xl border border-glass/10 bg-panel/95 px-3 py-2 text-xs text-ink-2 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.7)]"
                     >
                       <span>Message deleted</span>
                       <button
                         type="button"
                         onClick={handleUndoDelete}
-                        className="rounded-md border border-cyan-300/40 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-400/25"
+                        className="rounded-md border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-soft transition hover:bg-accent/25"
                       >
                         Undo
                       </button>
@@ -989,7 +989,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
-                      className="flex items-center justify-between gap-2 border-t border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs text-rose-200"
+                      className="flex items-center justify-between gap-2 border-t border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs text-danger"
                       role="alert"
                     >
                       <span className="min-w-0 flex-1 truncate">{error}</span>
@@ -997,7 +997,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                         type="button"
                         onClick={() => setError(null)}
                         aria-label="Dismiss error"
-                        className="group grid h-5 w-5 shrink-0 place-items-center rounded-md text-rose-200 transition hover:bg-rose-500/20"
+                        className="group grid h-5 w-5 shrink-0 place-items-center rounded-md text-danger transition hover:bg-rose-500/20"
                       >
                         <XMarkIcon className="h-3 w-3 transition-transform duration-200 group-hover:rotate-90" />
                       </button>
@@ -1005,15 +1005,15 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                   ) : null}
                 </AnimatePresence>
 
-                <div className="border-t border-white/10 bg-slate-950/70 px-3 py-3">
+                <div className="border-t border-glass/10 bg-overlay/70 px-3 py-3">
                   <KindToggleRow pendingKind={pendingKind} setPendingKind={setPendingKind} />
-                  <div className="mt-2 flex items-end gap-2 rounded-2xl border border-white/12 bg-white/5 px-2 py-1.5 focus-within:border-cyan-300/50 focus-within:bg-white/[0.07]">
+                  <div className="mt-2 flex items-end gap-2 rounded-2xl border border-glass/12 bg-glass/5 px-2 py-1.5 focus-within:border-accent/50 focus-within:bg-glass/[0.07]">
                     <button
                       type="button"
                       aria-label="Attach file"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={sendState === "sending"}
-                      className="group grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+                      className="group grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-3 transition hover:bg-glass/10 hover:text-ink disabled:opacity-50"
                     >
                       <PaperclipIcon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
                     </button>
@@ -1036,7 +1036,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                           ? "Message your team…"
                           : `Posting as ${messageKindLabel(pendingKind).toLowerCase()}…`
                       }
-                      className="min-h-9 max-h-32 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-0"
+                      className="min-h-9 max-h-32 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm text-ink placeholder:text-ink-5 focus:outline-none focus:ring-0"
                     />
                     <button
                       type="button"
@@ -1044,7 +1044,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                         handleSend();
                       }}
                       disabled={sendState === "sending" || draft.trim().length === 0}
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-400/90 text-slate-900 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.6)] transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700/60 disabled:text-slate-400 disabled:shadow-none"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/90 text-slate-900 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.6)] transition hover:bg-accent disabled:cursor-not-allowed disabled:bg-neutral/35 disabled:text-ink-4 disabled:shadow-none"
                       aria-label="Send"
                     >
                       {sendState === "sending" ? (
@@ -1068,7 +1068,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur"
+                  className="fixed inset-0 z-[140] flex items-center justify-center bg-surface/90 p-4 backdrop-blur"
                   onClick={() => setLightbox(null)}
                   role="dialog"
                   aria-modal="true"
@@ -1085,7 +1085,7 @@ export function ChatWidget({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetP
                     type="button"
                     onClick={() => setLightbox(null)}
                     aria-label="Close preview"
-                    className="group absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-900/80 text-white transition hover:bg-slate-800"
+                    className="group absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-glass/20 bg-panel/80 text-ink transition hover:bg-raised"
                   >
                     <XMarkIcon className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
                   </button>
@@ -1123,7 +1123,7 @@ function KindToggleRow({
     })),
   ];
   return (
-    <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1 ring-1 ring-inset ring-white/5">
+    <div className="grid grid-cols-4 gap-1 rounded-xl bg-glass/[0.04] p-1 ring-1 ring-inset ring-glass/5">
       {items.map((item) => {
         const active = pendingKind === item.id;
         const Icon = item.icon;
@@ -1137,8 +1137,8 @@ function KindToggleRow({
               active
                 ? item.meta
                   ? `${item.meta.activeBg} ${item.meta.activeText} shadow-[0_1px_0_rgba(255,255,255,0.06)]`
-                  : "bg-white/12 text-white shadow-[0_1px_0_rgba(255,255,255,0.06)]"
-                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                  : "bg-glass/12 text-ink shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                : "text-ink-4 hover:bg-glass/[0.06] hover:text-ink-2"
             }`}
             title={item.meta?.shortDescription ?? "Send as a regular message"}
           >
@@ -1177,8 +1177,8 @@ function FilterStrip({
     { id: "best_practice", label: "Practices", count: counts.best_practice, icon: StarIcon },
   ];
   return (
-    <div className="border-b border-white/10 bg-slate-950/60 px-3 py-2">
-      <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-white/[0.03] p-1 ring-1 ring-inset ring-white/5">
+    <div className="border-b border-glass/10 bg-overlay/60 px-3 py-2">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-glass/[0.03] p-1 ring-1 ring-inset ring-glass/5">
         {items.map((item) => {
           const active = filter === item.id;
           const Icon = item.icon;
@@ -1189,8 +1189,8 @@ function FilterStrip({
               onClick={() => setFilter(item.id)}
               className={`group inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition ${
                 active
-                  ? "bg-cyan-400/15 text-cyan-100 shadow-[0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-inset ring-cyan-300/40"
-                  : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                  ? "bg-accent/15 text-accent-soft shadow-[0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-inset ring-accent/40"
+                  : "text-ink-4 hover:bg-glass/[0.06] hover:text-ink-2"
               }`}
             >
               {Icon ? <Icon className="h-3 w-3 shrink-0" /> : null}
@@ -1199,8 +1199,8 @@ function FilterStrip({
                 <span
                   className={`ml-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[9px] font-semibold ${
                     active
-                      ? "bg-cyan-400/30 text-cyan-50"
-                      : "bg-white/10 text-slate-300 group-hover:bg-white/15"
+                      ? "bg-accent/30 text-accent-soft"
+                      : "bg-glass/10 text-ink-3 group-hover:bg-glass/15"
                   }`}
                 >
                   {item.count}
@@ -1259,7 +1259,7 @@ function PresenceAvatars({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label={`${users.length} online — show list`}
-        className="flex items-center -space-x-2 rounded-full p-0.5 transition hover:bg-white/5"
+        className="flex items-center -space-x-2 rounded-full p-0.5 transition hover:bg-glass/5"
       >
         {visible.map((u) => {
           const isMe = u.user_id === currentUserId;
@@ -1267,10 +1267,10 @@ function PresenceAvatars({
             <span
               key={u.user_id}
               title={`${shortNameFromEmail(u.email)}${isMe ? " (you)" : ""}`}
-              className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-semibold ring-2 ring-slate-950 ${
+              className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-semibold ring-2 ring-surface ${
                 isMe
-                  ? "bg-gradient-to-br from-cyan-300 to-indigo-400 text-slate-950"
-                  : "bg-gradient-to-br from-slate-600 to-slate-800 text-slate-100"
+                  ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
+                  : "bg-gradient-to-br from-neutral to-raised text-ink"
               }`}
             >
               {initialsFromEmail(u.email)}
@@ -1279,7 +1279,7 @@ function PresenceAvatars({
         })}
         {overflow > 0 ? (
           <span
-            className="grid h-7 w-7 place-items-center rounded-full bg-slate-800 text-[10px] font-semibold text-slate-200 ring-2 ring-slate-950"
+            className="grid h-7 w-7 place-items-center rounded-full bg-raised text-[10px] font-semibold text-ink-2 ring-2 ring-surface"
             title={`${overflow} more online`}
           >
             +{overflow}
@@ -1294,7 +1294,7 @@ function PresenceAvatars({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.96 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-[0_18px_36px_-12px_rgba(0,0,0,0.8)] backdrop-blur"
+            className="absolute right-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-xl border border-glass/10 bg-panel/95 shadow-[0_18px_36px_-12px_rgba(0,0,0,0.8)] backdrop-blur"
             role="dialog"
             aria-label="Online members"
           >
@@ -1304,20 +1304,20 @@ function PresenceAvatars({
                 return (
                   <div
                     key={u.user_id}
-                    className="flex items-center gap-2 px-2.5 py-1.5 text-[12px] text-slate-200"
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-[12px] text-ink-2"
                   >
                     <span
                       className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-semibold ${
                         isMe
-                          ? "bg-gradient-to-br from-cyan-300 to-indigo-400 text-slate-950"
-                          : "bg-gradient-to-br from-slate-600 to-slate-800 text-slate-100"
+                          ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
+                          : "bg-gradient-to-br from-neutral to-raised text-ink"
                       }`}
                     >
                       {initialsFromEmail(u.email)}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
                       {shortNameFromEmail(u.email)}
-                      {isMe ? <span className="ml-1 text-slate-400">(you)</span> : null}
+                      {isMe ? <span className="ml-1 text-ink-4">(you)</span> : null}
                     </span>
                     <span
                       className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.7)]"
@@ -1337,8 +1337,8 @@ function PresenceAvatars({
 function DaySeparator({ label }: { label: string }) {
   return (
     <div className="relative my-3 flex items-center justify-center" aria-hidden>
-      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/8" />
-      <span className="relative rounded-full border border-white/10 bg-slate-950 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-glass/8" />
+      <span className="relative rounded-full border border-glass/10 bg-surface px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-4">
         {label}
       </span>
     </div>
@@ -1356,7 +1356,7 @@ function TypingStrip({ names }: { names: string[] }) {
         ? `${names[0]} and ${names[1]} are typing…`
         : `${names.length} people are typing…`;
   return (
-    <div className="flex items-center gap-2 px-4 pb-1 text-[11px] italic text-slate-400">
+    <div className="flex items-center gap-2 px-4 pb-1 text-[11px] italic text-ink-4">
       <TypingDots />
       <span>{label}</span>
     </div>
@@ -1417,8 +1417,8 @@ function MessageRow({
           <span
             className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-semibold ${
               isMe
-                ? "bg-gradient-to-br from-cyan-300 to-indigo-400 text-slate-950"
-                : "bg-gradient-to-br from-slate-700 to-slate-900 text-slate-100"
+                ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
+                : "bg-gradient-to-br from-neutral to-panel text-ink"
             }`}
             aria-hidden
           >
@@ -1428,9 +1428,9 @@ function MessageRow({
       </div>
       <div className={`flex min-w-0 max-w-[78%] flex-col ${isMe ? "items-end" : "items-start"}`}>
         {showHeader ? (
-          <p className="mb-0.5 text-[10px] text-slate-400">
+          <p className="mb-0.5 text-[10px] text-ink-4">
             {isMe ? "You" : name} · {formatChatTimestamp(message.created_at)}
-            {message.edited_at ? <span className="ml-1 italic text-slate-500">(edited)</span> : null}
+            {message.edited_at ? <span className="ml-1 italic text-ink-5">(edited)</span> : null}
           </p>
         ) : null}
 
@@ -1446,7 +1446,7 @@ function MessageRow({
             </span>
             {isDone ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-300/55 bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-300/55 bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-positive"
                 title="Marked as done by an admin"
               >
                 <CheckIcon className="h-3 w-3" /> Done
@@ -1460,8 +1460,8 @@ function MessageRow({
           <div
             className={`rounded-2xl px-3 py-2 text-sm leading-relaxed transition ${
               isMe
-                ? "rounded-br-sm bg-cyan-400/90 text-slate-900"
-                : "rounded-bl-sm bg-white/8 text-slate-100"
+                ? "rounded-br-sm bg-accent/90 text-slate-900"
+                : "rounded-bl-sm bg-glass/8 text-ink"
             } ${isDone ? "opacity-65 saturate-50" : ""}`}
           >
             {isEditing ? (
@@ -1469,7 +1469,7 @@ function MessageRow({
             ) : message.body ? (
               <p
                 className={`whitespace-pre-wrap break-words ${
-                  isDone ? "line-through decoration-slate-400/70 decoration-2" : ""
+                  isDone ? "line-through decoration-ink-4/70 decoration-2" : ""
                 }`}
               >
                 {message.body}
@@ -1538,8 +1538,8 @@ function MessageActions({
             aria-pressed={mine === 1}
             className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${
               mine === 1
-                ? "border-emerald-300/60 bg-emerald-400/15 text-emerald-200"
-                : "border-white/12 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                ? "border-emerald-300/60 bg-emerald-400/15 text-positive"
+                : "border-glass/12 bg-glass/5 text-ink-3 hover:border-glass/20 hover:bg-glass/10"
             }`}
           >
             <ArrowUpIcon className="h-3 w-3" />
@@ -1553,8 +1553,8 @@ function MessageActions({
             aria-pressed={mine === -1}
             className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${
               mine === -1
-                ? "border-rose-300/60 bg-rose-400/15 text-rose-200"
-                : "border-white/12 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                ? "border-rose-300/60 bg-rose-400/15 text-danger"
+                : "border-glass/12 bg-glass/5 text-ink-3 hover:border-glass/20 hover:bg-glass/10"
             }`}
           >
             <ArrowDownIcon className="h-3 w-3" />
@@ -1568,8 +1568,8 @@ function MessageActions({
           onClick={() => onMarkDone(!isDone)}
           className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] transition ${
             isDone
-              ? "border-amber-300/55 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25"
-              : "border-emerald-300/55 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/25"
+              ? "border-amber-300/55 bg-amber-400/15 text-warn hover:bg-amber-400/25"
+              : "border-emerald-300/55 bg-emerald-400/15 text-positive hover:bg-emerald-400/25"
           }`}
           title={isDone ? "Reopen this request" : "Mark as done"}
         >
@@ -1583,7 +1583,7 @@ function MessageActions({
             type="button"
             onClick={onStartEdit}
             aria-label="Edit message"
-            className="inline-flex items-center gap-1 rounded-md border border-white/12 bg-white/5 px-1.5 py-0.5 text-[11px] text-slate-300 transition hover:border-white/20 hover:bg-white/10"
+            className="inline-flex items-center gap-1 rounded-md border border-glass/12 bg-glass/5 px-1.5 py-0.5 text-[11px] text-ink-3 transition hover:border-glass/20 hover:bg-glass/10"
           >
             <PencilSquareIcon className="h-3 w-3" />
             <span>Edit</span>
@@ -1592,7 +1592,7 @@ function MessageActions({
             type="button"
             onClick={onDelete}
             aria-label="Delete message"
-            className="inline-flex items-center gap-1 rounded-md border border-white/12 bg-white/5 px-1.5 py-0.5 text-[11px] text-slate-300 transition hover:border-rose-300/40 hover:bg-rose-500/15 hover:text-rose-200"
+            className="inline-flex items-center gap-1 rounded-md border border-glass/12 bg-glass/5 px-1.5 py-0.5 text-[11px] text-ink-3 transition hover:border-rose-300/40 hover:bg-rose-500/15 hover:text-danger"
           >
             <TrashIcon className="h-3 w-3" />
             <span>Delete</span>
@@ -1637,7 +1637,7 @@ function EditField({
             onCancel();
           }
         }}
-        className="min-h-[3rem] w-full resize-none rounded-md border border-slate-900/30 bg-white/60 px-2 py-1.5 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none"
+        className="min-h-[3rem] w-full resize-none rounded-md border border-slate-900/30 bg-glass/60 px-2 py-1.5 text-sm text-slate-900 focus:border-accent-deep focus:outline-none"
       />
       <div className="mt-1.5 flex items-center gap-1.5">
         <button
@@ -1645,14 +1645,14 @@ function EditField({
           onClick={() => {
             if (value.trim()) onSave(value);
           }}
-          className="rounded-md bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-cyan-100 hover:bg-slate-800"
+          className="rounded-md bg-panel px-2 py-0.5 text-[11px] font-semibold text-accent-soft hover:bg-raised"
         >
           Save
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-900/30 bg-white/40 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-white/60"
+          className="rounded-md border border-slate-900/30 bg-glass/40 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-glass/60"
         >
           Cancel
         </button>
@@ -1695,7 +1695,7 @@ function AttachmentBlock({
   const sizeLabel = message.attachment_size ? formatBytes(message.attachment_size) : "";
 
   if (err) {
-    return <p className={`mt-1 text-xs ${darkText ? "text-slate-700" : "text-rose-300"}`}>{err}</p>;
+    return <p className={`mt-1 text-xs ${darkText ? "text-slate-700" : "text-danger"}`}>{err}</p>;
   }
 
   if (isImage) {
@@ -1705,7 +1705,7 @@ function AttachmentBlock({
       return (
         <div
           aria-hidden
-          className="mt-1 h-40 w-48 max-w-full animate-pulse rounded-lg border border-white/10 bg-white/[0.06]"
+          className="mt-1 h-40 w-48 max-w-full animate-pulse rounded-lg border border-glass/10 bg-glass/[0.06]"
         />
       );
     }
@@ -1713,12 +1713,12 @@ function AttachmentBlock({
       <button
         type="button"
         onClick={() => onOpenImage?.(url, name)}
-        className="group/img relative mt-1 block overflow-hidden rounded-lg border border-white/10"
+        className="group/img relative mt-1 block overflow-hidden rounded-lg border border-glass/10"
       >
         {!imgLoaded ? (
           <div
             aria-hidden
-            className="absolute inset-0 animate-pulse bg-white/[0.06]"
+            className="absolute inset-0 animate-pulse bg-glass/[0.06]"
           />
         ) : null}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1742,8 +1742,8 @@ function AttachmentBlock({
       }}
       className={`mt-1 inline-flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs transition ${
         darkText
-          ? "border-slate-900/30 bg-white/40 text-slate-900 hover:bg-white/60"
-          : "border-white/15 bg-white/8 text-slate-100 hover:bg-white/12"
+          ? "border-slate-900/30 bg-glass/40 text-slate-900 hover:bg-glass/60"
+          : "border-glass/15 bg-glass/8 text-ink hover:bg-glass/12"
       }`}
     >
       <PaperclipIcon className="h-3.5 w-3.5" />
@@ -1782,10 +1782,10 @@ const KIND_META: Record<Exclude<MessageKind, "message">, KindMeta> = {
     Icon: LightbulbIcon,
     activeBorder: "border-amber-300/60",
     activeBg: "bg-amber-400/20",
-    activeText: "text-amber-100",
+    activeText: "text-warn",
     badgeBorder: "border-amber-300/40",
     badgeBg: "bg-amber-400/15",
-    badgeText: "text-amber-200",
+    badgeText: "text-warn",
   },
   change_request: {
     shortLabel: "Change",
@@ -1804,10 +1804,10 @@ const KIND_META: Record<Exclude<MessageKind, "message">, KindMeta> = {
     Icon: StarIcon,
     activeBorder: "border-emerald-300/60",
     activeBg: "bg-emerald-400/20",
-    activeText: "text-emerald-100",
+    activeText: "text-positive",
     badgeBorder: "border-emerald-300/40",
     badgeBg: "bg-emerald-400/15",
-    badgeText: "text-emerald-200",
+    badgeText: "text-positive",
   },
 };
 

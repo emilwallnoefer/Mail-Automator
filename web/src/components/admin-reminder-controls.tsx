@@ -122,21 +122,21 @@ export function AdminReminderControls() {
 
   return (
     <div className="mt-5 space-y-3">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-ink-4">
         Pause or test the weekly Monday reminder cron (Mon 09:00 Europe/Zurich) without leaving the admin panel.
       </p>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-slate-100">Monday reminder</p>
+              <p className="text-sm font-medium text-ink">Monday reminder</p>
               <InfoTooltip label="About the Monday reminder">
                 Weekly cron at Mon 09:00 Europe/Zurich. When paused, real and forced runs skip
                 sending; dry runs still preview the candidate list.
@@ -144,13 +144,13 @@ export function AdminReminderControls() {
             </div>
             {settings?.reminder_paused ? (
               <p
-                className="text-xs text-amber-200/90"
+                className="text-xs text-warn/90"
                 title={`Paused by ${settings.reminder_paused_by || "unknown"} (${fmtAbsolute(settings.reminder_paused_at)})`}
               >
                 Paused {fmtRelative(settings.reminder_paused_at)}
               </p>
             ) : settings ? (
-              <p className="text-xs text-emerald-200/85">Active · next Mon 09:00 CET</p>
+              <p className="text-xs text-positive/85">Active · next Mon 09:00 CET</p>
             ) : null}
           </div>
           <button
@@ -162,8 +162,8 @@ export function AdminReminderControls() {
             disabled={pausePending || !settings}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
               settings?.reminder_paused
-                ? "border-emerald-300/55 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/25"
-                : "border-amber-300/55 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
+                ? "border-emerald-300/55 bg-emerald-400/15 text-positive hover:bg-emerald-400/25"
+                : "border-amber-300/55 bg-amber-400/15 text-warn hover:bg-amber-400/25"
             }`}
           >
             {pausePending ? "Saving…" : settings?.reminder_paused ? "Resume" : "Pause"}
@@ -172,9 +172,9 @@ export function AdminReminderControls() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-glass/10 bg-glass/5 p-3">
           <div className="flex min-w-0 items-center gap-1.5">
-            <p className="text-sm font-medium text-slate-100">Dry run</p>
+            <p className="text-sm font-medium text-ink">Dry run</p>
             <InfoTooltip label="About dry runs">
               Runs the candidate scan right now without sending any real emails. Rows are recorded
               in the audit log as <code>skipped_dry_run</code>.
@@ -186,15 +186,15 @@ export function AdminReminderControls() {
               void runDryRun();
             }}
             disabled={actionPending === "dry"}
-            className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className="shrink-0 rounded-lg border border-glass/15 bg-glass/5 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/10 disabled:opacity-60"
           >
             {actionPending === "dry" ? "Running…" : "Run"}
           </button>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-medium text-slate-100">Test send</p>
+            <p className="text-sm font-medium text-ink">Test send</p>
             <InfoTooltip label="About test sends">
               Sends one real email via Resend (subject prefixed with <code>[TEST]</code>) to the
               address you enter. Does not touch the candidate list or audit log.
@@ -206,7 +206,7 @@ export function AdminReminderControls() {
               value={testEmail}
               onChange={(event) => setTestEmail(event.target.value)}
               placeholder="you@flyability.com"
-              className="min-w-[180px] flex-1 rounded-lg border border-white/15 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500"
+              className="min-w-[180px] flex-1 rounded-lg border border-glass/15 bg-panel/80 px-2 py-1.5 text-xs text-ink placeholder:text-ink-5"
             />
             <button
               type="button"
@@ -214,7 +214,7 @@ export function AdminReminderControls() {
                 void sendTest();
               }}
               disabled={actionPending === "test" || testEmail.trim().length === 0}
-              className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+              className="rounded-lg border border-glass/15 bg-glass/5 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/10 disabled:opacity-60"
             >
               {actionPending === "test" ? "Sending…" : "Send"}
             </button>
@@ -223,7 +223,7 @@ export function AdminReminderControls() {
       </div>
 
       {actionResult ? (
-        <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+        <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-positive">
           {actionResult}
         </p>
       ) : null}

@@ -194,7 +194,7 @@ function AssetChecklist({
     const checked = selectedIds.includes(option.id);
     const { label, desc } = getChangeOptionLabelDesc(option, lang);
     return (
-      <label key={option.id} className="flex items-start gap-2 rounded-md border border-white/10 bg-white/5 p-2">
+      <label key={option.id} className="flex items-start gap-2 rounded-md border border-glass/10 bg-glass/5 p-2">
         <input
           type="checkbox"
           className="mt-1"
@@ -203,7 +203,7 @@ function AssetChecklist({
         />
         <span>
           <span className="block">{label}</span>
-          <span className="text-xs text-slate-300/80">{desc}</span>
+          <span className="text-xs text-ink-3/80">{desc}</span>
         </span>
       </label>
     );
@@ -212,14 +212,14 @@ function AssetChecklist({
   return (
     <div className="space-y-2 text-sm">
       <details
-        className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+        className="group rounded-lg border border-glass/15 bg-glass/5 [&_summary::-webkit-details-marker]:hidden"
         onToggle={onDetailsToggle}
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-glass/10">
           <span>Training slide decks</span>
-          <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+          <span className="shrink-0 text-xs text-ink-4 transition group-open:rotate-180">▼</span>
         </summary>
-        <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+        <div className="max-h-64 space-y-2 overflow-auto border-t border-glass/10 p-3 pr-1">
           {grouped.materials.map(renderOption)}
         </div>
       </details>
@@ -227,14 +227,14 @@ function AssetChecklist({
       {grouped.usefulSections.map((section) => (
         <details
           key={section.sectionId}
-          className="group rounded-lg border border-white/15 bg-white/5 [&_summary::-webkit-details-marker]:hidden"
+          className="group rounded-lg border border-glass/15 bg-glass/5 [&_summary::-webkit-details-marker]:hidden"
           onToggle={onDetailsToggle}
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-100 transition hover:bg-white/10">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-glass/10">
             <span>{resourceSectionLabel(section.sectionId, lang)}</span>
-            <span className="shrink-0 text-xs text-slate-400 transition group-open:rotate-180">▼</span>
+            <span className="shrink-0 text-xs text-ink-4 transition group-open:rotate-180">▼</span>
           </summary>
-          <div className="max-h-64 space-y-2 overflow-auto border-t border-white/10 p-3 pr-1">
+          <div className="max-h-64 space-y-2 overflow-auto border-t border-glass/10 p-3 pr-1">
             {section.options.map(renderOption)}
           </div>
         </details>
@@ -246,10 +246,10 @@ function AssetChecklist({
 function composerSegmentClass(active: boolean) {
   return [
     "rounded-lg border px-3 py-2.5 text-sm font-medium transition",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/90",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/90",
     active
-      ? "border-cyan-400/80 bg-cyan-400/90 text-slate-900 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]"
-      : "border-white/15 bg-white/10 text-slate-200 hover:border-white/25 hover:bg-white/14",
+      ? "border-accent/80 bg-accent/90 text-slate-900 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]"
+      : "border-glass/15 bg-glass/10 text-ink-2 hover:border-glass/25 hover:bg-glass/14",
   ].join(" ");
 }
 
@@ -264,7 +264,7 @@ function ComposerChoiceRow({
 }) {
   return (
     <div role="group" aria-label={label}>
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">{label}</p>
+      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">{label}</p>
       <div className={columns === 3 ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>{children}</div>
     </div>
   );
@@ -947,7 +947,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-surface text-ink">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell">
         <AuthNavbar
@@ -968,21 +968,21 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         />
 
         {showComposer ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-glass/[0.07] pb-4">
             <button
               type="button"
               onClick={() => {
                 playUiSound("switchWhoosh");
                 setShowComposer(false);
               }}
-              className="group inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-3.5 py-2 text-xs font-medium text-slate-300 shadow-sm shadow-black/20 backdrop-blur-sm transition hover:border-cyan-400/25 hover:bg-white/[0.06] hover:text-white"
+              className="group inline-flex items-center gap-2 rounded-xl border border-glass/10 bg-overlay/40 px-3.5 py-2 text-xs font-medium text-ink-3 shadow-sm shadow-shade/20 backdrop-blur-sm transition hover:border-accent/25 hover:bg-glass/[0.06] hover:text-ink"
             >
               <span className="transition group-hover:-translate-x-0.5" aria-hidden>
                 ←
               </span>
               Workspace overview
             </button>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-ink-5">
               {activeModule === "mail"
                 ? "Mail Composer"
                 : activeModule === "time"
@@ -1008,15 +1008,15 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
             <div className="dashboard-mesh-fade" aria-hidden />
             <div className="relative z-[1] mx-auto w-full max-w-5xl">
               <div className="mb-10 md:mb-14">
-                <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-cyan-200/65">Workspace</p>
-                <h1 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+                <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accent-soft/65">Workspace</p>
+                <h1 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight text-ink md:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
                   {timeGreeting()}, {greetingFromEmail(email)}
                 </h1>
-                <p className="mt-4 max-w-lg text-pretty text-sm leading-relaxed text-slate-400 md:text-base">
+                <p className="mt-4 max-w-lg text-pretty text-sm leading-relaxed text-ink-4 md:text-base">
                   Open a module below. Everything runs in your browser—pick up where you left off anytime.
                 </p>
                 {userRole ? (
-                  <span className="mt-5 inline-flex items-center rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-300">
+                  <span className="mt-5 inline-flex items-center rounded-full border border-glass/10 bg-glass/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-ink-3">
                     {userRoleLabel(userRole)}
                   </span>
                 ) : null}
@@ -1035,14 +1035,14 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       setActiveModule("settings");
                       handleBeginAutomating();
                     }}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/80"
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/80"
                   >
                     <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/12 blur-2xl transition group-hover:bg-violet-400/22" aria-hidden />
                     <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-violet-400/10 text-violet-200">
                       <IconCog className="h-5 w-5" />
                     </span>
-                    <span className="text-lg font-semibold text-white">Settings</span>
-                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                    <span className="text-lg font-semibold text-ink">Settings</span>
+                    <span className="mt-2 text-sm leading-relaxed text-ink-4">
                       Gmail, signatures, travel mapping, sounds, and account tools.
                     </span>
                     <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-200/90">
@@ -1062,17 +1062,17 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       setActiveModule("mail");
                       handleBeginAutomating();
                     }}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-cyan-400/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80"
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80"
                   >
-                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/15 blur-2xl transition group-hover:bg-cyan-400/25" aria-hidden />
-                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
+                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/15 blur-2xl transition group-hover:bg-accent/25" aria-hidden />
+                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent-soft">
                       <IconMail className="h-5 w-5" />
                     </span>
-                    <span className="text-lg font-semibold text-white">Mail Composer</span>
-                    <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                    <span className="text-lg font-semibold text-ink">Mail Composer</span>
+                    <span className="mt-2 text-sm leading-relaxed text-ink-4">
                       Training email drafts and Gmail handoff in one flow.
                     </span>
-                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-200/90">
+                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-accent-soft/90">
                       Continue
                       <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </span>
@@ -1088,17 +1088,17 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     setActiveModule("time");
                     handleBeginAutomating();
                   }}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-slate-950/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400/80"
                 >
                   <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
-                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
+                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-positive">
                     <IconClock className="h-5 w-5" />
                   </span>
-                  <span className="text-lg font-semibold text-white">Time Tracker</span>
-                  <span className="mt-2 text-sm leading-relaxed text-slate-400">
+                  <span className="text-lg font-semibold text-ink">Time Tracker</span>
+                  <span className="mt-2 text-sm leading-relaxed text-ink-4">
                     Workdays, breaks, compensation time, and overtime in one place.
                   </span>
-                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-200/90">
+                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-positive/90">
                     Continue
                     <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
                   </span>
@@ -1168,24 +1168,24 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
             {mailGenMode === "brief" ? (
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-300/80">Recipient name(s)</label>
+                  <label className="block text-xs font-medium text-ink-3/80">Recipient name(s)</label>
                   <input
                     type="text"
                     placeholder="e.g. Marco, or Marco and Hans"
                     value={form.recipient_name}
                     onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-300/80">Recipient email</label>
+                  <label className="block text-xs font-medium text-ink-3/80">Recipient email</label>
                   <input
                     type="email"
                     inputMode="email"
                     placeholder="name@company.com (Optional)"
                     value={form.to}
                     onChange={(e) => setForm({ ...form, to: e.target.value })}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
                 </div>
                 {userRole !== "us_pilot" ? (
@@ -1204,44 +1204,44 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   </ComposerChoiceRow>
                 ) : null}
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-300/80">Training brief</label>
+                  <label className="block text-xs font-medium text-ink-3/80">Training brief</label>
                   <textarea
                     rows={6}
                     placeholder="Who the client was, which assets to include, and what was special about this training…"
                     value={briefText}
                     onChange={(e) => setBriefText(e.target.value)}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
-                  <p className="text-[11px] leading-4 text-slate-400/80">
+                  <p className="text-[11px] leading-4 text-ink-4/80">
                     Claude (Opus 4.8) writes the email from this. The asset links stay exact and tracked.
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-300/80">Add-ons</label>
+                  <label className="block text-xs font-medium text-ink-3/80">Add-ons</label>
                   <input
                     type="url"
                     inputMode="url"
                     placeholder="Link to collected flight data (Optional)"
                     value={form.datasets_link}
                     onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
                 </div>
 
                 {result && briefContent ? (
-                  <div className="space-y-2 border-t border-white/10 pt-3">
+                  <div className="space-y-2 border-t border-glass/10 pt-3">
                     <button
                       type="button"
                       onClick={() => setEditingAssets((open) => !open)}
                       aria-expanded={editingAssets}
-                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/5 px-3 py-2 text-sm font-medium text-ink transition hover:bg-glass/10"
                     >
                       <span>Edit assets</span>
-                      <span className={`text-xs text-slate-400 transition ${editingAssets ? "rotate-180" : ""}`}>▼</span>
+                      <span className={`text-xs text-ink-4 transition ${editingAssets ? "rotate-180" : ""}`}>▼</span>
                     </button>
                     {editingAssets ? (
                       <div className="space-y-3">
-                        <p className="text-[11px] leading-4 text-slate-400/80">
+                        <p className="text-[11px] leading-4 text-ink-4/80">
                           Add or remove assets, then save. This re-renders the email — it does not re-run the AI, so the
                           written text stays exactly as it is.
                         </p>
@@ -1265,7 +1265,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                             void handleSaveBriefAssets();
                           }}
                           disabled={savingAssets}
-                          className="h-10 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70"
+                          className="h-10 w-full rounded-lg bg-accent/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70"
                         >
                           {savingAssets ? "Saving…" : "Save changes"}
                         </button>
@@ -1405,7 +1405,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     const selectedForDay = form[dayKey];
                     return (
                       <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} topics`}>
-                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
                           Day {dayIdx + 1} — topics
                         </p>
                         <div className="grid grid-cols-2 gap-2">
@@ -1427,7 +1427,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       </div>
                     );
                   })}
-                  <p className="text-[11px] text-slate-400/80">
+                  <p className="text-[11px] text-ink-4/80">
                     Intro covers the fundamentals (safety, setup, core flight). Add or remove topics per day.
                   </p>
                 </div>
@@ -1440,7 +1440,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     const selectedSite = form[siteKey];
                     return (
                       <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} flight site`}>
-                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
                           Day {dayIdx + 1} — flight site (Lausanne, optional)
                         </p>
                         <div className="grid grid-cols-2 gap-2">
@@ -1464,7 +1464,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       </div>
                     );
                   })}
-                  <p className="text-[11px] text-slate-400/80">
+                  <p className="text-[11px] text-ink-4/80">
                     Each day can use a different asset. The location is woven into that day&apos;s agenda, and any safety gear is added automatically.
                   </p>
                 </div>
@@ -1472,14 +1472,14 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
 
               <ProgressiveField show={shouldShowAbroadLocation}>
                 <div>
-                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400/90">
+                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-4/90">
                     Training location
                   </p>
                   <input
                     placeholder="City / country (Required)"
                     value={form.location}
                     onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
                 </div>
               </ProgressiveField>
@@ -1494,7 +1494,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     setForm({ ...form, recipient_name: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowCompany}>
@@ -1505,7 +1505,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     setForm({ ...form, company_name: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowUseCase}>
@@ -1516,7 +1516,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     setForm({ ...form, use_case: e.target.value });
                     setChangesTouched(false);
                   }}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowDate}>
@@ -1524,7 +1524,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   placeholder={form.mail_type === "pre" ? "Training Date (Required)" : "Training Date (Optional)"}
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowRecipientOptional}>
@@ -1532,7 +1532,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   placeholder="Additional Recipients (Optional, comma-separated emails)"
                   value={form.recipient_optional}
                   onChange={(e) => setForm({ ...form, recipient_optional: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                 />
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
@@ -1554,14 +1554,14 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               </ProgressiveField>
               <ProgressiveField show={shouldShowChanges}>
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-slate-300/80">Add-ons</label>
+                  <label className="block text-xs font-medium text-ink-3/80">Add-ons</label>
                   <input
                     type="url"
                     inputMode="url"
                     placeholder="Link to collected flight data (Optional)"
                     value={form.datasets_link}
                     onChange={(e) => setForm({ ...form, datasets_link: e.target.value })}
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/10 px-3 py-2 text-sm"
                   />
                 </div>
               </ProgressiveField>
@@ -1580,7 +1580,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     ? !form.recipient_name.trim() || !briefText.trim()
                     : generateDisabled)
                 }
-                className="h-11 w-full rounded-lg bg-cyan-400/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
+                className="h-11 w-full rounded-lg bg-accent/90 px-4 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70 sm:w-auto"
                 type="button"
               >
                 {loading ? "Generating..." : "Generate draft"}
@@ -1590,7 +1590,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   void handleCreateDraft();
                 }}
                 disabled={draftLoading || !gmailStatus.connected || !result}
-                className="h-11 w-full rounded-lg border border-cyan-300/45 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-500/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="h-11 w-full rounded-lg border border-accent/45 bg-accent-deep/15 px-4 text-sm font-semibold text-accent-soft transition hover:-translate-y-px hover:bg-accent-deep/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 type="button"
               >
                 {draftLoading ? "Creating in Gmail..." : "Create Gmail draft"}
@@ -1599,15 +1599,15 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 onClick={() => {
                   handleResetComposer();
                 }}
-                className="h-11 w-full rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-slate-100 transition hover:bg-white/15 sm:w-auto"
+                className="h-11 w-full rounded-lg border border-glass/20 bg-glass/10 px-4 text-sm font-semibold text-ink transition hover:bg-glass/15 sm:w-auto"
                 type="button"
               >
                 Reset
               </button>
             </div>
-            {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
             {draftInfo && (
-              <p className="mt-3 text-sm text-emerald-300">
+              <p className="mt-3 text-sm text-positive">
                 Draft created: {draftInfo.draftId} ({draftInfo.messageId})
               </p>
             )}
@@ -1620,7 +1620,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               <h2 className="text-lg font-semibold md:text-xl">Live Preview</h2>
               {result && (
                 <button
-                  className="rounded-md border border-white/20 bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
+                  className="rounded-md border border-glass/20 bg-glass/10 px-3 py-1 text-xs hover:bg-glass/15"
                   onClick={() => {
                     void copyText(`Subject: ${result.subject}\n\n${result.body}`);
                   }}
@@ -1631,12 +1631,12 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               )}
             </div>
             {!result ? (
-              <p className="mt-4 text-sm text-slate-200/75">Generated text appears here in real time.</p>
+              <p className="mt-4 text-sm text-ink-2/75">Generated text appears here in real time.</p>
             ) : (
               <div className="mt-4">
-                <div className="rounded-lg border border-white/15 bg-slate-900/40 p-3">
+                <div className="rounded-lg border border-glass/15 bg-panel/40 p-3">
                   <div className="relative whitespace-pre-wrap text-xs leading-6">
-                    <p className="pointer-events-none absolute right-0 top-0 max-w-[55%] text-right text-cyan-100/95">
+                    <p className="pointer-events-none absolute right-0 top-0 max-w-[55%] text-right text-accent-soft/95">
                       {renderNeonWriteText(animatedPreviewSubject)}
                     </p>
                     <pre className="whitespace-pre-wrap text-xs leading-6">{renderNeonWriteText(animatedPreviewBody)}</pre>
@@ -1660,15 +1660,15 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         isAdmin={isAdmin}
       />
       {showProgramReadmePrompt ? (
-        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-white/20 bg-slate-950/92 p-3 shadow-xl backdrop-blur-xl">
+        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-cyan-200/75">First launch</p>
+              <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">First launch</p>
             </div>
             <button
               type="button"
               onClick={dismissProgramReadmePrompt}
-              className="group rounded-md border border-white/15 bg-white/10 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+              className="group rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-xs text-ink-2 transition hover:bg-glass/15"
               aria-label="Close program readme prompt"
             >
               <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
@@ -1685,25 +1685,25 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               setSettingsReadmeOpenToken((prev) => prev + 1);
               dismissProgramReadmePrompt();
             }}
-            className="mt-3 w-full rounded-lg bg-cyan-400/90 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300"
+            className="mt-3 w-full rounded-lg bg-accent/90 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent"
           >
             Open program README
           </button>
         </div>
       ) : null}
       {showWhatsNew ? (
-        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-white/20 bg-slate-950/92 p-3 shadow-xl backdrop-blur-xl">
+        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-cyan-200/75">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">
                 What&apos;s new · {LATEST_RELEASE.date}
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">{LATEST_RELEASE.title}</p>
+              <p className="mt-1 text-sm font-semibold text-ink">{LATEST_RELEASE.title}</p>
             </div>
             <button
               type="button"
               onClick={dismissWhatsNew}
-              className="group shrink-0 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+              className="group shrink-0 rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-xs text-ink-2 transition hover:bg-glass/15"
               aria-label="Dismiss what's new"
             >
               <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
@@ -1711,10 +1711,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               </span>
             </button>
           </div>
-          <ul className="mt-2 space-y-1 text-xs text-slate-300/85">
+          <ul className="mt-2 space-y-1 text-xs text-ink-3/85">
             {LATEST_RELEASE.highlights.map((highlight, index) => (
               <li key={index} className="flex gap-2">
-                <span className="text-cyan-300/80" aria-hidden>
+                <span className="text-accent/80" aria-hidden>
                   •
                 </span>
                 <span>{highlight}</span>
@@ -1724,11 +1724,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         </div>
       ) : null}
       {userRole == null ? (
-        <div className="fixed inset-0 z-[140] grid place-items-center bg-slate-950/85 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-950/95 p-4 shadow-xl">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-cyan-200/75">First Login Setup</p>
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-surface/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-glass/20 bg-surface/95 p-4 shadow-xl">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">First Login Setup</p>
             <h2 className="mt-2 text-lg font-semibold">Choose your workspace profile</h2>
-            <p className="mt-2 text-sm text-slate-300/85">
+            <p className="mt-2 text-sm text-ink-3/85">
               This controls which modules and settings you see.
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -1738,7 +1738,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   void handleSelectRole("eu_pilot");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-white/15 disabled:translate-y-0 disabled:opacity-60"
+                className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-glass/15 disabled:translate-y-0 disabled:opacity-60"
               >
                 EU Pilot
               </button>
@@ -1748,7 +1748,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   void handleSelectRole("us_pilot");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-white/15 disabled:translate-y-0 disabled:opacity-60"
+                className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-glass/15 disabled:translate-y-0 disabled:opacity-60"
               >
                 US Pilot
               </button>
@@ -1758,7 +1758,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   void handleSelectRole("sales");
                 }}
                 disabled={roleSaving}
-                className="rounded-lg border border-cyan-300/60 bg-cyan-500/20 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-500/30 disabled:translate-y-0 disabled:opacity-60"
+                className="rounded-lg border border-accent/60 bg-accent-deep/20 px-3 py-2 text-sm font-medium text-accent-soft transition hover:-translate-y-px hover:bg-accent-deep/30 disabled:translate-y-0 disabled:opacity-60"
               >
                 Sales
               </button>

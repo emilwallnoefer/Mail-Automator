@@ -1068,7 +1068,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
   const calendarOverlay = calendarOpen ? (
     <>
       <div
-        className="day-logger-overlay absolute inset-0 z-30 rounded-2xl bg-slate-950/20 backdrop-blur-[2px]"
+        className="day-logger-overlay absolute inset-0 z-30 rounded-2xl bg-overlay/20 backdrop-blur-[2px]"
         aria-hidden="true"
         onClick={() => setCalendarOpen(false)}
       />
@@ -1079,15 +1079,15 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         aria-modal="true"
         aria-label="Jump to a week"
         style={{ zoom: 0.7 }}
-        className="calendar-card day-logger-dialog flex w-full max-w-[880px] flex-col overflow-hidden rounded-2xl shadow-2xl shadow-black/60 pointer-events-auto max-h-[min(94vh,920px)]"
+        className="calendar-card day-logger-dialog flex w-full max-w-[880px] flex-col overflow-hidden rounded-2xl shadow-2xl shadow-shade/60 pointer-events-auto max-h-[min(94vh,920px)]"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-glass/10 px-4 py-3">
           <div className="flex items-center gap-2">
             {calendarView === "month" ? (
               <button
                 type="button"
                 onClick={() => setCalendarView("year")}
-                className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-slate-200 transition hover:bg-white/15"
+                className="rounded-lg border border-glass/20 bg-glass/10 px-2.5 py-1 text-xs text-ink-2 transition hover:bg-glass/15"
                 aria-label="Back to year view"
               >
                 <span aria-hidden>&lsaquo;</span> {fromDateKey(calendarMonth).getFullYear()}
@@ -1107,7 +1107,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 if (calendarView === "year") setCalendarYear(now.getFullYear());
                 else setCalendarMonth(toDateKey(new Date(now.getFullYear(), now.getMonth(), 1)));
               }}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15"
+              className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/15"
             >
               Today
             </button>
@@ -1118,7 +1118,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 if (calendarView === "year") setCalendarYear((y) => y - 1);
                 else setCalendarMonth((m) => addMonths(m, -1));
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-200 transition hover:bg-white/15"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-glass/20 bg-glass/10 text-ink-2 transition hover:bg-glass/15"
             >
               <span aria-hidden>&lsaquo;</span>
             </button>
@@ -1129,7 +1129,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 if (calendarView === "year") setCalendarYear((y) => y + 1);
                 else setCalendarMonth((m) => addMonths(m, 1));
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-200 transition hover:bg-white/15"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-glass/20 bg-glass/10 text-ink-2 transition hover:bg-glass/15"
             >
               <span aria-hidden>&rsaquo;</span>
             </button>
@@ -1137,7 +1137,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               type="button"
               aria-label="Close calendar"
               onClick={() => setCalendarOpen(false)}
-              className="group ml-1 flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
+              className="group ml-1 flex h-8 w-8 items-center justify-center rounded-lg border border-glass/20 bg-glass/10 text-lg leading-none text-ink-2 transition hover:bg-glass/15"
             >
               <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
                 ×
@@ -1159,10 +1159,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                       setCalendarMonth(monthKey);
                       setCalendarView("month");
                     }}
-                    className="group rounded-xl p-1.5 text-left transition hover:bg-white/[0.06]"
+                    className="group rounded-xl p-1.5 text-left transition hover:bg-glass/[0.06]"
                   >
-                    <p className="mb-1.5 text-lg font-semibold text-rose-300/90 transition group-hover:text-rose-200">{name}</p>
-                    <div className="grid grid-cols-7 text-center text-xs text-slate-400/70">
+                    <p className="mb-1.5 text-lg font-semibold text-danger/90 transition group-hover:text-danger">{name}</p>
+                    <div className="grid grid-cols-7 text-center text-xs text-ink-4/70">
                       {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
                         <span key={i} className="py-0.5">
                           {d}
@@ -1179,10 +1179,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           return (
                             <span
                               key={dayKey}
-                              className={`py-1 ${!inMonth ? "text-transparent" : isToday ? "font-semibold text-white" : "text-slate-200/80"}`}
+                              className={`py-1 ${!inMonth ? "text-transparent" : isToday ? "font-semibold text-ink" : "text-ink-2/80"}`}
                             >
                               {inMonth && isToday ? (
-                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white">
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-ink">
                                   {day.getDate()}
                                 </span>
                               ) : (
@@ -1198,7 +1198,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
             </div>
           ) : (
             <div>
-              <div className="mb-1 grid grid-cols-7 text-center text-xs uppercase tracking-wide text-slate-300/70">
+              <div className="mb-1 grid grid-cols-7 text-center text-xs uppercase tracking-wide text-ink-3/70">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <span key={d} className="py-1">
                     {d}
@@ -1219,8 +1219,8 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                       }}
                       className={`grid w-full grid-cols-7 gap-1 rounded-xl border px-1 py-1 text-center transition ${
                         isSelectedWeek
-                          ? "border-cyan-300/50 bg-cyan-400/15"
-                          : "border-transparent hover:border-white/15 hover:bg-white/[0.06]"
+                          ? "border-accent/50 bg-accent/15"
+                          : "border-transparent hover:border-glass/15 hover:bg-glass/[0.06]"
                       }`}
                     >
                       {week.map((day) => {
@@ -1231,11 +1231,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           <span
                             key={dayKey}
                             className={`flex h-9 items-center justify-center rounded-lg text-sm tabular-nums ${
-                              inMonth ? "text-slate-100" : "text-slate-500"
+                              inMonth ? "text-ink" : "text-ink-5"
                             }`}
                           >
                             {isToday ? (
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 font-semibold text-white">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 font-semibold text-ink">
                                 {day.getDate()}
                               </span>
                             ) : (
@@ -1248,7 +1248,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   );
                 })}
               </div>
-              <p className="mt-3 text-center text-xs text-slate-400">Click a week to jump the Hour Logger to it.</p>
+              <p className="mt-3 text-center text-xs text-ink-4">Click a week to jump the Hour Logger to it.</p>
             </div>
           )}
         </div>
@@ -1261,13 +1261,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     editorPortalReady && editorOpen ? (
       <>
         <div
-          className="day-logger-overlay fixed inset-0 z-[200] bg-slate-950/70"
+          className="day-logger-overlay fixed inset-0 z-[200] bg-overlay/70"
           aria-hidden="true"
           onClick={() => returnToWeekdays()}
         />
         <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6 max-h-[100dvh]">
           <div
-            className="glass-card day-logger-card day-logger-dialog my-auto flex w-full max-w-3xl flex-col rounded-2xl shadow-2xl shadow-black/50 pointer-events-auto max-h-[min(92dvh,880px)]"
+            className="glass-card day-logger-card day-logger-dialog my-auto flex w-full max-w-3xl flex-col rounded-2xl shadow-2xl shadow-shade/50 pointer-events-auto max-h-[min(92dvh,880px)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="day-logger-title"
@@ -1283,7 +1283,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   <button
                     type="button"
                     onClick={() => returnToWeekdays()}
-                    className="group flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-lg leading-none text-slate-200 transition hover:bg-white/15"
+                    className="group flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-glass/20 bg-glass/10 text-lg leading-none text-ink-2 transition hover:bg-glass/15"
                     aria-label="Close day editor"
                   >
                     <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
@@ -1293,36 +1293,36 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <p className="text-xs text-slate-300/80">{panelDateLabel}</p>
+                  <p className="text-xs text-ink-3/80">{panelDateLabel}</p>
                   <label className="block">
-                    <span className="mb-1 block text-xs text-slate-200/90">Start</span>
+                    <span className="mb-1 block text-xs text-ink-2/90">Start</span>
                     <input
                       type="time"
                       value={formStart}
                       disabled={!selectedDay || readOnly}
                       onChange={(event) => setFormStart(event.target.value)}
-                      className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs text-slate-200/90">Stop</span>
+                    <span className="mb-1 block text-xs text-ink-2/90">Stop</span>
                     <input
                       type="time"
                       value={formStop}
                       disabled={!selectedDay || readOnly}
                       onChange={(event) => setFormStop(event.target.value)}
-                      className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                     />
                   </label>
                   <div>
-                    <span className="mb-1.5 block text-xs text-slate-200/90">Day type</span>
+                    <span className="mb-1.5 block text-xs text-ink-2/90">Day type</span>
                     <div
                       role="radiogroup"
                       aria-label="Day type"
-                      className="grid grid-cols-3 gap-1 rounded-lg border border-white/15 bg-white/[0.04] p-1"
+                      className="grid grid-cols-3 gap-1 rounded-lg border border-glass/15 bg-glass/[0.04] p-1"
                     >
                       {([
-                        { key: "normal", label: "Normal", active: "bg-white/15 text-slate-50 shadow-sm" },
+                        { key: "normal", label: "Normal", active: "bg-glass/15 text-ink shadow-sm" },
                         { key: "holiday", label: "Holiday", active: "bg-amber-500/25 text-amber-50 shadow-sm" },
                         { key: "sick", label: "Sick leave", active: "bg-teal-500/25 text-teal-50 shadow-sm" },
                       ] as const).map((opt) => {
@@ -1340,7 +1340,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                               setFormSickLeave(opt.key === "sick");
                             }}
                             className={`rounded-md px-2 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                              isActive ? opt.active : "text-slate-300/70 hover:text-slate-100"
+                              isActive ? opt.active : "text-ink-3/70 hover:text-ink"
                             }`}
                           >
                             {opt.label}
@@ -1349,27 +1349,27 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                       })}
                     </div>
                     {formHoliday ? (
-                      <p className="mt-1.5 text-xs leading-snug text-slate-400">
+                      <p className="mt-1.5 text-xs leading-snug text-ink-4">
                         Excused from your target. Hours logged count as overtime (same as a weekend).
                       </p>
                     ) : formSickLeave ? (
-                      <p className="mt-1.5 text-xs leading-snug text-slate-400">
+                      <p className="mt-1.5 text-xs leading-snug text-ink-4">
                         Excused from your target. Hours logged don&apos;t count as overtime.
                       </p>
                     ) : null}
                   </div>
 
                   {selectedDaySupportsBreaks ? (
-                    <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                    <div className="rounded-xl border border-glass/15 bg-glass/5 p-3">
                       <div className="mb-2.5 flex items-end justify-between gap-3">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Breaks</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-accent-soft/80">Breaks</p>
                         </div>
                       </div>
                       {readOnly ? (
-                        <div className="space-y-1 text-xs text-slate-200/90">
+                        <div className="space-y-1 text-xs text-ink-2/90">
                           {formBreaks.length === 0 ? (
-                            <p className="text-slate-300/80">No breaks logged.</p>
+                            <p className="text-ink-3/80">No breaks logged.</p>
                           ) : (
                             formBreaks.map((item, index) => (
                               <div key={`${index}-ro`} className="flex justify-between">
@@ -1385,26 +1385,26 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                             <button
                               type="button"
                               onClick={() => setFormBreakCounter(formTotalBreakMins - 15)}
-                              className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                              className="h-9 rounded-lg border border-glass/20 bg-glass/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-glass/15"
                             >
                               -15
                             </button>
                             <button
                               type="button"
                               onClick={() => setFormBreakCounter(formTotalBreakMins + 15)}
-                              className="h-9 rounded-lg border border-white/20 bg-white/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-white/15"
+                              className="h-9 rounded-lg border border-glass/20 bg-glass/10 px-2 text-sm font-semibold tabular-nums transition hover:bg-glass/15"
                             >
                               +15
                             </button>
                           </div>
-                          <div className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm font-semibold text-slate-100 tabular-nums">
+                          <div className="inline-flex w-full items-center justify-center rounded-lg border border-glass/20 bg-glass/10 px-2 py-2 text-sm font-semibold text-ink tabular-nums">
                             Break {formTotalBreakMins} min
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           {formBreaks.length === 0 ? (
-                            <p className="text-xs text-slate-300/80">No breaks added.</p>
+                            <p className="text-xs text-ink-3/80">No breaks added.</p>
                           ) : (
                             formBreaks.map((item, index) => (
                               <div key={`${index}-${item.name}`} className="grid gap-2 sm:grid-cols-[1fr_90px_auto]">
@@ -1415,7 +1415,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                                     const name = event.target.value;
                                     setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, name } : row)));
                                   }}
-                                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                                  className="rounded-lg border border-glass/20 bg-glass/10 px-2 py-1.5 text-xs"
                                 />
                                 <input
                                   type="number"
@@ -1426,12 +1426,12 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                                     const mins = Number.parseInt(event.target.value || "0", 10) || 0;
                                     setFormBreaks((prev) => prev.map((row, rowIdx) => (rowIdx === index ? { ...row, mins } : row)));
                                   }}
-                                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs"
+                                  className="rounded-lg border border-glass/20 bg-glass/10 px-2 py-1.5 text-xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setFormBreaks((prev) => prev.filter((_, rowIdx) => rowIdx !== index))}
-                                  className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200 sm:px-2"
+                                  className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-2 py-1.5 text-xs text-danger sm:px-2"
                                 >
                                   Remove
                                 </button>
@@ -1441,7 +1441,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           <button
                             type="button"
                             onClick={() => setFormBreaks((prev) => [...prev, { name: "", mins: 0 }])}
-                            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                            className="rounded-lg border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
                           >
                             Add break
                           </button>
@@ -1450,10 +1450,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                     </div>
                   ) : null}
 
-                  <p className="text-xs text-slate-300/80">Computed total: {fmtHM(computedNet)}</p>
+                  <p className="text-xs text-ink-3/80">Computed total: {fmtHM(computedNet)}</p>
 
                   {readOnly ? (
-                    <p className="text-xs text-slate-400">Read-only view &mdash; saving is disabled.</p>
+                    <p className="text-xs text-ink-4">Read-only view &mdash; saving is disabled.</p>
                   ) : (
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <button
@@ -1462,7 +1462,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           void handleSaveDay();
                         }}
                         disabled={saving || !selectedDay}
-                        className="flex-1 rounded-lg bg-cyan-400/90 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-70"
+                        className="flex-1 rounded-lg bg-accent/90 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-70"
                       >
                         {saving ? "Saving..." : "Save day"}
                       </button>
@@ -1473,7 +1473,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           void handleResetDay();
                         }}
                         disabled={saving || !selectedDay}
-                        className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-70"
+                        className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm hover:bg-glass/15 disabled:opacity-70"
                       >
                         Reset day
                       </button>
@@ -1482,22 +1482,22 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 </div>
 
                 {toast && (
-                  <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{toast.message}</p>
+                  <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-positive" : "text-danger"}`}>{toast.message}</p>
                 )}
               </div>
 
-              <aside className="h-fit self-start rounded-xl border border-white/15 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-cyan-200/80">Travel info</p>
-                <p className="mt-2 text-xs text-slate-300/80">{panelDateLabel}</p>
+              <aside className="h-fit self-start rounded-xl border border-glass/15 bg-glass/5 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-accent-soft/80">Travel info</p>
+                <p className="mt-2 text-xs text-ink-3/80">{panelDateLabel}</p>
                 {!selectedDay ? (
-                  <p className="mt-4 text-sm text-slate-300/80">Select a day to edit details.</p>
+                  <p className="mt-4 text-sm text-ink-3/80">Select a day to edit details.</p>
                 ) : dayDetailsLoading ? (
-                  <p className="mt-4 text-sm text-slate-300/80">Loading travel details...</p>
+                  <p className="mt-4 text-sm text-ink-3/80">Loading travel details...</p>
                 ) : !selectedTravelInfo ? (
                   <>
-                    <p className="mt-4 text-sm text-slate-300/80">No travel info found for this date.</p>
+                    <p className="mt-4 text-sm text-ink-3/80">No travel info found for this date.</p>
                     {data?.travel_debug ? (
-                      <p className="mt-3 text-xs text-slate-400/90">
+                      <p className="mt-3 text-xs text-ink-4/90">
                         Debug: {data.travel_debug.status} - {data.travel_debug.message}
                         {"  "}
                         ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
@@ -1507,30 +1507,30 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 ) : (
                   <div className="mt-4 space-y-3 text-sm">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Client</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Client</p>
                       <p className="mt-1">{selectedTravelInfo.client || "-"}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Location</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Location</p>
                       <p className="mt-1">{selectedTravelInfo.location || "-"}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Responsible</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Responsible</p>
                       <p className="mt-1">{selectedTravelInfo.responsible || "-"}</p>
                     </div>
                   </div>
                 )}
                 {selectedDay && selectedDay.comp_mins > 0 && compSourceRows.length > 0 ? (
-                  <div className="mt-4 border-t border-white/10 pt-4">
+                  <div className="mt-4 border-t border-glass/10 pt-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-300/75">Compensation from</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-ink-3/75">Compensation from</p>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
                             void handleCopyCompSourcesText();
                           }}
-                          className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                          className="rounded-md border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
                         >
                           Copy Text
                         </button>
@@ -1539,7 +1539,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                           onClick={() => {
                             void handleCopyCompSourcesPng();
                           }}
-                          className="rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                          className="rounded-md border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
                         >
                           Copy PNG
                         </button>
@@ -1550,13 +1550,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                         <li key={source.date} className="flex items-baseline justify-between gap-3">
                           <span className="min-w-0">
                             <span className="block">{dayLabel(source.date)}</span>
-                            <span className="block text-xs text-slate-300/75">
+                            <span className="block text-xs text-ink-3/75">
                               {[source.client, source.location].filter(Boolean).join(" · ") || "No travel info"}
                             </span>
                           </span>
                           <span className="shrink-0 text-right">
-                            <span className="block tabular-nums text-cyan-200/95">{fmtHM(source.mins)}</span>
-                            <span className="block text-xs text-slate-300/75">of {fmtHM(source.earned)} overtime</span>
+                            <span className="block tabular-nums text-accent-soft/95">{fmtHM(source.mins)}</span>
+                            <span className="block text-xs text-ink-3/75">of {fmtHM(source.earned)} overtime</span>
                           </span>
                         </li>
                       ))}
@@ -1567,7 +1567,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                     <div aria-hidden className="pointer-events-none fixed -left-[12000px] top-0">
                       <div
                         ref={exportCardRef}
-                        className="w-[460px] overflow-hidden rounded-2xl border border-white/20 p-6"
+                        className="w-[460px] overflow-hidden rounded-2xl border border-glass/20 p-6"
                         style={{
                           fontFamily: "var(--font-geist-sans), Arial, sans-serif",
                           // Opaque re-creation of the underwater glass panel:
@@ -1583,39 +1583,39 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                             "0 22px 48px rgba(6,17,36,0.5), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(255,255,255,0.08)",
                         }}
                       >
-                        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-300/80">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent/80">
                           Time Tracker
                         </p>
-                        <h3 className="mt-1 text-lg font-semibold text-white">Compensation from</h3>
+                        <h3 className="mt-1 text-lg font-semibold text-ink">Compensation from</h3>
                         {selectedDay ? (
-                          <p className="mt-0.5 text-sm text-slate-300/80">for {dayLabel(selectedDay.date)}</p>
+                          <p className="mt-0.5 text-sm text-ink-3/80">for {dayLabel(selectedDay.date)}</p>
                         ) : null}
 
-                        <div className="mt-5 overflow-hidden rounded-xl border border-white/15 bg-white/[0.05]">
+                        <div className="mt-5 overflow-hidden rounded-xl border border-glass/15 bg-glass/[0.05]">
                           {compSourceRows.map((source, index) => (
                             <div
                               key={source.date}
                               className={`flex items-baseline justify-between gap-4 px-4 py-3 ${
-                                index > 0 ? "border-t border-white/10" : ""
+                                index > 0 ? "border-t border-glass/10" : ""
                               }`}
                             >
                               <div className="min-w-0">
-                                <p className="font-medium text-slate-100">{dayLabel(source.date)}</p>
-                                <p className="mt-0.5 text-xs text-slate-300/80">
+                                <p className="font-medium text-ink">{dayLabel(source.date)}</p>
+                                <p className="mt-0.5 text-xs text-ink-3/80">
                                   {[source.client, source.location].filter(Boolean).join(" · ") || "No travel info"}
                                 </p>
                               </div>
                               <div className="shrink-0 text-right">
-                                <p className="font-semibold tabular-nums text-cyan-200">{fmtHM(source.mins)}</p>
-                                <p className="mt-0.5 text-xs text-slate-300/80">of {fmtHM(source.earned)} overtime</p>
+                                <p className="font-semibold tabular-nums text-accent-soft">{fmtHM(source.mins)}</p>
+                                <p className="mt-0.5 text-xs text-ink-3/80">of {fmtHM(source.earned)} overtime</p>
                               </div>
                             </div>
                           ))}
                         </div>
 
-                        <div className="mt-4 flex items-baseline justify-between border-t border-white/10 pt-3">
-                          <span className="text-sm font-medium text-slate-300">Total compensated</span>
-                          <span className="text-base font-semibold tabular-nums text-white">{fmtHM(compTotalMins)}</span>
+                        <div className="mt-4 flex items-baseline justify-between border-t border-glass/10 pt-3">
+                          <span className="text-sm font-medium text-ink-3">Total compensated</span>
+                          <span className="text-base font-semibold tabular-nums text-ink">{fmtHM(compTotalMins)}</span>
                         </div>
                       </div>
                     </div>
@@ -1718,19 +1718,19 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <p className="text-xs text-slate-300/80">{dayLabel(day.date)}</p>
+              <p className="text-xs text-ink-3/80">{dayLabel(day.date)}</p>
               {isSat ? (
-                <span className="shrink-0 rounded border border-indigo-400/35 bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-indigo-100/95">
+                <span className="shrink-0 rounded border border-indigo-400/35 bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent-soft/95">
                   Sat
                 </span>
               ) : null}
               {isSun ? (
-                <span className="shrink-0 rounded border border-rose-400/35 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-rose-100/95">
+                <span className="shrink-0 rounded border border-rose-400/35 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-danger/95">
                   Sun
                 </span>
               ) : null}
               {isPh ? (
-                <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-100/95">
+                <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-warn/95">
                   PH
                 </span>
               ) : null}
@@ -1741,7 +1741,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               ) : null}
             </div>
             <AnimatedNumber key={`day-pct-${day.date}-${weekLoadTick}`} value={displayDonePct}>
-              {(value) => <p className="shrink-0 text-xs font-medium text-cyan-100/90">{Math.round(value)}%</p>}
+              {(value) => <p className="shrink-0 text-xs font-medium text-accent-soft/90">{Math.round(value)}%</p>}
             </AnimatedNumber>
           </div>
           <AnimatedNumber key={`day-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
@@ -1823,13 +1823,13 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
             </AnimatedNumber>
           </div>
           {isRelaxDay ? (
-            <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
+            <div className="mt-2 space-y-1 text-[11px] font-medium text-ink">
               {day.net_mins > 0 ? (
                 <AnimatedNumber key={`day-ot-worked-${day.date}-${weekLoadTick}`} value={day.net_mins}>
                   {(overtimeValue) => (
                     <div className="flex w-full items-baseline justify-between gap-3">
                       <span className="shrink-0 text-left font-normal">Overtime worked</span>
-                      <span className="tabular-nums text-right text-emerald-200/95">{fmtHM(Math.round(overtimeValue))}</span>
+                      <span className="tabular-nums text-right text-positive/95">{fmtHM(Math.round(overtimeValue))}</span>
                     </div>
                   )}
                 </AnimatedNumber>
@@ -1848,7 +1848,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
           ) : (
             <AnimatedNumber key={`day-core-${day.date}-${weekLoadTick}`} value={premiumOvertimeDay ? 0 : workedBaseMins}>
               {(coreValue) => (
-                <div className="mt-2 space-y-1 text-[11px] font-medium text-white">
+                <div className="mt-2 space-y-1 text-[11px] font-medium text-ink">
                   <div className="flex w-full items-baseline justify-between gap-3">
                     <span className="shrink-0 text-left font-normal">Core hours</span>
                     <span className="tabular-nums text-right">{fmtHM(Math.round(coreValue))}</span>
@@ -1885,7 +1885,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               onClick={() => {
                 void handleFillMissing(day.date);
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+              className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-2 py-1.5 text-xs hover:bg-glass/15"
             >
               Compensate
               <br />
@@ -1896,7 +1896,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               onClick={() => {
                 void handleFillDay(day.date);
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15"
+              className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-2 py-1.5 text-xs hover:bg-glass/15"
             >
               Standard
               <br />
@@ -1932,10 +1932,10 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 transition-all duration-500 ease-out md:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Time Tracker</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-accent-soft/80">Time Tracker</p>
             <h2 className="text-lg font-semibold md:text-xl">Hour Logger</h2>
             {viewingLabel ? (
-              <p className="mt-1 text-xs text-amber-200/90">Viewing: {viewingLabel}</p>
+              <p className="mt-1 text-xs text-warn/90">Viewing: {viewingLabel}</p>
             ) : null}
           </div>
           <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end sm:gap-2">
@@ -1946,7 +1946,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               aria-expanded={calendarOpen}
               aria-label="Open calendar to jump to a week"
               title="Jump to a week"
-              className="flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-slate-200 transition hover:bg-white/15"
+              className="flex items-center justify-center rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-ink-2 transition hover:bg-glass/15"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
                 <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
@@ -1959,7 +1959,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 const prev = addDays(fromDateKey(weekStart), -7);
                 setWeekStart(toDateKey(prev));
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
+              className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm hover:bg-glass/15 sm:flex-none"
             >
               Prev week
             </button>
@@ -1968,7 +1968,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               onClick={() => {
                 setWeekStart(toDateKey(getMonday()));
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
+              className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm hover:bg-glass/15 sm:flex-none"
             >
               Today
             </button>
@@ -1978,7 +1978,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 const next = addDays(fromDateKey(weekStart), 7);
                 setWeekStart(toDateKey(next));
               }}
-              className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm hover:bg-white/15 sm:flex-none"
+              className="flex-1 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm hover:bg-glass/15 sm:flex-none"
             >
               Next week
             </button>
@@ -1986,7 +1986,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 sm:gap-3">
-          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-glass/20 bg-glass/10 px-3 py-1.5 tabular-nums">
             <span className="shrink-0">Weekly hours:</span>
             <span className="inline-block min-w-[8ch] text-right">
               {hasActiveWeekData ? (
@@ -1994,11 +1994,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   {(value) => fmtHM(Math.round(value))}
                 </AnimatedNumber>
               ) : (
-                <span className="inline-block h-4 w-16 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                <span className="inline-block h-4 w-16 animate-pulse rounded bg-glass/20" aria-hidden="true" />
               )}
             </span>
           </span>
-          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 tabular-nums">
+          <span className="flex min-w-0 items-center justify-between gap-3 rounded-full border border-glass/20 bg-glass/10 px-3 py-1.5 tabular-nums">
             <span className="shrink-0">Overtime bank:</span>
             <span className="inline-block min-w-[9ch] text-right">
               {hasActiveWeekData ? (
@@ -2006,7 +2006,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                   {(value) => fmtSignedHM(Math.round(value))}
                 </AnimatedNumber>
               ) : (
-                <span className="inline-block h-4 w-20 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                <span className="inline-block h-4 w-20 animate-pulse rounded bg-glass/20" aria-hidden="true" />
               )}
             </span>
           </span>
@@ -2018,7 +2018,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               <div>
                 <div className="mb-3 flex items-center gap-3">
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/20" aria-hidden />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Mon – Fri</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-5">Mon – Fri</span>
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/20" aria-hidden />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">{weekdayDays.map((day, i) => renderDayCard(day, i))}</div>
@@ -2026,7 +2026,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               <div>
                 <div className="mb-3 flex items-center gap-3">
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/20" aria-hidden />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Weekend</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-5">Weekend</span>
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/20" aria-hidden />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2040,18 +2040,18 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               <div>
                 <div className="mb-3 flex items-center gap-3">
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/15" aria-hidden />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Mon – Fri</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-5">Mon – Fri</span>
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/15" aria-hidden />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   {placeholderDayKeys.slice(0, 5).map((dateKey, index) => (
                     <article key={dateKey} className="liquid-day-card rounded-xl p-3">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
-                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <p className="text-xs text-ink-3/80">{dayLabel(dateKey)}</p>
+                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </div>
                       <p className="mt-1">
-                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </p>
                       <div className="day-progress mt-3" aria-label="Loading day progress">
                         <span
@@ -2061,11 +2061,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                         />
                       </div>
                       <p className="mt-2">
-                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
-                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
                       </div>
                     </article>
                   ))}
@@ -2074,18 +2074,18 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
               <div>
                 <div className="mb-3 flex items-center gap-3">
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/15" aria-hidden />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Weekend</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-5">Weekend</span>
                   <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/15" aria-hidden />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {placeholderDayKeys.slice(5, 7).map((dateKey, index) => (
                     <article key={dateKey} className="liquid-day-card rounded-xl p-3">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-xs text-slate-300/80">{dayLabel(dateKey)}</p>
-                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <p className="text-xs text-ink-3/80">{dayLabel(dateKey)}</p>
+                        <span className="inline-block h-3 w-10 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </div>
                       <p className="mt-1">
-                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <span className="inline-block h-4 w-28 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </p>
                       <div className="day-progress mt-3" aria-label="Loading day progress">
                         <span
@@ -2095,11 +2095,11 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                         />
                       </div>
                       <p className="mt-2">
-                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-white/20" aria-hidden="true" />
+                        <span className="inline-block h-3 w-36 animate-pulse rounded bg-glass/20" aria-hidden="true" />
                       </p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
-                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-white/10 bg-white/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
+                        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
                       </div>
                     </article>
                   ))}
@@ -2108,7 +2108,7 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
             </>
           ) : null}
         </div>
-        {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-slate-200/80">Loading tracker week...</p> : null}
+        {loading && !hasActiveWeekData ? <p className="mt-3 text-sm text-ink-2/80">Loading tracker week...</p> : null}
         </div>
         {calendarOverlay}
       </div>

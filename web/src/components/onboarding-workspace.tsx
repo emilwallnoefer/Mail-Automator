@@ -249,46 +249,46 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
   return (
     <div className="mt-6 space-y-5">
       <section className="glass-card p-5 md:p-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-cyan-200/75">Pilot onboarding</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-accent-soft/75">Pilot onboarding</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Training control center</h2>
-        <p className="mt-2 text-sm text-slate-300/90">
+        <p className="mt-2 text-sm text-ink-3/90">
           Follow the flow: pick a section, open each resource, then mark it done.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Overall</p>
-            <p className="mt-1 text-xl font-semibold text-cyan-200">{progressPct}%</p>
+          <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Overall</p>
+            <p className="mt-1 text-xl font-semibold text-accent-soft">{progressPct}%</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Done time</p>
-            <p className="mt-1 text-xl font-semibold text-cyan-200">
+          <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Done time</p>
+            <p className="mt-1 text-xl font-semibold text-accent-soft">
               {formatHours(completedEstimatedMinutes)}
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Remaining time</p>
-            <p className="mt-1 text-xl font-semibold text-cyan-200">
+          <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Remaining time</p>
+            <p className="mt-1 text-xl font-semibold text-accent-soft">
               {formatHours(Math.max(0, totalEstimatedMinutes - completedEstimatedMinutes))}
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Plan total</p>
-            <p className="mt-1 text-xl font-semibold text-cyan-200">{formatHours(totalEstimatedMinutes)}</p>
+          <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Plan total</p>
+            <p className="mt-1 text-xl font-semibold text-accent-soft">{formatHours(totalEstimatedMinutes)}</p>
           </div>
         </div>
-        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-cyan-300 transition-all" style={{ width: `${progressPct}%` }} />
+        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-glass/10">
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progressPct}%` }} />
         </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
         <aside className="glass-card h-fit self-start p-4 lg:sticky lg:top-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">1. Choose section</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">1. Choose section</p>
             <button
               type="button"
               onClick={resetProgress}
-              className="rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-white/15"
+              className="rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-[10px] text-ink-2 transition hover:bg-glass/15"
             >
               Reset
             </button>
@@ -304,12 +304,12 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                   onClick={() => setActiveSection(section.id)}
                   className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
                     isActive
-                      ? "border-cyan-300/60 bg-cyan-500/20"
-                      : "border-white/10 bg-white/5 hover:border-cyan-300/60 hover:bg-white/10"
+                      ? "border-accent/60 bg-accent-deep/20"
+                      : "border-glass/10 bg-glass/5 hover:border-accent/60 hover:bg-glass/10"
                   }`}
                 >
-                  <p className="text-xs font-medium text-slate-100">{section.title}</p>
-                  <p className="mt-1 text-[11px] text-cyan-200/90">
+                  <p className="text-xs font-medium text-ink">{section.title}</p>
+                  <p className="mt-1 text-[11px] text-accent-soft/90">
                     {sectionDone}/{section.items.length} completed
                   </p>
                 </button>
@@ -323,9 +323,9 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">2. Complete trainings</p>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">2. Complete trainings</p>
                   <h3 className="mt-1 text-lg font-semibold">{selectedSection.title}</h3>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <p className="mt-1 text-xs text-ink-3">
                     {selectedDone}/{selectedSection.items.length} completed ({selectedPct}%)
                   </p>
                 </div>
@@ -333,14 +333,14 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                   <button
                     type="button"
                     onClick={() => markSection(selectedSection.id, true)}
-                    className="rounded-md border border-emerald-300/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] text-emerald-100 transition hover:bg-emerald-500/25"
+                    className="rounded-md border border-emerald-300/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] text-positive transition hover:bg-emerald-500/25"
                   >
                     Mark all done
                   </button>
                   <button
                     type="button"
                     onClick={() => markSection(selectedSection.id, false)}
-                    className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] text-slate-200 transition hover:bg-white/15"
+                    className="rounded-md border border-glass/15 bg-glass/10 px-2.5 py-1 text-[11px] text-ink-2 transition hover:bg-glass/15"
                   >
                     Clear
                   </button>
@@ -353,32 +353,32 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search in this section..."
-                  className="h-9 rounded-lg border border-white/15 bg-white/10 px-3 text-sm text-slate-100 placeholder:text-slate-400"
+                  className="h-9 rounded-lg border border-glass/15 bg-glass/10 px-3 text-sm text-ink placeholder:text-ink-4"
                 />
                 <button
                   type="button"
                   onClick={() => setFilterMode("all")}
-                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "all" ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/10 text-slate-200"}`}
+                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "all" ? "border-accent/60 bg-accent-deep/20 text-accent-soft" : "border-glass/15 bg-glass/10 text-ink-2"}`}
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => setFilterMode("todo")}
-                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "todo" ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/10 text-slate-200"}`}
+                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "todo" ? "border-accent/60 bg-accent-deep/20 text-accent-soft" : "border-glass/15 bg-glass/10 text-ink-2"}`}
                 >
                   To do
                 </button>
                 <button
                   type="button"
                   onClick={() => setFilterMode("done")}
-                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "done" ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/10 text-slate-200"}`}
+                  className={`rounded-md border px-2.5 py-1 text-xs ${filterMode === "done" ? "border-accent/60 bg-accent-deep/20 text-accent-soft" : "border-glass/15 bg-glass/10 text-ink-2"}`}
                 >
                   Done
                 </button>
               </div>
 
-              <p className="mt-2 text-xs text-slate-300">
+              <p className="mt-2 text-xs text-ink-3">
                 Showing {filteredSectionItems.length} of {selectedSection.items.length} resources
               </p>
 
@@ -386,10 +386,10 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                 {filteredSectionItems.map((item, idx) => (
                   <article
                     key={item.id}
-                    className={`group relative rounded-xl border p-3 transition hover:border-cyan-300/60 hover:bg-white/10 focus-within:border-cyan-300/60 ${
+                    className={`group relative rounded-xl border p-3 transition hover:border-accent/60 hover:bg-glass/10 focus-within:border-accent/60 ${
                       (progressByItem[item.id] ?? 0) >= 100
                         ? "border-emerald-300/45 bg-emerald-500/10 hover:bg-emerald-500/15"
-                        : "border-white/10 bg-white/5"
+                        : "border-glass/10 bg-glass/5"
                     }`}
                   >
                     <a
@@ -397,23 +397,23 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                       target="_blank"
                       rel="noreferrer"
                       aria-label={`Open ${item.title}`}
-                      className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                      className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                     />
                     <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 pointer-events-none">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-cyan-200/80">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-accent-soft/80">
                           Step {String(idx + 1).padStart(2, "0")}
                         </p>
-                        <p className="mt-1 text-sm font-medium text-slate-100 group-hover:text-cyan-100">
+                        <p className="mt-1 text-sm font-medium text-ink group-hover:text-accent-soft">
                           {item.title}
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-300/80">{item.description}</p>
-                        <p className="mt-1 text-[11px] text-cyan-200/80">
+                        <p className="mt-1 text-xs leading-relaxed text-ink-3/80">{item.description}</p>
+                        <p className="mt-1 text-[11px] text-accent-soft/80">
                           Estimated time: {item.estimatedMinutes} min
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1.5 pointer-events-auto">
-                        <p className="text-[11px] text-cyan-200">{progressByItem[item.id] ?? 0}%</p>
+                        <p className="text-[11px] text-accent-soft">{progressByItem[item.id] ?? 0}%</p>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
@@ -421,7 +421,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                               event.stopPropagation();
                               adjustItemProgress(item.id, -25);
                             }}
-                            className="rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-white/15"
+                            className="rounded-md border border-glass/15 bg-glass/10 px-2 py-1 text-[11px] text-ink-2 transition hover:bg-glass/15"
                           >
                             -25%
                           </button>
@@ -431,18 +431,18 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                               event.stopPropagation();
                               adjustItemProgress(item.id, 25);
                             }}
-                            className="rounded-md border border-cyan-300/45 bg-cyan-500/15 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-500/25"
+                            className="rounded-md border border-accent/45 bg-accent-deep/15 px-2 py-1 text-[11px] text-accent-soft transition hover:bg-accent-deep/25"
                           >
                             +25%
                           </button>
                         </div>
-                        <p className="text-[10px] text-slate-400">Add/Remove progress</p>
+                        <p className="text-[10px] text-ink-4">Add/Remove progress</p>
                       </div>
                     </div>
                   </article>
                 ))}
                 {filteredSectionItems.length === 0 ? (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+                  <div className="rounded-xl border border-glass/10 bg-glass/5 p-4 text-sm text-ink-3">
                     No resources match your current search/filter.
                   </div>
                 ) : null}

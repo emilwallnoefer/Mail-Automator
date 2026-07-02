@@ -43,13 +43,13 @@ function StatCard({
   info?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
       <div className="flex items-center gap-1.5">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">{label}</p>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">{label}</p>
         {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
       </div>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-100">{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p> : null}
+      <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</p>
+      {hint ? <p className="mt-0.5 text-[11px] text-ink-4">{hint}</p> : null}
     </div>
   );
 }
@@ -116,7 +116,7 @@ export function AdminOverviewStats() {
   return (
     <div className="mt-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-400">Workspace KPIs, the latest reminder run, and mail engagement at a glance.</p>
+        <p className="text-sm text-ink-4">Workspace KPIs, the latest reminder run, and mail engagement at a glance.</p>
         <div className="flex shrink-0 items-center gap-2">
           <FreshnessPill updatedAt={lastUpdatedAt} loading={loading} />
           <button
@@ -125,7 +125,7 @@ export function AdminOverviewStats() {
               void load();
             }}
             disabled={loading}
-            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className="rounded-lg border border-glass/15 bg-glass/5 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/10 disabled:opacity-60"
           >
             {loading ? "Refreshing…" : "Refresh"}
           </button>
@@ -133,7 +133,7 @@ export function AdminOverviewStats() {
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
@@ -199,26 +199,26 @@ export function AdminOverviewStats() {
             }
             info="Real (non-scanner) link clicks divided by tracked sends over the last 90 days."
           />
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2">
+          <div className="rounded-xl border border-glass/10 bg-glass/5 p-3 sm:col-span-2">
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">Users by role</p>
+              <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">Users by role</p>
               <InfoTooltip label="About roles">
                 Counts each role stored in <code>user_metadata.role</code>. Users with no role assigned fall under &quot;Not selected&quot;.
               </InfoTooltip>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {usersByRole.length === 0 ? (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ink-4">
                   {loading ? "Loading…" : "No users found."}
                 </span>
               ) : (
                 usersByRole.map(({ role, count }) => (
                   <span
                     key={role}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-slate-200"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-glass/10 bg-glass/[0.06] px-3 py-1 text-xs text-ink-2"
                   >
-                    <span className="text-slate-300">{userRoleLabel(role === "none" ? null : (role as UserRole))}</span>
-                    <span className="tabular-nums text-slate-100">{count}</span>
+                    <span className="text-ink-3">{userRoleLabel(role === "none" ? null : (role as UserRole))}</span>
+                    <span className="tabular-nums text-ink">{count}</span>
                   </span>
                 ))
               )}
@@ -227,9 +227,9 @@ export function AdminOverviewStats() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
         <div className="flex items-center gap-1.5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400/80">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">
             Most reminded in last 90 days
           </p>
           <InfoTooltip label="About reminders">
@@ -237,21 +237,21 @@ export function AdminOverviewStats() {
           </InfoTooltip>
         </div>
         {reminders && reminders.top_reminded_90d.length > 0 ? (
-          <ul className="mt-2 divide-y divide-white/5">
+          <ul className="mt-2 divide-y divide-glass/5">
             {reminders.top_reminded_90d.map((entry) => (
               <li
                 key={entry.email}
-                className="flex items-center justify-between gap-3 py-1.5 text-sm text-slate-200"
+                className="flex items-center justify-between gap-3 py-1.5 text-sm text-ink-2"
               >
                 <span className="truncate">{entry.email}</span>
-                <span className="tabular-nums text-slate-100">
+                <span className="tabular-nums text-ink">
                   {entry.count} reminder{entry.count === 1 ? "" : "s"}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-ink-4">
             {loading ? "Loading…" : "No reminders sent in the last 90 days — nice."}
           </p>
         )}

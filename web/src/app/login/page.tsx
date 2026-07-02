@@ -54,9 +54,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-4 py-8 text-ink">
       <div className="absolute inset-0 aurora-bg" />
-      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-xl" />
+      <div className="absolute inset-0 bg-overlay/30 backdrop-blur-xl" />
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="bubble-layer">
           {[
@@ -90,15 +90,15 @@ export default function LoginPage() {
       >
         <div className="glass-card hourlogger-surface w-full p-5 md:p-6">
           <div className="mb-7">
-            <p className="mb-2 text-xs tracking-[0.22em] text-cyan-200/80 uppercase">Flyability Internal</p>
+            <p className="mb-2 text-xs tracking-[0.22em] text-accent-soft/80 uppercase">Flyability Internal</p>
             <h2 className="text-2xl font-semibold md:text-3xl">Welcome back</h2>
-            <p className="mt-2 text-sm text-slate-200/80">
+            <p className="mt-2 text-sm text-ink-2/80">
               Continue with your Flyability Google account.
             </p>
           </div>
           <div className="space-y-4">
             {!supabaseConfigured && (
-              <p className="rounded-lg border border-rose-300/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200">
+              <p className="rounded-lg border border-rose-300/40 bg-rose-500/15 px-3 py-2 text-xs text-danger">
                 Supabase is not configured for this deployment. Add `NEXT_PUBLIC_SUPABASE_URL` and
                 `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel and redeploy.
               </p>
@@ -110,14 +110,14 @@ export default function LoginPage() {
                 void handleGoogleSignIn();
               }}
               disabled={loading || !supabaseConfigured}
-              className="h-12 w-full rounded-xl bg-cyan-400/90 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+              className="h-12 w-full rounded-xl bg-accent/90 text-sm font-semibold text-slate-950 transition hover:bg-accent disabled:opacity-70"
             >
               {loading ? "Redirecting..." : "Continue with Google"}
             </button>
           </div>
 
-          {message && <p className="mt-4 text-sm text-emerald-300">{message}</p>}
-          {error && <p className="mt-4 text-sm text-rose-300">{error}</p>}
+          {message && <p className="mt-4 text-sm text-positive">{message}</p>}
+          {error && <p className="mt-4 text-sm text-danger">{error}</p>}
         </div>
       </motion.section>
     </main>

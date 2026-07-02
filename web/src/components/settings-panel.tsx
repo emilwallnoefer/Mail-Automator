@@ -379,17 +379,17 @@ export function SettingsPanel({
         <section className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 overflow-hidden rounded-2xl">
         <div className="flex min-h-[min(70vh,560px)] flex-col md:flex-row">
           <nav
-            className="shrink-0 border-b border-white/10 bg-slate-950/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-white/10"
+            className="shrink-0 border-b border-glass/10 bg-overlay/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-glass/10"
             aria-label="Settings categories"
           >
-            <div className="border-b border-white/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
-              <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-slate-100 md:text-lg">
+            <div className="border-b border-glass/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
+              <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-ink md:text-lg">
                 Settings
               </h1>
               {showStandaloneActions ? (
                 <a
                   href="/dashboard"
-                  className="mt-2 inline-block rounded-md border border-white/15 bg-white/8 px-2.5 py-1.5 text-[11px] text-slate-200 transition hover:bg-white/12"
+                  className="mt-2 inline-block rounded-md border border-glass/15 bg-glass/8 px-2.5 py-1.5 text-[11px] text-ink-2 transition hover:bg-glass/12"
                 >
                   Back to dashboard
                 </a>
@@ -406,11 +406,11 @@ export function SettingsPanel({
                 onChange={(e) => setNavFilter(e.target.value)}
                 placeholder="Find a setting"
                 autoComplete="off"
-                className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-3 pr-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
+                className="w-full rounded-lg border border-glass/15 bg-glass/5 py-2 pl-3 pr-2 text-xs text-ink-2 placeholder:text-ink-5 focus:border-accent/40 focus:outline-none"
               />
             </div>
             {filteredNavItems.length === 0 ? (
-              <p className="px-3 py-4 text-xs text-slate-500 md:px-4">No settings match your search.</p>
+              <p className="px-3 py-4 text-xs text-ink-5 md:px-4">No settings match your search.</p>
             ) : (
               <ul className="max-h-[42vh] overflow-y-auto px-0 pb-3 md:max-h-[calc(70vh-120px)] md:pb-4" role="list">
                 {filteredNavItems.map((item) => {
@@ -422,8 +422,8 @@ export function SettingsPanel({
                         onClick={() => setActiveSection(item.id)}
                         className={`flex w-full items-center border-l-[3px] px-3 py-2.5 text-left text-sm transition ${
                           active
-                            ? "border-cyan-400 bg-cyan-500/15 font-medium text-white"
-                            : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                            ? "border-accent bg-accent-deep/15 font-medium text-ink"
+                            : "border-transparent text-ink-4 hover:bg-glass/[0.06] hover:text-ink-2"
                         }`}
                       >
                         <span className="truncate">{item.label}</span>
@@ -435,17 +435,17 @@ export function SettingsPanel({
             )}
           </nav>
 
-          <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-white/5 bg-slate-950/20 p-4 md:border-t-0 md:p-6">
+          <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-glass/5 bg-overlay/20 p-4 md:border-t-0 md:p-6">
             <div className="mx-auto max-w-2xl">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-50 md:text-2xl">
+              <h2 className="text-xl font-semibold tracking-tight text-ink md:text-2xl">
                 {SETTINGS_NAV.find((n) => n.id === activeSection)?.label ?? "Settings"}
               </h2>
 
               {!isSalesOnly && activeSection === "gmail" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-slate-400">Connect Google so generated training mails can be saved as Gmail drafts.</p>
-                  <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-4">
-                    <p className="text-sm text-slate-200/90">
+                  <p className="text-sm text-ink-4">Connect Google so generated training mails can be saved as Gmail drafts.</p>
+                  <div className="mt-4 rounded-xl border border-glass/15 bg-glass/5 p-4">
+                    <p className="text-sm text-ink-2/90">
                       Status: <span className="font-medium">{gmailStatus.connected ? "Connected" : "Disconnected"}</span>
                       {gmailStatus.gmail_email ? ` (${gmailStatus.gmail_email})` : ""}
                     </p>
@@ -456,14 +456,14 @@ export function SettingsPanel({
                           onClick={() => {
                             void handleDisconnectGmail();
                           }}
-                          className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15"
+                          className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15"
                         >
                           Disconnect Gmail
                         </button>
                       ) : (
                         <a
                           href="/api/gmail/connect"
-                          className="rounded-lg bg-cyan-400/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300"
+                          className="rounded-lg bg-accent/90 px-3 py-2 text-center text-xs font-medium text-slate-900 transition hover:-translate-y-px hover:bg-accent"
                         >
                           Connect Gmail
                         </a>
@@ -475,16 +475,16 @@ export function SettingsPanel({
 
               {!isSalesOnly && activeSection === "mail_signature" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-ink-4">
                     This name appears in the closing of generated training emails (e.g. &ldquo;Best regards, …&rdquo;).
                   </p>
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
                     <label className="block min-w-0 flex-1">
-                      <span className="mb-1 block text-xs text-slate-200/90">Preset</span>
+                      <span className="mb-1 block text-xs text-ink-2/90">Preset</span>
                       <select
                         value={mailSigPreset}
                         onChange={(event) => setMailSigPreset(event.target.value)}
-                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       >
                         {MAIL_SIGNATURE_NAME_PRESETS.map((preset) => (
                           <option key={preset} value={preset}>
@@ -496,13 +496,13 @@ export function SettingsPanel({
                     </label>
                     {mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? (
                       <label className="block min-w-0 flex-1">
-                        <span className="mb-1 block text-xs text-slate-200/90">Custom name</span>
+                        <span className="mb-1 block text-xs text-ink-2/90">Custom name</span>
                         <input
                           value={mailSigCustom}
                           onChange={(event) => setMailSigCustom(event.target.value)}
                           placeholder="Your name"
                           maxLength={120}
-                          className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                         />
                       </label>
                     ) : null}
@@ -510,7 +510,7 @@ export function SettingsPanel({
                       type="button"
                       disabled={mailSigSaving}
                       onClick={() => void handleSaveMailSignature()}
-                      className="rounded-lg bg-cyan-400/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:-translate-y-px hover:bg-cyan-300 disabled:translate-y-0 disabled:opacity-50"
+                      className="rounded-lg bg-accent/90 px-4 py-2 text-xs font-medium text-slate-900 transition hover:-translate-y-px hover:bg-accent disabled:translate-y-0 disabled:opacity-50"
                     >
                       {mailSigSaving ? "Saving…" : "Save"}
                     </button>
@@ -520,7 +520,7 @@ export function SettingsPanel({
 
               {!isSalesOnly && activeSection === "mail_generation" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-ink-4">
                     Choose how the Mail Composer writes emails. Both create Gmail drafts you review before sending.
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -531,12 +531,12 @@ export function SettingsPanel({
                       onClick={() => void handleSaveMailGeneration("guided")}
                       className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
                         mailGenMode === "guided"
-                          ? "border-cyan-300/60 bg-cyan-400/15"
-                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                          ? "border-accent/60 bg-accent/15"
+                          : "border-glass/15 bg-glass/5 hover:bg-glass/10"
                       }`}
                     >
-                      <span className="block text-sm font-semibold text-slate-100">Guided (structured)</span>
-                      <span className="mt-1 block text-xs text-slate-300/80">
+                      <span className="block text-sm font-semibold text-ink">Guided (structured)</span>
+                      <span className="mt-1 block text-xs text-ink-3/80">
                         The step-by-step selection form. Deterministic — no AI, no per-email cost. Default.
                       </span>
                     </button>
@@ -547,18 +547,18 @@ export function SettingsPanel({
                       onClick={() => void handleSaveMailGeneration("brief")}
                       className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
                         mailGenMode === "brief"
-                          ? "border-cyan-300/60 bg-cyan-400/15"
-                          : "border-white/15 bg-white/5 hover:bg-white/10"
+                          ? "border-accent/60 bg-accent/15"
+                          : "border-glass/15 bg-glass/5 hover:bg-glass/10"
                       }`}
                     >
-                      <span className="block text-sm font-semibold text-slate-100">AI brief mode</span>
-                      <span className="mt-1 block text-xs text-slate-300/80">
+                      <span className="block text-sm font-semibold text-ink">AI brief mode</span>
+                      <span className="mt-1 block text-xs text-ink-3/80">
                         Write a short brief; Claude (Opus 4.8) drafts the email. Asset links stay exact and tracked.
                         Costs a few cents per email.
                       </span>
                     </button>
                   </div>
-                  <p className="mt-3 text-xs text-slate-400/70">
+                  <p className="mt-3 text-xs text-ink-4/70">
                     AI brief mode needs an <code>ANTHROPIC_API_KEY</code> configured on the server.
                   </p>
                 </div>
@@ -566,10 +566,10 @@ export function SettingsPanel({
 
               {!isSalesOnly && activeSection === "travel_mapping" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-slate-400">Configure per-user columns for travel import. Date columns stay unchanged.</p>
+                  <p className="text-sm text-ink-4">Configure per-user columns for travel import. Date columns stay unchanged.</p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <label className="block">
-                      <span className="mb-1 block text-xs text-slate-200/90">Client column</span>
+                      <span className="mb-1 block text-xs text-ink-2/90">Client column</span>
                       <input
                         value={travelMapping.clientColumn}
                         onChange={(event) => {
@@ -577,11 +577,11 @@ export function SettingsPanel({
                           setTravelMapping((prev) => ({ ...prev, clientColumn: value }));
                         }}
                         placeholder="P"
-                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-xs text-slate-200/90">Location column</span>
+                      <span className="mb-1 block text-xs text-ink-2/90">Location column</span>
                       <input
                         value={travelMapping.locationColumn}
                         onChange={(event) => {
@@ -589,11 +589,11 @@ export function SettingsPanel({
                           setTravelMapping((prev) => ({ ...prev, locationColumn: value }));
                         }}
                         placeholder="Q"
-                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-xs text-slate-200/90">Responsible column</span>
+                      <span className="mb-1 block text-xs text-ink-2/90">Responsible column</span>
                       <input
                         value={travelMapping.responsibleColumn}
                         onChange={(event) => {
@@ -601,7 +601,7 @@ export function SettingsPanel({
                           setTravelMapping((prev) => ({ ...prev, responsibleColumn: value }));
                         }}
                         placeholder="R"
-                        className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </label>
                   </div>
@@ -611,7 +611,7 @@ export function SettingsPanel({
                       void handleSaveTravelMapping();
                     }}
                     disabled={mappingSaving}
-                    className="mt-4 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                    className="mt-4 rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                   >
                     {mappingSaving ? "Saving..." : "Save travel mapping"}
                   </button>
@@ -620,8 +620,8 @@ export function SettingsPanel({
 
               {activeSection === "time_data" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-slate-400">
-                    One-time import: upload your previous <code className="rounded bg-white/10 px-1">hourlogger-data.json</code> file to
+                  <p className="text-sm text-ink-4">
+                    One-time import: upload your previous <code className="rounded bg-glass/10 px-1">hourlogger-data.json</code> file to
                     migrate old tracking history into this account. You can also export your current data.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -631,7 +631,7 @@ export function SettingsPanel({
                         importFileRef.current?.click();
                       }}
                       disabled={importing}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                      className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                     >
                       {importing ? "Importing..." : "Upload old time tracking data"}
                     </button>
@@ -641,7 +641,7 @@ export function SettingsPanel({
                         void handleExportData();
                       }}
                       disabled={exporting}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs transition hover:bg-white/15 disabled:opacity-60"
+                      className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-xs transition hover:bg-glass/15 disabled:opacity-60"
                     >
                       {exporting ? "Exporting..." : "Export time tracking data"}
                     </button>
@@ -662,12 +662,12 @@ export function SettingsPanel({
 
               {activeSection === "appearance" ? (
                 <div className="mt-5">
-                  <div className="rounded-xl border border-white/15 bg-slate-950/40 p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Appearance</p>
-                    <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                  <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Appearance</p>
+                    <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                       {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
                     </p>
-                    <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                    <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
                       Choose the app palette — the default dark theme, the softened Solarized Light skin, or the clean pastel Glacier blue skin. Synced to your account, so it follows you across devices.
                     </p>
                     <div className="mt-3 grid grid-cols-3 gap-2">
@@ -685,8 +685,8 @@ export function SettingsPanel({
                             }}
                             className={`flex flex-col items-center gap-2 rounded-lg border p-2.5 transition ${
                               selected
-                                ? "border-cyan-400/80 bg-cyan-400/15"
-                                : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                                ? "border-accent/80 bg-accent/15"
+                                : "border-glass/10 bg-glass/[0.03] hover:bg-glass/[0.06]"
                             }`}
                           >
                             <span
@@ -694,7 +694,7 @@ export function SettingsPanel({
                               style={{ background: t.swatch }}
                               aria-hidden
                             />
-                            <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-slate-200/85">
+                            <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-ink-2/85">
                               {t.label}
                             </span>
                           </button>
@@ -704,12 +704,12 @@ export function SettingsPanel({
                   </div>
 
                   {theme === "light" ? (
-                    <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/40 p-4">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Accent</p>
-                      <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">
+                    <div className="mt-3 rounded-xl border border-glass/15 bg-overlay/40 p-4">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Accent</p>
+                      <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                         {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
                       </p>
-                      <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                      <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
                         Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Synced to your account.
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -728,8 +728,8 @@ export function SettingsPanel({
                               }}
                               className={`flex flex-col items-center gap-2 rounded-lg border p-2.5 transition ${
                                 selected
-                                  ? "border-cyan-400/80 bg-cyan-400/15"
-                                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                                  ? "border-accent/80 bg-accent/15"
+                                  : "border-glass/10 bg-glass/[0.03] hover:bg-glass/[0.06]"
                               }`}
                             >
                               <span
@@ -737,7 +737,7 @@ export function SettingsPanel({
                                 style={{ background: swatch }}
                                 aria-hidden
                               />
-                              <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-slate-200/85">
+                              <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-ink-2/85">
                                 {a.label}
                               </span>
                             </button>
@@ -751,12 +751,12 @@ export function SettingsPanel({
 
               {activeSection === "interface_sounds" ? (
                 <div className="mt-5">
-                  <div className="rounded-xl border border-white/15 bg-slate-950/40 p-4">
+                  <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 pr-1">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400/90">Interface sounds</p>
-                        <p className="mt-1.5 text-[15px] font-semibold leading-none text-slate-50">{uiSoundsOn ? "On" : "Off"}</p>
-                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-slate-400/90">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-4/90">Interface sounds</p>
+                        <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">{uiSoundsOn ? "On" : "Off"}</p>
+                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
                           Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
                         </p>
                       </div>
@@ -770,10 +770,10 @@ export function SettingsPanel({
                           setUiSoundsOn(next);
                           persistUiSoundsEnabled(next);
                         }}
-                        className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/80 ${
+                        className={`relative h-7 w-[46px] shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80 ${
                           uiSoundsOn
-                            ? "border-cyan-500/25 bg-[rgb(22_58_68)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "border-white/15 bg-white/[0.07]"
+                            ? "border-accent-deep/25 bg-accent-deep/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "border-glass/15 bg-glass/[0.07]"
                         }`}
                       >
                         <span
@@ -791,8 +791,8 @@ export function SettingsPanel({
               {activeSection === "security" ? (
                 <div className="mt-5">
                   <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-4">
-                    <p className="text-sm font-medium text-rose-200">Delete account</p>
-                    <p className="mt-1 text-xs text-rose-100/80">
+                    <p className="text-sm font-medium text-danger">Delete account</p>
+                    <p className="mt-1 text-xs text-danger/80">
                       This permanently removes your account and all app access for this login.
                     </p>
                     <div className="mt-2">
@@ -800,7 +800,7 @@ export function SettingsPanel({
                         value={deleteConfirmText}
                         onChange={(event) => setDeleteConfirmText(event.target.value)}
                         placeholder='Type "DELETE" to confirm'
-                        className="w-full rounded-lg border border-rose-200/35 bg-white/10 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-rose-200/35 bg-glass/10 px-3 py-2 text-sm"
                       />
                     </div>
                     <button
@@ -809,7 +809,7 @@ export function SettingsPanel({
                         void handleDeleteAccount();
                       }}
                       disabled={deletingAccount}
-                      className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-rose-100 transition hover:bg-rose-500/30 disabled:opacity-60"
+                      className="mt-3 rounded-lg border border-rose-300/45 bg-rose-500/20 px-3 py-2 text-xs font-medium text-danger transition hover:bg-rose-500/30 disabled:opacity-60"
                     >
                       {deletingAccount ? "Deleting account..." : "Delete account"}
                     </button>
@@ -819,18 +819,18 @@ export function SettingsPanel({
 
               {activeSection === "readme" ? (
                 <div className="mt-5 space-y-2">
-                  <p className="text-sm text-slate-400">In-app guides for integrations and workflows.</p>
+                  <p className="text-sm text-ink-4">In-app guides for integrations and workflows.</p>
                   <button
                     type="button"
                     onClick={() => toggleReadme("program")}
-                    className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                    className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
                   >
                     <span>Program functionality README</span>
                     <span>{openReadme === "program" ? "Hide" : "Show"}</span>
                   </button>
                   {openReadme === "program" ? (
-                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-                      <p className="font-medium text-cyan-200">What this program does</p>
+                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                      <p className="font-medium text-accent-soft">What this program does</p>
                       <ul className="mt-2 list-disc space-y-1 pl-4">
                         {!isSalesOnly ? (
                           <li>
@@ -865,19 +865,19 @@ export function SettingsPanel({
                     <button
                       type="button"
                       onClick={() => toggleReadme("gmail")}
-                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
                     >
                       <span>Gmail setup README</span>
                       <span>{openReadme === "gmail" ? "Hide" : "Show"}</span>
                     </button>
                   ) : null}
                   {!isSalesOnly && openReadme === "gmail" ? (
-                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-                      <p className="font-medium text-cyan-200">What it does</p>
-                      <p className="mt-1 text-slate-300/90">
+                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                      <p className="font-medium text-accent-soft">What it does</p>
+                      <p className="mt-1 text-ink-3/90">
                         Gmail setup enables draft creation from generated mails so users can review and send from Gmail.
                       </p>
-                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <p className="mt-2 font-medium text-accent-soft">Steps</p>
                       <ol className="mt-1 list-decimal space-y-1 pl-4">
                         <li>
                           Open <strong>Gmail</strong> in the settings list on the left.
@@ -895,19 +895,19 @@ export function SettingsPanel({
                     <button
                       type="button"
                       onClick={() => toggleReadme("mapping")}
-                      className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                      className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
                     >
                       <span>Travel mapping setup README</span>
                       <span>{openReadme === "mapping" ? "Hide" : "Show"}</span>
                     </button>
                   ) : null}
                   {!isSalesOnly && openReadme === "mapping" ? (
-                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-                      <p className="font-medium text-cyan-200">What it does</p>
-                      <p className="mt-1 text-slate-300/90">
+                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                      <p className="font-medium text-accent-soft">What it does</p>
+                      <p className="mt-1 text-ink-3/90">
                         Mapping defines where Client/Location/Responsible values are read in your travel sheet.
                       </p>
-                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <p className="mt-2 font-medium text-accent-soft">Steps</p>
                       <ol className="mt-1 list-decimal space-y-1 pl-4">
                         <li>
                           Open <strong>Travel mapping</strong> in the settings list.
@@ -924,18 +924,18 @@ export function SettingsPanel({
                   <button
                     type="button"
                     onClick={() => toggleReadme("import")}
-                    className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-white/12"
+                    className="flex w-full items-center justify-between rounded-lg border border-glass/15 bg-glass/8 px-3 py-2 text-left text-xs font-medium transition hover:bg-glass/12"
                   >
                     <span>Time import setup README</span>
                     <span>{openReadme === "import" ? "Hide" : "Show"}</span>
                   </button>
                   {openReadme === "import" ? (
-                    <div className="rounded-lg border border-white/10 bg-slate-900/45 p-3 text-xs text-slate-200/90">
-                      <p className="font-medium text-cyan-200">What it does</p>
-                      <p className="mt-1 text-slate-300/90">
+                    <div className="rounded-lg border border-glass/10 bg-panel/45 p-3 text-xs text-ink-2/90">
+                      <p className="font-medium text-accent-soft">What it does</p>
+                      <p className="mt-1 text-ink-3/90">
                         Import migrates old `hourlogger-data.json` records into this account&apos;s time tracker history.
                       </p>
-                      <p className="mt-2 font-medium text-cyan-200">Steps</p>
+                      <p className="mt-2 font-medium text-accent-soft">Steps</p>
                       <ol className="mt-1 list-decimal space-y-1 pl-4">
                         <li>
                           Open <strong>Time data</strong> in the settings list.
@@ -951,8 +951,8 @@ export function SettingsPanel({
                 </div>
               ) : null}
 
-              {message ? <p className="mt-8 text-sm text-emerald-300">{message}</p> : null}
-              {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
+              {message ? <p className="mt-8 text-sm text-positive">{message}</p> : null}
+              {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
             </div>
           </div>
         </div>

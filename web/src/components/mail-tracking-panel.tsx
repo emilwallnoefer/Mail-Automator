@@ -406,13 +406,13 @@ function StatTile({
   info?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+    <div className="rounded-xl border border-glass/10 bg-glass/5 px-4 py-3">
       <div className="flex items-center gap-1.5">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/70">{label}</p>
+        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/70">{label}</p>
         {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
       </div>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-100">{value}</p>
-      {hint ? <p className="mt-0.5 text-[10px] text-slate-400">{hint}</p> : null}
+      <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</p>
+      {hint ? <p className="mt-0.5 text-[10px] text-ink-4">{hint}</p> : null}
     </div>
   );
 }
@@ -432,7 +432,7 @@ export function MailTrackingPanel() {
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div
-          className="inline-flex flex-wrap rounded-lg border border-white/10 bg-white/5 p-0.5 text-sm"
+          className="inline-flex flex-wrap rounded-lg border border-glass/10 bg-glass/5 p-0.5 text-sm"
           role="tablist"
           aria-label="Mail tracking views"
         >
@@ -445,8 +445,8 @@ export function MailTrackingPanel() {
               onClick={() => setSubTab(entry.id)}
               className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-md px-4 py-2 transition ${
                 subTab === entry.id
-                  ? "bg-amber-400/15 text-amber-100"
-                  : "text-slate-300 hover:text-slate-100"
+                  ? "bg-amber-400/15 text-warn"
+                  : "text-ink-3 hover:text-ink"
               }`}
             >
               {entry.label}
@@ -454,7 +454,7 @@ export function MailTrackingPanel() {
           ))}
         </div>
 
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-glass/10 bg-glass/5 px-3 py-1.5 text-xs text-ink-2">
           <input
             type="checkbox"
             checked={showBots}
@@ -540,22 +540,22 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
 
   return (
     <div className="space-y-4">
-      <section className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-4">
+      <section className="space-y-4 rounded-xl border border-glass/10 bg-glass/5 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-semibold text-slate-100">Click timeline</h3>
+              <h3 className="text-sm font-semibold text-ink">Click timeline</h3>
               <InfoTooltip label="About click timeline">
                 Aggregated click activity across all tracked emails and links. X is time, Y is clicks.
               </InfoTooltip>
             </div>
-            <p className="mt-1 text-xs text-slate-400">{timelineRangeLabel}</p>
+            <p className="mt-1 text-xs text-ink-4">{timelineRangeLabel}</p>
             <div className="mt-2">
               <FreshnessPill updatedAt={timelineUpdatedAt} loading={timelineLoading} />
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-sm">
+            <div className="inline-flex rounded-lg border border-glass/10 bg-overlay/50 p-0.5 text-sm">
               {(["day", "week", "month", "year"] as const).map((period) => (
                 <button
                   key={period}
@@ -566,8 +566,8 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
                   }}
                   className={`inline-flex min-h-10 min-w-12 items-center justify-center rounded-md px-4 py-2 transition ${
                     timelinePeriod === period
-                      ? "bg-amber-400/15 text-amber-100"
-                      : "text-slate-300 hover:text-slate-100"
+                      ? "bg-amber-400/15 text-warn"
+                      : "text-ink-3 hover:text-ink"
                   }`}
                   aria-pressed={timelinePeriod === period}
                 >
@@ -575,11 +575,11 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
                 </button>
               ))}
             </div>
-            <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-white/15 bg-slate-950/50 text-sm">
+            <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-glass/15 bg-overlay/50 text-sm">
               <button
                 type="button"
                 onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, -1))}
-                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-ink-2 transition hover:bg-glass/10"
                 aria-label={`Previous ${timelinePeriod}`}
               >
                 <span aria-hidden>&larr;</span>
@@ -587,14 +587,14 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
               <button
                 type="button"
                 onClick={() => setTimelineAnchor(toDateKey(startOfPeriod(new Date(), timelinePeriod)))}
-                className="inline-flex min-h-10 items-center justify-center border-x border-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 items-center justify-center border-x border-glass/10 px-4 py-2 text-ink-2 transition hover:bg-glass/10"
               >
                 {periodResetLabel(timelinePeriod)}
               </button>
               <button
                 type="button"
                 onClick={() => setTimelineAnchor((prev) => shiftPeriod(prev, timelinePeriod, 1))}
-                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-slate-200 transition hover:bg-white/10"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center px-3 py-2 text-ink-2 transition hover:bg-glass/10"
                 aria-label={`Next ${timelinePeriod}`}
               >
                 <span aria-hidden>&rarr;</span>
@@ -604,7 +604,7 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
         </div>
 
         {timelineError ? (
-          <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+          <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
             {timelineError}
           </p>
         ) : null}
@@ -617,11 +617,11 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
         />
       </section>
 
-      <section className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-4">
+      <section className="space-y-4 rounded-xl border border-glass/10 bg-glass/5 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-100">Engagement breakdown</h3>
-            <p className="mt-1 text-xs text-slate-400">
+            <h3 className="text-sm font-semibold text-ink">Engagement breakdown</h3>
+            <p className="mt-1 text-xs text-ink-4">
               {stats
                 ? `Last ${statsDays === 365 ? "year" : `${statsDays} days`} · ${stats.totals.sends_count} sends · ${stats.totals.real_clicks} real, ${stats.totals.bot_clicks} scanner clicks`
                 : `Last ${statsDays === 365 ? "year" : `${statsDays} days`}`}
@@ -630,7 +630,7 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
               <FreshnessPill updatedAt={statsUpdatedAt} loading={statsLoading} />
             </div>
           </div>
-          <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-sm">
+          <div className="inline-flex rounded-lg border border-glass/10 bg-overlay/50 p-0.5 text-sm">
             {STATS_RANGE_OPTIONS.map((option) => (
               <button
                 key={option.days}
@@ -638,8 +638,8 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
                 onClick={() => setStatsDays(option.days)}
                 className={`inline-flex min-h-10 min-w-12 items-center justify-center rounded-md px-4 py-2 transition ${
                   statsDays === option.days
-                    ? "bg-amber-400/15 text-amber-100"
-                    : "text-slate-300 hover:text-slate-100"
+                    ? "bg-amber-400/15 text-warn"
+                    : "text-ink-3 hover:text-ink"
                 }`}
                 aria-pressed={statsDays === option.days}
               >
@@ -650,13 +650,13 @@ function OverviewTab({ showBots }: { showBots: boolean }) {
         </div>
 
         {statsError ? (
-          <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+          <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
             {statsError}
           </p>
         ) : null}
 
         {stats?.totals.sends_truncated ? (
-          <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-warn">
             Sends fetch was capped — the breakdowns reflect the most recent slice of this window.
           </p>
         ) : null}
@@ -824,13 +824,13 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search recipient, company or email (all time)"
-            className="w-full rounded-lg border border-white/15 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
+            className="w-full rounded-lg border border-glass/15 bg-panel/60 px-3 py-1.5 text-xs text-ink placeholder:text-ink-5 focus:border-amber-300/40 focus:outline-none"
           />
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-ink-4">
           {isSearchMode
             ? `All-time search · ${total} recipient${total === 1 ? "" : "s"} matching "${search.trim()}"`
             : `Latest recipients · showing ${recipients.length} of ${total}`}
@@ -839,13 +839,13 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
 
       {truncated ? (
-        <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+        <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-warn">
           {isSearchMode
             ? "Showing the most recent matches. Refine the search to narrow further."
             : "Older sends beyond the scan limit aren't paginated. Use search to find a specific recipient."}
@@ -879,9 +879,9 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+      <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+          <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
             <tr>
               <th className="px-3 py-2">Recipient</th>
               <th className="px-3 py-2">Company</th>
@@ -894,13 +894,13 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
           <tbody>
             {loading && recipients.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-3/80">
                   Loading tracking…
                 </td>
               </tr>
             ) : recipients.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-3/80">
                   {isSearchMode
                     ? "No tracked emails match this search across the full history."
                     : "No tracked emails yet. Tracking activates when a Gmail draft is created from the generator."}
@@ -931,7 +931,7 @@ function RecipientsTab({ showBots }: { showBots: boolean }) {
               void fetchRecent({ offset: recipients.length, limit: RECIPIENTS_PAGE_SIZE, append: true })
             }
             disabled={loadingMore}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-glass/15 bg-glass/5 px-4 py-2 text-xs text-ink-2 transition hover:bg-glass/10 disabled:opacity-60"
           >
             {loadingMore
               ? "Loading…"
@@ -991,18 +991,18 @@ function LinksTab({ showBots }: { showBots: boolean }) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search link, label or URL"
-            className="w-full rounded-lg border border-white/15 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
+            className="w-full rounded-lg border border-glass/15 bg-panel/60 px-3 py-1.5 text-xs text-ink placeholder:text-ink-5 focus:border-amber-300/40 focus:outline-none"
           />
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] text-slate-400">All time across every tracked send</p>
+        <p className="text-[11px] text-ink-4">All time across every tracked send</p>
         <FreshnessPill updatedAt={updatedAt} loading={loading} />
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
@@ -1104,7 +1104,7 @@ function LatestClicksTab({ showBots }: { showBots: boolean }) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border border-white/10 bg-slate-950/50 p-0.5 text-sm">
+        <div className="inline-flex rounded-lg border border-glass/10 bg-overlay/50 p-0.5 text-sm">
           {LATEST_RANGE_OPTIONS.map((option) => (
             <button
               key={option.days}
@@ -1112,8 +1112,8 @@ function LatestClicksTab({ showBots }: { showBots: boolean }) {
               onClick={() => setDays(option.days)}
               className={`inline-flex min-h-10 min-w-12 items-center justify-center rounded-md px-4 py-2 transition ${
                 days === option.days
-                  ? "bg-amber-400/15 text-amber-100"
-                  : "text-slate-300 hover:text-slate-100"
+                  ? "bg-amber-400/15 text-warn"
+                  : "text-ink-3 hover:text-ink"
               }`}
               aria-pressed={days === option.days}
             >
@@ -1124,24 +1124,24 @@ function LatestClicksTab({ showBots }: { showBots: boolean }) {
         <FreshnessPill updatedAt={updatedAt} loading={loading} />
       </div>
 
-      <p className="text-[11px] text-slate-400">
+      <p className="text-[11px] text-ink-4">
         Last {days === 1 ? "24 hours" : `${days} days`}
         {showBots ? " · scanners included" : " · scanners hidden"}
         {total > 0 ? ` · ${total} click${total === 1 ? "" : "s"} total` : ""}
       </p>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
 
       {loading && clicks.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-10 text-center text-sm text-slate-300/80">
+        <div className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-10 text-center text-sm text-ink-3/80">
           Loading clicks…
         </div>
       ) : clicks.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-10 text-center text-sm text-slate-300/80">
+        <div className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-10 text-center text-sm text-ink-3/80">
           No tracked clicks in the last {days === 1 ? "24 hours" : `${days} days`}.
           {!showBots ? " Toggle Scanners to include corporate link scanners." : ""}
         </div>
@@ -1159,7 +1159,7 @@ function LatestClicksTab({ showBots }: { showBots: boolean }) {
             type="button"
             onClick={() => void fetchPage({ append: true, offset: clicks.length })}
             disabled={loadingMore}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-glass/15 bg-glass/5 px-4 py-2 text-xs text-ink-2 transition hover:bg-glass/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loadingMore ? "Loading…" : `Load ${Math.min(LATEST_PAGE_SIZE, total - clicks.length)} more`}
           </button>
@@ -1178,19 +1178,19 @@ function LatestClickCard({ click }: { click: LatestClick }) {
   const recipient = click.send;
 
   return (
-    <li className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+    <li className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-sm font-semibold tabular-nums text-slate-100" title={fmtAbsolute(click.clicked_at)}>
+          <span className="text-sm font-semibold tabular-nums text-ink" title={fmtAbsolute(click.clicked_at)}>
             {fmtRelative(click.clicked_at)}
           </span>
-          <span className="text-[11px] text-slate-500">{fmtAbsolute(click.clicked_at)}</span>
+          <span className="text-[11px] text-ink-5">{fmtAbsolute(click.clicked_at)}</span>
           {click.is_likely_bot ? (
-            <span className="rounded bg-slate-700/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-300">
+            <span className="rounded bg-neutral/35 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-ink-3">
               scanner
             </span>
           ) : (
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-200">
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-warn">
               real click
             </span>
           )}
@@ -1199,54 +1199,54 @@ function LatestClickCard({ click }: { click: LatestClick }) {
 
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/60">Recipient</p>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/60">Recipient</p>
           {recipient ? (
             <>
-              <p className="truncate text-sm text-slate-100">{recipient.recipient_name}</p>
-              <p className="truncate text-[11px] text-slate-400">
+              <p className="truncate text-sm text-ink">{recipient.recipient_name}</p>
+              <p className="truncate text-[11px] text-ink-4">
                 {recipient.company_name ?? "—"}
                 {recipient.recipient_email ? ` · ${recipient.recipient_email}` : ""}
               </p>
-              <p className="mt-0.5 truncate text-[10px] text-slate-500" title={recipient.subject}>
+              <p className="mt-0.5 truncate text-[10px] text-ink-5" title={recipient.subject}>
                 {recipient.mail_type} · {recipient.subject}
               </p>
             </>
           ) : (
-            <p className="text-xs text-slate-500">Send no longer available</p>
+            <p className="text-xs text-ink-5">Send no longer available</p>
           )}
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/60">Link</p>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3/60">Link</p>
           {click.link ? (
             <a
               href={click.link.original_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block min-w-0 text-sm text-slate-100 hover:text-amber-200"
+              className="block min-w-0 text-sm text-ink hover:text-warn"
               title={click.link.original_url}
             >
               <span className="block truncate font-medium">{linkLabel}</span>
-              <span className="block truncate text-[11px] text-slate-400">{linkHost}</span>
+              <span className="block truncate text-[11px] text-ink-4">{linkHost}</span>
             </a>
           ) : (
-            <p className="text-xs text-slate-500">Link no longer available</p>
+            <p className="text-xs text-ink-5">Link no longer available</p>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span
               className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] ${
                 ua.kind === "scanner"
-                  ? "bg-slate-700/60 text-slate-200"
+                  ? "bg-neutral/35 text-ink-2"
                   : ua.kind === "browser"
-                    ? "bg-emerald-500/10 text-emerald-200"
-                    : "bg-slate-700/40 text-slate-300"
+                    ? "bg-emerald-500/10 text-positive"
+                    : "bg-neutral/25 text-ink-3"
               }`}
               title={click.user_agent ?? "No user agent recorded"}
             >
               {ua.label}
             </span>
             {click.user_agent ? (
-              <span className="truncate text-[10px] text-slate-500" title={click.user_agent}>
+              <span className="truncate text-[10px] text-ink-5" title={click.user_agent}>
                 {click.user_agent}
               </span>
             ) : null}
@@ -1266,7 +1266,7 @@ function HoverTooltip({ hover }: { hover: HoverPos }) {
   const top = Math.max(hover.y - 12, 8);
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-white/15 bg-slate-950/95 px-3 py-2 text-[11px] leading-tight text-slate-100 shadow-lg backdrop-blur"
+      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-glass/15 bg-surface/95 px-3 py-2 text-[11px] leading-tight text-ink shadow-lg backdrop-blur"
       style={{ left, top }}
     >
       {hover.content}
@@ -1309,18 +1309,18 @@ function HeatmapCard({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/30 p-3"
+      className="relative overflow-hidden rounded-xl border border-glass/10 bg-overlay/30 p-3"
       onMouseLeave={() => setHover(null)}
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <h4 className="text-xs font-semibold text-slate-100">When do clicks happen?</h4>
+          <h4 className="text-xs font-semibold text-ink">When do clicks happen?</h4>
           <InfoTooltip label="About click heatmap" align="start">
             Every tracked click bucketed by weekday × local hour. Brighter cells mean more clicks. The fun
             one — tells you whether your recipients are reading during work hours, after dinner, or 2am.
           </InfoTooltip>
         </div>
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[10px] text-ink-4">
           {loading && !stats
             ? "Loading…"
             : totalClicks > 0
@@ -1332,7 +1332,7 @@ function HeatmapCard({
       <div className="flex gap-1.5 overflow-x-auto">
         <div className="flex flex-col justify-around pr-1 pt-[18px]">
           {DOW_LABELS.map((label) => (
-            <span key={label} className="text-[9px] uppercase tracking-wider text-slate-500">
+            <span key={label} className="text-[9px] uppercase tracking-wider text-ink-5">
               {label}
             </span>
           ))}
@@ -1342,7 +1342,7 @@ function HeatmapCard({
             {Array.from({ length: 24 }, (_, hour) => (
               <span
                 key={hour}
-                className={`text-[9px] text-slate-500 ${hour % 3 === 0 ? "" : "opacity-0"}`}
+                className={`text-[9px] text-ink-5 ${hour % 3 === 0 ? "" : "opacity-0"}`}
               >
                 {String(hour).padStart(2, "0")}
               </span>
@@ -1375,12 +1375,12 @@ function HeatmapCard({
                           width: parentRect.width,
                           content: (
                             <div>
-                              <div className="font-semibold text-amber-200">
+                              <div className="font-semibold text-warn">
                                 {DOW_LABELS[dow]} · {String(hour).padStart(2, "0")}:00–{String(hour + 1).padStart(2, "0")}:00
                               </div>
-                              <div className="text-slate-200">{realCount} real click{realCount === 1 ? "" : "s"}</div>
-                              <div className="text-slate-400">{botCount} scanner</div>
-                              <div className="text-slate-500">{count} visible</div>
+                              <div className="text-ink-2">{realCount} real click{realCount === 1 ? "" : "s"}</div>
+                              <div className="text-ink-4">{botCount} scanner</div>
+                              <div className="text-ink-5">{count} visible</div>
                             </div>
                           ),
                         });
@@ -1397,7 +1397,7 @@ function HeatmapCard({
           </div>
         </div>
       </div>
-      <p className="mt-2 text-[10px] text-slate-500">
+      <p className="mt-2 text-[10px] text-ink-5">
         Times are the click viewer&apos;s local hour — yours, looking at this dashboard.
       </p>
       <HoverTooltip hover={hover} />
@@ -1426,20 +1426,20 @@ function TopRecipientsCard({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/30 p-3"
+      className="relative overflow-hidden rounded-xl border border-glass/10 bg-overlay/30 p-3"
       onMouseLeave={() => setHover(null)}
     >
       <div className="mb-2 flex items-center gap-1.5">
-        <h4 className="text-xs font-semibold text-slate-100">Top recipients by clicks</h4>
+        <h4 className="text-xs font-semibold text-ink">Top recipients by clicks</h4>
         <InfoTooltip label="About top recipients">
           Recipients ranked by real clicks in the selected window. Hover a bar to see send count and CTR.
         </InfoTooltip>
       </div>
 
       {loading && !stats ? (
-        <p className="py-8 text-center text-xs text-slate-400">Loading…</p>
+        <p className="py-8 text-center text-xs text-ink-4">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="py-8 text-center text-xs text-slate-400">No tracked recipients yet.</p>
+        <p className="py-8 text-center text-xs text-ink-4">No tracked recipients yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {rows.map((row) => {
@@ -1461,12 +1461,12 @@ function TopRecipientsCard({
                     width: parentRect.width,
                     content: (
                       <div className="min-w-[160px]">
-                        <div className="font-semibold text-amber-200">{row.name}</div>
-                        {row.company ? <div className="text-slate-300">{row.company}</div> : null}
-                        <div className="mt-1 text-slate-200">
+                        <div className="font-semibold text-warn">{row.name}</div>
+                        {row.company ? <div className="text-ink-3">{row.company}</div> : null}
+                        <div className="mt-1 text-ink-2">
                           {row.real_clicks} real · {row.bot_clicks} scanner
                         </div>
-                        <div className="text-slate-400">
+                        <div className="text-ink-4">
                           {row.sends_count} mail{row.sends_count === 1 ? "" : "s"} · CTR {ctr.toFixed(ctr >= 10 ? 0 : 1)}%
                         </div>
                       </div>
@@ -1475,15 +1475,15 @@ function TopRecipientsCard({
                 }}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-xs text-slate-100">{row.name}</div>
-                  <div className="relative mt-0.5 h-2 overflow-hidden rounded bg-white/5">
+                  <div className="truncate text-xs text-ink">{row.name}</div>
+                  <div className="relative mt-0.5 h-2 overflow-hidden rounded bg-glass/5">
                     <div
                       className="absolute inset-y-0 left-0 rounded bg-amber-400/80"
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-xs tabular-nums text-amber-200">{visible}</span>
+                <span className="shrink-0 text-xs tabular-nums text-warn">{visible}</span>
               </li>
             );
           })}
@@ -1515,20 +1515,20 @@ function TopLinksCard({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/30 p-3"
+      className="relative overflow-hidden rounded-xl border border-glass/10 bg-overlay/30 p-3"
       onMouseLeave={() => setHover(null)}
     >
       <div className="mb-2 flex items-center gap-1.5">
-        <h4 className="text-xs font-semibold text-slate-100">Top links by clicks</h4>
+        <h4 className="text-xs font-semibold text-ink">Top links by clicks</h4>
         <InfoTooltip label="About top links">
           Links ranked by real clicks. Hover a bar to see the destination, total sends, and click-through rate.
         </InfoTooltip>
       </div>
 
       {loading && !stats ? (
-        <p className="py-8 text-center text-xs text-slate-400">Loading…</p>
+        <p className="py-8 text-center text-xs text-ink-4">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="py-8 text-center text-xs text-slate-400">No tracked links yet.</p>
+        <p className="py-8 text-center text-xs text-ink-4">No tracked links yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {rows.map((row) => {
@@ -1551,12 +1551,12 @@ function TopLinksCard({
                     width: parentRect.width,
                     content: (
                       <div className="min-w-[200px]">
-                        <div className="font-semibold text-amber-200">{row.label}</div>
-                        <div className="truncate text-slate-300">{host}</div>
-                        <div className="mt-1 text-slate-200">
+                        <div className="font-semibold text-warn">{row.label}</div>
+                        <div className="truncate text-ink-3">{host}</div>
+                        <div className="mt-1 text-ink-2">
                           {row.real_clicks} real · {row.bot_clicks} scanner
                         </div>
-                        <div className="text-slate-400">
+                        <div className="text-ink-4">
                           {row.sends_count} send{row.sends_count === 1 ? "" : "s"} · CTR {ctr.toFixed(ctr >= 10 ? 0 : 1)}%
                         </div>
                       </div>
@@ -1565,16 +1565,16 @@ function TopLinksCard({
                 }}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-xs text-slate-100">{row.label}</div>
-                  <div className="truncate text-[10px] text-slate-500">{host}</div>
-                  <div className="relative mt-0.5 h-2 overflow-hidden rounded bg-white/5">
+                  <div className="truncate text-xs text-ink">{row.label}</div>
+                  <div className="truncate text-[10px] text-ink-5">{host}</div>
+                  <div className="relative mt-0.5 h-2 overflow-hidden rounded bg-glass/5">
                     <div
                       className="absolute inset-y-0 left-0 rounded bg-emerald-400/80"
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-xs tabular-nums text-emerald-200">{visible}</span>
+                <span className="shrink-0 text-xs tabular-nums text-positive">{visible}</span>
               </li>
             );
           })}
@@ -1652,20 +1652,20 @@ function MailTypeDonutCard({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/30 p-3"
+      className="relative overflow-hidden rounded-xl border border-glass/10 bg-overlay/30 p-3"
       onMouseLeave={() => setHover(null)}
     >
       <div className="mb-2 flex items-center gap-1.5">
-        <h4 className="text-xs font-semibold text-slate-100">Mail type mix</h4>
+        <h4 className="text-xs font-semibold text-ink">Mail type mix</h4>
         <InfoTooltip label="About mail type donut">
           Distribution of tracked sends by mail_type. Hover a segment for send count, real and scanner clicks.
         </InfoTooltip>
       </div>
 
       {loading && !stats ? (
-        <p className="py-8 text-center text-xs text-slate-400">Loading…</p>
+        <p className="py-8 text-center text-xs text-ink-4">Loading…</p>
       ) : total === 0 ? (
-        <p className="py-8 text-center text-xs text-slate-400">No sends in this window yet.</p>
+        <p className="py-8 text-center text-xs text-ink-4">No sends in this window yet.</p>
       ) : (
         <div className="flex gap-3">
           <svg viewBox="0 0 140 140" className="h-32 w-32 shrink-0">
@@ -1694,12 +1694,12 @@ function MailTypeDonutCard({
                         <div className="font-semibold" style={{ color: segment.color }}>
                           {segment.row.mail_type}
                         </div>
-                        <div className="text-slate-200">
+                        <div className="text-ink-2">
                           {segment.row.sends_count} send{segment.row.sends_count === 1 ? "" : "s"} ({((segment.end - segment.start) * 100).toFixed(1)}%)
                         </div>
-                        <div className="text-slate-300">{segment.row.real_clicks} real clicks</div>
-                        <div className="text-slate-400">{segment.row.bot_clicks} scanner</div>
-                        <div className="text-slate-400">CTR {ctr.toFixed(ctr >= 10 ? 0 : 1)}%</div>
+                        <div className="text-ink-3">{segment.row.real_clicks} real clicks</div>
+                        <div className="text-ink-4">{segment.row.bot_clicks} scanner</div>
+                        <div className="text-ink-4">CTR {ctr.toFixed(ctr >= 10 ? 0 : 1)}%</div>
                       </div>
                     ),
                   });
@@ -1720,8 +1720,8 @@ function MailTypeDonutCard({
                   className="inline-block h-2.5 w-2.5 shrink-0 rounded"
                   style={{ backgroundColor: segment.color }}
                 />
-                <span className="min-w-0 flex-1 truncate text-slate-200">{segment.row.mail_type}</span>
-                <span className="shrink-0 tabular-nums text-slate-400">{segment.row.sends_count}</span>
+                <span className="min-w-0 flex-1 truncate text-ink-2">{segment.row.mail_type}</span>
+                <span className="shrink-0 tabular-nums text-ink-4">{segment.row.sends_count}</span>
               </li>
             ))}
           </ul>
@@ -1760,7 +1760,7 @@ function MailClickTimelineChart({
 
   if (loading && !data) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-xl border border-white/10 bg-slate-950/40 text-sm text-slate-300/80">
+      <div className="flex h-72 items-center justify-center rounded-xl border border-glass/10 bg-overlay/40 text-sm text-ink-3/80">
         Loading click timeline...
       </div>
     );
@@ -1769,7 +1769,7 @@ function MailClickTimelineChart({
   const buckets = data?.buckets ?? [];
   if (buckets.length === 0) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-xl border border-white/10 bg-slate-950/40 px-6 text-center text-sm text-slate-300/80">
+      <div className="flex h-72 items-center justify-center rounded-xl border border-glass/10 bg-overlay/40 px-6 text-center text-sm text-ink-3/80">
         No tracked click activity yet for this period.
       </div>
     );
@@ -1804,7 +1804,7 @@ function MailClickTimelineChart({
 
       <div ref={containerRef} className="relative">
       <div
-        className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40 p-3"
+        className="overflow-x-auto rounded-xl border border-glass/10 bg-overlay/40 p-3"
         onMouseLeave={() => setHover(null)}
       >
         <div className="min-w-[720px]">
@@ -1819,10 +1819,10 @@ function MailClickTimelineChart({
                     x2={width - marginRight}
                     y1={y}
                     y2={y}
-                    className="stroke-white/10"
+                    className="stroke-glass/10"
                     strokeWidth="1"
                   />
-                  <text x={marginLeft - 8} y={y + 4} textAnchor="end" className="fill-slate-500 text-[10px]">
+                  <text x={marginLeft - 8} y={y + 4} textAnchor="end" className="fill-ink-5 text-[10px]">
                     {value}
                   </text>
                 </g>
@@ -1876,7 +1876,7 @@ function MailClickTimelineChart({
                       width={barWidth}
                       height={Math.max(botHeight, 2)}
                       rx="4"
-                      className="fill-slate-500/80"
+                      className="fill-ink-5/80"
                     />
                   ) : null}
                   {shouldShowBucketTick(index, buckets.length, period) ? (
@@ -1884,7 +1884,7 @@ function MailClickTimelineChart({
                       x={x + barWidth / 2}
                       y={height - 14}
                       textAnchor="middle"
-                      className="fill-slate-500 text-[10px]"
+                      className="fill-ink-5 text-[10px]"
                     >
                       {label}
                     </text>
@@ -1907,7 +1907,7 @@ function MailClickTimelineChart({
               x2={width - marginRight}
               y1={marginTop + plotHeight}
               y2={marginTop + plotHeight}
-              className="stroke-white/15"
+              className="stroke-glass/15"
               strokeWidth="1"
             />
           </svg>
@@ -1926,7 +1926,7 @@ function MailClickTimelineChart({
         ) : null}
       </div>
 
-      <p className="text-[11px] text-slate-400">
+      <p className="text-[11px] text-ink-4">
         X-axis: time. Y-axis: clicks from all tracked emails and links. Amber shows real clicks; gray adds scanner clicks when enabled. Hover a column to see which mails the clicks came from.
       </p>
     </div>
@@ -1968,38 +1968,38 @@ function TimelineTooltip({
 
   return (
     <div
-      className="pointer-events-none absolute z-20 w-64 rounded-lg border border-white/15 bg-slate-950/95 p-3 text-xs shadow-xl shadow-black/40"
+      className="pointer-events-none absolute z-20 w-64 rounded-lg border border-glass/15 bg-surface/95 p-3 text-xs shadow-xl shadow-shade/40"
       style={style}
     >
-      <p className="font-semibold text-slate-100">{formatBucketFullLabel(bucket.bucket_start, period)}</p>
-      <p className="mt-0.5 text-[11px] text-slate-400">
-        <span className="text-amber-200">{visibleClicks}</span> {showBots ? "click" : "real click"}
+      <p className="font-semibold text-ink">{formatBucketFullLabel(bucket.bucket_start, period)}</p>
+      <p className="mt-0.5 text-[11px] text-ink-4">
+        <span className="text-warn">{visibleClicks}</span> {showBots ? "click" : "real click"}
         {visibleClicks === 1 ? "" : "s"}
         {!showBots && bucket.bot_clicks > 0 ? (
-          <span className="text-slate-500"> · +{bucket.bot_clicks} scanner</span>
+          <span className="text-ink-5"> · +{bucket.bot_clicks} scanner</span>
         ) : null}
-        <span className="text-slate-500"> · {bucket.mails_sent} sent</span>
+        <span className="text-ink-5"> · {bucket.mails_sent} sent</span>
       </p>
       {mails.length > 0 ? (
-        <ul className="mt-2 space-y-1.5 border-t border-white/10 pt-2">
+        <ul className="mt-2 space-y-1.5 border-t border-glass/10 pt-2">
           {mails.map((mail) => {
             const mailClicks = showBots ? mail.real_clicks + mail.bot_clicks : mail.real_clicks;
             return (
               <li key={mail.send_id} className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-slate-100">{mail.recipient_name}</p>
-                  <p className="truncate text-[10px] text-slate-500">
+                  <p className="truncate text-ink">{mail.recipient_name}</p>
+                  <p className="truncate text-[10px] text-ink-5">
                     {mail.company_name ? `${mail.company_name} · ` : ""}
                     {mail.subject}
                   </p>
                 </div>
-                <span className="shrink-0 tabular-nums text-amber-200">{mailClicks}</span>
+                <span className="shrink-0 tabular-nums text-warn">{mailClicks}</span>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="mt-2 border-t border-white/10 pt-2 text-[11px] text-slate-500">
+        <p className="mt-2 border-t border-glass/10 pt-2 text-[11px] text-ink-5">
           {visibleClicks > 0
             ? "Click sources unavailable for this bucket."
             : "No clicks in this period."}
@@ -2031,31 +2031,31 @@ function RecipientRow({
 
   return (
     <>
-      <tr className="border-t border-white/5 align-middle">
+      <tr className="border-t border-glass/5 align-middle">
         <td className="px-3 py-2">
           <div className="flex flex-col">
-            <span className="text-sm text-slate-100">{recipient.recipient_name}</span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-sm text-ink">{recipient.recipient_name}</span>
+            <span className="text-[10px] text-ink-4">
               {recipient.unique_senders > 1 ? `${recipient.unique_senders} senders` : "1 sender"}
             </span>
           </div>
         </td>
-        <td className="px-3 py-2 text-xs text-slate-300">{recipient.company_name ?? "—"}</td>
+        <td className="px-3 py-2 text-xs text-ink-3">{recipient.company_name ?? "—"}</td>
         <td className="px-3 py-2 text-right tabular-nums">{recipient.sends_count}</td>
         <td className="px-3 py-2 text-right tabular-nums">
-          <span className={visibleClicks > 0 ? "text-amber-200" : "text-slate-400"}>
+          <span className={visibleClicks > 0 ? "text-warn" : "text-ink-4"}>
             {visibleClicks}
           </span>
-          {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
+          {botSuffix ? <span className="text-[10px] text-ink-5">{botSuffix}</span> : null}
         </td>
-        <td className="px-3 py-2 text-right text-xs text-slate-300" title={fmtAbsolute(recipient.last_click_at)}>
+        <td className="px-3 py-2 text-right text-xs text-ink-3" title={fmtAbsolute(recipient.last_click_at)}>
           {fmtRelative(recipient.last_click_at)}
         </td>
         <td className="px-3 py-2 text-right">
           <button
             type="button"
             onClick={onToggle}
-            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+            className="rounded-lg border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
             aria-expanded={isOpen}
           >
             {isOpen ? "Hide" : "View sends"}
@@ -2063,7 +2063,7 @@ function RecipientRow({
         </td>
       </tr>
       {isOpen ? (
-        <tr className="border-t border-white/5 bg-slate-950/40">
+        <tr className="border-t border-glass/5 bg-overlay/40">
           <td colSpan={6} className="px-3 py-3">
             <div className="space-y-3">
               {recipient.send_ids.map((sendId) => {
@@ -2071,7 +2071,7 @@ function RecipientRow({
                 if (!detail) return null;
                 if (detail === "loading") {
                   return (
-                    <div key={sendId} className="text-xs text-slate-400">
+                    <div key={sendId} className="text-xs text-ink-4">
                       Loading send…
                     </div>
                   );
@@ -2080,7 +2080,7 @@ function RecipientRow({
                   return (
                     <div
                       key={sendId}
-                      className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+                      className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-danger"
                     >
                       {detail.error}
                     </div>
@@ -2130,11 +2130,11 @@ function SendDetailBlock({
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+    <div className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-slate-100">{detail.send.subject}</p>
-          <p className="text-[11px] text-slate-400">
+          <p className="truncate text-sm font-medium text-ink">{detail.send.subject}</p>
+          <p className="text-[11px] text-ink-4">
             {detail.send.mail_type}
             {detail.send.language ? ` · ${detail.send.language}` : ""}
             {detail.send.template_variant ? ` · ${detail.send.template_variant}` : ""}
@@ -2143,7 +2143,7 @@ function SendDetailBlock({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-[11px] text-slate-300/80" title={fmtAbsolute(detail.send.created_at)}>
+          <span className="text-[11px] text-ink-3/80" title={fmtAbsolute(detail.send.created_at)}>
             {fmtRelative(detail.send.created_at)}
           </span>
           {confirming ? (
@@ -2152,7 +2152,7 @@ function SendDetailBlock({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="rounded border border-rose-400/40 bg-rose-500/20 px-2 py-1 text-[11px] font-medium text-rose-100 hover:bg-rose-500/30 disabled:opacity-60"
+                className="rounded border border-rose-400/40 bg-rose-500/20 px-2 py-1 text-[11px] font-medium text-danger hover:bg-rose-500/30 disabled:opacity-60"
               >
                 {deleting ? "Deleting…" : "Confirm delete"}
               </button>
@@ -2160,7 +2160,7 @@ function SendDetailBlock({
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={deleting}
-                className="rounded border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-slate-300 hover:bg-white/10 disabled:opacity-60"
+                className="rounded border border-glass/15 bg-glass/5 px-2 py-1 text-[11px] text-ink-3 hover:bg-glass/10 disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -2169,7 +2169,7 @@ function SendDetailBlock({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="rounded border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-slate-400 hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-rose-200"
+              className="rounded border border-glass/15 bg-glass/5 px-2 py-1 text-[11px] text-ink-4 hover:border-rose-400/40 hover:bg-rose-500/10 hover:text-danger"
               title="Delete this mail generation and its tracking data"
             >
               Delete
@@ -2178,12 +2178,12 @@ function SendDetailBlock({
         </div>
       </div>
       {confirming && !deleting ? (
-        <p className="mt-2 text-[11px] text-rose-200/80">
+        <p className="mt-2 text-[11px] text-danger/80">
           This permanently removes this mail generation and all of its click tracking. This cannot be undone.
         </p>
       ) : null}
       {deleteError ? (
-        <p className="mt-2 rounded border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+        <p className="mt-2 rounded border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[11px] text-danger">
           {deleteError}
         </p>
       ) : null}
@@ -2199,11 +2199,11 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
   );
 
   if (links.length === 0) {
-    return <p className="mt-2 text-xs text-slate-400">No tracked links in this email.</p>;
+    return <p className="mt-2 text-xs text-ink-4">No tracked links in this email.</p>;
   }
   if (clicked.length === 0) {
     return (
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-ink-4">
         No clicks yet on the {links.length} tracked link{links.length === 1 ? "" : "s"} in this email.
       </p>
     );
@@ -2228,27 +2228,27 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
         return (
           <li
             key={link.id}
-            className="rounded-lg border border-white/5 bg-slate-950/40"
+            className="rounded-lg border border-glass/5 bg-overlay/40"
           >
             <div className="flex items-center justify-between gap-3 px-3 py-1.5">
               <a
                 href={link.original_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 flex-1 truncate text-xs text-slate-200 hover:text-amber-200"
+                className="min-w-0 flex-1 truncate text-xs text-ink-2 hover:text-warn"
                 title={link.original_url}
               >
                 <span className="font-medium">
                   {link.link_label || link.link_key || pickTrustedHost(link.original_url)}
                 </span>
-                <span className="ml-2 text-[10px] text-slate-500">{pickTrustedHost(link.original_url)}</span>
+                <span className="ml-2 text-[10px] text-ink-5">{pickTrustedHost(link.original_url)}</span>
               </a>
               <span className="shrink-0 text-right text-xs tabular-nums">
-                <span className="text-amber-200">{total}</span>
-                {botSuffix ? <span className="text-[10px] text-slate-500">{botSuffix}</span> : null}
+                <span className="text-warn">{total}</span>
+                {botSuffix ? <span className="text-[10px] text-ink-5">{botSuffix}</span> : null}
               </span>
               <span
-                className="shrink-0 text-[11px] text-slate-400"
+                className="shrink-0 text-[11px] text-ink-4"
                 title={fmtAbsolute(link.last_click_at)}
               >
                 {fmtRelative(link.last_click_at)}
@@ -2257,7 +2257,7 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
                 <button
                   type="button"
                   onClick={() => toggle(link.id)}
-                  className="shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-300 hover:bg-white/10"
+                  className="shrink-0 rounded border border-glass/15 bg-glass/5 px-1.5 py-0.5 text-[10px] text-ink-3 hover:bg-glass/10"
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? "Hide timeline" : `Show ${visibleClicks.length} click${visibleClicks.length === 1 ? "" : "s"}`}
@@ -2276,35 +2276,35 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
 
 function ClickTimeline({ clicks }: { clicks: ClickDetail[] }) {
   return (
-    <ol className="border-t border-white/5 px-3 py-2 text-[11px] text-slate-300">
+    <ol className="border-t border-glass/5 px-3 py-2 text-[11px] text-ink-3">
       {clicks.map((click, idx) => (
         <li
           key={`${click.clicked_at}-${idx}`}
           className="flex items-start gap-2 py-0.5"
         >
-          <span className="mt-0.5 inline-flex w-12 shrink-0 justify-end text-slate-500 tabular-nums">
+          <span className="mt-0.5 inline-flex w-12 shrink-0 justify-end text-ink-5 tabular-nums">
             #{idx + 1}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="text-slate-100 tabular-nums" title={fmtAbsolute(click.clicked_at)}>
+              <span className="text-ink tabular-nums" title={fmtAbsolute(click.clicked_at)}>
                 {fmtAbsolute(click.clicked_at)}
               </span>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-ink-5">
                 ({fmtRelative(click.clicked_at)})
               </span>
               {click.is_likely_bot ? (
-                <span className="rounded bg-slate-700/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-300">
+                <span className="rounded bg-neutral/35 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-ink-3">
                   scanner
                 </span>
               ) : (
-                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-200">
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-warn">
                   real click
                 </span>
               )}
             </div>
             {click.user_agent ? (
-              <p className="mt-0.5 truncate text-[10px] text-slate-500" title={click.user_agent}>
+              <p className="mt-0.5 truncate text-[10px] text-ink-5" title={click.user_agent}>
                 {click.user_agent}
               </p>
             ) : null}
@@ -2327,9 +2327,9 @@ function LinkLeaderboardTable({
   showBots: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+    <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
       <table className="min-w-full text-left text-sm">
-        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+        <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
           <tr>
             <th className="px-3 py-2">Link</th>
             <th className="px-3 py-2 text-right">Sent in</th>
@@ -2341,13 +2341,13 @@ function LinkLeaderboardTable({
         <tbody>
           {loading && !hasData ? (
             <tr>
-              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+              <td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-3/80">
                 Loading link leaderboard…
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+              <td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-3/80">
                 No tracked links yet. Send a Gmail draft from the generator to start collecting clicks.
               </td>
             </tr>
@@ -2359,7 +2359,7 @@ function LinkLeaderboardTable({
               const ctrLabel = row.sends_count > 0 ? `${(ctr * 100).toFixed(ctr >= 0.1 ? 0 : 1)}%` : "—";
               const displayLabel = row.label || row.link_key || pickTrustedHost(row.original_url);
               return (
-                <tr key={row.key} className="border-t border-white/5 align-middle">
+                <tr key={row.key} className="border-t border-glass/5 align-middle">
                   <td className="px-3 py-2">
                     <a
                       href={row.original_url}
@@ -2368,12 +2368,12 @@ function LinkLeaderboardTable({
                       className="block min-w-0"
                       title={row.original_url}
                     >
-                      <div className="truncate text-sm text-slate-100 hover:text-amber-200">
+                      <div className="truncate text-sm text-ink hover:text-warn">
                         {displayLabel}
                       </div>
-                      <div className="truncate text-[10px] text-slate-500">
+                      <div className="truncate text-[10px] text-ink-5">
                         {row.link_key ? (
-                          <span className="mr-2 rounded bg-white/5 px-1 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">
+                          <span className="mr-2 rounded bg-glass/5 px-1 py-0.5 text-[9px] uppercase tracking-wider text-ink-4">
                             {row.link_key}
                           </span>
                         ) : null}
@@ -2381,18 +2381,18 @@ function LinkLeaderboardTable({
                       </div>
                     </a>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-3">
                     {row.sends_count}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
-                    <span className={total > 0 ? "text-amber-200" : "text-slate-400"}>{total}</span>
+                    <span className={total > 0 ? "text-warn" : "text-ink-4"}>{total}</span>
                     {botSuffix ? (
-                      <span className="ml-1 text-[10px] text-slate-500">{botSuffix}</span>
+                      <span className="ml-1 text-[10px] text-ink-5">{botSuffix}</span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-300">{ctrLabel}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-3">{ctrLabel}</td>
                   <td
-                    className="px-3 py-2 text-right text-xs text-slate-300"
+                    className="px-3 py-2 text-right text-xs text-ink-3"
                     title={fmtAbsolute(row.last_click_at)}
                   >
                     {fmtRelative(row.last_click_at)}

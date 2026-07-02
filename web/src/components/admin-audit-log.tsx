@@ -70,7 +70,7 @@ export function AdminAuditLog() {
   return (
     <div className="mt-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-ink-4">
           Recent deliberate admin actions — role changes, reminder pauses, and mail-model changes.
         </p>
         <div className="flex shrink-0 items-center gap-2">
@@ -81,7 +81,7 @@ export function AdminAuditLog() {
               void load();
             }}
             disabled={loading}
-            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className="rounded-lg border border-glass/15 bg-glass/5 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/10 disabled:opacity-60"
           >
             {loading ? "Refreshing…" : "Refresh"}
           </button>
@@ -89,7 +89,7 @@ export function AdminAuditLog() {
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       ) : null}
@@ -98,9 +98,9 @@ export function AdminAuditLog() {
         {updatedAt != null ? (
           <span key={`sweep-${updatedAt}`} aria-hidden className="data-refresh-sweep" />
         ) : null}
-        <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+        <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+            <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
               <tr>
                 <th className="px-3 py-2">When</th>
                 <th className="px-3 py-2">Actor</th>
@@ -112,13 +112,13 @@ export function AdminAuditLog() {
             <tbody>
               {loading && entries.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-3/80">
                     Loading audit log…
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-3/80">
                     No admin activity recorded yet.
                   </td>
                 </tr>
@@ -126,19 +126,19 @@ export function AdminAuditLog() {
                 entries.map((entry) => {
                   const detailText = describeDetail(entry);
                   return (
-                    <tr key={entry.id} className="border-t border-white/5 align-middle">
+                    <tr key={entry.id} className="border-t border-glass/5 align-middle">
                       <td
-                        className="px-3 py-2 text-xs text-slate-400"
+                        className="px-3 py-2 text-xs text-ink-4"
                         title={new Date(entry.created_at).toLocaleString()}
                       >
                         {fmtRelative(entry.created_at)}
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-200">{entry.actor_email || "—"}</td>
-                      <td className="px-3 py-2 text-xs text-slate-100">
+                      <td className="px-3 py-2 text-xs text-ink-2">{entry.actor_email || "—"}</td>
+                      <td className="px-3 py-2 text-xs text-ink">
                         {ACTION_LABELS[entry.action] ?? entry.action}
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-300">{entry.target || "—"}</td>
-                      <td className="px-3 py-2 text-xs text-slate-400">{detailText || "—"}</td>
+                      <td className="px-3 py-2 text-xs text-ink-3">{entry.target || "—"}</td>
+                      <td className="px-3 py-2 text-xs text-ink-4">{detailText || "—"}</td>
                     </tr>
                   );
                 })

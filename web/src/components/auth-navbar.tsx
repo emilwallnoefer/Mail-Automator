@@ -49,11 +49,11 @@ export function AuthNavbar({
     <nav className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="min-w-0 flex items-center gap-2.5">
-          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-cyan-300 to-indigo-400 text-[10px] font-semibold text-slate-950">
+          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
             FA
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">Flyability Internal</p>
+            <p className="text-[9px] uppercase tracking-[0.16em] text-accent-soft/70">Flyability Internal</p>
             <p className="truncate text-xs font-medium md:text-sm">Flya Allrounder</p>
           </div>
         </div>
@@ -64,25 +64,25 @@ export function AuthNavbar({
             onClick={() => {
               setMenuOpen((prev) => !prev);
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-2.5 py-1.5 text-xs transition hover:bg-white/12"
+            className="inline-flex items-center gap-2 rounded-lg border border-glass/15 bg-glass/8 px-2.5 py-1.5 text-xs transition hover:bg-glass/12"
             aria-label="Toggle navigation menu"
           >
-            <span className="hidden text-slate-200/90 sm:inline">Menu</span>
+            <span className="hidden text-ink-2/90 sm:inline">Menu</span>
             <span className="text-base leading-none">☰</span>
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-white/15 bg-slate-950/92 p-2.5 shadow-xl backdrop-blur-xl">
+            <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-glass/15 bg-surface/92 p-2.5 shadow-xl backdrop-blur-xl">
               <div className="mb-2">
                 <a
                   href="/onboarding"
-                  className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900"
+                  className="flex w-full items-center justify-between rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-accent/70 hover:bg-accent/95 hover:text-slate-900"
                 >
                   <span>Onboarding</span>
                   <span className="text-[10px] opacity-80">Open</span>
                 </a>
               </div>
-              <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Workspace</p>
+              <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.16em] text-accent-soft/70">Workspace</p>
               <div className="space-y-1" role="tablist" aria-label="Workspace tabs">
                 {availableModules.includes("mail") ? (
                   <button
@@ -94,8 +94,8 @@ export function AuthNavbar({
                     }}
                     role="tab"
                     aria-selected={activeModule === "mail"}
-                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 ${
-                      activeModule === "mail" ? "border-cyan-300/55 bg-white/12" : "border-white/10 bg-white/5"
+                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-accent/70 hover:bg-accent/95 hover:text-slate-900 ${
+                      activeModule === "mail" ? "border-accent/55 bg-glass/12" : "border-glass/10 bg-glass/5"
                     }`}
                   >
                     <span>Mail Composer</span>
@@ -112,8 +112,8 @@ export function AuthNavbar({
                     }}
                     role="tab"
                     aria-selected={activeModule === "time"}
-                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 ${
-                      activeModule === "time" ? "border-cyan-300/55 bg-white/12" : "border-white/10 bg-white/5"
+                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-accent/70 hover:bg-accent/95 hover:text-slate-900 ${
+                      activeModule === "time" ? "border-accent/55 bg-glass/12" : "border-glass/10 bg-glass/5"
                     }`}
                   >
                     <span>Time Tracker</span>
@@ -130,8 +130,8 @@ export function AuthNavbar({
                     }}
                     role="tab"
                     aria-selected={activeModule === "settings"}
-                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-cyan-300/70 hover:bg-cyan-400/95 hover:text-slate-900 ${
-                      activeModule === "settings" ? "border-cyan-300/55 bg-white/12" : "border-white/10 bg-white/5"
+                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-accent/70 hover:bg-accent/95 hover:text-slate-900 ${
+                      activeModule === "settings" ? "border-accent/55 bg-glass/12" : "border-glass/10 bg-glass/5"
                     }`}
                   >
                     <span>Settings</span>
@@ -148,8 +148,8 @@ export function AuthNavbar({
                     }}
                     role="tab"
                     aria-selected={activeModule === "admin"}
-                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-slate-100 transition hover:border-amber-300/70 hover:bg-amber-400/95 hover:text-slate-900 ${
-                      activeModule === "admin" ? "border-amber-300/55 bg-white/12" : "border-white/10 bg-white/5"
+                    className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-amber-300/70 hover:bg-amber-400/95 hover:text-slate-900 ${
+                      activeModule === "admin" ? "border-amber-300/55 bg-glass/12" : "border-glass/10 bg-glass/5"
                     }`}
                   >
                     <span>{adminModuleLabel}</span>
@@ -159,35 +159,35 @@ export function AuthNavbar({
               </div>
 
               {showGmailStatus ? (
-                <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+                <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`h-2 w-2 rounded-full ${gmailConnected ? "bg-emerald-300" : "bg-rose-300"}`}
                       aria-hidden="true"
                     />
-                    <p className="text-xs text-slate-100/90">{statusLabel}</p>
+                    <p className="text-xs text-ink/90">{statusLabel}</p>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-indigo-400 text-[10px] font-semibold text-slate-950">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
                       {initials}
                     </span>
-                    <p className="truncate text-xs text-slate-200/85">{gmailEmail ?? email}</p>
+                    <p className="truncate text-xs text-ink-2/85">{gmailEmail ?? email}</p>
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+                <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-indigo-400 text-[10px] font-semibold text-slate-950">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
                       {initials}
                     </span>
-                    <p className="truncate text-xs text-slate-200/85">{email}</p>
+                    <p className="truncate text-xs text-ink-2/85">{email}</p>
                   </div>
                 </div>
               )}
 
-              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Logged in as</p>
-                <p className="mt-1 text-xs font-medium text-slate-100">
+              <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3/75">Logged in as</p>
+                <p className="mt-1 text-xs font-medium text-ink">
                   {userRoleLabel(userRole ?? null)}
                 </p>
               </div>
@@ -196,7 +196,7 @@ export function AuthNavbar({
                 <form action="/logout" method="post">
                   <button
                     type="submit"
-                    className="w-full rounded-lg border border-white/15 bg-white/8 px-2.5 py-2 text-left text-xs transition hover:bg-white/12"
+                    className="w-full rounded-lg border border-glass/15 bg-glass/8 px-2.5 py-2 text-left text-xs transition hover:bg-glass/12"
                   >
                     Sign out
                   </button>

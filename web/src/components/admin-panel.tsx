@@ -264,12 +264,12 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               setDrilldownUserId(null);
               setDrilldownEmail("");
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/12"
+            className="inline-flex items-center gap-2 rounded-lg border border-glass/15 bg-glass/8 px-3 py-1.5 text-xs text-ink-2 transition hover:bg-glass/12"
           >
             <span aria-hidden>&larr;</span>
             {canManageUsers ? "Back to admin" : "Back to team time"}
           </button>
-          <p className="text-xs text-slate-400">Read-only view</p>
+          <p className="text-xs text-ink-4">Read-only view</p>
         </div>
         <TimeTrackerPanel readOnly apiBase={apiBase} viewingLabel={drilldownEmail || drilldownUserId} />
       </section>
@@ -299,11 +299,11 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
         <section className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 overflow-hidden rounded-2xl">
           <div className="flex min-h-[min(70vh,560px)] flex-col md:flex-row">
             <nav
-              className="shrink-0 border-b border-white/10 bg-slate-950/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-white/10"
+              className="shrink-0 border-b border-glass/10 bg-overlay/40 md:w-[min(100%,240px)] md:border-b-0 md:border-r md:border-glass/10"
               aria-label="Admin sections"
             >
-              <div className="border-b border-white/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
-                <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-slate-100 md:text-lg">
+              <div className="border-b border-glass/10 px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-5">
+                <h1 className="text-base font-semibold uppercase tracking-[0.14em] text-ink md:text-lg">
                   {canManageUsers ? "Admin" : "Team time"}
                 </h1>
               </div>
@@ -320,8 +320,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                         onClick={() => setSection(entry.id)}
                         className={`flex w-full items-center border-l-[3px] px-3 py-2.5 text-left text-sm transition ${
                           active
-                            ? "border-amber-400 bg-amber-400/15 font-medium text-amber-100"
-                            : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+                            ? "border-amber-400 bg-amber-400/15 font-medium text-warn"
+                            : "border-transparent text-ink-4 hover:bg-glass/[0.06] hover:text-ink-2"
                         }`}
                       >
                         <span className="truncate">{entry.label}</span>
@@ -332,8 +332,8 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
               </ul>
             </nav>
 
-            <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-white/5 bg-slate-950/20 p-4 md:border-t-0 md:p-6">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-50 md:text-2xl">
+            <div className="min-h-[280px] min-w-0 flex-1 overflow-y-auto border-t border-glass/5 bg-overlay/20 p-4 md:border-t-0 md:p-6">
+              <h2 className="text-xl font-semibold tracking-tight text-ink md:text-2xl">
                 {activeLabel}
               </h2>
 
@@ -365,12 +365,12 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                       onToday={() => setWeekStart(toDateKey(getMonday()))}
                       onNext={() => setWeekStart(toDateKey(addDays(fromDateKey(weekStart), 7)))}
                     />
-                    <span className="ml-auto text-xs text-slate-300/80">{weekRangeLabel}</span>
+                    <span className="ml-auto text-xs text-ink-3/80">{weekRangeLabel}</span>
                     <FreshnessPill updatedAt={overviewUpdatedAt} loading={overviewLoading} />
                   </div>
 
                   {overviewError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
                       {overviewError}
                     </p>
                   ) : null}
@@ -379,9 +379,9 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                     {overviewUpdatedAt != null ? (
                       <span key={`sweep-${overviewUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
                     ) : null}
-                    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+                    <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
                       <table className="min-w-full text-left text-sm">
-                        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+                        <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
                           <tr>
                             <th className="px-3 py-2">User</th>
                             <th className="px-3 py-2">Role</th>
@@ -394,37 +394,37 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                         <tbody>
                           {overviewLoading && !overview ? (
                             <tr>
-                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-3/80">
                                 Loading overview...
                               </td>
                             </tr>
                           ) : overview?.users.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                              <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-3/80">
                                 No users found.
                               </td>
                             </tr>
                           ) : (
                             overview?.users.map((user) => (
-                              <tr key={user.user_id} className="border-t border-white/5 align-middle">
+                              <tr key={user.user_id} className="border-t border-glass/5 align-middle">
                                 <td className="px-3 py-2">
                                   <div className="flex flex-col">
-                                    <span className="text-sm text-slate-100">{user.email || user.user_id}</span>
+                                    <span className="text-sm text-ink">{user.email || user.user_id}</span>
                                     {user.error ? (
-                                      <span className="text-[10px] text-rose-300">{user.error}</span>
+                                      <span className="text-[10px] text-danger">{user.error}</span>
                                     ) : null}
                                   </div>
                                 </td>
-                                <td className="px-3 py-2 text-xs text-slate-300">{userRoleLabel(user.role)}</td>
+                                <td className="px-3 py-2 text-xs text-ink-3">{userRoleLabel(user.role)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{fmtHM(user.weekly_total_mins)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{fmtSignedHM(user.overtime_bank_mins)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">
                                   {user.missing_days > 0 ? (
-                                    <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
+                                    <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-danger">
                                       {user.missing_days}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-400">0</span>
+                                    <span className="text-ink-4">0</span>
                                   )}
                                 </td>
                                 <td className="px-3 py-2 text-right">
@@ -434,7 +434,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                                       setDrilldownUserId(user.user_id);
                                       setDrilldownEmail(user.email);
                                     }}
-                                    className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+                                    className="rounded-lg border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
                                   >
                                     View week
                                   </button>
@@ -458,17 +458,17 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                       onChange={(event) => setUserFilter(event.target.value)}
                       placeholder="Filter by email"
                       autoComplete="off"
-                      className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-3 pr-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-400/40 focus:outline-none sm:w-64"
+                      className="w-full rounded-lg border border-glass/15 bg-glass/5 py-2 pl-3 pr-2 text-xs text-ink-2 placeholder:text-ink-5 focus:border-amber-400/40 focus:outline-none sm:w-64"
                     />
                     <FreshnessPill updatedAt={usersUpdatedAt} loading={usersLoading} />
                   </div>
                   {usersError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
                       {usersError}
                     </p>
                   ) : null}
                   {roleError ? (
-                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                    <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-danger">
                       {roleError}
                     </p>
                   ) : null}
@@ -477,9 +477,9 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                     {usersUpdatedAt != null ? (
                       <span key={`sweep-${usersUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
                     ) : null}
-                    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+                    <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
                       <table className="min-w-full text-left text-sm">
-                        <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-300/80">
+                        <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
                           <tr>
                             <th className="px-3 py-2">Email</th>
                             <th className="px-3 py-2">Current role</th>
@@ -490,13 +490,13 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                         <tbody>
                           {usersLoading && users.length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-ink-3/80">
                                 Loading users...
                               </td>
                             </tr>
                           ) : filteredUsers.length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-300/80">
+                              <td colSpan={4} className="px-3 py-6 text-center text-sm text-ink-3/80">
                                 {users.length === 0 ? "No users found." : "No users match your filter."}
                               </td>
                             </tr>
@@ -505,10 +505,10 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                               const pending = Boolean(rolePending[user.id]);
                               const currentValue: UserRole | "none" = user.role ?? "none";
                               return (
-                                <tr key={user.id} className="border-t border-white/5">
-                                  <td className="px-3 py-2 text-sm text-slate-100">{user.email || user.id}</td>
-                                  <td className="px-3 py-2 text-xs text-slate-300">{userRoleLabel(user.role)}</td>
-                                  <td className="px-3 py-2 text-xs text-slate-400">
+                                <tr key={user.id} className="border-t border-glass/5">
+                                  <td className="px-3 py-2 text-sm text-ink">{user.email || user.id}</td>
+                                  <td className="px-3 py-2 text-xs text-ink-3">{userRoleLabel(user.role)}</td>
+                                  <td className="px-3 py-2 text-xs text-ink-4">
                                     {user.last_sign_in_at
                                       ? new Date(user.last_sign_in_at).toLocaleString()
                                       : "-"}
@@ -522,7 +522,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                                         const next = value === "none" ? null : value;
                                         void changeRole(user.id, next);
                                       }}
-                                      className="rounded-lg border border-white/20 bg-slate-900/80 px-2 py-1 text-xs text-slate-100"
+                                      className="rounded-lg border border-glass/20 bg-panel/80 px-2 py-1 text-xs text-ink"
                                     >
                                       {ROLE_OPTIONS.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -531,7 +531,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                                       ))}
                                     </select>
                                     {pending ? (
-                                      <span className="ml-2 text-[10px] text-slate-400">Saving...</span>
+                                      <span className="ml-2 text-[10px] text-ink-4">Saving...</span>
                                     ) : null}
                                   </td>
                                 </tr>
