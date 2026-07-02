@@ -32,6 +32,18 @@ Each item: **what** · **impact** · **fix** · **effort**.
 - **Fix:** require `getUser()` on the generation routes; derive IP from a trusted platform header (`x-real-ip` / `x-vercel-forwarded-for`); back the limiter durably (or use the Vercel firewall) for anything left public.
 - **Effort:** S–M.
 
+**T0.4 — HTML injection into Brief-mode emails via unescaped markdown URLs** _(MEDIUM, run-2 #5)_
+- **What:** `markdownBlockToHtml` (`src/lib/mail-engine.ts:231-234`, `239-241`) interpolates link/image URLs into `href`/`src` without HTML-escaping (capture `[^)]+`, so a `"` breaks out), and runs over model-authored prose from the unauthenticated `/api/generate-brief` brief (`renderBriefMail`, `mail-engine.ts:717`).
+- **Impact:** a crafted brief yields attacker-chosen links, remote images (tracking pixels), or broken-out HTML in the outgoing customer email — defeating the "links are never model-authored" tracking guarantee. Executable XSS is blunted by email-client sanitizers; no in-app `dangerouslySetInnerHTML` sink for `html_body`.
+- **Fix:** HTML-escape + scheme-validate the URL (allow `https:`/`cid:` only), forbid quotes/whitespace in the capture, or strip markdown links/images from model prose (the plain-text path already does via `stripMarkdownLinks`).
+- **Effort:** S.
+
+**T0.5 — Team-chat message identity spoofing via unconstrained INSERT** _(MEDIUM, run-2 #6)_
+- **What:** `chat_messages` grants `authenticated` a table-wide INSERT (`supabase/2026-04-19-team-chat.sql:39`) and the insert policy checks only `auth.uid() = sender_id` (`:48-51`). `sender_email` (free-text, drives the displayed identity) and the moderation fields `done_at`/`done_by`/`kind` are attacker-settable at insert.
+- **Impact:** impersonation of any colleague/admin in the shared team channel (social-engineering/fraud vector) + forgeable moderation metadata. Bounded to the one channel; no data disclosure.
+- **Fix:** BEFORE INSERT trigger stamping `sender_email` from `auth.jwt()->>'email'` and nulling `done_at`/`done_by`; or a column-scoped insert grant. New dated migration.
+- **Effort:** S.
+
 ### Tier 1 — Hardening (defense-in-depth)
 
 **T1.1 — Security headers.** `next.config.ts` sets none. Add a `headers()` block: `Content-Security-Policy` (the mitigating layer for T0.2), `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`. Effort: S (CSP tuning is the only real work).
@@ -43,6 +55,12 @@ Each item: **what** · **impact** · **fix** · **effort**.
 **T1.4 — Constant-time `CRON_SECRET` compare.** `authorize()` in `cron/time-log-reminder` uses `===`; use `crypto.timingSafeEqual`. Effort: XS.
 
 **T1.5 — Middleware fail-closed.** `updateSession` catches all errors and returns `next()` (fail-open) for protected paths; prefer redirecting to `/login` on error for `/dashboard`+`/settings`. Effort: XS.
+
+**T1.6 — `time_tracker_audit_log` missing `force row level security`** (`supabase/time-tracker-durability.sql:24`) — the only one of 16 tables without `force`. Add it for consistency. Effort: XS. _(run-2 H5)_
+
+**T1.7 — Tighten `chat-attachments` Storage.** Read policy is bucket-wide for all authenticated (`team-chat.sql:76-80`) and the 10 MiB cap is client-only (`chat.ts:309-313`). Scope reads and add a bucket-level size limit. Low impact (message rows are already team-wide readable). Effort: S. _(run-2 H6)_
+
+**T1.8 — Unauthenticated outbound fetch on `/api/generate`.** Anonymous callers drive DuckDuckGo fetches via `enrichWithAutoResearch` (`company-research.ts:57`); fixed host so not SSRF, but compute amplification. Folds into T0.3's "require auth on generation routes." _(run-2 H7)_
 
 ### Tier 2 — Detection & response (the second requested capability — build now)
 
@@ -74,3 +92,4 @@ The app records **no** security events and has **no** breach alerting. Extend th
 ## Status log
 
 - 2026-07-02 — Audit run-1 completed; masterplan created; **T2 (detection + breach alerting) implemented** in this branch. Tier 0/1 items open.
+- 2026-07-02 — **Audit run-2 completed** (full recon fleet over the run-1 gap areas: mail-tracking, chat + Storage, Sheets, time-tracker, settings, RLS sweep). Added T0.4/T0.5 (both MEDIUM integrity) and T1.6–T1.8. Confirmed clean: mail-tracking routes (no injection/IDOR), RLS across all 16 tables, time-tracker writes, account/delete, settings, Sheets fixed-spreadsheet, company-research (not SSRF). Artifacts in `docs/security-audit/run-2/`.
