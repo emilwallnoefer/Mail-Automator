@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-02-chat-unread",
+    date: "Jul 2, 2026",
+    title: "Team chat: unread badge + popup fix",
+    highlights: [
+      "A red badge on the chat button now also counts messages received while you were away.",
+      "The chat button no longer covers this popup — it moves out of the way.",
+    ],
+  },
+  {
     version: "2026-07-02-ui-polish",
     date: "Jul 2, 2026",
     title: "A faster, more consistent interface",

@@ -42,6 +42,30 @@ import {
   type SendState,
 } from "./types";
 
+// Per-user "last read" mark (ISO timestamp of the newest message seen with the
+// panel open). Lets the unread badge survive reloads: messages that arrived
+// while this tab was closed still light it up on the next visit.
+const CHAT_LAST_READ_AT_KEY = "ma_chat_last_read_at_v1";
+
+function readLastReadAt(userId: string): number | null {
+  try {
+    const raw = window.localStorage.getItem(`${CHAT_LAST_READ_AT_KEY}:${userId}`);
+    if (!raw) return null;
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? null : parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastReadAt(userId: string, isoTimestamp: string) {
+  try {
+    window.localStorage.setItem(`${CHAT_LAST_READ_AT_KEY}:${userId}`, isoTimestamp);
+  } catch {
+    // Storage blocked (e.g. private mode): the badge just resets per session.
+  }
+}
+
 /** All Team Chat widget state: initial history + realtime subscription, the
  *  scroll/unread bookkeeping, optimistic send/edit/delete/vote/mark flows,
  *  typing indicators, undo-delete timers, and the derived view models. */
@@ -229,6 +253,22 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
         broadcastTypingRef.current = sub.broadcastTyping;
         setCurrentUserId(sub.currentUserId);
         setCurrentUserEmail(sub.currentEmail);
+
+        // Seed the unread badge from messages that arrived while this tab was
+        // closed: anything from someone else newer than the last-read mark.
+        // (Realtime inserts landing after the history fetch increment `unread`
+        // themselves and are not in `history`, so adding is double-count safe.)
+        const lastReadAt = readLastReadAt(sub.currentUserId);
+        if (lastReadAt != null) {
+          const missed = history.filter(
+            (m) => m.sender_id !== sub.currentUserId && Date.parse(m.created_at) > lastReadAt,
+          ).length;
+          if (missed > 0 && !openRef.current) setUnread((n) => n + missed);
+        } else if (history.length > 0) {
+          // First visit on this browser: treat existing history as read.
+          saveLastReadAt(sub.currentUserId, history[history.length - 1].created_at);
+        }
+
         await sub.trackPresence();
 
         typingSweep = window.setInterval(() => {
@@ -270,6 +310,15 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
       if (el) el.scrollTop = el.scrollHeight;
     });
   }, [open]);
+
+  // While the panel is open, keep the persistent last-read mark at the newest
+  // loaded message so a reload doesn't resurrect the badge for messages the
+  // user just saw.
+  useEffect(() => {
+    if (!open || !currentUserId) return;
+    const latest = messages[messages.length - 1];
+    if (latest) saveLastReadAt(currentUserId, latest.created_at);
+  }, [open, currentUserId, messages]);
 
   // Re-scroll only when the user is already at/near the bottom (or when they
   // change the filter, which is an explicit context switch). This prevents

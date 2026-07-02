@@ -115,6 +115,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const [roleError, setRoleError] = useState<string | null>(null);
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  // The floating chat pill shares the bottom-right corner with the first-launch
+  // and "What's new" popups. Their height varies per release, so measure the
+  // visible one and lift the pill just above it instead of guessing a fixed rem.
+  const bottomPopupRef = useRef<HTMLDivElement | null>(null);
+  const [bottomPopupHeight, setBottomPopupHeight] = useState(0);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
     connected: false,
@@ -227,6 +232,33 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     if (availableModules.includes(activeModule)) return;
     setActiveModule(availableModules[0]);
   }, [activeModule, availableModules]);
+
+  const bottomPopupVisible = showProgramReadmePrompt || showWhatsNew;
+
+  useEffect(() => {
+    if (!bottomPopupVisible) {
+      setBottomPopupHeight(0);
+      return;
+    }
+    const el = bottomPopupRef.current;
+    if (!el) return;
+    const update = () => setBottomPopupHeight(el.offsetHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [bottomPopupVisible, showProgramReadmePrompt, showWhatsNew]);
+
+  // Popups sit at bottom-4 (16px); park the chat pill 12px above the measured
+  // top edge. Until the first measurement lands, fall back to the old fixed
+  // offsets so the pill never starts on top of the popup.
+  const chatBottomOffsetRem = !bottomPopupVisible
+    ? 1
+    : bottomPopupHeight > 0
+      ? (16 + bottomPopupHeight + 12) / 16
+      : showProgramReadmePrompt
+        ? 11
+        : 12;
 
   function dismissProgramReadmePrompt() {
     setShowProgramReadmePrompt(false);
@@ -473,12 +505,12 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         </AnimatePresence>
 
       </section>
-      <ChatWidget
-        bottomOffsetRem={showProgramReadmePrompt ? 11 : showWhatsNew ? 12 : 1}
-        isAdmin={isAdmin}
-      />
+      <ChatWidget bottomOffsetRem={chatBottomOffsetRem} isAdmin={isAdmin} />
       {showProgramReadmePrompt ? (
-        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl">
+        <div
+          ref={bottomPopupRef}
+          className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">First launch</p>
@@ -510,7 +542,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         </div>
       ) : null}
       {showWhatsNew ? (
-        <div className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl">
+        <div
+          ref={bottomPopupRef}
+          className="fixed bottom-4 right-4 z-[120] w-[min(92vw,22rem)] rounded-xl border border-glass/20 bg-surface/92 p-3 shadow-xl backdrop-blur-xl"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">
