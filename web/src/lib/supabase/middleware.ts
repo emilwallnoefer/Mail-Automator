@@ -49,7 +49,15 @@ export async function updateSession(request: NextRequest) {
 
     return response;
   } catch {
-    // Never break page load due to middleware auth/cookie failures in Edge runtime.
+    // Fail closed on protected routes (SECURITY.md T1.5): if the session can't
+    // be verified, don't let a gated page render — send to login. Public pages
+    // still load normally.
+    const path = request.nextUrl.pathname;
+    if (path.startsWith("/dashboard") || path.startsWith("/settings")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
     return NextResponse.next({ request });
   }
 }

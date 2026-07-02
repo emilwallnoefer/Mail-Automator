@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -290,12 +291,23 @@ async function sendTestResponse(request: Request, to: string, url: URL) {
   });
 }
 
+/**
+ * Constant-time string comparison for the cron bearer token. Hashing both sides
+ * to a fixed-length SHA-256 digest avoids leaking length and sidesteps
+ * timingSafeEqual's requirement that inputs be equal length. (SECURITY.md T1.4)
+ */
+function timingSafeStrEqual(a: string, b: string): boolean {
+  const ah = createHash("sha256").update(a).digest();
+  const bh = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ah, bh);
+}
+
 async function authorize(request: Request): Promise<
   { ok: true; mode: "cron" | "admin" } | { ok: false; response: NextResponse }
 > {
   const authHeader = request.headers.get("authorization") ?? "";
   const cronSecret = process.env.CRON_SECRET?.trim();
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+  if (cronSecret && timingSafeStrEqual(authHeader, `Bearer ${cronSecret}`)) {
     return { ok: true, mode: "cron" };
   }
 

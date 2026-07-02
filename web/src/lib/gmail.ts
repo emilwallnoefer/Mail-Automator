@@ -20,12 +20,14 @@ export function getOAuthClient(redirectUri: string) {
   );
 }
 
-export function getAuthUrl(redirectUri: string) {
+export function getAuthUrl(redirectUri: string, state?: string) {
   const client = getOAuthClient(redirectUri);
   return client.generateAuthUrl({
     access_type: "offline",
     scope: GMAIL_SCOPES,
     prompt: "consent",
+    // Anti-CSRF: echoed back to the callback and matched against a cookie.
+    ...(state ? { state } : {}),
   });
 }
 
