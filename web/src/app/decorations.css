@@ -1,0 +1,1004 @@
+/* Decoration & component classes (incl. light-theme re-skins and
+ * reduced-motion guards). Order matters: light re-skins override the dark
+ * base classes above them, and the Glacier block wins by source order. */
+
+.aurora-bg {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(45rem 45rem at 0% 0%, rgba(34, 211, 238, 0.2), transparent 60%),
+    radial-gradient(40rem 40rem at 95% 15%, rgba(99, 102, 241, 0.25), transparent 55%),
+    radial-gradient(35rem 35rem at 40% 90%, rgba(16, 185, 129, 0.18), transparent 55%),
+    linear-gradient(130deg, #020617 0%, #020617 45%, #0f172a 100%);
+  filter: saturate(115%);
+}
+
+.aurora-bg::before,
+.aurora-bg::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+}
+
+/* Broad, soft light beams coming from top-left. */
+.aurora-bg::before {
+  background:
+    repeating-linear-gradient(
+      64deg,
+      rgba(220, 245, 255, 0.34) 0px,
+      rgba(220, 245, 255, 0.34) 2px,
+      rgba(220, 245, 255, 0.08) 2px,
+      rgba(220, 245, 255, 0.08) 68px
+    ),
+    radial-gradient(92rem 40rem at 2% -8%, rgba(190, 235, 255, 0.34), transparent 74%),
+    linear-gradient(148deg, rgba(186, 230, 253, 0.2) 0%, rgba(186, 230, 253, 0) 64%);
+  mix-blend-mode: screen;
+  filter: blur(14px);
+  opacity: 0.54;
+  animation: waterCausticSweep 18s linear infinite;
+}
+
+/* Secondary ripple layer for realistic underwater shimmer spread. */
+.aurora-bg::after {
+  background:
+    repeating-linear-gradient(
+      60deg,
+      rgba(205, 239, 255, 0.2) 0px,
+      rgba(205, 239, 255, 0.2) 1px,
+      transparent 1px,
+      transparent 44px
+    ),
+    radial-gradient(100rem 46rem at -8% -16%, rgba(191, 239, 255, 0.24), transparent 74%),
+    linear-gradient(150deg, rgba(125, 211, 252, 0.22), rgba(125, 211, 252, 0) 70%);
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  opacity: 0.34;
+  animation: waterCausticPulse 11s ease-in-out infinite alternate;
+}
+
+.glass-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  backdrop-filter: blur(22px) saturate(155%);
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
+  border-radius: 1rem;
+  box-shadow:
+    0 22px 48px rgba(6, 17, 36, 0.5),
+    0 8px 24px rgba(8, 29, 58, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-card::before,
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+}
+
+.glass-card::before {
+  background:
+    radial-gradient(26rem 16rem at 12% 8%, rgba(219, 245, 255, 0.22), transparent 70%),
+    radial-gradient(22rem 14rem at 86% 72%, rgba(103, 232, 249, 0.12), transparent 74%);
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  animation: glassRefractionDrift 15s ease-in-out infinite alternate;
+}
+
+.glass-card::after {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.015) 42%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(24rem 14rem at 88% 14%, rgba(228, 247, 255, 0.055), transparent 75%);
+  opacity: 0.32;
+  filter: blur(1.4px);
+}
+
+.glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Day logger modal needs stronger contrast than generic glass cards. */
+.day-logger-card {
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: linear-gradient(140deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.82));
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  box-shadow:
+    0 28px 64px rgba(2, 8, 23, 0.72),
+    0 10px 28px rgba(2, 8, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.day-logger-card::before {
+  opacity: 0.18;
+}
+
+.day-logger-card::after {
+  opacity: 0.12;
+}
+
+/* Week-picker overlay: same blue-slate hue as the app's modals but nearly
+ * opaque, so it reads as a solid sheet laid over the week (no day cards
+ * bleeding through). */
+.calendar-card {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(140deg, rgba(20, 30, 54, 0.985), rgba(15, 23, 42, 0.985));
+  box-shadow:
+    0 28px 64px rgba(2, 8, 23, 0.72),
+    0 10px 28px rgba(2, 8, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.day-logger-overlay {
+  animation: dayLoggerOverlayIn 180ms ease-out both;
+}
+
+.day-logger-dialog-wrap {
+  animation: dayLoggerDialogWrapIn 220ms ease-out both;
+}
+
+.day-logger-dialog {
+  animation: dayLoggerDialogIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center top;
+}
+
+/* Native <select> in mail composer: dark form chrome so open lists match the panel (not OS bright blue). */
+.mail-composer-select {
+  color-scheme: dark;
+  accent-color: rgb(34 211 238);
+  color: rgb(241 245 249);
+}
+
+.mail-composer-select option {
+  background-color: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
+.mail-composer-select:focus-visible {
+  outline: 2px solid rgb(34 211 238 / 0.45);
+  outline-offset: 2px;
+}
+
+.page-shell {
+  position: relative;
+  z-index: 10;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 80rem;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+}
+
+/* Dashboard home: soft grid + vignette over aurora */
+.dashboard-mesh {
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% -10%, black 45%, transparent 78%);
+  opacity: 0.85;
+}
+
+.dashboard-mesh-fade {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgba(2, 6, 23, 0.55), transparent 65%);
+}
+
+.underwater-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+/*
+ * Team-chat action row (vote / edit / delete / mark-done buttons).
+ *
+ * On touch devices (@media not (hover: hover)) we keep the row inline and
+ * always visible, because there's no way to "hover" to reveal it.
+ *
+ * On hover-capable devices the row is hidden by default and is rendered as
+ * an absolutely-positioned floating bar anchored to the bottom of the
+ * message bubble. It appears on hover or keyboard focus-within, overlays
+ * subsequent messages instead of pushing them, and gets its own subtle
+ * panel background so it stays legible over whatever sits behind it.
+ */
+.chat-actions-row {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+.chat-actions-row > * {
+  flex: 0 0 auto; /* never shrink individual buttons */
+}
+@media (hover: hover) {
+  /*
+   * Floating, single-row action bar that overlays the message bubble itself.
+   * Anchored to the bubble's top edge (the parent `.relative` wrapper sits
+   * around just the bubble, not the whole column), translated up so it sits
+   * mostly above the bubble with a small visual hook overlapping the top.
+   * `flex-wrap: nowrap` + `whitespace: nowrap` keep it as a single tidy row
+   * — no cramping, even though it may extend wider than the bubble.
+   */
+  .chat-actions-row {
+    position: absolute;
+    top: 0;
+    z-index: 10;
+    display: none;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0;
+    transform: translateY(-55%);
+    white-space: nowrap;
+    width: max-content;
+    max-width: none;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem;
+    background: rgba(2, 6, 23, 0.94);
+    padding: 0.2rem 0.35rem;
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  /*
+   * Anchor each bar to the bubble edge that faces the panel wall, so the
+   * toolbar grows inward (toward the centre of the panel) and can never
+   * overflow past the right/left edge of the chat window.
+   *   - is-me:   bubble hugs the right wall → anchor right, grow leftward.
+   *   - is-other: bubble hugs the left wall  → anchor left,  grow rightward.
+   */
+  .chat-actions-row.is-me {
+    right: 0.25rem;
+  }
+  .chat-actions-row.is-other {
+    left: 0.25rem;
+  }
+  .chat-message-row:hover .chat-actions-row,
+  .chat-message-row:focus-within .chat-actions-row {
+    display: inline-flex;
+  }
+}
+
+.hourlogger-surface {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+
+.hourlogger-surface::before,
+.hourlogger-surface::after {
+  content: none;
+}
+
+.underwater-panel::before,
+.underwater-panel::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+}
+
+.underwater-panel::before {
+  background:
+    radial-gradient(40rem 30rem at 15% 25%, rgba(34, 211, 238, 0.18), transparent 65%),
+    radial-gradient(36rem 26rem at 80% 80%, rgba(56, 189, 248, 0.16), transparent 65%);
+  animation: underwaterDrift 16s ease-in-out infinite alternate;
+}
+
+.underwater-panel::after {
+  background:
+    radial-gradient(56rem 24rem at 86% -4%, rgba(185, 232, 255, 0.16), transparent 74%),
+    linear-gradient(180deg, rgba(186, 230, 253, 0.08), rgba(186, 230, 253, 0));
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  filter: blur(5px);
+  animation: shimmerSweep 12s linear infinite;
+}
+
+/* Ambient decoration pauses for users who prefer reduced motion. The static
+ * gradients/tints remain, so the underwater skin keeps its look — only the
+ * perpetual drift/sweep/rise motion stops. Finite feedback animations (day
+ * reveal, refresh sweeps, freshness state changes) are intentionally not
+ * listed: they convey state and run once. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg::before,
+  .aurora-bg::after,
+  .glass-card::before,
+  .underwater-panel::before,
+  .underwater-panel::after,
+  .liquid-day-card::before,
+  .day-progress-algae::after,
+  .bubble,
+  .wave-fill::before,
+  .wave-fill::after {
+    animation: none;
+  }
+}
+
+.bubble-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -30px;
+  width: var(--bubble-size);
+  height: var(--bubble-size);
+  left: var(--bubble-left);
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.75), rgba(125, 211, 252, 0.15) 65%, transparent);
+  opacity: 0.65;
+  animation: bubbleRise var(--bubble-duration) linear infinite;
+  animation-delay: var(--bubble-delay);
+}
+
+.wave-tank {
+  position: relative;
+  height: 54px;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(2, 6, 23, 0.45);
+  overflow: hidden;
+}
+
+.wave-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.58), rgba(14, 116, 144, 0.8));
+}
+
+.wave-fill::before,
+.wave-fill::after {
+  content: "";
+  position: absolute;
+  left: -25%;
+  width: 150%;
+  height: 14px;
+  border-radius: 45%;
+  background: rgba(186, 230, 253, 0.36);
+}
+
+.wave-fill::before {
+  top: -7px;
+  animation: waveShift 3.8s ease-in-out infinite;
+}
+
+.wave-fill::after {
+  top: -9px;
+  opacity: 0.55;
+  animation: waveShift 5.2s ease-in-out infinite reverse;
+}
+
+.day-progress {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(2, 6, 23, 0.45);
+  overflow: hidden;
+}
+
+.day-progress-topdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: linear-gradient(180deg, rgba(207, 250, 254, 0.35), rgba(125, 211, 252, 0.06));
+  animation: dayFillTopDown 520ms ease-out both;
+  z-index: 0;
+}
+
+.day-progress-segment {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-width: 0;
+  transform-origin: left center;
+  animation: dayFillLeftRight 620ms ease-out both;
+}
+
+.day-progress-sand {
+  background: linear-gradient(180deg, rgba(245, 208, 120, 0.95), rgba(194, 146, 78, 0.92));
+}
+
+/* Weekend / public holiday: no core target — full bar is “off”; extra work is algae OT */
+.day-progress-rest {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.55), rgba(71, 85, 105, 0.75));
+  position: relative;
+}
+
+.day-progress-rest::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -28deg,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  opacity: 0.85;
+}
+
+.day-progress-algae {
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.95), rgba(20, 122, 107, 0.92));
+  position: relative;
+}
+
+.day-progress-algae::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    120deg,
+    rgba(167, 243, 208, 0.25) 0px,
+    rgba(167, 243, 208, 0.25) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+  animation: shimmerSweep 7s linear infinite;
+}
+
+.day-progress-comp {
+  background: linear-gradient(180deg, rgba(251, 146, 146, 0.95), rgba(185, 71, 71, 0.92));
+}
+
+.liquid-day-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(142deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.liquid-day-card::before,
+.liquid-day-card::after {
+  content: "";
+  position: absolute;
+  inset: -28%;
+  pointer-events: none;
+}
+
+.liquid-day-card::before {
+  background:
+    radial-gradient(22rem 16rem at 12% 10%, rgba(212, 246, 255, 0.26), transparent 68%),
+    radial-gradient(16rem 12rem at 76% 72%, rgba(90, 214, 255, 0.17), transparent 70%);
+  filter: blur(14px);
+  mix-blend-mode: screen;
+  animation: liquidRefractionDrift 11s ease-in-out infinite alternate;
+}
+
+.liquid-day-card::after {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.02) 44%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(20rem 11rem at 84% 16%, rgba(221, 247, 255, 0.07), transparent 75%);
+  opacity: 0.34;
+  filter: blur(2.4px);
+}
+
+.liquid-day-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Time tracker: weekday vs weekend vs public holiday */
+.liquid-day-card.liquid-day-card--sat {
+  border-left: 3px solid rgba(129, 140, 248, 0.72);
+  background: linear-gradient(145deg, rgba(49, 46, 129, 0.32), rgba(255, 255, 255, 0.06));
+}
+
+.liquid-day-card.liquid-day-card--sun {
+  border-left: 3px solid rgba(244, 114, 182, 0.72);
+  background: linear-gradient(145deg, rgba(131, 24, 67, 0.26), rgba(255, 255, 255, 0.05));
+}
+
+.liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(251, 191, 36, 0.82);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 4px 0 rgba(251, 191, 36, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.liquid-day-card.liquid-day-card--sl {
+  border-top: 3px solid rgba(45, 212, 191, 0.82);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 4px 0 rgba(45, 212, 191, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.day-ready-sweep-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.day-ready-sweep-beam::before {
+  content: "";
+  position: absolute;
+  inset: -140% -90%;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(215, 248, 255, 0) 42%,
+      rgba(215, 248, 255, 0.18) 49%,
+      rgba(144, 233, 255, 0.46) 51.5%,
+      rgba(215, 248, 255, 0.2) 54%,
+      rgba(215, 248, 255, 0) 61%
+    ),
+    radial-gradient(28% 24% at 50% 50%, rgba(148, 236, 255, 0.38), rgba(148, 236, 255, 0) 72%);
+  mix-blend-mode: screen;
+  filter: blur(1.4px);
+  opacity: 0;
+  transform: translate3d(-92%, -92%, 0) rotate(0.001deg);
+  animation: daySweepAcrossCards 980ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--day-sweep-delay, 0ms);
+}
+
+.day-card-selected {
+  border-color: rgba(103, 232, 249, 0.72);
+  box-shadow:
+    0 30px 64px rgba(2, 11, 28, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 1px rgba(103, 232, 249, 0.22);
+}
+
+.write-glow-live {
+  text-shadow:
+    0 0 6px rgba(120, 237, 255, 0.42),
+    0 0 16px rgba(72, 193, 255, 0.28);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.write-glow-fade {
+  animation: writeGlowFadeOut 920ms ease-out both;
+}
+
+.write-appear-glow {
+  animation: writeRiseGlowFade 1650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.write-char-neon {
+  display: inline;
+  animation: writeCharNeonFade 1000ms ease-out both;
+}
+
+.freshness-pill {
+  position: relative;
+  display: inline-block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.5);
+  vertical-align: middle;
+  transition: background 600ms ease-out, box-shadow 600ms ease-out, transform 600ms ease-out;
+}
+
+.freshness-pill--loading {
+  background: rgb(251, 146, 60);
+  animation: freshnessLoadingPulse 1500ms ease-in-out infinite;
+}
+
+.freshness-pill-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.5px;
+  height: 2.5px;
+  margin: -1.25px 0 0 -1.25px;
+  border-radius: 9999px;
+  background: rgb(251, 146, 60);
+  box-shadow: 0 0 3px rgba(251, 146, 60, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  animation: freshnessParticleIn 1600ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation-delay: var(--particle-delay, 0ms);
+}
+
+.freshness-flash {
+  animation:
+    freshnessPop 700ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    freshnessFade 180s linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .freshness-flash,
+  .freshness-pill--loading {
+    animation: none;
+  }
+
+  .freshness-flash {
+    background: rgb(74, 222, 128);
+  }
+
+  .freshness-pill-particle {
+    display: none;
+  }
+}
+
+.data-refresh-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.data-refresh-sweep::before {
+  content: "";
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: 55%;
+  top: -55%;
+  background: linear-gradient(
+    180deg,
+    rgba(74, 222, 128, 0) 0%,
+    rgba(74, 222, 128, 0.11) 50%,
+    rgba(74, 222, 128, 0) 100%
+  );
+  filter: blur(6px);
+  animation: dataRefreshSweep 900ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+html[data-theme="light"] .data-refresh-sweep::before {
+  background: linear-gradient(
+    180deg,
+    rgba(133, 153, 0, 0) 0%,
+    rgba(133, 153, 0, 0.13) 50%,
+    rgba(133, 153, 0, 0) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-refresh-sweep::before {
+    animation: none;
+    display: none;
+  }
+}
+
+/* =========================================================================
+ * Custom CSS classes — re-skinned for paper
+ * ========================================================================= */
+
+/* Aurora wash: replace cyan/indigo glow with a soft cream + yellow paper. */
+html[data-theme="light"] .aurora-bg {
+  background:
+    radial-gradient(45rem 45rem at 0% 0%, rgba(181, 137, 0, 0.12), transparent 60%),
+    radial-gradient(40rem 40rem at 95% 15%, rgb(var(--ac-strong) / 0.1), transparent 55%),
+    radial-gradient(35rem 35rem at 40% 90%, rgba(133, 153, 0, 0.1), transparent 55%),
+    linear-gradient(130deg, rgb(var(--paper-3)) 0%, rgb(var(--paper-3)) 45%, rgb(var(--paper-2)) 100%);
+  filter: saturate(100%);
+}
+
+html[data-theme="light"] .aurora-bg::before {
+  background:
+    repeating-linear-gradient(
+      64deg,
+      rgba(88, 110, 117, 0.08) 0px,
+      rgba(88, 110, 117, 0.08) 2px,
+      rgba(88, 110, 117, 0.02) 2px,
+      rgba(88, 110, 117, 0.02) 68px
+    ),
+    radial-gradient(92rem 40rem at 2% -8%, rgba(181, 137, 0, 0.12), transparent 74%),
+    linear-gradient(148deg, rgba(101, 123, 131, 0.08) 0%, rgba(101, 123, 131, 0) 64%);
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+html[data-theme="light"] .aurora-bg::after {
+  background:
+    repeating-linear-gradient(
+      60deg,
+      rgba(88, 110, 117, 0.05) 0px,
+      rgba(88, 110, 117, 0.05) 1px,
+      transparent 1px,
+      transparent 44px
+    ),
+    radial-gradient(100rem 46rem at -8% -16%, rgb(var(--ac-strong) / 0.08), transparent 74%),
+    linear-gradient(150deg, rgb(var(--ac-strong) / 0.05), rgb(var(--ac-strong) / 0) 70%);
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+}
+
+/* Glass cards: light paper-tinted glass over base2. */
+html[data-theme="light"] .glass-card {
+  border: 1px solid rgba(101, 123, 131, 0.2);
+  background: linear-gradient(140deg, rgb(var(--paper-2) / 0.88), rgb(var(--paper-2) / 0.6));
+  box-shadow:
+    0 22px 48px rgba(7, 54, 66, 0.1),
+    0 8px 24px rgba(7, 54, 66, 0.06),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.8),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .glass-card::before {
+  background:
+    radial-gradient(26rem 16rem at 12% 8%, rgba(181, 137, 0, 0.08), transparent 70%),
+    radial-gradient(22rem 14rem at 86% 72%, rgb(var(--ac-strong) / 0.06), transparent 74%);
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .glass-card::after {
+  background:
+    linear-gradient(112deg, rgb(var(--paper-3) / 0.4) 0%, rgb(var(--paper-3) / 0.05) 42%, rgb(var(--paper-3) / 0) 72%),
+    radial-gradient(24rem 14rem at 88% 14%, rgba(181, 137, 0, 0.04), transparent 75%);
+  opacity: 0.5;
+}
+
+/* Day-logger modal: cream surface, base01 text. */
+html[data-theme="light"] .day-logger-card {
+  border: 1px solid rgba(101, 123, 131, 0.3);
+  background: linear-gradient(140deg, rgb(var(--paper-3) / 0.96), rgb(var(--paper-2) / 0.94));
+  box-shadow:
+    0 28px 64px rgba(7, 54, 66, 0.18),
+    0 10px 28px rgba(7, 54, 66, 0.1),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .day-logger-card::before { opacity: 0.1; }
+html[data-theme="light"] .day-logger-card::after { opacity: 0.08; }
+
+/* Week-picker overlay: paper surface in light mode, matching the day-logger modal. */
+html[data-theme="light"] .calendar-card {
+  border: 1px solid rgba(101, 123, 131, 0.3);
+  background: linear-gradient(140deg, rgb(var(--paper-3) / 0.985), rgb(var(--paper-2) / 0.985));
+  box-shadow:
+    0 28px 64px rgba(7, 54, 66, 0.18),
+    0 10px 28px rgba(7, 54, 66, 0.1),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
+}
+
+/* Liquid day card: paper variant. */
+html[data-theme="light"] .liquid-day-card {
+  border: 1px solid rgba(101, 123, 131, 0.22);
+  background: linear-gradient(142deg, rgb(var(--paper-2) / 0.85), rgb(var(--paper-2) / 0.55));
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.9),
+    inset 0 -1px 0 rgba(88, 110, 117, 0.06);
+}
+
+html[data-theme="light"] .liquid-day-card::before {
+  background:
+    radial-gradient(22rem 16rem at 12% 10%, rgba(181, 137, 0, 0.1), transparent 68%),
+    radial-gradient(16rem 12rem at 76% 72%, rgb(var(--ac-strong) / 0.08), transparent 70%);
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .liquid-day-card::after {
+  background:
+    linear-gradient(112deg, rgb(var(--paper-3) / 0.45) 0%, rgb(var(--paper-3) / 0.05) 44%, rgb(var(--paper-3) / 0) 72%),
+    radial-gradient(20rem 11rem at 84% 16%, rgba(181, 137, 0, 0.04), transparent 75%);
+  opacity: 0.5;
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sat {
+  border-left: 3px solid rgba(108, 113, 196, 0.7);
+  background: linear-gradient(145deg, rgba(108, 113, 196, 0.16), rgb(var(--paper-2) / 0.7));
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sun {
+  border-left: 3px solid rgba(211, 54, 130, 0.7);
+  background: linear-gradient(145deg, rgba(211, 54, 130, 0.14), rgb(var(--paper-2) / 0.7));
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(181, 137, 0, 0.8);
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 4px 0 rgba(181, 137, 0, 0.16),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
+}
+
+html[data-theme="light"] .liquid-day-card.liquid-day-card--sl {
+  /* Sick-leave stays a fixed teal category color (distinct from the amber
+   * public-holiday accent), so it does not follow the swappable scheme. */
+  border-top: 3px solid rgba(42, 161, 152, 0.8);
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 4px 0 rgba(42, 161, 152, 0.16),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
+}
+
+html[data-theme="light"] .day-card-selected {
+  border-color: rgb(var(--ac-strong) / 0.65);
+  box-shadow:
+    0 30px 64px rgba(7, 54, 66, 0.18),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.9),
+    0 0 0 1px rgb(var(--ac-strong) / 0.3);
+}
+
+/* Wave tank: solarized cyan fill on paper. */
+html[data-theme="light"] .wave-tank {
+  border: 1px solid rgba(101, 123, 131, 0.25);
+  background: rgb(var(--paper-2) / 0.7);
+}
+
+html[data-theme="light"] .wave-fill {
+  background: linear-gradient(180deg, rgb(var(--ac-strong) / 0.7), rgb(var(--ac-deep) / 0.85));
+}
+
+html[data-theme="light"] .wave-fill::before,
+html[data-theme="light"] .wave-fill::after {
+  background: rgb(var(--paper-2) / 0.55);
+}
+
+/* Day progress bar: tone background for paper, keep accent gradients. */
+html[data-theme="light"] .day-progress {
+  border: 1px solid rgba(101, 123, 131, 0.22);
+  background: rgb(var(--paper-2) / 0.65);
+}
+
+html[data-theme="light"] .day-progress-topdown {
+  background: linear-gradient(180deg, rgba(181, 137, 0, 0.18), rgb(var(--ac-strong) / 0.03));
+}
+
+html[data-theme="light"] .day-progress-sand {
+  background: linear-gradient(180deg, rgba(229, 175, 90, 0.95), rgba(181, 137, 0, 0.92));
+}
+
+html[data-theme="light"] .day-progress-rest {
+  background: linear-gradient(180deg, rgba(147, 161, 161, 0.7), rgba(101, 123, 131, 0.85));
+}
+
+html[data-theme="light"] .day-progress-algae {
+  background: linear-gradient(180deg, rgba(133, 153, 0, 0.92), rgba(89, 102, 0, 0.95));
+}
+
+html[data-theme="light"] .day-progress-comp {
+  background: linear-gradient(180deg, rgba(220, 50, 47, 0.9), rgba(160, 35, 36, 0.95));
+}
+
+/* Mail composer select: light form chrome. */
+html[data-theme="light"] .mail-composer-select {
+  color-scheme: light;
+  accent-color: rgb(var(--ac-strong));
+  color: #586e75;
+}
+
+html[data-theme="light"] .mail-composer-select option {
+  background-color: rgb(var(--paper-2));
+  color: #586e75;
+}
+
+html[data-theme="light"] .mail-composer-select:focus-visible {
+  outline: 2px solid rgb(var(--ac-strong) / 0.55);
+}
+
+/* Floating chat actions row. */
+@media (hover: hover) {
+  html[data-theme="light"] .chat-actions-row {
+    border: 1px solid rgba(101, 123, 131, 0.2);
+    background: rgb(var(--paper-3) / 0.96);
+    box-shadow: 0 12px 30px -10px rgba(7, 54, 66, 0.25);
+  }
+}
+
+/* Dashboard mesh: tone gridlines down for paper. */
+html[data-theme="light"] .dashboard-mesh {
+  background-image:
+    linear-gradient(rgba(101, 123, 131, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101, 123, 131, 0.07) 1px, transparent 1px);
+  opacity: 0.75;
+}
+
+html[data-theme="light"] .dashboard-mesh-fade {
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, rgb(var(--paper-3) / 0.65), transparent 65%);
+}
+
+/* Underwater panel pseudo-elements: soften caustics. */
+html[data-theme="light"] .underwater-panel::before {
+  background:
+    radial-gradient(40rem 30rem at 15% 25%, rgb(var(--ac-strong) / 0.08), transparent 65%),
+    radial-gradient(36rem 26rem at 80% 80%, rgb(var(--ac-strong) / 0.08), transparent 65%);
+}
+
+html[data-theme="light"] .underwater-panel::after {
+  background:
+    radial-gradient(56rem 24rem at 86% -4%, rgba(181, 137, 0, 0.08), transparent 74%),
+    linear-gradient(180deg, rgba(181, 137, 0, 0.04), rgba(181, 137, 0, 0));
+  mix-blend-mode: multiply;
+}
+
+/* Freshness pill: Solarized green/cyan accents on paper. */
+html[data-theme="light"] .freshness-pill {
+  background: rgba(101, 123, 131, 0.45);
+}
+
+html[data-theme="light"] .freshness-pill--loading {
+  background: rgb(203, 75, 22);
+  animation: freshnessLoadingPulseLight 1500ms ease-in-out infinite;
+}
+
+html[data-theme="light"] .freshness-pill-ripple {
+  border-color: rgb(var(--ac-strong) / 0.85);
+}
+
+html[data-theme="light"] .freshness-pill-particle {
+  background: rgb(203, 75, 22);
+  box-shadow: 0 0 3px rgba(203, 75, 22, 0.9);
+}
+
+html[data-theme="light"] .freshness-flash {
+  animation:
+    freshnessPop 700ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    freshnessFadeLight 180s linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="light"] .freshness-flash {
+    background: rgb(133, 153, 0);
+  }
+}
+
+/* Tone down typing/write glows on paper. */
+html[data-theme="light"] .write-glow-live {
+  text-shadow:
+    0 0 6px rgb(var(--ac-strong) / 0.28),
+    0 0 14px rgb(var(--ac-strong) / 0.16);
+}
+
+/* Day-ready sweep beam — keep motion, dim the shine. */
+html[data-theme="light"] .day-ready-sweep-beam::before {
+  background:
+    linear-gradient(
+      135deg,
+      rgb(var(--ac-strong) / 0) 42%,
+      rgb(var(--ac-strong) / 0.12) 49%,
+      rgb(var(--ac-strong) / 0.28) 51.5%,
+      rgb(var(--ac-strong) / 0.12) 54%,
+      rgb(var(--ac-strong) / 0) 61%
+    ),
+    radial-gradient(28% 24% at 50% 50%, rgb(var(--ac-strong) / 0.22), rgb(var(--ac-strong) / 0) 72%);
+  mix-blend-mode: multiply;
+}

@@ -1,0 +1,227 @@
+/* Design tokens & base styles — variables (:root + theme skins), the
+ * @theme utility bridge, and element-level base rules. Decoration classes
+ * live in decorations.css, @keyframes in animations.css. */
+
+:root {
+  --background: #020617;
+  --foreground: #e2e8f0;
+  /* Sticky app nav (~top-3 + bar height); keeps scrollIntoView from tucking content under the header */
+  --app-sticky-offset: max(5.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
+
+  /* =====================================================================
+   * Semantic design tokens (dark = base skin).
+   * Components use these via Tailwind utilities (bg-surface, text-ink,
+   * border-glass/15, …). Themes swap skins by overriding the variables —
+   * never by re-targeting utility class names.
+   *
+   * Surfaces: page < panel < raised (ascending elevation).
+   * --overlay is a translucent well/scrim tone (page-colored in dark,
+   * panel-colored in light so low-alpha fills stay visible on paper).
+   * --glass is the hairline/glass tint: white in dark, ink in light —
+   * always used with an alpha modifier (bg-glass/10, border-glass/15).
+   * Ink ladder: ink (primary) → ink-5 (dimmest).
+   * Accent family follows the light-theme --ac-* scheme variables.
+   * ===================================================================== */
+  --surface: #020617;   /* slate-950 */
+  --panel: #0f172a;     /* slate-900 */
+  --raised: #1e293b;    /* slate-800 */
+  --overlay: #020617;
+  --glass: #ffffff;
+
+  --ink: #f1f5f9;       /* slate-100 (+ former text-white) */
+  --ink-2: #e2e8f0;     /* slate-200 */
+  --ink-3: #cbd5e1;     /* slate-300 */
+  --ink-4: #94a3b8;     /* slate-400 */
+  --ink-5: #64748b;     /* slate-500 */
+
+  --accent: #22d3ee;        /* cyan-400 (solid fills, borders, dots) */
+  --accent-soft: #a5f3fc;   /* cyan-200 (accent text/glyphs) */
+  --accent-deep: #06b6d4;   /* cyan-500 (deep fills, solid borders) */
+  --accent-from: #67e8f9;   /* cyan-300 gradient stop */
+  --accent-to: #818cf8;     /* indigo-400 gradient stop */
+
+  --warn: #fde68a;      /* amber-200 text */
+  --positive: #a7f3d0;  /* emerald-200 text */
+  --danger: #fecdd3;    /* rose-200 text */
+
+  --neutral: #64748b;   /* neutral chips/fills */
+  --shade: #000000;     /* shadow color base */
+}
+
+/* Solarized Light — softened. The original base3 cream (253 246 227) read too
+ * strong/yellow, so the paper tones are eased toward a calmer warm off-white.
+ * The three paper tones are routed through variables so the Glacier cool-blue
+ * appearance mode (html[data-theme="light"][data-mode="blue"]) can retint the whole
+ * skin by overriding just these triplets. RGB triplets feed rgb(var(--paper-x) / a). */
+[data-theme="light"] {
+  --paper-3: 252 250 245; /* page bg — soft warm off-white, much less cream than base3 */
+  --paper-2: 244 241 233; /* panel surface */
+  --paper-1: 235 231 221; /* deeper fills / hovers */
+  --background: rgb(var(--paper-3));
+  --foreground: #5b6c71; /* slightly lighter body text to match the calmer paper */
+
+  /* Semantic tokens — Solarized paper skin. Accent tokens route through the
+   * swappable --ac-* scheme (amber default / dusty blue / glacier mode), so
+   * accent + appearance switches keep working with zero extra CSS. */
+  --surface: rgb(var(--paper-3));
+  --panel: rgb(var(--paper-2));
+  --raised: rgb(var(--paper-1));
+  --overlay: rgb(var(--paper-2));
+  --glass: #586e75;
+
+  --ink: #586e75;
+  --ink-2: #657b83;
+  --ink-3: #6c7a80;
+  --ink-4: #839496;
+  --ink-5: #93a1a1;
+
+  --accent: rgb(var(--ac-strong));
+  --accent-soft: rgb(var(--ac-text));
+  --accent-deep: rgb(var(--ac-deep));
+  --accent-from: rgb(var(--ac-from));
+  --accent-to: rgb(var(--ac-to));
+
+  --warn: #9a7400;
+  --positive: #6a8000;
+  --danger: #b62b2b;
+
+  --neutral: #93a1a1;
+  --shade: #073642;
+}
+
+html {
+  scroll-padding-top: var(--app-sticky-offset);
+  /* Native form controls / scrollbars follow the active skin. */
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Semantic color utilities: bg-surface, text-ink-3, border-glass/15, … */
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-glass: var(--glass);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-from: var(--accent-from);
+  --color-accent-to: var(--accent-to);
+  --color-warn: var(--warn);
+  --color-positive: var(--positive);
+  --color-danger: var(--danger);
+  --color-neutral: var(--neutral);
+  --color-shade: var(--shade);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/*
+ * Minimalistic, system-wide button affordance.
+ *
+ * Rules live in @layer base so any explicit Tailwind utility (e.g.
+ * `active:scale-95`, `hover:bg-*`, etc.) cleanly overrides them on a
+ * per-button basis. Framer-motion buttons set inline `transform: none`,
+ * which beats this rule — those get matching `whileTap` props instead.
+ */
+@layer base {
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  button:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(0.97);
+    filter: brightness(0.94);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:active:not(:disabled):not([aria-disabled="true"]) {
+      transform: none;
+    }
+  }
+}
+
+/* =========================================================================
+ * Solarized Light theme
+ *
+ * Utility-level theming happens through the semantic tokens at the top of
+ * this file ([data-theme="light"] overrides the token variables). What
+ * remains here: the swappable --ac-* accent scheme variables, and light
+ * re-skins of the custom decoration classes (.aurora-bg, .glass-card, …)
+ * that are defined with raw dark values above.
+ *
+ * Palette (Solarized Light):
+ *   base3 #fdf6e3   page bg
+ *   base2 #eee8d5   panel surface
+ *   base1 #93a1a1   secondary
+ *   base00 #657b83  body text
+ *   base01 #586e75  emphasized text
+ *   yellow #b58900  orange #cb4b16  red #dc322f
+ *   violet #6c71c4  blue #268bd2    cyan #2aa198  green #859900
+ * ========================================================================= */
+
+/* ---- Accent scheme variables (Light) ----
+ * One swappable accent, selected via html[data-theme="light"][data-accent="..."].
+ * Values are space-separated RGB triplets for use as rgb(var(--ac-x) / <alpha>).
+ *   --ac-strong  primary solid fills / buttons / dots
+ *   --ac-deep    deeper variant (cyan-500 fills, solid deep borders, links on fills)
+ *   --ac-text    text links / accent glyphs
+ *   --ac-from/to gradient stops (avatars, send buttons): light -> deep, same family
+ * Two schemes: Warm Amber (default) and Dusty Blue. */
+html[data-theme="light"] {
+  --ac-strong: 181 137 0;
+  --ac-deep: 154 116 0;
+  --ac-text: 138 101 0;
+  --ac-from: 214 169 38;
+  --ac-to: 181 137 0;
+}
+html[data-theme="light"][data-accent="blue"] {
+  --ac-strong: 62 109 142;
+  --ac-deep: 47 88 118;
+  --ac-text: 53 97 127;
+  --ac-from: 110 150 180;
+  --ac-to: 53 97 127;
+}
+
+/* ---- Appearance mode: Glacier blue light skin ----
+ * One clean pastel cool-blue skin (the former Glacier + Sky merged). It sets
+ * data-theme="light" + data-mode="blue", so it wins over the data-accent blocks
+ * above by coming later in source order at equal specificity. Retinting --paper-*
+ * recolours every surface (--background derives from --paper-3).
+ *
+ * Design intent: crisp + minimal. A near-white page lifts contrast against the
+ * pastel-blue panels (sharper separation than the old low-contrast tints), and a
+ * clean — not neon — blue accent stays readable as link/fill text. */
+html[data-theme="light"][data-mode="blue"] {
+  --paper-3: 247 250 253; /* page — near white, faint cool cast */
+  --paper-2: 230 240 250; /* panel surface — pastel blue */
+  --paper-1: 213 228 245; /* deeper fills / hovers */
+  --ac-strong: 60 128 204; /* fills / dots */
+  --ac-deep: 38 98 168;    /* deep fills / solid borders */
+  --ac-text: 32 86 152;    /* links / accent glyphs — strong contrast */
+  --ac-from: 104 168 230;  /* gradient: light */
+  --ac-to: 38 98 168;      /* gradient: deep */
+}
