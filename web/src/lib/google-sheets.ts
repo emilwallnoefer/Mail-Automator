@@ -139,6 +139,32 @@ const MONTHS: Record<string, number> = {
   dezember: 12,
 };
 
+/**
+ * Parses a cell that holds a complete date on its own — ISO `2026-07-15` or
+ * unambiguous European `15.07.2026`. Used for "flat" travel tabs (one date
+ * column per row, e.g. the "Sync View" tab) as an alternative to the legacy
+ * month/year + day column pair. Slash formats are deliberately not supported
+ * (M/D vs D/M is ambiguous).
+ */
+function parseFullDate(value: string) {
+  const text = value.trim();
+  let year: number, month: number, day: number;
+  let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) {
+    year = Number.parseInt(match[1], 10);
+    month = Number.parseInt(match[2], 10);
+    day = Number.parseInt(match[3], 10);
+  } else {
+    match = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (!match) return null;
+    day = Number.parseInt(match[1], 10);
+    month = Number.parseInt(match[2], 10);
+    year = Number.parseInt(match[3], 10);
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
 function parseDateFromMonthYearDay(monthYearRaw: string, dayRaw: string) {
   const monthYear = monthYearRaw.trim().replace(/\s+/g, " ");
   const day = Number.parseInt(dayRaw.trim(), 10);
@@ -259,10 +285,13 @@ export async function fetchTravelByDate(
   let activeMonthYear = "";
   for (const row of rows) {
     const monthYearCandidate = cleanCell(row[monthYearCol.index]);
-    if (monthYearCandidate) activeMonthYear = monthYearCandidate;
-    const monthYear = activeMonthYear;
+    // Flat layout: the "month/year" column holds a complete date per row.
+    // Falls back to the legacy layout (sparse "July 2026" in the month/year
+    // column, carried forward, + a day-number column) when it doesn't.
+    const fullDateKey = parseFullDate(monthYearCandidate);
+    if (!fullDateKey && monthYearCandidate) activeMonthYear = monthYearCandidate;
     const day = cleanCell(row[dayCol.index]);
-    const dateKey = parseDateFromMonthYearDay(monthYear, day);
+    const dateKey = fullDateKey ?? parseDateFromMonthYearDay(activeMonthYear, day);
     if (!dateKey) continue;
     parsedDates += 1;
 
