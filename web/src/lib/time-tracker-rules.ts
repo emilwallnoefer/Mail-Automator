@@ -26,8 +26,9 @@ export function isSundayDate(dateKey: string): boolean {
 
 /**
  * Sat/Sun only count as premium overtime from the weekend-aware tracker rollout onward.
- * Older weekend logs keep the legacy "worked minus target" behavior. Public holidays with
- * logged work still count fully as overtime regardless of date.
+ * Older weekend logs keep the legacy "worked minus target" behavior. Excused days
+ * (vacation or public holiday — pass either flag as `holiday`) with logged work still
+ * count fully as overtime regardless of date.
  */
 export function isPremiumOvertimeDay(
   dateKey: string,

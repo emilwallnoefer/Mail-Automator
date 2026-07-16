@@ -122,6 +122,7 @@ export function useTimeTracker({
   const [formStart, setFormStart] = useState("");
   const [formStop, setFormStop] = useState("");
   const [formHoliday, setFormHoliday] = useState(false);
+  const [formPublicHoliday, setFormPublicHoliday] = useState(false);
   const [formSickLeave, setFormSickLeave] = useState(false);
   const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
   const currentWeekStartKey = toDateKey(getMonday());
@@ -209,6 +210,7 @@ export function useTimeTracker({
     setFormStart(day.start_time ?? "");
     setFormStop(day.stop_time ?? "");
     setFormHoliday(Boolean(day.holiday));
+    setFormPublicHoliday(Boolean(day.public_holiday));
     setFormSickLeave(Boolean(day.sick_leave));
     const useBreakCounter = day.date >= currentWeekStartKey;
     if (useBreakCounter) {
@@ -464,6 +466,7 @@ export function useTimeTracker({
       selectedDay.start_time !== formStart ||
       selectedDay.stop_time !== formStop ||
       Boolean(selectedDay.holiday) !== Boolean(formHoliday) ||
+      Boolean(selectedDay.public_holiday) !== Boolean(formPublicHoliday) ||
       Boolean(selectedDay.sick_leave) !== Boolean(formSickLeave) ||
       selectedDay.net_mins !== netMins ||
       breaksChanged;
@@ -482,6 +485,7 @@ export function useTimeTracker({
       stop_time: formStop,
       net_mins: netMins,
       holiday: formHoliday,
+      public_holiday: formPublicHoliday,
       sick_leave: formSickLeave,
       breaks: nextBreaks,
     };
@@ -496,6 +500,7 @@ export function useTimeTracker({
         stop_time: formStop,
         net_mins: netMins,
         holiday: formHoliday,
+        public_holiday: formPublicHoliday,
         sick_leave: formSickLeave,
         breaks: nextBreaks,
       }),
@@ -510,6 +515,7 @@ export function useTimeTracker({
         start_time: formStart,
         stop_time: formStop,
         holiday: formHoliday,
+        public_holiday: formPublicHoliday,
         sick_leave: formSickLeave,
         net_mins: netMins,
         breaks: nextBreaks,
@@ -589,6 +595,7 @@ export function useTimeTracker({
     const nextStart = "09:00";
     const nextStop = "17:54";
     const nextHoliday = false;
+    const nextPublicHoliday = false;
     const nextSickLeave = false;
     const nextNetMins = computeNetMins(nextStart, nextStop, nextBreaks);
     const previousDaySnapshot: DayData = {
@@ -601,6 +608,7 @@ export function useTimeTracker({
       stop_time: nextStop,
       net_mins: nextNetMins,
       holiday: nextHoliday,
+      public_holiday: nextPublicHoliday,
       sick_leave: nextSickLeave,
       breaks: nextBreaks.map((item) => ({ ...item })),
     };
@@ -614,6 +622,7 @@ export function useTimeTracker({
         stop_time: nextStop,
         net_mins: nextNetMins,
         holiday: nextHoliday,
+        public_holiday: nextPublicHoliday,
         sick_leave: nextSickLeave,
         breaks: nextBreaks.map((item) => ({ ...item })),
       }),
@@ -629,6 +638,7 @@ export function useTimeTracker({
           start_time: nextStart,
           stop_time: nextStop,
           holiday: nextHoliday,
+          public_holiday: nextPublicHoliday,
           sick_leave: nextSickLeave,
           net_mins: nextNetMins,
           breaks: nextBreaks,
@@ -662,6 +672,7 @@ export function useTimeTracker({
       stop_time: "",
       net_mins: 0,
       holiday: false,
+      public_holiday: false,
       sick_leave: false,
       comp_mins: 0,
       comp_note: "",
@@ -783,6 +794,8 @@ export function useTimeTracker({
     setFormStop,
     formHoliday,
     setFormHoliday,
+    formPublicHoliday,
+    setFormPublicHoliday,
     formSickLeave,
     setFormSickLeave,
     formBreaks,

@@ -20,6 +20,8 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
     readOnly,
     formHoliday,
     setFormHoliday,
+    formPublicHoliday,
+    setFormPublicHoliday,
     formSickLeave,
     setFormSickLeave,
     selectedDaySupportsBreaks,
@@ -170,15 +172,22 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                   <div
                     role="radiogroup"
                     aria-label="Day type"
-                    className="grid grid-cols-3 gap-1 rounded-lg border border-glass/15 bg-glass/[0.04] p-1"
+                    className="grid grid-cols-2 gap-1 rounded-lg border border-glass/15 bg-glass/[0.04] p-1"
                   >
                     {([
                       { key: "normal", label: "Normal", active: "bg-glass/15 text-ink shadow-sm" },
-                      { key: "holiday", label: "Holiday", active: "bg-amber-500/25 text-amber-50 shadow-sm" },
+                      { key: "holiday", label: "Vacation", active: "bg-amber-500/25 text-amber-50 shadow-sm" },
+                      { key: "public_holiday", label: "Public Holiday", active: "bg-violet-500/25 text-violet-50 shadow-sm" },
                       { key: "sick", label: "Sick leave", active: "bg-teal-500/25 text-teal-50 shadow-sm" },
                     ] as const).map((opt) => {
                       const isActive =
-                        opt.key === "holiday" ? formHoliday : opt.key === "sick" ? formSickLeave : !formHoliday && !formSickLeave;
+                        opt.key === "holiday"
+                          ? formHoliday
+                          : opt.key === "public_holiday"
+                            ? formPublicHoliday
+                            : opt.key === "sick"
+                              ? formSickLeave
+                              : !formHoliday && !formPublicHoliday && !formSickLeave;
                       return (
                         <button
                           key={opt.key}
@@ -188,6 +197,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                           disabled={!selectedDay || readOnly}
                           onClick={() => {
                             setFormHoliday(opt.key === "holiday");
+                            setFormPublicHoliday(opt.key === "public_holiday");
                             setFormSickLeave(opt.key === "sick");
                           }}
                           className={`rounded-md px-2 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -199,7 +209,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                       );
                     })}
                   </div>
-                  {formHoliday ? (
+                  {formHoliday || formPublicHoliday ? (
                     <p className="mt-1.5 text-xs leading-snug text-ink-4">
                       Excused from your target. Hours logged count as overtime (same as a weekend).
                     </p>
