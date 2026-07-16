@@ -22,7 +22,7 @@ export default async function OnboardingPage() {
         <div className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">Pilot Resources</p>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/70">Pilot Resources</p>
               <h1 className="text-sm font-semibold md:text-base">Onboarding</h1>
             </div>
             <a

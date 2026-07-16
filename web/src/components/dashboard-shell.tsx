@@ -513,7 +513,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">First launch</p>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">First launch</p>
             </div>
             <button
               type="button"
@@ -548,7 +548,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
                 What&apos;s new · {LATEST_RELEASE.date}
               </p>
               <p className="mt-1 text-sm font-semibold text-ink">{LATEST_RELEASE.title}</p>
@@ -579,7 +579,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
       {userRole == null ? (
         <div className="fixed inset-0 z-[140] grid place-items-center bg-surface/85 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-glass/20 bg-surface/95 p-4 shadow-xl">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/75">First Login Setup</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">First Login Setup</p>
             <h2 className="mt-2 text-lg font-semibold">Choose your workspace profile</h2>
             <p className="mt-2 text-sm text-ink-3/85">
               This controls which modules and settings you see.

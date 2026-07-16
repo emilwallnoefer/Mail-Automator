@@ -25,7 +25,7 @@ function SectionDivider({ label, faint }: { label: string; faint?: boolean }) {
   return (
     <div className="mb-3 flex items-center gap-3">
       <span className={`h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent ${edge}`} aria-hidden />
-      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-5">{label}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-5">{label}</span>
       <span className={`h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent ${edge}`} aria-hidden />
     </div>
   );

@@ -78,7 +78,7 @@ export function TopLinksCard({
               >
                 <div className="min-w-0">
                   <div className="truncate text-xs text-ink">{row.label}</div>
-                  <div className="truncate text-[10px] text-ink-5">{host}</div>
+                  <div className="truncate text-[11px] text-ink-5">{host}</div>
                   <div className="relative mt-0.5 h-2 overflow-hidden rounded bg-glass/5">
                     <div
                       className="absolute inset-y-0 left-0 rounded bg-emerald-400/80"

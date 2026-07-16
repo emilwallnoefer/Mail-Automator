@@ -53,7 +53,7 @@ export function HeatmapCard({
             one — tells you whether your recipients are reading during work hours, after dinner, or 2am.
           </InfoTooltip>
         </div>
-        <p className="text-[10px] text-ink-4">
+        <p className="text-[11px] text-ink-4">
           {loading && !stats
             ? "Loading…"
             : totalClicks > 0
@@ -65,7 +65,7 @@ export function HeatmapCard({
       <div className="flex gap-1.5 overflow-x-auto">
         <div className="flex flex-col justify-around pr-1 pt-[18px]">
           {DOW_LABELS.map((label) => (
-            <span key={label} className="text-[10px] uppercase tracking-wider text-ink-5">
+            <span key={label} className="text-[11px] uppercase tracking-wider text-ink-5">
               {label}
             </span>
           ))}
@@ -75,7 +75,7 @@ export function HeatmapCard({
             {Array.from({ length: 24 }, (_, hour) => (
               <span
                 key={hour}
-                className={`text-[10px] text-ink-5 ${hour % 3 === 0 ? "" : "opacity-0"}`}
+                className={`text-[11px] text-ink-5 ${hour % 3 === 0 ? "" : "opacity-0"}`}
               >
                 {String(hour).padStart(2, "0")}
               </span>
@@ -130,7 +130,7 @@ export function HeatmapCard({
           </div>
         </div>
       </div>
-      <p className="mt-2 text-[10px] text-ink-5">
+      <p className="mt-2 text-[11px] text-ink-5">
         Times are the click viewer&apos;s local hour — yours, looking at this dashboard.
       </p>
       <HoverTooltip hover={hover} />

@@ -153,7 +153,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
 
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/60">Recipient</p>
+          <p className="text-[11px] uppercase tracking-[0.15em] text-ink-3/60">Recipient</p>
           {recipient ? (
             <>
               <p className="truncate text-sm text-ink">{recipient.recipient_name}</p>
@@ -161,7 +161,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
                 {recipient.company_name ?? "—"}
                 {recipient.recipient_email ? ` · ${recipient.recipient_email}` : ""}
               </p>
-              <p className="mt-0.5 truncate text-[10px] text-ink-5" title={recipient.subject}>
+              <p className="mt-0.5 truncate text-[11px] text-ink-5" title={recipient.subject}>
                 {recipient.mail_type} · {recipient.subject}
               </p>
             </>
@@ -171,7 +171,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/60">Link</p>
+          <p className="text-[11px] uppercase tracking-[0.15em] text-ink-3/60">Link</p>
           {click.link ? (
             <a
               href={click.link.original_url}
@@ -188,7 +188,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
           )}
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] ${
+              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] ${
                 ua.kind === "scanner"
                   ? "bg-neutral/35 text-ink-2"
                   : ua.kind === "browser"
@@ -200,7 +200,7 @@ function LatestClickCard({ click }: { click: LatestClick }) {
               {ua.label}
             </span>
             {click.user_agent ? (
-              <span className="truncate text-[10px] text-ink-5" title={click.user_agent}>
+              <span className="truncate text-[11px] text-ink-5" title={click.user_agent}>
                 {click.user_agent}
               </span>
             ) : null}

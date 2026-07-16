@@ -423,7 +423,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                                   <div className="flex flex-col">
                                     <span className="text-sm text-ink">{user.email || user.user_id}</span>
                                     {user.error ? (
-                                      <span className="text-[10px] text-danger">{user.error}</span>
+                                      <span className="text-[11px] text-danger">{user.error}</span>
                                     ) : null}
                                   </div>
                                 </td>
@@ -543,7 +543,7 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
                                       ))}
                                     </select>
                                     {pending ? (
-                                      <span className="ml-2 text-[10px] text-ink-4">Saving...</span>
+                                      <span className="ml-2 text-[11px] text-ink-4">Saving...</span>
                                     ) : null}
                                   </td>
                                 </tr>

@@ -71,7 +71,7 @@ export function MessageRow({
       <div className="w-7 shrink-0">
         {showHeader ? (
           <span
-            className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-semibold ${
+            className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold ${
               isMe
                 ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
                 : "bg-gradient-to-br from-neutral to-panel text-ink"
@@ -84,7 +84,7 @@ export function MessageRow({
       </div>
       <div className={`flex min-w-0 max-w-[78%] flex-col ${isMe ? "items-end" : "items-start"}`}>
         {showHeader ? (
-          <p className="mb-0.5 text-[10px] text-ink-4">
+          <p className="mb-0.5 text-[11px] text-ink-4">
             {isMe ? "You" : name} · {formatChatTimestamp(message.created_at)}
             {message.edited_at ? <span className="ml-1 italic text-ink-5">(edited)</span> : null}
           </p>
@@ -93,7 +93,7 @@ export function MessageRow({
         {tagged && meta ? (
           <div className={`mb-1 inline-flex items-center gap-1.5 ${isMe ? "flex-row-reverse" : ""}`}>
             <span
-              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.badgeBorder} ${meta.badgeBg} ${meta.badgeText} ${
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.badgeBorder} ${meta.badgeBg} ${meta.badgeText} ${
                 isDone ? "opacity-60 saturate-50" : ""
               }`}
             >
@@ -102,7 +102,7 @@ export function MessageRow({
             </span>
             {isDone ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-300/55 bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-positive"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-300/55 bg-emerald-400/15 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-positive"
                 title="Marked as done by an admin"
               >
                 <CheckIcon className="h-3 w-3" /> Done
@@ -312,7 +312,7 @@ function EditField({
         >
           Cancel
         </button>
-        <span className="ml-1 text-[10px] text-slate-700/70">Enter saves · Esc cancels</span>
+        <span className="ml-1 text-[11px] text-slate-700/70">Enter saves · Esc cancels</span>
       </div>
     </div>
   );

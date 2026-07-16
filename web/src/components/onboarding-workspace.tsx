@@ -256,23 +256,23 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Overall</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Overall</p>
             <p className="mt-1 text-xl font-semibold text-accent-soft">{progressPct}%</p>
           </div>
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Done time</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Done time</p>
             <p className="mt-1 text-xl font-semibold text-accent-soft">
               {formatHours(completedEstimatedMinutes)}
             </p>
           </div>
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Remaining time</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Remaining time</p>
             <p className="mt-1 text-xl font-semibold text-accent-soft">
               {formatHours(Math.max(0, totalEstimatedMinutes - completedEstimatedMinutes))}
             </p>
           </div>
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Plan total</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Plan total</p>
             <p className="mt-1 text-xl font-semibold text-accent-soft">{formatHours(totalEstimatedMinutes)}</p>
           </div>
         </div>
@@ -284,7 +284,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
       <div className="grid gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
         <aside className="glass-card h-fit self-start p-4 lg:sticky lg:top-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">1. Choose section</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/70">1. Choose section</p>
             <button
               type="button"
               onClick={resetProgress}
@@ -323,7 +323,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">2. Complete trainings</p>
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/70">2. Complete trainings</p>
                   <h3 className="mt-1 text-lg font-semibold">{selectedSection.title}</h3>
                   <p className="mt-1 text-xs text-ink-3">
                     {selectedDone}/{selectedSection.items.length} completed ({selectedPct}%)
@@ -401,7 +401,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                     />
                     <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 pointer-events-none">
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/80">
+                        <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/80">
                           Step {String(idx + 1).padStart(2, "0")}
                         </p>
                         <p className="mt-1 text-sm font-medium text-ink group-hover:text-accent-soft">
@@ -436,7 +436,7 @@ export function OnboardingWorkspace({ email, sections }: OnboardingWorkspaceProp
                             +25%
                           </button>
                         </div>
-                        <p className="text-[10px] text-ink-4">Add/Remove progress</p>
+                        <p className="text-[11px] text-ink-4">Add/Remove progress</p>
                       </div>
                     </div>
                   </article>

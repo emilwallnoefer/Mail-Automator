@@ -115,22 +115,22 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <p className="text-xs text-ink-3/80">{dayLabel(day.date)}</p>
             {isSat ? (
-              <span className="shrink-0 rounded border border-indigo-400/35 bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-soft/95">
+              <span className="shrink-0 rounded border border-indigo-400/35 bg-indigo-500/15 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-accent-soft/95">
                 Sat
               </span>
             ) : null}
             {isSun ? (
-              <span className="shrink-0 rounded border border-rose-400/35 bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-danger/95">
+              <span className="shrink-0 rounded border border-rose-400/35 bg-rose-500/15 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-danger/95">
                 Sun
               </span>
             ) : null}
             {isPh ? (
-              <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warn/95">
+              <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-warn/95">
                 PH
               </span>
             ) : null}
             {isSl ? (
-              <span className="shrink-0 rounded border border-teal-400/45 bg-teal-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-100/95">
+              <span className="shrink-0 rounded border border-teal-400/45 bg-teal-500/20 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-teal-100/95">
                 SL
               </span>
             ) : null}

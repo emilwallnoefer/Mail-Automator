@@ -15,11 +15,11 @@ export function StatTile({
   return (
     <div className="rounded-xl border border-glass/10 bg-glass/5 px-4 py-3">
       <div className="flex items-center gap-1.5">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/70">{label}</p>
+        <p className="text-[11px] uppercase tracking-[0.15em] text-ink-3/70">{label}</p>
         {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
       </div>
       <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</p>
-      {hint ? <p className="mt-0.5 text-[10px] text-ink-4">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-[11px] text-ink-4">{hint}</p> : null}
     </div>
   );
 }

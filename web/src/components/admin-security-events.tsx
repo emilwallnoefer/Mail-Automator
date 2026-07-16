@@ -159,7 +159,7 @@ export function AdminSecurityEvents() {
             />
             <span className="text-xs text-ink-5">blocked attempts / 15 min from one actor</span>
           </label>
-          {savingAlerts ? <span className="text-[10px] text-ink-4">Saving…</span> : null}
+          {savingAlerts ? <span className="text-[11px] text-ink-4">Saving…</span> : null}
         </div>
       ) : null}
 
@@ -206,7 +206,7 @@ export function AdminSecurityEvents() {
                     <td className="px-3 py-2 text-xs text-ink">{KIND_LABELS[entry.kind] ?? entry.kind}</td>
                     <td className="px-3 py-2 text-xs">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        className={`rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wide ${
                           SEVERITY_STYLES[entry.severity] ?? "bg-glass/10 text-ink-3"
                         }`}
                       >

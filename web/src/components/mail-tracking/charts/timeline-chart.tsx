@@ -95,7 +95,7 @@ export function MailClickTimelineChart({
                     className="stroke-glass/10"
                     strokeWidth="1"
                   />
-                  <text x={marginLeft - 8} y={y + 4} textAnchor="end" className="fill-ink-5 text-[10px]">
+                  <text x={marginLeft - 8} y={y + 4} textAnchor="end" className="fill-ink-5 text-[11px]">
                     {value}
                   </text>
                 </g>
@@ -157,7 +157,7 @@ export function MailClickTimelineChart({
                       x={x + barWidth / 2}
                       y={height - 14}
                       textAnchor="middle"
-                      className="fill-ink-5 text-[10px]"
+                      className="fill-ink-5 text-[11px]"
                     >
                       {label}
                     </text>
@@ -261,7 +261,7 @@ function TimelineTooltip({
               <li key={mail.send_id} className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-ink">{mail.recipient_name}</p>
-                  <p className="truncate text-[10px] text-ink-5">
+                  <p className="truncate text-[11px] text-ink-5">
                     {mail.company_name ? `${mail.company_name} · ` : ""}
                     {mail.subject}
                   </p>

@@ -84,15 +84,15 @@ export function AdminOnboardingPanel() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="grid flex-1 grid-cols-3 gap-2 sm:max-w-md">
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-2.5">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Users</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Users</p>
             <p className="mt-1 text-lg font-semibold text-ink">{data?.users.length ?? 0}</p>
           </div>
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-2.5">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Started</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Started</p>
             <p className="mt-1 text-lg font-semibold text-accent-soft">{startedCount}</p>
           </div>
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-2.5">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4">Completed</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4">Completed</p>
             <p className="mt-1 text-lg font-semibold text-positive">{completedCount}</p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function AdminOnboardingPanel() {
                       >
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
-                            <span aria-hidden className="text-[10px] text-ink-5">
+                            <span aria-hidden className="text-[11px] text-ink-5">
                               {isOpen ? "▾" : "▸"}
                             </span>
                             <span className="text-sm text-ink">{user.email || user.user_id}</span>

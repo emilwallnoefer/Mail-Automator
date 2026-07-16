@@ -107,7 +107,7 @@ export function ChatWidget(props: ChatWidgetProps) {
             <ChatBubbleIcon className="h-5 w-5" />
             <span className="hidden sm:inline">Team chat</span>
             {unread > 0 ? (
-              <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-ink">
+              <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-ink">
                 {unread > 99 ? "99+" : unread}
               </span>
             ) : null}

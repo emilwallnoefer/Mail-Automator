@@ -49,11 +49,11 @@ export function AuthNavbar({
     <nav className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="min-w-0 flex items-center gap-2.5">
-          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
+          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent-from to-accent-to text-[11px] font-semibold text-slate-950">
             FA
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">Flyability Internal</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/70">Flyability Internal</p>
             <p className="truncate text-xs font-medium md:text-sm">Flya Allrounder</p>
           </div>
         </div>
@@ -79,10 +79,10 @@ export function AuthNavbar({
                   className="flex w-full items-center justify-between rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2 text-left text-xs font-medium text-ink transition hover:border-accent/70 hover:bg-accent/95 hover:text-slate-900"
                 >
                   <span>Onboarding</span>
-                  <span className="text-[10px] opacity-80">Open</span>
+                  <span className="text-[11px] opacity-80">Open</span>
                 </a>
               </div>
-              <p className="mb-1 px-1 text-[10px] uppercase tracking-[0.15em] text-accent-soft/70">Workspace</p>
+              <p className="mb-1 px-1 text-[11px] uppercase tracking-[0.15em] text-accent-soft/70">Workspace</p>
               <div className="space-y-1" role="tablist" aria-label="Workspace tabs">
                 {availableModules.includes("mail") ? (
                   <button
@@ -99,7 +99,7 @@ export function AuthNavbar({
                     }`}
                   >
                     <span>Mail Composer</span>
-                    {activeModule === "mail" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                    {activeModule === "mail" ? <span className="text-[11px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}
                 {availableModules.includes("time") ? (
@@ -117,7 +117,7 @@ export function AuthNavbar({
                     }`}
                   >
                     <span>Time Tracker</span>
-                    {activeModule === "time" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                    {activeModule === "time" ? <span className="text-[11px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}
                 {availableModules.includes("settings") ? (
@@ -135,7 +135,7 @@ export function AuthNavbar({
                     }`}
                   >
                     <span>Settings</span>
-                    {activeModule === "settings" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                    {activeModule === "settings" ? <span className="text-[11px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}
                 {availableModules.includes("admin") ? (
@@ -153,7 +153,7 @@ export function AuthNavbar({
                     }`}
                   >
                     <span>{adminModuleLabel}</span>
-                    {activeModule === "admin" ? <span className="text-[10px] opacity-80">Active</span> : null}
+                    {activeModule === "admin" ? <span className="text-[11px] opacity-80">Active</span> : null}
                   </button>
                 ) : null}
               </div>
@@ -168,7 +168,7 @@ export function AuthNavbar({
                     <p className="text-xs text-ink/90">{statusLabel}</p>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[11px] font-semibold text-slate-950">
                       {initials}
                     </span>
                     <p className="truncate text-xs text-ink-2/85">{gmailEmail ?? email}</p>
@@ -177,7 +177,7 @@ export function AuthNavbar({
               ) : (
                 <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[10px] font-semibold text-slate-950">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-from to-accent-to text-[11px] font-semibold text-slate-950">
                       {initials}
                     </span>
                     <p className="truncate text-xs text-ink-2/85">{email}</p>
@@ -186,7 +186,7 @@ export function AuthNavbar({
               )}
 
               <div className="mt-2 rounded-lg border border-glass/10 bg-glass/5 px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.15em] text-ink-3/75">Logged in as</p>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">Logged in as</p>
                 <p className="mt-1 text-xs font-medium text-ink">
                   {userRoleLabel(userRole ?? null)}
                 </p>

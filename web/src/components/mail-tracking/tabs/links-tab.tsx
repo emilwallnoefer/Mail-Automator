@@ -160,9 +160,9 @@ function LinkLeaderboardTable({
                       <div className="truncate text-sm text-ink hover:text-warn">
                         {displayLabel}
                       </div>
-                      <div className="truncate text-[10px] text-ink-5">
+                      <div className="truncate text-[11px] text-ink-5">
                         {row.link_key ? (
-                          <span className="mr-2 rounded bg-glass/5 px-1 py-0.5 text-[10px] uppercase tracking-wider text-ink-4">
+                          <span className="mr-2 rounded bg-glass/5 px-1 py-0.5 text-[11px] uppercase tracking-wider text-ink-4">
                             {row.link_key}
                           </span>
                         ) : null}
@@ -176,7 +176,7 @@ function LinkLeaderboardTable({
                   <td className="px-3 py-2 text-right tabular-nums">
                     <span className={total > 0 ? "text-warn" : "text-ink-4"}>{total}</span>
                     {botSuffix ? (
-                      <span className="ml-1 text-[10px] text-ink-5">{botSuffix}</span>
+                      <span className="ml-1 text-[11px] text-ink-5">{botSuffix}</span>
                     ) : null}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-3">{ctrLabel}</td>

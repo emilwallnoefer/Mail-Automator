@@ -103,7 +103,7 @@ export function FilterStrip({
               <span className="truncate">{item.label}</span>
               {item.count > 0 ? (
                 <span
-                  className={`ml-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
+                  className={`ml-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[11px] font-semibold ${
                     active
                       ? "bg-accent/30 text-accent-soft"
                       : "bg-glass/10 text-ink-3 group-hover:bg-glass/15"
@@ -173,7 +173,7 @@ export function PresenceAvatars({
             <span
               key={u.user_id}
               title={`${shortNameFromEmail(u.email)}${isMe ? " (you)" : ""}`}
-              className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-semibold ring-2 ring-surface ${
+              className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold ring-2 ring-surface ${
                 isMe
                   ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
                   : "bg-gradient-to-br from-neutral to-raised text-ink"
@@ -185,7 +185,7 @@ export function PresenceAvatars({
         })}
         {overflow > 0 ? (
           <span
-            className="grid h-7 w-7 place-items-center rounded-full bg-raised text-[10px] font-semibold text-ink-2 ring-2 ring-surface"
+            className="grid h-7 w-7 place-items-center rounded-full bg-raised text-[11px] font-semibold text-ink-2 ring-2 ring-surface"
             title={`${overflow} more online`}
           >
             +{overflow}
@@ -213,7 +213,7 @@ export function PresenceAvatars({
                     className="flex items-center gap-2 px-2.5 py-1.5 text-[12px] text-ink-2"
                   >
                     <span
-                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${
+                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${
                         isMe
                           ? "bg-gradient-to-br from-accent-from to-accent-to text-slate-950"
                           : "bg-gradient-to-br from-neutral to-raised text-ink"
@@ -244,7 +244,7 @@ export function DaySeparator({ label }: { label: string }) {
   return (
     <div className="relative my-3 flex items-center justify-center" aria-hidden>
       <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-glass/8" />
-      <span className="relative rounded-full border border-glass/10 bg-surface px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-4">
+      <span className="relative rounded-full border border-glass/10 bg-surface px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider text-ink-4">
         {label}
       </span>
     </div>

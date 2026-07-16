@@ -578,11 +578,11 @@ export function SettingsPanel({
               {activeSection === "appearance" ? (
                 <div className="mt-5">
                   <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Appearance</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Appearance</p>
                     <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                       {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
                     </p>
-                    <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
+                    <p className="mt-2 text-[11px] leading-snug tracking-wide text-ink-4/90">
                       Choose the app palette — the default dark theme, the softened Solarized Light skin, or the clean pastel Glacier blue skin. Synced to your account, so it follows you across devices.
                     </p>
                     <div className="mt-3 grid grid-cols-3 gap-2">
@@ -609,7 +609,7 @@ export function SettingsPanel({
                               style={{ background: t.swatch }}
                               aria-hidden
                             />
-                            <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-ink-2/85">
+                            <span className="text-center text-[11px] font-medium leading-tight tracking-wide text-ink-2/85">
                               {t.label}
                             </span>
                           </button>
@@ -620,11 +620,11 @@ export function SettingsPanel({
 
                   {theme === "light" ? (
                     <div className="mt-3 rounded-xl border border-glass/15 bg-overlay/40 p-4">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Accent</p>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Accent</p>
                       <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">
                         {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
                       </p>
-                      <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
+                      <p className="mt-2 text-[11px] leading-snug tracking-wide text-ink-4/90">
                         Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Synced to your account.
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -652,7 +652,7 @@ export function SettingsPanel({
                                 style={{ background: swatch }}
                                 aria-hidden
                               />
-                              <span className="text-center text-[10px] font-medium leading-tight tracking-wide text-ink-2/85">
+                              <span className="text-center text-[11px] font-medium leading-tight tracking-wide text-ink-2/85">
                                 {a.label}
                               </span>
                             </button>
@@ -669,9 +669,9 @@ export function SettingsPanel({
                   <div className="rounded-xl border border-glass/15 bg-overlay/40 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 pr-1">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Interface sounds</p>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">Interface sounds</p>
                         <p className="mt-1.5 text-[15px] font-semibold leading-none text-ink">{uiSoundsOn ? "On" : "Off"}</p>
-                        <p className="mt-2 text-[10px] leading-snug tracking-wide text-ink-4/90">
+                        <p className="mt-2 text-[11px] leading-snug tracking-wide text-ink-4/90">
                           Module switches, mail actions, live preview typing, and time tracker feedback. Stored on this device.
                         </p>
                       </div>

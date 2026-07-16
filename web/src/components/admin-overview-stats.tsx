@@ -46,7 +46,7 @@ function StatCard({
   return (
     <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
       <div className="flex items-center gap-1.5">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">{label}</p>
+        <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4/80">{label}</p>
         {info ? <InfoTooltip label={`About ${label}`}>{info}</InfoTooltip> : null}
       </div>
       <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</p>
@@ -202,7 +202,7 @@ export function AdminOverviewStats() {
           />
           <div className="rounded-xl border border-glass/10 bg-glass/5 p-3 sm:col-span-2">
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">Users by role</p>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4/80">Users by role</p>
               <InfoTooltip label="About roles">
                 Counts each role stored in <code>app_metadata.role</code>. Users with no role assigned fall under &quot;Not selected&quot;.
               </InfoTooltip>
@@ -230,7 +230,7 @@ export function AdminOverviewStats() {
 
       <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
         <div className="flex items-center gap-1.5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-4/80">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-ink-4/80">
             Most reminded in last 90 days
           </p>
           <InfoTooltip label="About reminders">

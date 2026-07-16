@@ -305,7 +305,7 @@ function RecipientRow({
         <td className="px-3 py-2">
           <div className="flex flex-col">
             <span className="text-sm text-ink">{recipient.recipient_name}</span>
-            <span className="text-[10px] text-ink-4">
+            <span className="text-[11px] text-ink-4">
               {recipient.unique_senders > 1 ? `${recipient.unique_senders} senders` : "1 sender"}
             </span>
           </div>
@@ -316,7 +316,7 @@ function RecipientRow({
           <span className={visibleClicks > 0 ? "text-warn" : "text-ink-4"}>
             {visibleClicks}
           </span>
-          {botSuffix ? <span className="text-[10px] text-ink-5">{botSuffix}</span> : null}
+          {botSuffix ? <span className="text-[11px] text-ink-5">{botSuffix}</span> : null}
         </td>
         <td className="px-3 py-2 text-right text-xs text-ink-3" title={fmtAbsolute(recipient.last_click_at)}>
           {fmtRelative(recipient.last_click_at)}
@@ -511,11 +511,11 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
                 <span className="font-medium">
                   {link.link_label || link.link_key || pickTrustedHost(link.original_url)}
                 </span>
-                <span className="ml-2 text-[10px] text-ink-5">{pickTrustedHost(link.original_url)}</span>
+                <span className="ml-2 text-[11px] text-ink-5">{pickTrustedHost(link.original_url)}</span>
               </a>
               <span className="shrink-0 text-right text-xs tabular-nums">
                 <span className="text-warn">{total}</span>
-                {botSuffix ? <span className="text-[10px] text-ink-5">{botSuffix}</span> : null}
+                {botSuffix ? <span className="text-[11px] text-ink-5">{botSuffix}</span> : null}
               </span>
               <span
                 className="shrink-0 text-[11px] text-ink-4"
@@ -527,7 +527,7 @@ function ClickedLinksList({ links, showBots }: { links: SendDetailLink[]; showBo
                 <button
                   type="button"
                   onClick={() => toggle(link.id)}
-                  className="shrink-0 rounded border border-glass/15 bg-glass/5 px-1.5 py-0.5 text-[10px] text-ink-3 hover:bg-glass/10"
+                  className="shrink-0 rounded border border-glass/15 bg-glass/5 px-1.5 py-0.5 text-[11px] text-ink-3 hover:bg-glass/10"
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? "Hide timeline" : `Show ${visibleClicks.length} click${visibleClicks.length === 1 ? "" : "s"}`}
@@ -560,7 +560,7 @@ function ClickTimeline({ clicks }: { clicks: ClickDetail[] }) {
               <span className="text-ink tabular-nums" title={fmtAbsolute(click.clicked_at)}>
                 {fmtAbsolute(click.clicked_at)}
               </span>
-              <span className="text-[10px] text-ink-5">
+              <span className="text-[11px] text-ink-5">
                 ({fmtRelative(click.clicked_at)})
               </span>
               {click.is_likely_bot ? (
@@ -570,7 +570,7 @@ function ClickTimeline({ clicks }: { clicks: ClickDetail[] }) {
               )}
             </div>
             {click.user_agent ? (
-              <p className="mt-0.5 truncate text-[10px] text-ink-5" title={click.user_agent}>
+              <p className="mt-0.5 truncate text-[11px] text-ink-5" title={click.user_agent}>
                 {click.user_agent}
               </p>
             ) : null}
