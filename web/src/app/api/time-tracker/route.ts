@@ -222,7 +222,7 @@ export async function GET(request: Request) {
             message: "The spreadsheet was read successfully, but no parseable travel rows were found.",
             hint: usedCustomMapping
               ? "This user has a personal column mapping (Settings → Travel sheet) — check that its columns, range, and tab (gid) match the sheet layout."
-              : "Check that the default column layout (month/year, day, client, location, responsible) still matches the sheet.",
+              : "Check that the configured date column holds either full dates (2026-07-15) or month/year headers with a separate day column, and that the travel columns match the sheet.",
             fetched_dates: 0,
             week_matches: 0,
             parsed_dates: 0,
