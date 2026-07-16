@@ -224,6 +224,15 @@
  * subsequent messages instead of pushing them, and gets its own subtle
  * panel background so it stays legible over whatever sits behind it.
  */
+/* Render virtualization for the chat history: rows outside the scrollport skip
+ * layout + paint entirely; `auto` intrinsic size keeps the scrollbar stable by
+ * reusing the last rendered height once a row has been on screen (3.25rem is
+ * only the pre-first-render estimate for a single-line message). */
+.chat-msg-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.25rem;
+}
+
 .chat-actions-row {
   margin-top: 0.25rem;
   display: flex;
