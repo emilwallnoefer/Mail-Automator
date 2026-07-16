@@ -172,6 +172,9 @@ export function SettingsPanel({
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error || "Could not save mapping.");
       setMessage("Travel column mapping saved.");
+      // Any mounted Time Tracker drops its cached weeks and re-reads the
+      // sheet with the new columns.
+      window.dispatchEvent(new Event("ma-travel-mapping-changed"));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -188,7 +191,8 @@ export function SettingsPanel({
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error || "Could not reset mapping.");
       setTravelMapping({ clientColumn: "", locationColumn: "", responsibleColumn: "" });
-      setMessage("Travel mapping reset — the server defaults apply again.");
+      setMessage("Travel mapping cleared — enter your own columns to see travel info again.");
+      window.dispatchEvent(new Event("ma-travel-mapping-changed"));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -500,7 +504,11 @@ export function SettingsPanel({
 
               {!isSalesOnly && activeSection === "travel_mapping" ? (
                 <div className="mt-5">
-                  <p className="text-sm text-ink-4">Configure per-user columns for travel import. Date columns stay unchanged.</p>
+                  <p className="text-sm text-ink-4">
+                    The travel sheet has one column group per person, so these are required to see travel info.
+                    Find your name in the header row of the Mission planning tab, then enter your name&apos;s column
+                    letter and the two to its right (Status/Location, Reporting to). Dates are read automatically.
+                  </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <label className="block">
                       <span className="mb-1 block text-xs text-ink-2/90">Client column</span>
@@ -559,8 +567,9 @@ export function SettingsPanel({
                     </Button>
                   </div>
                   <p className="mt-2 text-xs text-ink-4">
-                    Reset removes your entire personal mapping (including hidden tab/range settings from older
-                    saves) so the server defaults apply. It never changes the Google Sheet itself.
+                    Reset clears your entire personal mapping (including hidden tab/range settings from older
+                    saves); travel info stays off until you save your columns again. It never changes the Google
+                    Sheet itself.
                   </p>
                 </div>
               ) : null}

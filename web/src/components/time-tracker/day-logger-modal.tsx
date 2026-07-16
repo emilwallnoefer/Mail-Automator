@@ -8,6 +8,7 @@ import type { TimeTrackerState } from "./use-time-tracker";
 
 const TRAVEL_DEBUG_TITLES: Record<string, string> = {
   missing_refresh_token: "Travel data can't be pulled — no Google account connected",
+  missing_mapping: "Travel data needs your column mapping",
   error: "Travel data can't be pulled",
   ok_empty: "Sheet is readable, but no travel rows were parsed",
   ok_all_blank: "Sheet is readable, but every travel cell is empty",
@@ -23,6 +24,7 @@ function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
   if (!debug) return null;
   const isProblem =
     debug.status === "missing_refresh_token" ||
+    debug.status === "missing_mapping" ||
     debug.status === "error" ||
     debug.status === "ok_empty" ||
     debug.status === "ok_all_blank";

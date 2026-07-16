@@ -105,6 +105,13 @@ function normalizeColumnLetter(value: unknown) {
   return text;
 }
 
+/**
+ * The travel sheet has one column trio per person, so the only per-user
+ * config is the three travel columns. Tab, range, and date columns come
+ * exclusively from the server env — legacy `range`/`gid`/date-column values
+ * lingering in user metadata are deliberately ignored so accounts can't
+ * silently diverge. All three columns must be set for the mapping to count.
+ */
 function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping | undefined {
   if (!rawMetadata || typeof rawMetadata !== "object" || Array.isArray(rawMetadata)) return undefined;
   const metadata = rawMetadata as Record<string, unknown>;
@@ -112,22 +119,12 @@ function parseUserTravelMapping(rawMetadata: unknown): TravelSheetColumnMapping 
   if (!rawMapping || typeof rawMapping !== "object" || Array.isArray(rawMapping)) return undefined;
   const mappingInput = rawMapping as Record<string, unknown>;
 
-  const mapping: TravelSheetColumnMapping = {
-    monthYearColumn: normalizeColumnLetter(mappingInput.monthYearColumn),
-    dayColumn: normalizeColumnLetter(mappingInput.dayColumn),
-    clientColumn: normalizeColumnLetter(mappingInput.clientColumn),
-    locationColumn: normalizeColumnLetter(mappingInput.locationColumn),
-    responsibleColumn: normalizeColumnLetter(mappingInput.responsibleColumn),
-  };
+  const clientColumn = normalizeColumnLetter(mappingInput.clientColumn);
+  const locationColumn = normalizeColumnLetter(mappingInput.locationColumn);
+  const responsibleColumn = normalizeColumnLetter(mappingInput.responsibleColumn);
+  if (!clientColumn || !locationColumn || !responsibleColumn) return undefined;
 
-  const range = String(mappingInput.range ?? "").trim();
-  if (range) mapping.range = range;
-
-  const gid = String(mappingInput.gid ?? "").trim();
-  if (gid) mapping.gid = gid;
-
-  const hasAnyConfig = Object.values(mapping).some((value) => Boolean(value));
-  return hasAnyConfig ? mapping : undefined;
+  return { clientColumn, locationColumn, responsibleColumn };
 }
 
 export async function GET(request: Request) {
@@ -170,6 +167,7 @@ export async function GET(request: Request) {
     status:
       | "not_attempted"
       | "missing_refresh_token"
+      | "missing_mapping"
       | "ok"
       | "ok_empty"
       | "ok_all_blank"
@@ -193,7 +191,13 @@ export async function GET(request: Request) {
   };
   const weekDateSet = new Set(weekDays.map((day) => day.date));
   if (includeTravel) {
-    const userMetadata = claims.user_metadata ?? null;
+    // Read the mapping from a FRESH user record, not the JWT claims: after
+    // saving in Settings (auth.updateUser) the session token keeps the old
+    // user_metadata until the next refresh (~1h), which made new mappings
+    // appear to not apply. The extra auth round-trip only happens on the
+    // slow includeTravel path.
+    const freshUserRes = await supabase.auth.getUser();
+    const userMetadata = freshUserRes.data?.user?.user_metadata ?? claims.user_metadata ?? null;
     const userTravelMapping = parseUserTravelMapping(userMetadata);
     const usedCustomMapping = Boolean(userTravelMapping);
     let connectedGoogleEmail: string | null = null;
@@ -211,6 +215,16 @@ export async function GET(request: Request) {
           connected_google_email: null,
           used_custom_mapping: usedCustomMapping,
         };
+      } else if (!userTravelMapping) {
+        travelDebug = {
+          status: "missing_mapping",
+          message: "No personal travel columns are configured for this account.",
+          hint: "The travel sheet has one column group per person. Find your name in the header row of the Mission planning tab, then enter your name's column and the two to its right (Status/Location, Reporting to) in Settings → Travel mapping.",
+          fetched_dates: 0,
+          week_matches: 0,
+          connected_google_email: connectedGoogleEmail,
+          used_custom_mapping: false,
+        };
       } else {
         const fetchResult = await fetchTravelByDate(connection.refreshToken, userTravelMapping);
         travelByDate = fetchResult.byDate;
@@ -220,9 +234,7 @@ export async function GET(request: Request) {
           travelDebug = {
             status: "ok_empty",
             message: "The spreadsheet was read successfully, but no parseable travel rows were found.",
-            hint: usedCustomMapping
-              ? "This user has a personal column mapping (Settings → Travel sheet) — check that its columns, range, and tab (gid) match the sheet layout."
-              : "Check that the configured date column holds either full dates (2026-07-15) or month/year headers with a separate day column, and that the travel columns match the sheet.",
+            hint: "No row in the configured range had a parseable date. Check the server-side range and date columns (GOOGLE_SHEETS_RANGE and the date column envs) against the sheet — dates parse from month/year + day cells or a full-date cell.",
             fetched_dates: 0,
             week_matches: 0,
             parsed_dates: 0,
@@ -235,9 +247,7 @@ export async function GET(request: Request) {
           travelDebug = {
             status: "ok_all_blank",
             message: `Dates parsed for ${fetchResult.parsedDates} rows, but the client/location/responsible cells were empty on every one of them.`,
-            hint: usedCustomMapping
-              ? "The date columns line up, but the travel columns don't. Check the client/location/responsible columns (and that the range reaches them) in this user's personal mapping (Settings → Travel sheet)."
-              : "The date columns line up, but the travel columns (default P/Q/R) read as empty. Check that the sheet tab actually has travel data in those columns and that the fetched range extends far enough.",
+            hint: "The date columns line up, but your travel columns read as empty. Check your three columns in Settings → Travel mapping against the header row of the sheet (and that the server range reaches them).",
             fetched_dates: 0,
             week_matches: 0,
             parsed_dates: fetchResult.parsedDates,
