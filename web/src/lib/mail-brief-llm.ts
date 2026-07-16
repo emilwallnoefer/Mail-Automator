@@ -184,6 +184,10 @@ export async function generateBriefDraft(input: BriefLlmInput): Promise<BriefLlm
     max_tokens: 4096,
     thinking: { type: "adaptive" },
     // Stable prefix (system + templates + catalog) is cached; the per-email brief is the volatile suffix.
+    // Default 5m TTL: a mail is refined in a tight burst of a few generations (then not touched for ~a week),
+    // and a cache read refreshes the TTL, so 5m covers the whole burst. A longer TTL would only raise the
+    // write cost (2x vs 1.25x) for no extra reads — the week-long gap outlives any TTL. NOTE: on Opus-tier
+    // models the prefix must exceed ~4096 tokens or it silently won't cache — watch the [brief-cache] log below.
     system: [
       {
         type: "text",
@@ -196,6 +200,15 @@ export async function generateBriefDraft(input: BriefLlmInput): Promise<BriefLlm
     },
     messages: [{ role: "user", content: buildUserPrompt(input) }],
   });
+
+  // Cache observability: `cache_read_input_tokens > 0` means the stable prefix was served from cache
+  // (~0.1x cost). If `cache_creation_input_tokens` is always non-zero and reads stay 0 across requests,
+  // the prefix is likely below the model's cacheable minimum (4096 tokens on Opus 4.8) — see the note above.
+  const usage = message.usage;
+  console.log(
+    `[brief-cache] model=${resolveModel(input.model)} input=${usage.input_tokens} ` +
+      `cache_write=${usage.cache_creation_input_tokens ?? 0} cache_read=${usage.cache_read_input_tokens ?? 0}`,
+  );
 
   if (message.stop_reason === "refusal") {
     throw new Error("The model declined to generate this email. Please revise the brief.");
