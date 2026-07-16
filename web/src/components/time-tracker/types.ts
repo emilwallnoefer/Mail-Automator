@@ -63,6 +63,15 @@ export type WeekResponse = {
     parsed_dates?: number;
     /** Parsed rows whose travel cells were all empty (skipped). */
     blank_dates?: number;
+    /** Columns/range actually used after personal-mapping and env overrides. */
+    effective_mapping?: {
+      monthYearColumn: string;
+      dayColumn: string;
+      clientColumn: string;
+      locationColumn: string;
+      responsibleColumn: string;
+      range: string;
+    };
     /** Classified cause when status is "error" (scope, sharing, expiry, config). */
     reason?: string;
     /** Actionable next step for whoever is debugging the missing data. */

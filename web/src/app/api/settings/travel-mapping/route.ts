@@ -94,3 +94,25 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, ...nextMapping });
 }
+
+/**
+ * Clears the entire personal travel mapping — including fields the Settings
+ * UI doesn't expose (range, gid, date columns) that may linger from older
+ * saves — so the user falls back to the server-default sheet configuration.
+ * Only touches user metadata; the Google Sheet itself is never written to.
+ */
+export async function DELETE() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // updateUser merges metadata shallowly, so overwrite the key with null —
+  // the travel fetch treats a non-object mapping as "no personal mapping".
+  const { error } = await supabase.auth.updateUser({ data: { travel_sheet_mapping: null } });
+  if (error) return NextResponse.json({ error: "Could not reset mapping." }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}

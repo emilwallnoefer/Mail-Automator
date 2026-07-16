@@ -51,6 +51,14 @@ function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
         {debug.fetched_dates} dates loaded, {debug.week_matches} in this week
         {debug.blank_dates ? <> · {debug.blank_dates} rows with empty travel cells skipped</> : null}
       </p>
+      {debug.effective_mapping ? (
+        <p className="text-ink-4/90">
+          Reading client/location/responsible from columns {debug.effective_mapping.clientColumn}/
+          {debug.effective_mapping.locationColumn}/{debug.effective_mapping.responsibleColumn}, dates from{" "}
+          {debug.effective_mapping.monthYearColumn}+{debug.effective_mapping.dayColumn}, range{" "}
+          {debug.effective_mapping.range}
+        </p>
+      ) : null}
     </div>
   );
 }

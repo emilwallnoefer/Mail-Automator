@@ -3,6 +3,7 @@ import { readGmailConnection } from "@/lib/gmail-tokens";
 import {
   classifyTravelFetchError,
   fetchTravelByDate,
+  type TravelEffectiveMapping,
   type TravelFetchErrorReason,
   type TravelSheetColumnMapping,
 } from "@/lib/google-sheets";
@@ -181,6 +182,7 @@ export async function GET(request: Request) {
     blank_dates?: number;
     reason?: TravelFetchErrorReason;
     hint?: string;
+    effective_mapping?: TravelEffectiveMapping;
     connected_google_email?: string | null;
     used_custom_mapping?: boolean;
   } = {
@@ -225,6 +227,7 @@ export async function GET(request: Request) {
             week_matches: 0,
             parsed_dates: 0,
             blank_dates: 0,
+            effective_mapping: fetchResult.effective,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
@@ -239,6 +242,7 @@ export async function GET(request: Request) {
             week_matches: 0,
             parsed_dates: fetchResult.parsedDates,
             blank_dates: fetchResult.blankDates,
+            effective_mapping: fetchResult.effective,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
@@ -251,6 +255,7 @@ export async function GET(request: Request) {
             week_matches: 0,
             parsed_dates: fetchResult.parsedDates,
             blank_dates: fetchResult.blankDates,
+            effective_mapping: fetchResult.effective,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
@@ -262,6 +267,7 @@ export async function GET(request: Request) {
             week_matches: weekMatches,
             parsed_dates: fetchResult.parsedDates,
             blank_dates: fetchResult.blankDates,
+            effective_mapping: fetchResult.effective,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };

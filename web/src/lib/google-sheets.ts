@@ -158,12 +158,22 @@ function cleanCell(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function getColumnIndexWithOverride(name: string, fallback: string, override?: string) {
-  const source = override || process.env[name] || fallback;
+function resolveColumnWithOverride(name: string, fallback: string, override?: string) {
+  const source = (override || process.env[name] || fallback).trim().toUpperCase();
   const index = columnLetterToIndex(source);
   if (index < 0) throw new Error(`Invalid sheet column letter in ${name}: ${source}`);
-  return index;
+  return { letter: source, index };
 }
+
+export type TravelEffectiveMapping = {
+  monthYearColumn: string;
+  dayColumn: string;
+  clientColumn: string;
+  locationColumn: string;
+  responsibleColumn: string;
+  /** The exact range sent to the Sheets API, tab prefix included. */
+  range: string;
+};
 
 export type TravelFetchResult = {
   /** Travel info per date — only dates whose row had actual travel content. */
@@ -176,35 +186,46 @@ export type TravelFetchResult = {
    * the travel columns (or the fetched range) don't match the sheet layout.
    */
   blankDates: number;
+  /** The columns/range actually used after personal-mapping and env overrides. */
+  effective: TravelEffectiveMapping;
 };
 
 export async function fetchTravelByDate(
   refreshToken: string,
   mapping?: TravelSheetColumnMapping,
 ): Promise<TravelFetchResult> {
-  if (!refreshToken) return { byDate: {}, parsedDates: 0, blankDates: 0 };
-
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
   const baseRange = mapping?.range || process.env.GOOGLE_SHEETS_RANGE || "A:R";
   const gid = mapping?.gid || process.env.GOOGLE_SHEETS_GID;
 
-  const monthYearColIdx = getColumnIndexWithOverride(
+  const monthYearCol = resolveColumnWithOverride(
     "GOOGLE_SHEETS_DATE_MONTH_YEAR_COLUMN",
     DEFAULT_MONTH_YEAR_COLUMN,
     mapping?.monthYearColumn,
   );
-  const dayColIdx = getColumnIndexWithOverride("GOOGLE_SHEETS_DATE_DAY_COLUMN", DEFAULT_DAY_COLUMN, mapping?.dayColumn);
-  const clientColIdx = getColumnIndexWithOverride("GOOGLE_SHEETS_COL_CLIENT", DEFAULT_CLIENT_COLUMN, mapping?.clientColumn);
-  const locationColIdx = getColumnIndexWithOverride(
+  const dayCol = resolveColumnWithOverride("GOOGLE_SHEETS_DATE_DAY_COLUMN", DEFAULT_DAY_COLUMN, mapping?.dayColumn);
+  const clientCol = resolveColumnWithOverride("GOOGLE_SHEETS_COL_CLIENT", DEFAULT_CLIENT_COLUMN, mapping?.clientColumn);
+  const locationCol = resolveColumnWithOverride(
     "GOOGLE_SHEETS_COL_LOCATION",
     DEFAULT_LOCATION_COLUMN,
     mapping?.locationColumn,
   );
-  const responsibleColIdx = getColumnIndexWithOverride(
+  const responsibleCol = resolveColumnWithOverride(
     "GOOGLE_SHEETS_COL_RESPONSIBLE",
     DEFAULT_RESPONSIBLE_COLUMN,
     mapping?.responsibleColumn,
   );
+
+  const effective: TravelEffectiveMapping = {
+    monthYearColumn: monthYearCol.letter,
+    dayColumn: dayCol.letter,
+    clientColumn: clientCol.letter,
+    locationColumn: locationCol.letter,
+    responsibleColumn: responsibleCol.letter,
+    range: baseRange,
+  };
+
+  if (!refreshToken) return { byDate: {}, parsedDates: 0, blankDates: 0, effective };
 
   const redirectUri = requiredEnv("GOOGLE_OAUTH_REDIRECT_URI");
   const oauthClient = getOAuthClient(redirectUri);
@@ -223,6 +244,7 @@ export async function fetchTravelByDate(
       range = `'${tabTitle.replace(/'/g, "''")}'!${baseRange}`;
     }
   }
+  effective.range = range;
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -236,18 +258,18 @@ export async function fetchTravelByDate(
 
   let activeMonthYear = "";
   for (const row of rows) {
-    const monthYearCandidate = cleanCell(row[monthYearColIdx]);
+    const monthYearCandidate = cleanCell(row[monthYearCol.index]);
     if (monthYearCandidate) activeMonthYear = monthYearCandidate;
     const monthYear = activeMonthYear;
-    const day = cleanCell(row[dayColIdx]);
+    const day = cleanCell(row[dayCol.index]);
     const dateKey = parseDateFromMonthYearDay(monthYear, day);
     if (!dateKey) continue;
     parsedDates += 1;
 
     const info: TravelInfo = {
-      client: cleanCell(row[clientColIdx]),
-      location: cleanCell(row[locationColIdx]),
-      responsible: cleanCell(row[responsibleColIdx]),
+      client: cleanCell(row[clientCol.index]),
+      location: cleanCell(row[locationCol.index]),
+      responsible: cleanCell(row[responsibleCol.index]),
     };
     // Sheets often carry a row for every calendar day with the travel columns
     // left blank on non-travel days. Storing those as entries makes the UI
@@ -260,5 +282,5 @@ export async function fetchTravelByDate(
     result[dateKey] = info;
   }
 
-  return { byDate: result, parsedDates, blankDates };
+  return { byDate: result, parsedDates, blankDates, effective };
 }

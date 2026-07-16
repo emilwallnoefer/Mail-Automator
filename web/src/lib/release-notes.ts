@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-16-travel-mapping-reset",
+    date: "Jul 16, 2026",
+    title: "Travel mapping: reset & clearer diagnostics",
+    highlights: [
+      "Settings → Travel mapping has a “Reset to defaults” button — clears your personal mapping (never touches the Google Sheet).",
+      "The travel debug box now shows exactly which columns, range, and tab your account reads.",
+    ],
+  },
+  {
     version: "2026-07-16-day-card-fade-in",
     date: "Jul 16, 2026",
     title: "Smoother week open",
