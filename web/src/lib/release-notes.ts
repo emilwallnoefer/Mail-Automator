@@ -20,6 +20,14 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-16-day-card-fade-in",
+    date: "Jul 16, 2026",
+    title: "Smoother week open",
+    highlights: [
+      "Day cards now fade in and drop into place when the Time Tracker opens.",
+    ],
+  },
+  {
     version: "2026-07-16-travel-info-diagnostics",
     date: "Jul 16, 2026",
     title: "Travel info now explains itself",

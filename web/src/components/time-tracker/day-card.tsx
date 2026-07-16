@@ -98,13 +98,13 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
   return (
     <article
       key={day.date}
-      className={`liquid-day-card rounded-xl p-3 transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out ${
+      className={`liquid-day-card rounded-xl p-3 transition-[border-color,background-color,box-shadow,transform,opacity] duration-300 ease-out ${
         isSat ? "liquid-day-card--sat" : ""
       } ${isSun ? "liquid-day-card--sun" : ""} ${isVac ? "liquid-day-card--vac" : ""} ${
         isPh ? "liquid-day-card--ph" : ""
       } ${isSl ? "liquid-day-card--sl" : ""
       } ${isSelected ? "day-card-selected" : ""
-      } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
+      } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1.5 opacity-0"}`}
       style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
     >
       {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
