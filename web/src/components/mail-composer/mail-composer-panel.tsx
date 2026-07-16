@@ -42,6 +42,8 @@ export function MailComposerPanel({
     error,
     result,
     mailGenMode,
+    mailGenSaving,
+    handleSetMailGenMode,
     briefText,
     setBriefText,
     briefContent,
@@ -77,7 +79,37 @@ export function MailComposerPanel({
           ))}
         </div>
         <div className="glass-card hourlogger-surface relative z-[1] w-full min-w-0 rounded-2xl p-4 md:p-5">
-          <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold md:text-xl">Mail Composer</h2>
+            <div
+              role="group"
+              aria-label="Mail generation mode"
+              className="inline-flex rounded-lg border border-glass/15 bg-glass/10 p-0.5"
+            >
+              <button
+                type="button"
+                aria-pressed={mailGenMode === "guided"}
+                disabled={mailGenSaving}
+                onClick={() => void handleSetMailGenMode("guided")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/90 ${
+                  mailGenMode === "guided" ? "bg-accent/90 text-slate-900" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                Guided
+              </button>
+              <button
+                type="button"
+                aria-pressed={mailGenMode === "brief"}
+                disabled={mailGenSaving}
+                onClick={() => void handleSetMailGenMode("brief")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/90 ${
+                  mailGenMode === "brief" ? "bg-accent/90 text-slate-900" : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                AI brief
+              </button>
+            </div>
+          </div>
           {mailGenMode === "brief" ? (
             <div className="mt-4 space-y-3">
               <div className="space-y-1">

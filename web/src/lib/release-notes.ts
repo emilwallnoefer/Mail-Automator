@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-16-composer-mode-switch",
+    date: "Jul 16, 2026",
+    title: "Mail mode switch, right in the composer",
+    highlights: [
+      "Switch between Guided and AI brief at the top of the Mail Composer.",
+      "The old Settings → Mail generation page is gone — one less detour.",
+      "Your choice still saves to your account, like before.",
+    ],
+  },
+  {
     version: "2026-07-02-security-events",
     date: "Jul 2, 2026",
     title: "Security event log & breach alerts",

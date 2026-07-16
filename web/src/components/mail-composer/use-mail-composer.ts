@@ -37,8 +37,9 @@ export function useMailComposer(userRole: UserRole | null) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [changesTouched, setChangesTouched] = useState(false);
-  /** Which mail generator the composer uses; chosen in Settings → Mail generation. */
+  /** Which mail generator the composer uses; switched at the top of the composer. */
   const [mailGenMode, setMailGenMode] = useState<"guided" | "brief">("guided");
+  const [mailGenSaving, setMailGenSaving] = useState(false);
   /** Free-text brief for the AI ("brief") generator. */
   const [briefText, setBriefText] = useState("");
   /** Prose from the last Brief-mode generation, kept so assets can be re-rendered without the LLM. */
@@ -206,16 +207,7 @@ export function useMailComposer(userRole: UserRole | null) {
     })();
   }, [userRole]);
 
-  // Generation mode: follow Settings saves live, and load the stored mode once.
-  useEffect(() => {
-    function onMailGenModeSaved(event: Event) {
-      const detail = (event as CustomEvent<{ mode?: string }>).detail;
-      setMailGenMode(detail?.mode === "brief" ? "brief" : "guided");
-    }
-    window.addEventListener("mail-generation-mode-saved", onMailGenModeSaved);
-    return () => window.removeEventListener("mail-generation-mode-saved", onMailGenModeSaved);
-  }, []);
-
+  // Generation mode: load the stored mode once.
   useEffect(() => {
     (async () => {
       if (userRole === "sales" || userRole === "hr") return;
@@ -225,6 +217,26 @@ export function useMailComposer(userRole: UserRole | null) {
       setMailGenMode(data.mode === "brief" ? "brief" : "guided");
     })();
   }, [userRole]);
+
+  // Persist a mode change made via the composer's header switch.
+  async function handleSetMailGenMode(mode: "guided" | "brief") {
+    if (mode === mailGenMode || mailGenSaving) return;
+    const previous = mailGenMode;
+    setMailGenMode(mode); // optimistic
+    setMailGenSaving(true);
+    try {
+      const response = await fetch("/api/settings/mail-generation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      if (!response.ok) setMailGenMode(previous);
+    } catch {
+      setMailGenMode(previous);
+    } finally {
+      setMailGenSaving(false);
+    }
+  }
 
   // Live-preview typing animation.
   useEffect(() => {
@@ -488,6 +500,8 @@ export function useMailComposer(userRole: UserRole | null) {
     error,
     result,
     mailGenMode,
+    mailGenSaving,
+    handleSetMailGenMode,
     briefText,
     setBriefText,
     briefContent,
