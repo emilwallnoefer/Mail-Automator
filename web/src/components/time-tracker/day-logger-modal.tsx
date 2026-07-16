@@ -3,8 +3,52 @@
 import { useRef } from "react";
 import { Button, Input } from "@/components/ui";
 import { playUiSound } from "@/lib/ui-sounds";
-import { dayLabel, escapeHtml, fmtHM } from "./types";
+import { dayLabel, escapeHtml, fmtHM, type WeekResponse } from "./types";
 import type { TimeTrackerState } from "./use-time-tracker";
+
+const TRAVEL_DEBUG_TITLES: Record<string, string> = {
+  missing_refresh_token: "Travel data can't be pulled — no Google account connected",
+  error: "Travel data can't be pulled",
+  ok_empty: "Sheet is readable, but no travel rows were parsed",
+  ok_no_week_match: "Travel data loaded — nothing for this week",
+  ok: "Travel data loaded",
+  not_attempted: "Travel data not fetched yet",
+};
+
+/** Explains why travel info is missing for the selected day. Problem states
+ * (no Google connection, fetch error, empty parse) get a highlighted box with
+ * the actionable hint from the API; healthy states stay a quiet one-liner. */
+function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
+  if (!debug) return null;
+  const isProblem =
+    debug.status === "missing_refresh_token" || debug.status === "error" || debug.status === "ok_empty";
+  const title = TRAVEL_DEBUG_TITLES[debug.status] ?? debug.status;
+  const account =
+    debug.connected_google_email === undefined
+      ? null
+      : `Google account: ${debug.connected_google_email || "not connected"}${debug.used_custom_mapping ? " · personal column mapping active" : ""}`;
+
+  if (!isProblem) {
+    return (
+      <p className="mt-3 text-xs text-ink-4/90">
+        {title} — {debug.message} ({debug.fetched_dates} dates loaded, {debug.week_matches} in this week)
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-1.5 rounded-lg border border-amber-300/40 bg-amber-400/10 p-3 text-xs">
+      <p className="font-medium text-warn">{title}</p>
+      <p className="text-ink-3/90">{debug.message}</p>
+      {debug.hint ? <p className="text-ink-3/90">{debug.hint}</p> : null}
+      <p className="text-ink-4/90">
+        {account ? <>{account} · </> : null}
+        {debug.reason ? <>cause: {debug.reason} · </> : null}
+        {debug.fetched_dates} dates loaded, {debug.week_matches} in this week
+      </p>
+    </div>
+  );
+}
 
 /** The full-screen day editor: start/stop + day-type + breaks form on the
  * left, travel info and the compensation-source breakdown (with PNG/text
@@ -359,13 +403,7 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
               ) : !selectedTravelInfo ? (
                 <>
                   <p className="mt-4 text-sm text-ink-3/80">No travel info found for this date.</p>
-                  {data?.travel_debug ? (
-                    <p className="mt-3 text-xs text-ink-4/90">
-                      Debug: {data.travel_debug.status} - {data.travel_debug.message}
-                      {"  "}
-                      ({data.travel_debug.fetched_dates} loaded, {data.travel_debug.week_matches} in week)
-                    </p>
-                  ) : null}
+                  <TravelDebugNote debug={data?.travel_debug} />
                 </>
               ) : (
                 <div className="mt-4 space-y-3 text-sm">

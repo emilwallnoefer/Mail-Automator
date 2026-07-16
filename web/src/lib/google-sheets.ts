@@ -17,6 +17,66 @@ export type TravelSheetColumnMapping = {
   gid?: string;
 };
 
+export type TravelFetchErrorReason =
+  | "insufficient_scope"
+  | "no_sheet_access"
+  | "sheet_not_found"
+  | "token_expired"
+  | "config_missing"
+  | "unknown";
+
+/**
+ * Maps a raw Google API / config error from `fetchTravelByDate` to a reason
+ * code plus an actionable hint. These are the failure modes that make travel
+ * data work for one user but not another (per-user OAuth token, per-account
+ * spreadsheet sharing), so keep the hints specific enough to act on.
+ */
+export function classifyTravelFetchError(error: unknown): {
+  reason: TravelFetchErrorReason;
+  hint: string;
+} {
+  const err = error as { message?: string; response?: { status?: number }; status?: number } | null;
+  const message = err?.message ?? "";
+  const status = err?.response?.status ?? err?.status;
+
+  if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(message)) {
+    return {
+      reason: "insufficient_scope",
+      hint:
+        "The Google connection was made without spreadsheet access (likely connected before Sheets support was added, or the Sheets checkbox was unticked on the consent screen). Disconnect and reconnect Gmail in Settings, and approve spreadsheet access.",
+    };
+  }
+  if (/invalid_grant|invalid_rapt|token has been expired or revoked/i.test(message)) {
+    return {
+      reason: "token_expired",
+      hint: "The Google connection expired or was revoked. Disconnect and reconnect Gmail in Settings.",
+    };
+  }
+  if (status === 403 || /caller does not have permission|PERMISSION_DENIED/i.test(message)) {
+    return {
+      reason: "no_sheet_access",
+      hint:
+        "The connected Google account cannot open the travel spreadsheet. Share the spreadsheet with that account (viewer is enough), or reconnect with an account that has access.",
+    };
+  }
+  if (status === 404 || /requested entity was not found/i.test(message)) {
+    return {
+      reason: "sheet_not_found",
+      hint: "The configured spreadsheet ID was not found. Check GOOGLE_SHEETS_SPREADSHEET_ID and any custom range/tab (gid) in the personal travel mapping.",
+    };
+  }
+  if (/missing required env var|invalid sheet column letter/i.test(message)) {
+    return {
+      reason: "config_missing",
+      hint: "Server-side travel-sheet configuration is missing or invalid — check the GOOGLE_SHEETS_* environment variables.",
+    };
+  }
+  return {
+    reason: "unknown",
+    hint: "Unrecognized error — check the server logs for the full Google API response.",
+  };
+}
+
 const DEFAULT_MONTH_YEAR_COLUMN = "A";
 const DEFAULT_DAY_COLUMN = "C";
 const DEFAULT_CLIENT_COLUMN = "P";

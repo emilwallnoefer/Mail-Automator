@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-16-travel-info-diagnostics",
+    date: "Jul 16, 2026",
+    title: "Travel info now explains itself",
+    highlights: [
+      "If travel data can't be loaded, the day editor now says why.",
+      "Shows the connected Google account and a concrete fix (reconnect, share the sheet, …).",
+    ],
+  },
+  {
     version: "2026-07-16-public-holiday-day-type",
     date: "Jul 16, 2026",
     title: "New day type: Public Holiday",
