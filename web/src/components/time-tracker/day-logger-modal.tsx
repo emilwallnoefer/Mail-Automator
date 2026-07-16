@@ -10,6 +10,7 @@ const TRAVEL_DEBUG_TITLES: Record<string, string> = {
   missing_refresh_token: "Travel data can't be pulled — no Google account connected",
   error: "Travel data can't be pulled",
   ok_empty: "Sheet is readable, but no travel rows were parsed",
+  ok_all_blank: "Sheet is readable, but every travel cell is empty",
   ok_no_week_match: "Travel data loaded — nothing for this week",
   ok: "Travel data loaded",
   not_attempted: "Travel data not fetched yet",
@@ -21,7 +22,10 @@ const TRAVEL_DEBUG_TITLES: Record<string, string> = {
 function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
   if (!debug) return null;
   const isProblem =
-    debug.status === "missing_refresh_token" || debug.status === "error" || debug.status === "ok_empty";
+    debug.status === "missing_refresh_token" ||
+    debug.status === "error" ||
+    debug.status === "ok_empty" ||
+    debug.status === "ok_all_blank";
   const title = TRAVEL_DEBUG_TITLES[debug.status] ?? debug.status;
   const account =
     debug.connected_google_email === undefined
@@ -45,6 +49,7 @@ function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
         {account ? <>{account} · </> : null}
         {debug.reason ? <>cause: {debug.reason} · </> : null}
         {debug.fetched_dates} dates loaded, {debug.week_matches} in this week
+        {debug.blank_dates ? <> · {debug.blank_dates} rows with empty travel cells skipped</> : null}
       </p>
     </div>
   );
@@ -400,7 +405,8 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                 <p className="mt-4 text-sm text-ink-3/80">Select a day to edit details.</p>
               ) : dayDetailsLoading ? (
                 <p className="mt-4 text-sm text-ink-3/80">Loading travel details...</p>
-              ) : !selectedTravelInfo ? (
+              ) : !selectedTravelInfo ||
+                (!selectedTravelInfo.client && !selectedTravelInfo.location && !selectedTravelInfo.responsible) ? (
                 <>
                   <p className="mt-4 text-sm text-ink-3/80">No travel info found for this date.</p>
                   <TravelDebugNote debug={data?.travel_debug} />

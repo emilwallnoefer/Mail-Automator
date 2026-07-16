@@ -53,11 +53,16 @@ export type WeekResponse = {
       | "missing_refresh_token"
       | "ok"
       | "ok_empty"
+      | "ok_all_blank"
       | "ok_no_week_match"
       | "error";
     message: string;
     fetched_dates: number;
     week_matches: number;
+    /** Rows whose date cells parsed, regardless of travel content. */
+    parsed_dates?: number;
+    /** Parsed rows whose travel cells were all empty (skipped). */
+    blank_dates?: number;
     /** Classified cause when status is "error" (scope, sharing, expiry, config). */
     reason?: string;
     /** Actionable next step for whoever is debugging the missing data. */

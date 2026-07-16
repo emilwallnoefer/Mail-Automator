@@ -165,11 +165,24 @@ function getColumnIndexWithOverride(name: string, fallback: string, override?: s
   return index;
 }
 
+export type TravelFetchResult = {
+  /** Travel info per date — only dates whose row had actual travel content. */
+  byDate: Record<string, TravelInfo>;
+  /** Rows whose month/year + day cells parsed to a date. */
+  parsedDates: number;
+  /**
+   * Parsed dates whose client/location/responsible cells were all empty.
+   * A high count with an empty `byDate` means the date columns line up but
+   * the travel columns (or the fetched range) don't match the sheet layout.
+   */
+  blankDates: number;
+};
+
 export async function fetchTravelByDate(
   refreshToken: string,
   mapping?: TravelSheetColumnMapping,
-): Promise<Record<string, TravelInfo>> {
-  if (!refreshToken) return {};
+): Promise<TravelFetchResult> {
+  if (!refreshToken) return { byDate: {}, parsedDates: 0, blankDates: 0 };
 
   const spreadsheetId = requiredEnv("GOOGLE_SHEETS_SPREADSHEET_ID");
   const baseRange = mapping?.range || process.env.GOOGLE_SHEETS_RANGE || "A:R";
@@ -218,6 +231,8 @@ export async function fetchTravelByDate(
 
   const rows = response.data.values ?? [];
   const result: Record<string, TravelInfo> = {};
+  let parsedDates = 0;
+  let blankDates = 0;
 
   let activeMonthYear = "";
   for (const row of rows) {
@@ -227,13 +242,23 @@ export async function fetchTravelByDate(
     const day = cleanCell(row[dayColIdx]);
     const dateKey = parseDateFromMonthYearDay(monthYear, day);
     if (!dateKey) continue;
+    parsedDates += 1;
 
-    result[dateKey] = {
+    const info: TravelInfo = {
       client: cleanCell(row[clientColIdx]),
       location: cleanCell(row[locationColIdx]),
       responsible: cleanCell(row[responsibleColIdx]),
     };
+    // Sheets often carry a row for every calendar day with the travel columns
+    // left blank on non-travel days. Storing those as entries makes the UI
+    // render an empty "found" card and hides the diagnostics, so skip them.
+    if (!info.client && !info.location && !info.responsible) {
+      blankDates += 1;
+      continue;
+    }
+
+    result[dateKey] = info;
   }
 
-  return result;
+  return { byDate: result, parsedDates, blankDates };
 }

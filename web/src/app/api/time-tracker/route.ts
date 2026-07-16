@@ -171,11 +171,14 @@ export async function GET(request: Request) {
       | "missing_refresh_token"
       | "ok"
       | "ok_empty"
+      | "ok_all_blank"
       | "ok_no_week_match"
       | "error";
     message: string;
     fetched_dates: number;
     week_matches: number;
+    parsed_dates?: number;
+    blank_dates?: number;
     reason?: TravelFetchErrorReason;
     hint?: string;
     connected_google_email?: string | null;
@@ -207,10 +210,11 @@ export async function GET(request: Request) {
           used_custom_mapping: usedCustomMapping,
         };
       } else {
-        travelByDate = await fetchTravelByDate(connection.refreshToken, userTravelMapping);
+        const fetchResult = await fetchTravelByDate(connection.refreshToken, userTravelMapping);
+        travelByDate = fetchResult.byDate;
         const fetchedDates = Object.keys(travelByDate);
         const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
-        if (fetchedDates.length === 0) {
+        if (fetchResult.parsedDates === 0) {
           travelDebug = {
             status: "ok_empty",
             message: "The spreadsheet was read successfully, but no parseable travel rows were found.",
@@ -219,16 +223,34 @@ export async function GET(request: Request) {
               : "Check that the default column layout (month/year, day, client, location, responsible) still matches the sheet.",
             fetched_dates: 0,
             week_matches: 0,
+            parsed_dates: 0,
+            blank_dates: 0,
+            connected_google_email: connectedGoogleEmail,
+            used_custom_mapping: usedCustomMapping,
+          };
+        } else if (fetchedDates.length === 0) {
+          travelDebug = {
+            status: "ok_all_blank",
+            message: `Dates parsed for ${fetchResult.parsedDates} rows, but the client/location/responsible cells were empty on every one of them.`,
+            hint: usedCustomMapping
+              ? "The date columns line up, but the travel columns don't. Check the client/location/responsible columns (and that the range reaches them) in this user's personal mapping (Settings → Travel sheet)."
+              : "The date columns line up, but the travel columns (default P/Q/R) read as empty. Check that the sheet tab actually has travel data in those columns and that the fetched range extends far enough.",
+            fetched_dates: 0,
+            week_matches: 0,
+            parsed_dates: fetchResult.parsedDates,
+            blank_dates: fetchResult.blankDates,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
         } else if (weekMatches === 0) {
           travelDebug = {
             status: "ok_no_week_match",
-            message: "Travel rows loaded, but none match the currently selected week.",
-            hint: "The sheet is readable and parseable — this week simply has no rows (or the month/year + day cells for it don't parse to dates).",
+            message: "Travel rows loaded, but none with travel content fall in the currently selected week.",
+            hint: "The sheet is readable and parseable — this week simply has no travel entries (blank travel cells count as no entry).",
             fetched_dates: fetchedDates.length,
             week_matches: 0,
+            parsed_dates: fetchResult.parsedDates,
+            blank_dates: fetchResult.blankDates,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
@@ -238,6 +260,8 @@ export async function GET(request: Request) {
             message: "Travel rows loaded and matched at least one date in this week.",
             fetched_dates: fetchedDates.length,
             week_matches: weekMatches,
+            parsed_dates: fetchResult.parsedDates,
+            blank_dates: fetchResult.blankDates,
             connected_google_email: connectedGoogleEmail,
             used_custom_mapping: usedCustomMapping,
           };
