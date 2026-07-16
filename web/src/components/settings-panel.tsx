@@ -179,6 +179,23 @@ export function SettingsPanel({
     }
   }
 
+  async function handleResetTravelMapping() {
+    setMappingSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/settings/travel-mapping", { method: "DELETE" });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Could not reset mapping.");
+      setTravelMapping({ clientColumn: "", locationColumn: "", responsibleColumn: "" });
+      setMessage("Travel mapping reset — the server defaults apply again.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMappingSaving(false);
+    }
+  }
+
   async function handleSaveMailSignature() {
     const effective =
       mailSigPreset === MAIL_SIGNATURE_CUSTOM_VALUE ? mailSigCustom.trim() : mailSigPreset.trim();
@@ -519,17 +536,32 @@ export function SettingsPanel({
                       />
                     </label>
                   </div>
-                  <Button
-                    variant="glass-quiet"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => {
-                      void handleSaveTravelMapping();
-                    }}
-                    disabled={mappingSaving}
-                  >
-                    {mappingSaving ? "Saving…" : "Save travel mapping"}
-                  </Button>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="glass-quiet"
+                      size="sm"
+                      onClick={() => {
+                        void handleSaveTravelMapping();
+                      }}
+                      disabled={mappingSaving}
+                    >
+                      {mappingSaving ? "Saving…" : "Save travel mapping"}
+                    </Button>
+                    <Button
+                      variant="glass-quiet"
+                      size="sm"
+                      onClick={() => {
+                        void handleResetTravelMapping();
+                      }}
+                      disabled={mappingSaving}
+                    >
+                      Reset to defaults
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-ink-4">
+                    Reset removes your entire personal mapping (including hidden tab/range settings from older
+                    saves) so the server defaults apply. It never changes the Google Sheet itself.
+                  </p>
                 </div>
               ) : null}
 
