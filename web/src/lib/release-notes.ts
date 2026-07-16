@@ -29,6 +29,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: "2026-07-16-public-holiday-day-type",
+    date: "Jul 16, 2026",
+    title: "New day type: Public Holiday",
+    highlights: [
+      "The Day Logger now has four day types: Normal, Vacation, Public Holiday, and Sick leave.",
+      "“Holiday” is now called Vacation — existing entries keep working as before.",
+      "Both Vacation and Public Holiday are excused from your target; hours logged count as overtime.",
+    ],
+  },
+  {
     version: "2026-07-16-composer-mode-switch",
     date: "Jul 16, 2026",
     title: "Mail mode switch, right in the composer",

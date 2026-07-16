@@ -15,6 +15,7 @@ export type WeekDay = {
   stop_time: string;
   net_mins: number;
   holiday: boolean;
+  public_holiday: boolean;
   sick_leave: boolean;
   comp_mins: number;
   comp_note: string;
@@ -81,7 +82,7 @@ export async function computeOvertimeBankMinsForUser(
   const [logsAllRes, compAllRes] = await Promise.all([
     supabase
       .from("time_day_logs")
-      .select("work_date, net_mins, holiday, sick_leave")
+      .select("work_date, net_mins, holiday, public_holiday, sick_leave")
       .eq("user_id", userId),
     supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
   ]);
@@ -92,7 +93,7 @@ export async function computeOvertimeBankMinsForUser(
   for (const row of logsAllRes.data ?? []) {
     allWorkByDate.set(row.work_date, {
       net: sanitizeMins(row.net_mins),
-      holiday: Boolean(row.holiday),
+      holiday: Boolean(row.holiday) || Boolean(row.public_holiday),
       sickLeave: Boolean(row.sick_leave),
     });
   }
@@ -145,7 +146,7 @@ export async function computeCompSourcesForUser(
   const [logsRes, compRes] = await Promise.all([
     supabase
       .from("time_day_logs")
-      .select("work_date, net_mins, holiday, sick_leave")
+      .select("work_date, net_mins, holiday, public_holiday, sick_leave")
       .eq("user_id", userId),
     supabase.from("time_comp_adjustments").select("work_date, mins").eq("user_id", userId),
   ]);
@@ -156,7 +157,7 @@ export async function computeCompSourcesForUser(
   for (const row of logsRes.data ?? []) {
     workByDate.set(row.work_date, {
       net: sanitizeMins(row.net_mins),
-      holiday: Boolean(row.holiday),
+      holiday: Boolean(row.holiday) || Boolean(row.public_holiday),
       sickLeave: Boolean(row.sick_leave),
     });
   }
@@ -287,7 +288,7 @@ export async function fetchWeekForUser(
   const [logsWeekRes, compWeekRes] = await Promise.all([
     supabase
       .from("time_day_logs")
-      .select("id, work_date, start_time, stop_time, net_mins, holiday, sick_leave")
+      .select("id, work_date, start_time, stop_time, net_mins, holiday, public_holiday, sick_leave")
       .eq("user_id", userId)
       .gte("work_date", weekStart)
       .lte("work_date", weekEnd)
@@ -339,6 +340,7 @@ export async function fetchWeekForUser(
       stop_time: log?.stop_time ?? "",
       net_mins: sanitizeMins(log?.net_mins),
       holiday: Boolean(log?.holiday),
+      public_holiday: Boolean(log?.public_holiday),
       sick_leave: Boolean(log?.sick_leave),
       comp_mins: comp?.mins ?? 0,
       comp_note: comp?.note ?? "",
@@ -370,6 +372,7 @@ type RpcWeekPayload = {
     net_mins: number | null;
     holiday: boolean | null;
     sick_leave: boolean | null;
+    public_holiday?: boolean | null;
   }>;
   comp?: Array<{
     work_date: string;
@@ -439,6 +442,7 @@ export async function fetchCurrentUserWeek(
       stop_time: log?.stop_time ?? "",
       net_mins: sanitizeMins(log?.net_mins),
       holiday: Boolean(log?.holiday),
+      public_holiday: Boolean(log?.public_holiday),
       sick_leave: Boolean(log?.sick_leave),
       comp_mins: comp?.mins ?? 0,
       comp_note: comp?.note ?? "",
@@ -494,7 +498,7 @@ export function countMissingWeekdays(days: WeekDay[]): number {
     const date = new Date(day.date);
     const dow = (date.getDay() + 6) % 7;
     if (dow >= 5) continue;
-    if (day.holiday || day.sick_leave) continue;
+    if (day.holiday || day.public_holiday || day.sick_leave) continue;
     if (day.net_mins + day.comp_mins >= TARGET_MINS) continue;
     missing += 1;
   }

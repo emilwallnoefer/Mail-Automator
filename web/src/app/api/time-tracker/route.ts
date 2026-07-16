@@ -30,6 +30,7 @@ type ImportPayload = {
       breaks?: Array<{ name?: string; mins?: number }>;
       netMins?: number;
       holiday?: boolean;
+      publicHoliday?: boolean;
       sickLeave?: boolean;
     }
   >;
@@ -47,6 +48,7 @@ const dayInputSchema = z.object({
   stop_time: z.string().max(8).optional(),
   net_mins: z.number().int().min(0).max(1440).optional(),
   holiday: z.boolean().optional(),
+  public_holiday: z.boolean().optional(),
   sick_leave: z.boolean().optional(),
   breaks: z.array(breakInputSchema).max(20).optional(),
 });
@@ -61,6 +63,7 @@ const importPayloadSchema = z.object({
         breaks: z.array(breakInputSchema).max(20).optional(),
         netMins: z.number().int().min(0).max(1440).optional(),
         holiday: z.boolean().optional(),
+        publicHoliday: z.boolean().optional(),
         sickLeave: z.boolean().optional(),
       }),
     )
@@ -365,6 +368,7 @@ export async function POST(request: Request) {
           stop_time: sanitizeText(day.stop_time, { maxLen: 8 }),
           net_mins: sanitizeMins(day.net_mins),
           holiday: Boolean(day.holiday),
+          public_holiday: Boolean(day.public_holiday),
           sick_leave: Boolean(day.sick_leave),
           source: "ui",
         },
@@ -527,6 +531,7 @@ export async function POST(request: Request) {
       stop_time: sanitizeText(item?.stop, { maxLen: 8 }),
       net_mins: sanitizeMins(item?.netMins),
       holiday: Boolean(item?.holiday),
+      public_holiday: Boolean(item?.publicHoliday),
       sick_leave: Boolean(item?.sickLeave),
       source: "hourlogger_import_ui",
     }));
@@ -599,7 +604,7 @@ export async function POST(request: Request) {
     const [dayLogsRes, compRes] = await Promise.all([
       supabase
         .from("time_day_logs")
-        .select("id, work_date, start_time, stop_time, net_mins, holiday, sick_leave")
+        .select("id, work_date, start_time, stop_time, net_mins, holiday, public_holiday, sick_leave")
         .eq("user_id", authedUser.id)
         .order("work_date", { ascending: true }),
       supabase
@@ -638,6 +643,7 @@ export async function POST(request: Request) {
         breaks: breaksByLogId.get(row.id) ?? [],
         netMins: sanitizeMins(row.net_mins),
         holiday: Boolean(row.holiday),
+        publicHoliday: Boolean(row.public_holiday),
         sickLeave: Boolean(row.sick_leave),
       };
     }
