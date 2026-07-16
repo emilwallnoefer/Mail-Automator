@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthNavbar } from "@/components/auth-navbar";
@@ -361,7 +361,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
         ) : null}
 
         {!showComposer && (
-          <motion.div
+          <m.div
             // Render the workspace home settled on first paint (no entrance fade/slide,
             // which read as the page "redrawing" on every load). `initial={false}` keeps
             // the click-to-open exit transition below working via `beginAnimating`.
@@ -392,7 +392,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                 className={`grid gap-4 ${availableModules.filter((m) => m !== "admin").length >= 3 ? "md:grid-cols-3" : "sm:mx-auto sm:max-w-2xl sm:grid-cols-2"}`}
               >
                 {availableModules.includes("settings") ? (
-                  <motion.button
+                  <m.button
                     type="button"
                     initial={false}
                     whileTap={{ scale: 0.97 }}
@@ -411,11 +411,11 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       Continue
                       <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </span>
-                  </motion.button>
+                  </m.button>
                 ) : null}
 
                 {availableModules.includes("mail") ? (
-                  <motion.button
+                  <m.button
                     type="button"
                     initial={false}
                     whileTap={{ scale: 0.97 }}
@@ -434,10 +434,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       Continue
                       <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </span>
-                  </motion.button>
+                  </m.button>
                 ) : null}
 
-                <motion.button
+                <m.button
                   type="button"
                   initial={false}
                   whileTap={{ scale: 0.97 }}
@@ -456,16 +456,16 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     Continue
                     <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
                   </span>
-                </motion.button>
+                </m.button>
 
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
 
         <AnimatePresence initial={false}>
           {showComposer ? (
-            <motion.section
+            <m.section
               key="composer"
               initial={{ opacity: 0, y: 24, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -474,7 +474,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               className="space-y-4"
             >
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div
+                <m.div
                   key={activeModule}
                   initial={{ opacity: 0, y: 8, scale: 0.996 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -498,9 +498,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                       gmailConnected={gmailStatus.connected}
                     />
                   )}
-                </motion.div>
+                </m.div>
               </AnimatePresence>
-            </motion.section>
+            </m.section>
           ) : null}
         </AnimatePresence>
 

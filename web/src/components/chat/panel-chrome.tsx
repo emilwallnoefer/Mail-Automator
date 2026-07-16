@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { TAGGED_KINDS, initialsFromEmail, shortNameFromEmail, type ChatPresenceUser } from "@/lib/chat";
 import { ChatBubbleIcon, LightbulbIcon, PencilSquareIcon, StarIcon } from "./icons";
@@ -195,7 +195,7 @@ export function PresenceAvatars({
 
       <AnimatePresence>
         {open ? (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -4, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.96 }}
@@ -233,7 +233,7 @@ export function PresenceAvatars({
                 );
               })}
             </div>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
     </div>

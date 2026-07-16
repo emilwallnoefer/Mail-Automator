@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState, type CSSProperties } from "react";
 
 export default function LoginPage() {
@@ -82,7 +82,7 @@ export default function LoginPage() {
           ))}
         </div>
       </div>
-      <motion.section
+      <m.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -119,7 +119,7 @@ export default function LoginPage() {
           {message && <p className="mt-4 text-sm text-positive">{message}</p>}
           {error && <p className="mt-4 text-sm text-danger">{error}</p>}
         </div>
-      </motion.section>
+      </m.section>
     </main>
   );
 }

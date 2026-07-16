@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import type { ReactNode } from "react";
 
 /** Reveals a form field with a slide/fade once its prerequisites are filled. */
@@ -8,7 +8,7 @@ export function ProgressiveField({ show, children }: { show: boolean; children: 
   return (
     <AnimatePresence initial={false}>
       {show ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 8, height: 0 }}
           animate={{ opacity: 1, y: 0, height: "auto" }}
           exit={{ opacity: 0, y: -6, height: 0 }}
@@ -16,7 +16,7 @@ export function ProgressiveField({ show, children }: { show: boolean; children: 
           className="overflow-hidden"
         >
           {children}
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { type ReactNode } from "react";
 import {
   dayKeyFromIso,
@@ -88,7 +88,7 @@ export function ChatWidget(props: ChatWidgetProps) {
           floating "iPhone" panel. */}
       <AnimatePresence>
         {!open ? (
-          <motion.button
+          <m.button
             key="chat-trigger"
             type="button"
             aria-label="Open team chat"
@@ -111,7 +111,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                 {unread > 99 ? "99+" : unread}
               </span>
             ) : null}
-          </motion.button>
+          </m.button>
         ) : null}
       </AnimatePresence>
 
@@ -125,7 +125,7 @@ export function ChatWidget(props: ChatWidgetProps) {
       <AnimatePresence>
         {open ? (
           <>
-            <motion.div
+            <m.div
               key="chat-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -135,7 +135,7 @@ export function ChatWidget(props: ChatWidgetProps) {
               onClick={() => setOpen(false)}
               aria-hidden
             />
-            <motion.aside
+            <m.aside
               key="chat-panel"
               role="dialog"
               aria-label="Team chat"
@@ -222,14 +222,14 @@ export function ChatWidget(props: ChatWidgetProps) {
                         {(() => {
                           const items: ReactNode[] = [];
                           let lastDayKey: string | null = null;
-                          visibleMessages.forEach((m, i) => {
-                            const dayKey = dayKeyFromIso(m.created_at);
+                          visibleMessages.forEach((msg, i) => {
+                            const dayKey = dayKeyFromIso(msg.created_at);
                             const isNewDay = dayKey !== lastDayKey;
                             if (isNewDay) {
                               items.push(
                                 <DaySeparator
                                   key={`sep-${dayKey}`}
-                                  label={formatDaySeparator(m.created_at)}
+                                  label={formatDaySeparator(msg.created_at)}
                                 />,
                               );
                               lastDayKey = dayKey;
@@ -237,14 +237,14 @@ export function ChatWidget(props: ChatWidgetProps) {
                             const previous = isNewDay ? undefined : visibleMessages[i - 1];
                             const showHeader =
                               !previous ||
-                              previous.sender_id !== m.sender_id ||
-                              previous.kind !== m.kind ||
-                              new Date(m.created_at).getTime() -
+                              previous.sender_id !== msg.sender_id ||
+                              previous.kind !== msg.kind ||
+                              new Date(msg.created_at).getTime() -
                                 new Date(previous.created_at).getTime() >
                                 5 * 60 * 1000;
                             items.push(
-                              <motion.div
-                                key={m.id}
+                              <m.div
+                                key={msg.id}
                                 layout="position"
                                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -252,23 +252,23 @@ export function ChatWidget(props: ChatWidgetProps) {
                                 transition={{ duration: 0.18, ease: "easeOut" }}
                               >
                                 <MessageRow
-                                  message={m}
-                                  isMe={m.sender_id === currentUserId}
+                                  message={msg}
+                                  isMe={msg.sender_id === currentUserId}
                                   showHeader={showHeader}
                                   isAdmin={isAdmin}
-                                  isEditing={editingId === m.id}
-                                  votes={voteSummary.get(m.id)}
-                                  onStartEdit={() => setEditingId(m.id)}
+                                  isEditing={editingId === msg.id}
+                                  votes={voteSummary.get(msg.id)}
+                                  onStartEdit={() => setEditingId(msg.id)}
                                   onCancelEdit={() => setEditingId(null)}
-                                  onSaveEdit={(body) => handleSaveEdit(m.id, body)}
-                                  onDelete={() => handleDelete(m.id)}
+                                  onSaveEdit={(body) => handleSaveEdit(msg.id, body)}
+                                  onDelete={() => handleDelete(msg.id)}
                                   onVote={(next) =>
-                                    handleVote(m.id, voteSummary.get(m.id)?.mine ?? 0, next)
+                                    handleVote(msg.id, voteSummary.get(msg.id)?.mine ?? 0, next)
                                   }
-                                  onMarkDone={(done) => handleMarkDone(m.id, done)}
+                                  onMarkDone={(done) => handleMarkDone(msg.id, done)}
                                   onOpenImage={(url, name) => setLightbox({ url, name })}
                                 />
-                              </motion.div>,
+                              </m.div>,
                             );
                           });
                           return items;
@@ -281,7 +281,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                       up and new messages have arrived. */}
                   <AnimatePresence>
                     {!isAtBottom && pendingNew > 0 ? (
-                      <motion.button
+                      <m.button
                         key="jump-pill"
                         type="button"
                         onClick={scrollToBottom}
@@ -293,7 +293,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                       >
                         <ArrowDownIcon className="h-3 w-3" />
                         {pendingNew} new {pendingNew === 1 ? "message" : "messages"}
-                      </motion.button>
+                      </m.button>
                     ) : null}
                   </AnimatePresence>
                 </div>
@@ -302,7 +302,7 @@ export function ChatWidget(props: ChatWidgetProps) {
 
                 <AnimatePresence>
                   {pendingUndo ? (
-                    <motion.div
+                    <m.div
                       key="undo-toast"
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -317,13 +317,13 @@ export function ChatWidget(props: ChatWidgetProps) {
                       >
                         Undo
                       </button>
-                    </motion.div>
+                    </m.div>
                   ) : null}
                 </AnimatePresence>
 
                 <AnimatePresence>
                   {error ? (
-                    <motion.div
+                    <m.div
                       key="error-banner"
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -340,7 +340,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                       >
                         <XMarkIcon className="h-3 w-3 transition-transform duration-200 group-hover:rotate-90" />
                       </button>
-                    </motion.div>
+                    </m.div>
                   ) : null}
                 </AnimatePresence>
 
@@ -395,13 +395,13 @@ export function ChatWidget(props: ChatWidgetProps) {
                   </div>
                 </div>
               </div>
-            </motion.aside>
+            </m.aside>
 
             {/* Image lightbox overlay (rendered last so it sits on top of the
                 panel and the backdrop). */}
             <AnimatePresence>
               {lightbox ? (
-                <motion.div
+                <m.div
                   key="chat-lightbox"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -428,7 +428,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                   >
                     <XMarkIcon className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
                   </button>
-                </motion.div>
+                </m.div>
               ) : null}
             </AnimatePresence>
           </>
