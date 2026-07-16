@@ -730,6 +730,26 @@ export function useTimeTracker({
     return () => window.removeEventListener("time-tracker-imported", onImported as EventListener);
   }, [refreshWeek]);
 
+  useEffect(() => {
+    // Saving/resetting the travel mapping in Settings changes what every
+    // cached week's travel data means, so drop all caches and re-read the
+    // sheet with the new columns for the visible week right away.
+    function onTravelMappingChanged() {
+      weekCacheRef.current.clear();
+      weekInflightRef.current.clear();
+      void fetchWeekData(weekStart, { force: true, includeTravel: true })
+        .then((fullWeek) => {
+          setData((prev) => (prev && prev.week_start !== fullWeek.week_start ? prev : fullWeek));
+        })
+        .catch(() => {
+          // The next editor open re-fetches travel; no need to surface this.
+        });
+    }
+
+    window.addEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
+    return () => window.removeEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
+  }, [fetchWeekData, weekStart]);
+
   function handleEditDay(date: string) {
     setSelectedDate(date);
     setEditorOpen(true);

@@ -51,6 +51,7 @@ export type WeekResponse = {
     status:
       | "not_attempted"
       | "missing_refresh_token"
+      | "missing_mapping"
       | "ok"
       | "ok_empty"
       | "ok_all_blank"

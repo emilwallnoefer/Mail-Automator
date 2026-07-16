@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-16-travel-personal-columns",
+    date: "Jul 16, 2026",
+    title: "Travel info: set your own columns",
+    highlights: [
+      "The travel sheet has one column group per person, so travel info now needs your personal columns.",
+      "Settings → Travel mapping: enter your name's column and the two right of it, save — it applies immediately.",
+      "Until then, the day editor shows exactly what's missing.",
+    ],
+  },
+  {
     version: "2026-07-16-travel-mapping-reset",
     date: "Jul 16, 2026",
     title: "Travel mapping: reset & clearer diagnostics",
