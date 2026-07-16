@@ -528,7 +528,7 @@
   z-index: 1;
 }
 
-/* Time tracker: weekday vs weekend vs public holiday */
+/* Time tracker: weekday vs weekend vs vacation vs public holiday */
 .liquid-day-card.liquid-day-card--sat {
   border-left: 3px solid rgba(129, 140, 248, 0.72);
   background: linear-gradient(145deg, rgba(49, 46, 129, 0.32), rgba(255, 255, 255, 0.06));
@@ -539,12 +539,21 @@
   background: linear-gradient(145deg, rgba(131, 24, 67, 0.26), rgba(255, 255, 255, 0.05));
 }
 
-.liquid-day-card.liquid-day-card--ph {
+.liquid-day-card.liquid-day-card--vac {
   border-top: 3px solid rgba(251, 191, 36, 0.82);
   box-shadow:
     0 26px 56px rgba(2, 11, 28, 0.55),
     0 8px 22px rgba(10, 40, 70, 0.25),
     inset 0 4px 0 rgba(251, 191, 36, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(167, 139, 250, 0.82);
+  box-shadow:
+    0 26px 56px rgba(2, 11, 28, 0.55),
+    0 8px 22px rgba(10, 40, 70, 0.25),
+    inset 0 4px 0 rgba(167, 139, 250, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
@@ -839,7 +848,7 @@ html[data-theme="light"] .liquid-day-card.liquid-day-card--sun {
   background: linear-gradient(145deg, rgba(211, 54, 130, 0.14), rgb(var(--paper-2) / 0.7));
 }
 
-html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
+html[data-theme="light"] .liquid-day-card.liquid-day-card--vac {
   border-top: 3px solid rgba(181, 137, 0, 0.8);
   box-shadow:
     0 26px 56px rgba(7, 54, 66, 0.1),
@@ -848,9 +857,19 @@ html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
     inset 0 1px 0 rgb(var(--paper-3) / 0.85);
 }
 
+html[data-theme="light"] .liquid-day-card.liquid-day-card--ph {
+  border-top: 3px solid rgba(133, 103, 209, 0.8);
+  box-shadow:
+    0 26px 56px rgba(7, 54, 66, 0.1),
+    0 8px 22px rgba(7, 54, 66, 0.05),
+    inset 0 4px 0 rgba(133, 103, 209, 0.16),
+    inset 0 1px 0 rgb(var(--paper-3) / 0.85);
+}
+
 html[data-theme="light"] .liquid-day-card.liquid-day-card--sl {
   /* Sick-leave stays a fixed teal category color (distinct from the amber
-   * public-holiday accent), so it does not follow the swappable scheme. */
+   * vacation and violet public-holiday accents), so it does not follow the
+   * swappable scheme. */
   border-top: 3px solid rgba(42, 161, 152, 0.8);
   box-shadow:
     0 26px 56px rgba(7, 54, 66, 0.1),

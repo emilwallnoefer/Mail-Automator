@@ -25,6 +25,7 @@ export type DayData = {
   stop_time: string;
   net_mins: number;
   holiday: boolean;
+  public_holiday: boolean;
   sick_leave: boolean;
   comp_mins: number;
   comp_note: string;
@@ -129,14 +130,14 @@ export function bankDeltaForDay(prev: DayData, next: DayData) {
   const before = getDayOvertimeContributionMins(
     prev.date,
     prev.net_mins,
-    prev.holiday,
+    prev.holiday || prev.public_holiday,
     prev.comp_mins,
     prev.sick_leave,
   );
   const after = getDayOvertimeContributionMins(
     next.date,
     next.net_mins,
-    next.holiday,
+    next.holiday || next.public_holiday,
     next.comp_mins,
     next.sick_leave,
   );

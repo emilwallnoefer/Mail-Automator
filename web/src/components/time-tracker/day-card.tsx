@@ -28,9 +28,11 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
   const isSelected = selectedDay?.date === day.date;
   const revealed = index < revealedDayCount;
   const isSickLeave = day.sick_leave;
-  const isRelaxDay = isWeekendDate(day.date) || day.holiday || isSickLeave;
+  // Vacation and public holiday share the same excused/premium-overtime rule.
+  const isExcusedHoliday = day.holiday || day.public_holiday;
+  const isRelaxDay = isWeekendDate(day.date) || isExcusedHoliday || isSickLeave;
   // Sick leave is excused but never earns overtime, so no worked hours show on the bar.
-  const premiumOvertimeDay = !isSickLeave && isPremiumOvertimeDay(day.date, day.net_mins, day.holiday);
+  const premiumOvertimeDay = !isSickLeave && isPremiumOvertimeDay(day.date, day.net_mins, isExcusedHoliday);
   const workedBaseMins = Math.min(day.net_mins, TARGET_MINS);
   const overtimeWorkedMinsWeekday = premiumOvertimeDay
     ? Math.max(0, day.net_mins)
@@ -89,7 +91,8 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
 
   const isSat = isSaturdayDate(day.date);
   const isSun = isSundayDate(day.date);
-  const isPh = day.holiday;
+  const isVac = day.holiday;
+  const isPh = day.public_holiday;
   const isSl = isSickLeave;
 
   return (
@@ -97,8 +100,9 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
       key={day.date}
       className={`liquid-day-card rounded-xl p-3 transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out ${
         isSat ? "liquid-day-card--sat" : ""
-      } ${isSun ? "liquid-day-card--sun" : ""} ${isPh ? "liquid-day-card--ph" : ""} ${
-        isSl ? "liquid-day-card--sl" : ""
+      } ${isSun ? "liquid-day-card--sun" : ""} ${isVac ? "liquid-day-card--vac" : ""} ${
+        isPh ? "liquid-day-card--ph" : ""
+      } ${isSl ? "liquid-day-card--sl" : ""
       } ${isSelected ? "day-card-selected" : ""
       } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}
       style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
@@ -124,8 +128,13 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
                 Sun
               </span>
             ) : null}
-            {isPh ? (
+            {isVac ? (
               <span className="shrink-0 rounded border border-amber-400/45 bg-amber-500/20 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-warn/95">
+                VAC
+              </span>
+            ) : null}
+            {isPh ? (
+              <span className="shrink-0 rounded border border-violet-400/45 bg-violet-500/20 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-violet-100/95">
                 PH
               </span>
             ) : null}
@@ -144,11 +153,15 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
             <p className="mt-1 text-sm font-medium">
               {day.sick_leave
                 ? "Sick leave"
-                : day.holiday
+                : day.public_holiday
                   ? day.net_mins > 0
                     ? `Public holiday · ${fmtHM(Math.round(value))} worked`
                     : "Public holiday"
-                  : `${fmtHM(Math.round(value))} worked`}
+                  : day.holiday
+                    ? day.net_mins > 0
+                      ? `Vacation · ${fmtHM(Math.round(value))} worked`
+                      : "Vacation"
+                    : `${fmtHM(Math.round(value))} worked`}
             </p>
           )}
         </AnimatedNumber>
