@@ -57,6 +57,12 @@ export type WeekResponse = {
     message: string;
     fetched_dates: number;
     week_matches: number;
+    /** Classified cause when status is "error" (scope, sharing, expiry, config). */
+    reason?: string;
+    /** Actionable next step for whoever is debugging the missing data. */
+    hint?: string;
+    connected_google_email?: string | null;
+    used_custom_mapping?: boolean;
   };
   // Per compensated day, the overtime-earning days that fund it (FIFO).
   // Keyed by the compensated day's date; each source carries the earning

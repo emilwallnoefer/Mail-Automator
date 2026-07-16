@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { readGmailRefreshToken } from "@/lib/gmail-tokens";
-import { fetchTravelByDate, type TravelSheetColumnMapping } from "@/lib/google-sheets";
+import { readGmailConnection } from "@/lib/gmail-tokens";
+import {
+  classifyTravelFetchError,
+  fetchTravelByDate,
+  type TravelFetchErrorReason,
+  type TravelSheetColumnMapping,
+} from "@/lib/google-sheets";
 import { sanitizeText } from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
@@ -168,6 +173,10 @@ export async function GET(request: Request) {
     message: string;
     fetched_dates: number;
     week_matches: number;
+    reason?: TravelFetchErrorReason;
+    hint?: string;
+    connected_google_email?: string | null;
+    used_custom_mapping?: boolean;
   } = {
     status: "not_attempted",
     message: "Not attempted yet.",
@@ -176,35 +185,49 @@ export async function GET(request: Request) {
   };
   const weekDateSet = new Set(weekDays.map((day) => day.date));
   if (includeTravel) {
+    const userMetadata = claims.user_metadata ?? null;
+    const userTravelMapping = parseUserTravelMapping(userMetadata);
+    const usedCustomMapping = Boolean(userTravelMapping);
+    let connectedGoogleEmail: string | null = null;
     try {
-      const userMetadata = claims.user_metadata ?? null;
       // The refresh token lives server-side only (not in the JWT/user_metadata).
-      const refreshToken = claims.sub ? (await readGmailRefreshToken(String(claims.sub))) ?? "" : "";
-      if (!refreshToken) {
+      const connection = claims.sub ? await readGmailConnection(String(claims.sub)) : null;
+      connectedGoogleEmail = connection?.gmailEmail ?? null;
+      if (!connection) {
         travelDebug = {
           status: "missing_refresh_token",
-          message: "No Google refresh token found. Reconnect Gmail/Google in Settings.",
+          message: "No Google account is connected for this user.",
+          hint: "Connect Gmail/Google in Settings and approve spreadsheet access — travel data is read with each user's own Google account.",
           fetched_dates: 0,
           week_matches: 0,
+          connected_google_email: null,
+          used_custom_mapping: usedCustomMapping,
         };
       } else {
-        const userTravelMapping = parseUserTravelMapping(userMetadata);
-        travelByDate = await fetchTravelByDate(refreshToken, userTravelMapping);
+        travelByDate = await fetchTravelByDate(connection.refreshToken, userTravelMapping);
         const fetchedDates = Object.keys(travelByDate);
         const weekMatches = fetchedDates.filter((date) => weekDateSet.has(date)).length;
         if (fetchedDates.length === 0) {
           travelDebug = {
             status: "ok_empty",
-            message: "Sheet fetch succeeded but no parseable travel rows were found.",
+            message: "The spreadsheet was read successfully, but no parseable travel rows were found.",
+            hint: usedCustomMapping
+              ? "This user has a personal column mapping (Settings → Travel sheet) — check that its columns, range, and tab (gid) match the sheet layout."
+              : "Check that the default column layout (month/year, day, client, location, responsible) still matches the sheet.",
             fetched_dates: 0,
             week_matches: 0,
+            connected_google_email: connectedGoogleEmail,
+            used_custom_mapping: usedCustomMapping,
           };
         } else if (weekMatches === 0) {
           travelDebug = {
             status: "ok_no_week_match",
             message: "Travel rows loaded, but none match the currently selected week.",
+            hint: "The sheet is readable and parseable — this week simply has no rows (or the month/year + day cells for it don't parse to dates).",
             fetched_dates: fetchedDates.length,
             week_matches: 0,
+            connected_google_email: connectedGoogleEmail,
+            used_custom_mapping: usedCustomMapping,
           };
         } else {
           travelDebug = {
@@ -212,16 +235,23 @@ export async function GET(request: Request) {
             message: "Travel rows loaded and matched at least one date in this week.",
             fetched_dates: fetchedDates.length,
             week_matches: weekMatches,
+            connected_google_email: connectedGoogleEmail,
+            used_custom_mapping: usedCustomMapping,
           };
         }
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Unknown travel sheet error.";
+      const { reason, hint } = classifyTravelFetchError(error);
       travelDebug = {
         status: "error",
+        reason,
         message: errMsg,
+        hint,
         fetched_dates: 0,
         week_matches: 0,
+        connected_google_email: connectedGoogleEmail,
+        used_custom_mapping: usedCustomMapping,
       };
       // Non-blocking: tracker remains available even if travel sheet access fails.
     }

@@ -17,15 +17,28 @@ const TABLE = "gmail_tokens";
  * (or on any read failure — callers treat "no token" as "not connected").
  */
 export async function readGmailRefreshToken(userId: string): Promise<string | null> {
+  const connection = await readGmailConnection(userId);
+  return connection?.refreshToken ?? null;
+}
+
+/**
+ * Returns the stored refresh token together with the connected Google account
+ * email (when it was captured at connect time). Null when not connected.
+ */
+export async function readGmailConnection(
+  userId: string,
+): Promise<{ refreshToken: string; gmailEmail: string | null } | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from(TABLE)
-    .select("refresh_token")
+    .select("refresh_token, gmail_email")
     .eq("user_id", userId)
     .maybeSingle();
   if (error || !data) return null;
-  const token = (data as { refresh_token?: string }).refresh_token;
-  return token && token.length > 0 ? token : null;
+  const row = data as { refresh_token?: string; gmail_email?: string | null };
+  const token = row.refresh_token;
+  if (!token || token.length === 0) return null;
+  return { refreshToken: token, gmailEmail: row.gmail_email ?? null };
 }
 
 /**
