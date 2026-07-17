@@ -95,6 +95,12 @@ html {
   color-scheme: dark;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 html[data-theme="light"] {
   color-scheme: light;
 }
@@ -126,6 +132,10 @@ html[data-theme="light"] {
   --color-danger: var(--danger);
   --color-neutral: var(--neutral);
   --color-shade: var(--shade);
+
+  /* Shared motion curve (ease-fluid utility): strong deceleration so hover /
+   * press / reveal transitions read as immediate, then settle softly. */
+  --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {

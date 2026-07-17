@@ -72,7 +72,7 @@ export function AdminAuditLog() {
     <div className="mt-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-ink-4">
-          Recent deliberate admin actions — role changes, reminder pauses, and mail-model changes.
+          Recent deliberate admin actions: role changes, reminder pauses, and mail-model changes.
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <FreshnessPill updatedAt={updatedAt} loading={loading} />

@@ -144,7 +144,7 @@ export function ChatWidget(props: ChatWidgetProps) {
               exit={{ opacity: 0, scale: 0.92, y: 18 }}
               transition={{ type: "spring", stiffness: 320, damping: 30 }}
               style={{ transformOrigin: "bottom right" }}
-              className="fixed bottom-5 right-5 z-[131] flex h-[calc(100vh-2.5rem)] max-h-[780px] w-[min(94vw,380px)] flex-col rounded-[2.75rem] bg-gradient-to-b from-neutral/80 via-panel to-surface p-[6px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),0_10px_30px_-10px_rgba(0,0,0,0.6)] ring-1 ring-glass/10"
+              className="fixed bottom-5 right-5 z-[131] flex h-[calc(100dvh-2.5rem)] max-h-[780px] w-[min(94vw,380px)] flex-col rounded-[2.75rem] bg-gradient-to-b from-neutral/80 via-panel to-surface p-[6px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),0_10px_30px_-10px_rgba(0,0,0,0.6)] ring-1 ring-glass/10"
             >
               {/* Inner "screen" — content lives here; rounded slightly less than the frame so the bezel reads as a thin band. */}
               <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.3rem] bg-surface ring-1 ring-inset ring-glass/5">
@@ -214,7 +214,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                     ) : visibleMessages.length === 0 ? (
                       <p className="mt-8 text-center text-xs text-ink-4">
                         {filter === "all"
-                          ? "No messages yet — say hi to your team."
+                          ? "No messages yet. Say hi to your team."
                           : "Nothing here. Try a different filter or post a new one below."}
                       </p>
                     ) : (

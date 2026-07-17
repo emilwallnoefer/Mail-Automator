@@ -253,7 +253,7 @@ export function AdminOverviewStats() {
           </ul>
         ) : (
           <p className="mt-2 text-xs text-ink-4">
-            {loading ? "Loading…" : "No reminders sent in the last 90 days — nice."}
+            {loading ? "Loading…" : "No reminders sent in the last 90 days. Nice."}
           </p>
         )}
       </div>

@@ -9,7 +9,7 @@ type SettingsShellProps = {
 
 export function SettingsShell({ email, userRole }: SettingsShellProps) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main id="main-content" className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell max-w-5xl">
         <SettingsPanel email={email} showStandaloneActions userRole={userRole ?? "eu_pilot"} />

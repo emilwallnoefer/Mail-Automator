@@ -64,15 +64,27 @@ export function AuthNavbar({
             onClick={() => {
               setMenuOpen((prev) => !prev);
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-glass/15 bg-glass/8 px-2.5 py-1.5 text-xs transition hover:bg-glass/12"
+            className="inline-flex items-center gap-2 rounded-lg border border-glass/15 bg-glass/8 px-2.5 py-1.5 text-xs transition ease-fluid hover:bg-glass/12"
             aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
           >
             <span className="hidden text-ink-2/90 sm:inline">Menu</span>
-            <span className="text-base leading-none">☰</span>
+            <span className="relative grid h-4 w-4 place-items-center" aria-hidden>
+              <span
+                className={`absolute h-px w-4 rounded-full bg-current transition ease-fluid duration-200 ${
+                  menuOpen ? "rotate-45" : "-translate-y-[3px]"
+                }`}
+              />
+              <span
+                className={`absolute h-px w-4 rounded-full bg-current transition ease-fluid duration-200 ${
+                  menuOpen ? "-rotate-45" : "translate-y-[3px]"
+                }`}
+              />
+            </span>
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-glass/15 bg-surface/92 p-2.5 shadow-xl backdrop-blur-xl">
+            <div className="menu-pop absolute right-0 z-[100] mt-2 w-[min(92vw,17.5rem)] rounded-xl border border-glass/15 bg-surface/92 p-2.5 shadow-xl backdrop-blur-xl">
               <div className="mb-2">
                 <a
                   href="/onboarding"

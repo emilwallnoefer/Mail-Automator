@@ -149,6 +149,12 @@
   transform-origin: center top;
 }
 
+/* Navbar dropdown: finite open feedback, anchored to the trigger corner. */
+.menu-pop {
+  animation: menuPopIn 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+
 /* Native <select> in mail composer: dark form chrome so open lists match the panel (not OS bright blue). */
 .mail-composer-select {
   color-scheme: dark;
@@ -166,6 +172,27 @@
   outline-offset: 2px;
 }
 
+/* Keyboard-only "skip to content" link: visually hidden until focused, then a
+ * token-styled pill above every sticky layer (nav z-90, popups z-120..140). */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 150;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
 .page-shell {
   position: relative;
   z-index: 10;
@@ -173,6 +200,7 @@
   margin-right: auto;
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   max-width: 80rem;
   flex-direction: column;

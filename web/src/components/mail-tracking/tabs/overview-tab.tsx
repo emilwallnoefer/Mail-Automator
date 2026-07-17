@@ -191,7 +191,7 @@ export function OverviewTab({ showBots }: { showBots: boolean }) {
 
         {stats?.totals.sends_truncated ? (
           <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-warn">
-            Sends fetch was capped — the breakdowns reflect the most recent slice of this window.
+            Sends fetch was capped, so the breakdowns reflect the most recent slice of this window.
           </p>
         ) : null}
 

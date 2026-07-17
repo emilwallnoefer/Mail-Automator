@@ -50,7 +50,7 @@ export function HeatmapCard({
           <h4 className="text-xs font-semibold text-ink">When do clicks happen?</h4>
           <InfoTooltip label="About click heatmap" align="start">
             Every tracked click bucketed by weekday × local hour. Brighter cells mean more clicks. The fun
-            one — tells you whether your recipients are reading during work hours, after dinner, or 2am.
+            one: it tells you whether your recipients are reading during work hours, after dinner, or 2am.
           </InfoTooltip>
         </div>
         <p className="text-[11px] text-ink-4">
@@ -120,7 +120,7 @@ export function HeatmapCard({
                       }}
                     >
                       <span className="sr-only">
-                        {DOW_LABELS[dow]} {hour}:00 — {count} clicks
+                        {DOW_LABELS[dow]} {hour}:00, {count} clicks
                       </span>
                     </button>
                   );
@@ -131,7 +131,7 @@ export function HeatmapCard({
         </div>
       </div>
       <p className="mt-2 text-[11px] text-ink-5">
-        Times are the click viewer&apos;s local hour — yours, looking at this dashboard.
+        Times are the click viewer&apos;s local hour (yours, looking at this dashboard).
       </p>
       <HoverTooltip hover={hover} />
     </div>

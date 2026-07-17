@@ -91,6 +91,9 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

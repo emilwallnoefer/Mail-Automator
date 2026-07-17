@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
   const sections = buildOnboardingSections();
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-surface text-ink">
+    <main id="main-content" className="relative min-h-dvh overflow-x-hidden bg-surface text-ink">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell relative z-[1]">
         <div className="glass-card sticky top-3 z-[90] !overflow-visible p-2.5 md:p-3">

@@ -12,7 +12,6 @@ import {
   type DayData,
   fromDateKey,
   getMonday,
-  getWeekDayKeys,
   PREFETCH_IDLE_FALLBACK_MS,
   PREFETCH_WEEKS_EACH_SIDE,
   RECONCILE_DEBOUNCE_MS,
@@ -35,8 +34,19 @@ export function useTimeTracker({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
-  const [data, setData] = useState<WeekResponse | null>(null);
+  // Seeded synchronously from the SSR-provided week so the first paint shows
+  // the day cards; the mount effect below would otherwise apply the cached
+  // week only after an initial placeholder frame.
+  const [data, setData] = useState<WeekResponse | null>(() =>
+    initialWeek && initialWeek.week_start === weekStart ? initialWeek : null,
+  );
   const [weekLoadTick, setWeekLoadTick] = useState(0);
+  // Mirrors `data` for effects that must read the latest week without
+  // subscribing to it (the mount/cache effect below).
+  const dataRef = useRef<WeekResponse | null>(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
   const [revealedDayCount, setRevealedDayCount] = useState(7);
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -228,8 +238,12 @@ export function useTimeTracker({
         const cached = weekCacheRef.current.get(weekStart);
         if (cached) {
           if (!active) return;
-          applyWeekData(cached);
-          setWeekLoadTick((prev) => prev + 1);
+          // Skip when this exact week object is already live (seeded from the
+          // SSR week at mount) so the reveal cascade doesn't run twice.
+          if (cached !== dataRef.current) {
+            applyWeekData(cached);
+            setWeekLoadTick((prev) => prev + 1);
+          }
           prefetchNearbyWeeks(weekStart);
           return;
         }
@@ -775,7 +789,6 @@ export function useTimeTracker({
   const hasActiveWeekData = Boolean(activeWeekData);
   const calendarTodayKey = toDateKey(new Date());
   const calendarMonthWeeks = useMemo(() => buildMonthWeeks(calendarMonth), [calendarMonth]);
-  const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
   const weekdayDays = useMemo(() => (activeWeekData?.days ?? []).slice(0, 5), [activeWeekData?.days]);
   const weekendDays = useMemo(() => (activeWeekData?.days ?? []).slice(5, 7), [activeWeekData?.days]);
 
@@ -837,7 +850,6 @@ export function useTimeTracker({
     hasActiveWeekData,
     calendarTodayKey,
     calendarMonthWeeks,
-    placeholderDayKeys,
     weekdayDays,
     weekendDays,
   };

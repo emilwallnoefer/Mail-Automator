@@ -78,7 +78,7 @@ export function LinksTab({ showBots }: { showBots: boolean }) {
           label="Total link sends"
           value={linkData?.totals.total_link_rows ?? 0}
           hint="Per email"
-          info="Total rows in mail_send_links — each link counted once per email it was inserted into."
+          info="Total rows in mail_send_links, each link counted once per email it was inserted into."
         />
         <StatTile
           label="Real clicks"
@@ -90,7 +90,7 @@ export function LinksTab({ showBots }: { showBots: boolean }) {
           label="Scanner clicks"
           value={linkData?.totals.bot_clicks ?? 0}
           hint="Bots"
-          info="Likely corporate link scanners — Outlook ATP, Mimecast, Proofpoint, etc."
+          info="Likely corporate link scanners: Outlook ATP, Mimecast, Proofpoint, etc."
         />
       </div>
 

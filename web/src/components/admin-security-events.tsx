@@ -111,7 +111,7 @@ export function AdminSecurityEvents() {
     <div className="mt-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-ink-4">
-          Security events — blocked admin-route attempts, OAuth failures, and rate-limit trips. Admins are emailed when
+          Security events: blocked admin-route attempts, OAuth failures, and rate-limit trips. Admins are emailed when
           activity crosses the alert threshold.
         </p>
         <div className="flex shrink-0 items-center gap-2">
