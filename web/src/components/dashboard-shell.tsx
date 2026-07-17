@@ -371,7 +371,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
             // which read as the page "redrawing" on every load). `initial={false}` keeps
             // the click-to-open exit transition below working via `beginAnimating`.
             initial={false}
-            animate={beginAnimating ? { opacity: 0, scale: 0.98, y: -8 } : { opacity: 1, y: 0, scale: 1 }}
+            animate={beginAnimating ? { opacity: 0 } : { opacity: 1 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex min-h-[min(72vh,640px)] flex-col justify-center"
           >
@@ -484,18 +484,18 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           {showComposer ? (
             <m.section
               key="composer"
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.99 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
               className="space-y-4"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <m.div
                   key={activeModule}
-                  initial={{ opacity: 0, y: 8, scale: 0.996 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.996 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {activeModule === "time" ? (

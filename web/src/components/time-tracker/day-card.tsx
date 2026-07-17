@@ -104,7 +104,7 @@ export function DayCard({ state, day, index }: { state: TimeTrackerState; day: D
         isPh ? "liquid-day-card--ph" : ""
       } ${isSl ? "liquid-day-card--sl" : ""
       } ${isSelected ? "day-card-selected" : ""
-      } ${revealed ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1.5 opacity-0"}`}
+      } ${revealed ? "opacity-100" : "pointer-events-none opacity-0"}`}
       style={{ "--day-sweep-delay": `${index * 58}ms` } as CSSProperties}
     >
       {showUpToDateSweep && revealed ? <span className="day-ready-sweep-beam" aria-hidden="true" /> : null}
