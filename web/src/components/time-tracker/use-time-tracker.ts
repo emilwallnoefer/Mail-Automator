@@ -12,7 +12,6 @@ import {
   type DayData,
   fromDateKey,
   getMonday,
-  getWeekDayKeys,
   PREFETCH_IDLE_FALLBACK_MS,
   PREFETCH_WEEKS_EACH_SIDE,
   RECONCILE_DEBOUNCE_MS,
@@ -775,7 +774,6 @@ export function useTimeTracker({
   const hasActiveWeekData = Boolean(activeWeekData);
   const calendarTodayKey = toDateKey(new Date());
   const calendarMonthWeeks = useMemo(() => buildMonthWeeks(calendarMonth), [calendarMonth]);
-  const placeholderDayKeys = useMemo(() => getWeekDayKeys(weekStart), [weekStart]);
   const weekdayDays = useMemo(() => (activeWeekData?.days ?? []).slice(0, 5), [activeWeekData?.days]);
   const weekendDays = useMemo(() => (activeWeekData?.days ?? []).slice(5, 7), [activeWeekData?.days]);
 
@@ -837,7 +835,6 @@ export function useTimeTracker({
     hasActiveWeekData,
     calendarTodayKey,
     calendarMonthWeeks,
-    placeholderDayKeys,
     weekdayDays,
     weekendDays,
   };

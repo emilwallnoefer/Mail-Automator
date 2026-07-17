@@ -8,7 +8,6 @@ import { DayCard } from "./day-card";
 import { DayLoggerModal } from "./day-logger-modal";
 import {
   addDays,
-  dayLabel,
   fmtHM,
   fmtSignedHM,
   fromDateKey,
@@ -20,43 +19,13 @@ import { useTimeTracker } from "./use-time-tracker";
 import { WeekPickerCalendar } from "./week-picker-calendar";
 
 /** Labelled divider between the Mon–Fri and Weekend day groups. */
-function SectionDivider({ label, faint }: { label: string; faint?: boolean }) {
-  const edge = faint ? "to-white/15" : "to-white/20";
+function SectionDivider({ label }: { label: string }) {
   return (
     <div className="mb-3 flex items-center gap-3">
-      <span className={`h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent ${edge}`} aria-hidden />
+      <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-transparent to-white/20" aria-hidden />
       <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-5">{label}</span>
-      <span className={`h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent ${edge}`} aria-hidden />
+      <span className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-l from-transparent to-white/20" aria-hidden />
     </div>
-  );
-}
-
-/** Placeholder day tile shown while the week's data is loading. */
-function SkeletonDayCard({ dateKey, widthPct }: { dateKey: string; widthPct: number }) {
-  return (
-    <article className="liquid-day-card rounded-xl p-3">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs text-ink-3/80">{dayLabel(dateKey)}</p>
-        <span className="inline-block h-3 w-10 animate-pulse rounded bg-glass/20" aria-hidden="true" />
-      </div>
-      <p className="mt-1">
-        <span className="inline-block h-4 w-28 animate-pulse rounded bg-glass/20" aria-hidden="true" />
-      </p>
-      <div className="day-progress mt-3" aria-label="Loading day progress">
-        <span
-          className="day-progress-segment day-progress-sand animate-pulse"
-          style={{ width: `${widthPct}%` }}
-          aria-hidden="true"
-        />
-      </div>
-      <p className="mt-2">
-        <span className="inline-block h-3 w-36 animate-pulse rounded bg-glass/20" aria-hidden="true" />
-      </p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
-        <span className="h-8 flex-1 animate-pulse rounded-lg border border-glass/10 bg-glass/10" aria-hidden="true" />
-      </div>
-    </article>
   );
 }
 
@@ -87,7 +56,6 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
     hasActiveWeekData,
     weekLoadTick,
     showUpToDateSweep,
-    placeholderDayKeys,
     weekdayDays,
     weekendDays,
   } = state;
@@ -215,26 +183,6 @@ export function TimeTrackerPanel({ readOnly = false, apiBase, viewingLabel, init
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {weekendDays.map((day, i) => (
                     <DayCard key={day.date} state={state} day={day} index={5 + i} />
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : null}
-          {!hasActiveWeekData ? (
-            <>
-              <div>
-                <SectionDivider label="Mon – Fri" faint />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  {placeholderDayKeys.slice(0, 5).map((dateKey, index) => (
-                    <SkeletonDayCard key={dateKey} dateKey={dateKey} widthPct={18 + (index % 5) * 9} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <SectionDivider label="Weekend" faint />
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {placeholderDayKeys.slice(5, 7).map((dateKey, index) => (
-                    <SkeletonDayCard key={dateKey} dateKey={dateKey} widthPct={18 + (index % 2) * 12} />
                   ))}
                 </div>
               </div>
