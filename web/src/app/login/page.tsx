@@ -54,7 +54,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-4 py-8 text-ink">
+    <main id="main-content" className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-surface px-4 py-8 text-ink">
       <div className="absolute inset-0 aurora-bg" />
       <div className="absolute inset-0 bg-overlay/30 backdrop-blur-xl" />
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">

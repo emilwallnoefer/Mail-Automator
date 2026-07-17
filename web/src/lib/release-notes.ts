@@ -26,6 +26,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       "Modules open noticeably faster, with a crisper shared motion curve across buttons and cards.",
       "The navigation menu now pops in smoothly, with a sharper menu icon.",
+      "Smooth scrolling, a proper “page not found” screen, and a keyboard skip-to-content link.",
       "Small copy and icon cleanups throughout the dashboard.",
     ],
   },

@@ -313,7 +313,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   }
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-surface text-ink">
+    <main id="main-content" className="relative min-h-dvh overflow-x-hidden bg-surface text-ink">
       <div className="absolute inset-0 aurora-bg" />
       <section className="page-shell">
         <AuthNavbar
