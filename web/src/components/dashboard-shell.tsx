@@ -101,8 +101,13 @@ function IconArrow({ className }: { className?: string }) {
   );
 }
 
+/* Module cards use a nested "bezel" enclosure (outer tray + inner core with a
+ * concentric radius), matching the chat widget's frame/screen construction. */
 const MODULE_CARD_CLASS =
-  "group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-150 ease-fluid hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  "group relative flex flex-col overflow-hidden rounded-[1.4rem] border border-glass/[0.09] bg-glass/[0.04] p-1.5 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] transition duration-150 ease-fluid hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+
+const MODULE_CARD_CORE_CLASS =
+  "relative flex flex-1 flex-col overflow-hidden rounded-[calc(1.4rem-0.375rem)] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
 
 export function DashboardShell({ email, initialRole, isAdmin = false, initialWeek = null }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
@@ -399,17 +404,21 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     onClick={() => openModuleCard("settings")}
                     className={`${MODULE_CARD_CLASS} hover:border-violet-400/35 hover:shadow-[0_28px_56px_-12px_rgba(167,139,250,0.12)] focus-visible:outline-violet-400/80`}
                   >
-                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/12 blur-2xl transition group-hover:bg-violet-400/22" aria-hidden />
-                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-violet-400/10 text-violet-200">
-                      <IconCog className="h-5 w-5" />
-                    </span>
-                    <span className="text-lg font-semibold text-ink">Settings</span>
-                    <span className="mt-2 text-sm leading-relaxed text-ink-4">
-                      Gmail, signatures, travel mapping, sounds, and account tools.
-                    </span>
-                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-200/90">
-                      Continue
-                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    <span className={MODULE_CARD_CORE_CLASS}>
+                      <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-400/12 blur-2xl transition group-hover:bg-violet-400/22" aria-hidden />
+                      <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-violet-400/10 text-violet-200">
+                        <IconCog className="h-5 w-5" />
+                      </span>
+                      <span className="text-lg font-semibold text-ink">Settings</span>
+                      <span className="mt-2 text-sm leading-relaxed text-ink-4">
+                        Gmail, signatures, travel mapping, sounds, and account tools.
+                      </span>
+                      <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-violet-200/90">
+                        Continue
+                        <span className="grid h-6 w-6 place-items-center rounded-full border border-glass/15 bg-glass/10 transition ease-fluid group-hover:-translate-y-[1px] group-hover:translate-x-1">
+                          <IconArrow className="h-3.5 w-3.5" />
+                        </span>
+                      </span>
                     </span>
                   </m.button>
                 ) : null}
@@ -422,17 +431,21 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                     onClick={() => openModuleCard("mail")}
                     className={`${MODULE_CARD_CLASS} hover:border-accent/35 hover:shadow-[0_28px_56px_-12px_rgba(34,211,238,0.12)] focus-visible:outline-accent/80`}
                   >
-                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/15 blur-2xl transition group-hover:bg-accent/25" aria-hidden />
-                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent-soft">
-                      <IconMail className="h-5 w-5" />
-                    </span>
-                    <span className="text-lg font-semibold text-ink">Mail Composer</span>
-                    <span className="mt-2 text-sm leading-relaxed text-ink-4">
-                      Training email drafts and Gmail handoff in one flow.
-                    </span>
-                    <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-accent-soft/90">
-                      Continue
-                      <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    <span className={MODULE_CARD_CORE_CLASS}>
+                      <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/15 blur-2xl transition group-hover:bg-accent/25" aria-hidden />
+                      <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent-soft">
+                        <IconMail className="h-5 w-5" />
+                      </span>
+                      <span className="text-lg font-semibold text-ink">Mail Composer</span>
+                      <span className="mt-2 text-sm leading-relaxed text-ink-4">
+                        Training email drafts and Gmail handoff in one flow.
+                      </span>
+                      <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-accent-soft/90">
+                        Continue
+                        <span className="grid h-6 w-6 place-items-center rounded-full border border-glass/15 bg-glass/10 transition ease-fluid group-hover:-translate-y-[1px] group-hover:translate-x-1">
+                          <IconArrow className="h-3.5 w-3.5" />
+                        </span>
+                      </span>
                     </span>
                   </m.button>
                 ) : null}
@@ -444,17 +457,21 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   onClick={() => openModuleCard("time")}
                   className={`${MODULE_CARD_CLASS} hover:border-emerald-400/35 hover:shadow-[0_28px_56px_-12px_rgba(52,211,153,0.1)] focus-visible:outline-emerald-400/80`}
                 >
-                  <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
-                  <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-positive">
-                    <IconClock className="h-5 w-5" />
-                  </span>
-                  <span className="text-lg font-semibold text-ink">Time Tracker</span>
-                  <span className="mt-2 text-sm leading-relaxed text-ink-4">
-                    Workdays, breaks, compensation time, and overtime in one place.
-                  </span>
-                  <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-positive/90">
-                    Continue
-                    <IconArrow className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  <span className={MODULE_CARD_CORE_CLASS}>
+                    <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-400/12 blur-2xl transition group-hover:bg-emerald-400/22" aria-hidden />
+                    <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-positive">
+                      <IconClock className="h-5 w-5" />
+                    </span>
+                    <span className="text-lg font-semibold text-ink">Time Tracker</span>
+                    <span className="mt-2 text-sm leading-relaxed text-ink-4">
+                      Workdays, breaks, compensation time, and overtime in one place.
+                    </span>
+                    <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-positive/90">
+                      Continue
+                      <span className="grid h-6 w-6 place-items-center rounded-full border border-glass/15 bg-glass/10 transition ease-fluid group-hover:-translate-y-[1px] group-hover:translate-x-1">
+                        <IconArrow className="h-3.5 w-3.5" />
+                      </span>
+                    </span>
                   </span>
                 </m.button>
 

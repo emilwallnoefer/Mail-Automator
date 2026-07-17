@@ -69,9 +69,18 @@ export function AuthNavbar({
             aria-expanded={menuOpen}
           >
             <span className="hidden text-ink-2/90 sm:inline">Menu</span>
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-              <path strokeLinecap="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-            </svg>
+            <span className="relative grid h-4 w-4 place-items-center" aria-hidden>
+              <span
+                className={`absolute h-px w-4 rounded-full bg-current transition ease-fluid duration-200 ${
+                  menuOpen ? "rotate-45" : "-translate-y-[3px]"
+                }`}
+              />
+              <span
+                className={`absolute h-px w-4 rounded-full bg-current transition ease-fluid duration-200 ${
+                  menuOpen ? "-rotate-45" : "translate-y-[3px]"
+                }`}
+              />
+            </span>
           </button>
 
           {menuOpen && (

@@ -25,7 +25,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: "Snappier, cleaner interface",
     highlights: [
       "Modules open noticeably faster, with a crisper shared motion curve across buttons and cards.",
-      "The navigation menu now pops in smoothly, with a sharper menu icon.",
+      "The navigation menu pops in smoothly, and its icon morphs open and closed.",
+      "Module cards get a layered, machined look with a kinetic Continue affordance.",
       "Smooth scrolling, a proper “page not found” screen, and a keyboard skip-to-content link.",
       "Small copy and icon cleanups throughout the dashboard.",
     ],
