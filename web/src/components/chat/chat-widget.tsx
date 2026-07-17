@@ -214,7 +214,7 @@ export function ChatWidget(props: ChatWidgetProps) {
                     ) : visibleMessages.length === 0 ? (
                       <p className="mt-8 text-center text-xs text-ink-4">
                         {filter === "all"
-                          ? "No messages yet — say hi to your team."
+                          ? "No messages yet. Say hi to your team."
                           : "Nothing here. Try a different filter or post a new one below."}
                       </p>
                     ) : (

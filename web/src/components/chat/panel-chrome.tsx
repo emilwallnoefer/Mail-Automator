@@ -164,7 +164,7 @@ export function PresenceAvatars({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-label={`${users.length} online — show list`}
+        aria-label={`${users.length} online. Show list`}
         className="flex items-center -space-x-2 rounded-full p-0.5 transition hover:bg-glass/5"
       >
         {visible.map((u) => {

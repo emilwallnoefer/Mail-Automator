@@ -199,7 +199,7 @@ export function RecipientsTab({ showBots }: { showBots: boolean }) {
           label="Recipients"
           value={totals?.recipients ?? 0}
           hint="Distinct"
-          info="Distinct recipients — counted by lowercased name + company so capitalisation doesn't split entries."
+          info="Distinct recipients, counted by lowercased name + company so capitalisation doesn't split entries."
         />
         <StatTile
           label="Real clicks"
@@ -211,7 +211,7 @@ export function RecipientsTab({ showBots }: { showBots: boolean }) {
           label="Scanner clicks"
           value={totals?.bot_clicks ?? 0}
           hint="Bots"
-          info="Likely corporate link scanners — Outlook ATP, Mimecast, Proofpoint, etc. Hidden unless Scanners is on."
+          info="Likely corporate link scanners: Outlook ATP, Mimecast, Proofpoint, etc. Hidden unless Scanners is on."
         />
       </div>
 

@@ -55,7 +55,7 @@ export function MailTrackingPanel() {
           Scanners
           <InfoTooltip label="About scanner clicks" align="end">
             Corporate scanners (Outlook ATP, Mimecast, Proofpoint, etc.) hit redirect URLs to inspect
-            them — flagged as scanner clicks and hidden by default across every view here.
+            them. These are flagged as scanner clicks and hidden by default across every view here.
           </InfoTooltip>
         </label>
       </div>

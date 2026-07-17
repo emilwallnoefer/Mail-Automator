@@ -149,6 +149,12 @@
   transform-origin: center top;
 }
 
+/* Navbar dropdown: finite open feedback, anchored to the trigger corner. */
+.menu-pop {
+  animation: menuPopIn 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+
 /* Native <select> in mail composer: dark form chrome so open lists match the panel (not OS bright blue). */
 .mail-composer-select {
   color-scheme: dark;

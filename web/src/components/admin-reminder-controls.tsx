@@ -81,7 +81,7 @@ export function AdminReminderControls() {
         setActionResult(`Skipped (${summary.reason ?? "unknown reason"}).`);
       } else {
         setActionResult(
-          `Dry run OK — considered ${summary.considered ?? 0} user${
+          `Dry run OK: considered ${summary.considered ?? 0} user${
             summary.considered === 1 ? "" : "s"
           }, would remind ${summary.reminded ?? 0}.`,
         );

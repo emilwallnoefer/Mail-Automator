@@ -102,7 +102,7 @@ function IconArrow({ className }: { className?: string }) {
 }
 
 const MODULE_CARD_CLASS =
-  "group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  "group relative flex flex-col overflow-hidden rounded-2xl border border-glass/[0.09] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 text-left shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-glass/[0.04] transition duration-150 ease-fluid hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export function DashboardShell({ email, initialRole, isAdmin = false, initialWeek = null }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
@@ -303,7 +303,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     setTimeout(() => {
       setShowComposer(true);
       setBeginAnimating(false);
-    }, 260);
+    }, 180);
   }
 
   function openModuleCard(module: ModuleKey) {
@@ -367,7 +367,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
             // the click-to-open exit transition below working via `beginAnimating`.
             initial={false}
             animate={beginAnimating ? { opacity: 0, scale: 0.98, y: -8 } : { opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex min-h-[min(72vh,640px)] flex-col justify-center"
           >
             <div className="dashboard-mesh" aria-hidden />
@@ -379,7 +379,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   {timeGreeting()}, {greetingFromEmail(email)}
                 </h1>
                 <p className="mt-4 max-w-lg text-pretty text-sm leading-relaxed text-ink-4 md:text-base">
-                  Open a module below. Everything runs in your browser—pick up where you left off anytime.
+                  Open a module below and pick up right where you left off.
                 </p>
                 {userRole ? (
                   <span className="mt-5 inline-flex items-center rounded-full border border-glass/10 bg-glass/[0.06] px-3 py-1 text-[11px] font-medium tracking-wide text-ink-3">
@@ -467,10 +467,10 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
           {showComposer ? (
             <m.section
               key="composer"
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.99 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
               className="space-y-4"
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -522,7 +522,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               aria-label="Close program readme prompt"
             >
               <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
-                X
+                ×
               </span>
             </button>
           </div>
@@ -560,7 +560,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
               aria-label="Dismiss what's new"
             >
               <span className="inline-block transition-transform duration-200 group-hover:rotate-90" aria-hidden>
-                X
+                ×
               </span>
             </button>
           </div>

@@ -45,7 +45,7 @@ export function Button({ variant = "glass", size = "md", className, type = "butt
   return (
     <button
       type={type}
-      className={cn(SIZE_CLASSES[size], VARIANT_CLASSES[variant], FOCUS_CLASSES, className)}
+      className={cn("ease-fluid", SIZE_CLASSES[size], VARIANT_CLASSES[variant], FOCUS_CLASSES, className)}
       {...props}
     />
   );

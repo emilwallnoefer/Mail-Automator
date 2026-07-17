@@ -7,12 +7,12 @@ import { dayLabel, escapeHtml, fmtHM, type WeekResponse } from "./types";
 import type { TimeTrackerState } from "./use-time-tracker";
 
 const TRAVEL_DEBUG_TITLES: Record<string, string> = {
-  missing_refresh_token: "Travel data can't be pulled — no Google account connected",
+  missing_refresh_token: "Travel data can't be pulled: no Google account connected",
   missing_mapping: "Travel data needs your column mapping",
   error: "Travel data can't be pulled",
   ok_empty: "Sheet is readable, but no travel rows were parsed",
   ok_all_blank: "Sheet is readable, but every travel cell is empty",
-  ok_no_week_match: "Travel data loaded — nothing for this week",
+  ok_no_week_match: "Travel data loaded, nothing for this week",
   ok: "Travel data loaded",
   not_attempted: "Travel data not fetched yet",
 };
@@ -37,7 +37,7 @@ function TravelDebugNote({ debug }: { debug: WeekResponse["travel_debug"] }) {
   if (!isProblem) {
     return (
       <p className="mt-3 text-xs text-ink-4/90">
-        {title} — {debug.message} ({debug.fetched_dates} dates loaded, {debug.week_matches} in this week)
+        {title}: {debug.message} ({debug.fetched_dates} dates loaded, {debug.week_matches} in this week)
       </p>
     );
   }

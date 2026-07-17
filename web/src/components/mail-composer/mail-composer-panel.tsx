@@ -183,7 +183,7 @@ export function MailComposerPanel({
                   {editingAssets ? (
                     <div className="space-y-3">
                       <p className="text-[11px] leading-4 text-ink-4/80">
-                        Add or remove assets, then save. This re-renders the email — it does not re-run the AI, so the
+                        Add or remove assets, then save. This re-renders the email without re-running the AI, so the
                         written text stays exactly as it is.
                       </p>
                       <AssetChecklist
@@ -328,7 +328,7 @@ export function MailComposerPanel({
                       return (
                         <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} topics`}>
                           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">
-                            Day {dayIdx + 1} — topics
+                            Day {dayIdx + 1} topics
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {TRAINING_DISCIPLINES.map((discipline) => {
@@ -363,7 +363,7 @@ export function MailComposerPanel({
                       return (
                         <div key={dayIdx} role="group" aria-label={`Day ${dayIdx + 1} flight site`}>
                           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-ink-4/90">
-                            Day {dayIdx + 1} — flight site (Lausanne, optional)
+                            Day {dayIdx + 1} flight site (Lausanne, optional)
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             {LAUSANNE_SITE_OPTIONS.map((option) => (

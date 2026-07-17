@@ -191,7 +191,7 @@ export function SettingsPanel({
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error || "Could not reset mapping.");
       setTravelMapping({ clientColumn: "", locationColumn: "", responsibleColumn: "" });
-      setMessage("Travel mapping cleared — enter your own columns to see travel info again.");
+      setMessage("Travel mapping cleared. Enter your own columns to see travel info again.");
       window.dispatchEvent(new Event("ma-travel-mapping-changed"));
     } catch (err) {
       setError((err as Error).message);
@@ -624,7 +624,7 @@ export function SettingsPanel({
                       {THEMES.find((t) => t.value === theme)?.label ?? "Dark"}
                     </p>
                     <p className="mt-2 text-[11px] leading-snug tracking-wide text-ink-4/90">
-                      Choose the app palette — the default dark theme, the softened Solarized Light skin, or the clean pastel Glacier blue skin. Synced to your account, so it follows you across devices.
+                      Choose the app palette: the default dark theme, the softened Solarized Light skin, or the clean pastel Glacier blue skin. Synced to your account, so it follows you across devices.
                     </p>
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       {THEMES.map((t) => {
@@ -666,7 +666,7 @@ export function SettingsPanel({
                         {ACCENTS.find((a) => a.value === accent)?.label ?? "Warm amber"}
                       </p>
                       <p className="mt-2 text-[11px] leading-snug tracking-wide text-ink-4/90">
-                        Accent color for the Solarized Light skin — buttons, links, avatars and highlights. Synced to your account.
+                        Accent color for the Solarized Light skin: buttons, links, avatars and highlights. Synced to your account.
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {ACCENTS.map((a) => {
