@@ -37,7 +37,7 @@ python3 scripts/mail_workflow.py create-draft --payload-file <rendered.json>   #
 
 OAuth credentials for the Python bridge live in `scripts/credentials.json` and `scripts/token.json` (both git-ignored). Scope: `gmail.compose` only — the bridge **never sends**, it only creates drafts.
 
-There is no test runner configured. Don't claim tests pass — there are none to run.
+Tests (run from `web/`): `npm run test` — Vitest unit suite (`src/**/*.test.ts`, colocated with sources); `npm run test:e2e` — Playwright smoke (`e2e/`, needs `.env.local` with the public Supabase vars and a one-time `npx playwright install chromium`); `npm run test:rls` — RLS smoke script. New pure-logic modules should get a colocated `*.test.ts`.
 
 ## Big-picture architecture (`web/`)
 
