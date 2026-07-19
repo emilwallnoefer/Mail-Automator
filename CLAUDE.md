@@ -4,10 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-Two distinct subsystems live side-by-side:
+All active code lives in **`web/`** — a Next.js 16 (App Router) + Supabase + Tailwind 4 dashboard. It contains the Time Tracker, Mail Tracking, Admin module, Team Chat, Settings, Onboarding, the mail composer, and the Gmail draft-creation API used at runtime.
 
-1. **`web/`** — a Next.js 16 (App Router) + Supabase + Tailwind 4 dashboard. This is where almost all active development happens. It contains the Time Tracker, Mail Tracking, Admin module, Team Chat, Settings, Onboarding, and the Gmail draft-creation API used at runtime.
-2. **`scripts/` + `templates/` + `config/`** — a Python CLI (`scripts/mail_workflow.py` + `scripts/gmail_bridge.py`) that renders training-email templates and creates Gmail drafts via the local OAuth bridge. This is the original `/mail` Cursor workflow and is invoked from outside the web app.
+> A legacy root-level Python CLI (`scripts/*.py`, root `templates/`, `config/`, `.cursor/commands/mail.md`) that rendered training-email templates and created Gmail drafts was retired — it is fully superseded by the web app's mail composer (`web/src/components/mail-composer/` + `web/src/lib/mail-engine.ts`, with the runtime template/link copies under `web/src/mail-config/`).
 
 `Mail training cursor/` is local sample data and is git-ignored.
 
@@ -26,16 +25,6 @@ cd web && npm run lint           # eslint (extends eslint-config-next)
 # One-off data import
 cd web && npm run import:hourlogger   # node scripts/import-hourlogger.mjs
 ```
-
-Python `/mail` workflow (run from repo root):
-
-```bash
-python3 scripts/mail_workflow.py render      --input-file <payload.json> --output-file <rendered.json>
-python3 scripts/mail_workflow.py dry-run     --input-file <payload.json>
-python3 scripts/mail_workflow.py create-draft --payload-file <rendered.json>   # requires payload approval="confirm draft" unless --force
-```
-
-OAuth credentials for the Python bridge live in `scripts/credentials.json` and `scripts/token.json` (both git-ignored). Scope: `gmail.compose` only — the bridge **never sends**, it only creates drafts.
 
 Tests (run from `web/`): `npm run test` — Vitest unit suite (`src/**/*.test.ts`, colocated with sources); `npm run test:e2e` — Playwright smoke (`e2e/`, needs `.env.local` with the public Supabase vars and a one-time `npx playwright install chromium`); `npm run test:rls` — RLS smoke script. New pure-logic modules should get a colocated `*.test.ts`.
 
@@ -80,8 +69,8 @@ The `web/README.md` has the most detailed env-var reference and the cron/team-ch
 
 - `"server-only"` is used to keep admin/service code off the client bundle — preserve it when refactoring.
 - Many UI panels are large client components (`"use client"`) that mount inside the SSR'd `dashboard/page.tsx`. Initial-data props from the server are deliberately prefetched to avoid a flash on first paint — keep that pattern when adding new modules.
-- Mail templates and link policies live in repo root (`templates/training-email-templates.md`, `config/*.json`) and are consumed by the **Python** CLI, not by the web app. The web app's mail generation lives in `web/src/lib/mail-engine.ts` and `web/src/mail-config/` (note the duplicated `training-email-templates.md` etc. inside `web/src/mail-config/` — this is the runtime copy used by `/api/generate`).
-- `.cursor/commands/mail.md` describes the `/mail` Cursor command contract. The hard rule there ("never auto-send, never create draft before explicit `confirm draft`") applies to any equivalent flow added in this repo.
+- Mail templates and link policies live in `web/src/mail-config/` (`training-email-templates.md`, `*.json`) and are consumed by the web app's mail generation in `web/src/lib/mail-engine.ts` (the runtime copy used by `/api/generate`). The old root-level `templates/` + `config/` originals were removed with the Python CLI.
+- The retired `/mail` Cursor command's hard rule — **never auto-send, and never create a Gmail draft before an explicit `confirm draft` step** — still applies to any equivalent draft-creation flow in the web app (`app/api/gmail/create-draft/`).
 
 ## Release notes ("What's new" popup)
 
