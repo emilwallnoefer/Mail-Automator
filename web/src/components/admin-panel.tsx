@@ -77,6 +77,10 @@ const ROLE_OPTIONS: Array<{ value: UserRole | "none"; label: string }> = [
 export type AdminPanelProps = {
   /** When false, only the read-only Team time section is available (HR view). */
   canManageUsers?: boolean;
+  /** SSR-prefetched user list; seeds the Users table so it paints without a fetch. */
+  initialUsers?: AdminUser[] | null;
+  /** SSR-prefetched current-week time overview; seeds the Time section table. */
+  initialOverview?: TimeOverviewResponse | null;
 };
 
 const ADMIN_SECTIONS: Array<{ id: AdminSection; label: string; adminOnly: boolean }> = [
@@ -138,10 +142,10 @@ function addDays(value: Date, delta: number) {
   return next;
 }
 
-export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
+export function AdminPanel({ canManageUsers = true, initialUsers = null, initialOverview = null }: AdminPanelProps = {}) {
   const [section, setSection] = useState<AdminSection>(canManageUsers ? "overview" : "time");
 
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>(initialUsers ?? []);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [userFilter, setUserFilter] = useState("");
@@ -149,16 +153,18 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   const [roleError, setRoleError] = useState<string | null>(null);
 
   const [weekStart, setWeekStart] = useState<string>(toDateKey(getMonday()));
-  const [overview, setOverview] = useState<TimeOverviewResponse | null>(null);
+  const [overview, setOverview] = useState<TimeOverviewResponse | null>(initialOverview ?? null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [overviewUpdatedAt, setOverviewUpdatedAt] = useState<number | null>(null);
-  const [usersUpdatedAt, setUsersUpdatedAt] = useState<number | null>(null);
+  const [overviewUpdatedAt, setOverviewUpdatedAt] = useState<number | null>(initialOverview ? Date.now() : null);
+  const [usersUpdatedAt, setUsersUpdatedAt] = useState<number | null>(initialUsers ? Date.now() : null);
 
   const [drilldownUserId, setDrilldownUserId] = useState<string | null>(null);
   const [drilldownEmail, setDrilldownEmail] = useState<string>("");
 
-  const usersFetchedRef = useRef(false);
+  // Seeded from SSR: skip the lazy fetch on first open when props supplied the data.
+  const usersFetchedRef = useRef(Boolean(initialUsers));
+  const overviewLoadedWeekRef = useRef<string | null>(initialOverview?.week_start ?? null);
 
   const visibleSections = useMemo(
     () => ADMIN_SECTIONS.filter((entry) => canManageUsers || !entry.adminOnly),
@@ -207,8 +213,11 @@ export function AdminPanel({ canManageUsers = true }: AdminPanelProps = {}) {
   }, [loadUsers, canManageUsers, section]);
 
   // Load (and reload on week change) the time overview only while it's shown.
+  // Skips the initial load for a week already seeded from SSR (or just fetched).
   useEffect(() => {
     if (section !== "time") return;
+    if (overviewLoadedWeekRef.current === weekStart) return;
+    overviewLoadedWeekRef.current = weekStart;
     void loadOverview(weekStart);
   }, [loadOverview, section, weekStart]);
 

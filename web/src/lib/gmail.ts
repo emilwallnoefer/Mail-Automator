@@ -1,5 +1,5 @@
-import { google } from "googleapis";
-import type { Credentials } from "google-auth-library";
+import { gmail as gmailApi } from "@googleapis/gmail";
+import { OAuth2Client, type Credentials } from "google-auth-library";
 
 const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",
@@ -13,7 +13,7 @@ function requiredEnv(name: string) {
 }
 
 export function getOAuthClient(redirectUri: string) {
-  return new google.auth.OAuth2(
+  return new OAuth2Client(
     requiredEnv("GOOGLE_OAUTH_CLIENT_ID"),
     requiredEnv("GOOGLE_OAUTH_CLIENT_SECRET"),
     redirectUri,
@@ -40,7 +40,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
 export async function getConnectedGmailEmail(tokens: Credentials, redirectUri: string) {
   const oauthClient = getOAuthClient(redirectUri);
   oauthClient.setCredentials(tokens);
-  const gmail = google.gmail({ version: "v1", auth: oauthClient });
+  const gmail = gmailApi({ version: "v1", auth: oauthClient });
   const profile = await gmail.users.getProfile({ userId: "me" });
   return profile.data.emailAddress ?? null;
 }
@@ -166,7 +166,7 @@ export async function createGmailDraft(refreshToken: string, payload: DraftPaylo
   const oauthClient = getOAuthClient(requiredEnv("GOOGLE_OAUTH_REDIRECT_URI"));
   oauthClient.setCredentials({ refresh_token: refreshToken });
 
-  const gmail = google.gmail({ version: "v1", auth: oauthClient });
+  const gmail = gmailApi({ version: "v1", auth: oauthClient });
   const raw = buildRawMessage(payload);
 
   const response = await gmail.users.drafts.create({

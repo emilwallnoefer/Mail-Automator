@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { sheets as sheetsApi } from "@googleapis/sheets";
 import { getOAuthClient } from "@/lib/gmail";
 
 export type TravelInfo = {
@@ -256,7 +256,7 @@ export async function fetchTravelByDate(
   const redirectUri = requiredEnv("GOOGLE_OAUTH_REDIRECT_URI");
   const oauthClient = getOAuthClient(redirectUri);
   oauthClient.setCredentials({ refresh_token: refreshToken });
-  const sheets = google.sheets({ version: "v4", auth: oauthClient });
+  const sheets = sheetsApi({ version: "v4", auth: oauthClient });
   let range = baseRange;
   if (!range.includes("!") && gid) {
     const meta = await sheets.spreadsheets.get({
