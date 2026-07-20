@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FreshnessPill } from "@/components/freshness-pill";
-import { Badge, Notice } from "@/components/ui";
+import { Badge, Button, Notice } from "@/components/ui";
 import { StatTile } from "../stat-tile";
 import { fmtAbsolute, fmtRelative, pickTrustedHost } from "../format";
 import type {
@@ -107,6 +107,9 @@ export function RecipientsTab({ showBots }: { showBots: boolean }) {
 
   const isSearchMode = search.trim().length > 0;
   const hasMore = !isSearchMode && recipients.length < total;
+  const csvUrl = isSearchMode
+    ? `/api/admin/mail-tracking?q=${encodeURIComponent(search.trim())}&format=csv`
+    : `/api/admin/mail-tracking?mode=recent&limit=100&format=csv`;
 
   const loadSendDetail = useCallback(async (sendId: string) => {
     setDetailBySend((prev) => ({ ...prev, [sendId]: "loading" }));
@@ -167,6 +170,16 @@ export function RecipientsTab({ showBots }: { showBots: boolean }) {
             className="w-full rounded-lg border border-glass/15 bg-panel/60 px-3 py-1.5 text-xs text-ink placeholder:text-ink-5 focus:border-amber-300/40 focus:outline-none"
           />
         </div>
+        <Button
+          variant="glass-quiet"
+          size="sm"
+          disabled={recipients.length === 0}
+          onClick={() => {
+            window.location.href = csvUrl;
+          }}
+        >
+          Export CSV
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -215,7 +228,35 @@ export function RecipientsTab({ showBots }: { showBots: boolean }) {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
+      {/* Mobile: stacked cards (below md). */}
+      <div className="space-y-2 md:hidden">
+        {loading && recipients.length === 0 ? (
+          <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+            Loading tracking…
+          </p>
+        ) : recipients.length === 0 ? (
+          <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+            {isSearchMode
+              ? "No tracked emails match this search across the full history."
+              : "No tracked emails yet. Tracking activates when a Gmail draft is created from the generator."}
+          </p>
+        ) : (
+          recipients.map((recipient) => (
+            <RecipientCard
+              key={recipient.key}
+              recipient={recipient}
+              isOpen={expanded === recipient.key}
+              onToggle={() => toggleRecipient(recipient.key, recipient.send_ids)}
+              showBots={showBots}
+              detailBySend={detailBySend}
+              onDeleteSend={deleteSend}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Desktop: full table (md and up). */}
+      <div className="hidden overflow-x-auto rounded-xl border border-glass/10 bg-glass/5 md:block">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
             <tr>
@@ -335,41 +376,136 @@ function RecipientRow({
       {isOpen ? (
         <tr className="border-t border-glass/5 bg-overlay/40">
           <td colSpan={6} className="px-3 py-3">
-            <div className="space-y-3">
-              {recipient.send_ids.map((sendId) => {
-                const detail = detailBySend[sendId];
-                if (!detail) return null;
-                if (detail === "loading") {
-                  return (
-                    <div key={sendId} className="text-xs text-ink-4">
-                      Loading send…
-                    </div>
-                  );
-                }
-                if ("error" in detail) {
-                  return (
-                    <div
-                      key={sendId}
-                      className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-danger"
-                    >
-                      {detail.error}
-                    </div>
-                  );
-                }
-                return (
-                  <SendDetailBlock
-                    key={sendId}
-                    detail={detail}
-                    showBots={showBots}
-                    onDeleteSend={onDeleteSend}
-                  />
-                );
-              })}
-            </div>
+            <SendDetailsList
+              recipient={recipient}
+              detailBySend={detailBySend}
+              showBots={showBots}
+              onDeleteSend={onDeleteSend}
+            />
           </td>
         </tr>
       ) : null}
     </>
+  );
+}
+
+/** Compact card mirror of RecipientRow used on narrow (below md) viewports. */
+function RecipientCard({
+  recipient,
+  isOpen,
+  onToggle,
+  showBots,
+  detailBySend,
+  onDeleteSend,
+}: {
+  recipient: Recipient;
+  isOpen: boolean;
+  onToggle: () => void;
+  showBots: boolean;
+  detailBySend: Record<string, SendDetailResponse | "loading" | { error: string }>;
+  onDeleteSend: (sendId: string) => Promise<void>;
+}) {
+  const visibleClicks = showBots
+    ? recipient.real_clicks + recipient.bot_clicks
+    : recipient.real_clicks;
+  const botSuffix = showBots ? "" : recipient.bot_clicks > 0 ? ` +${recipient.bot_clicks} scanner` : "";
+
+  return (
+    <div className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm text-ink">{recipient.recipient_name}</p>
+          <p className="truncate text-[11px] text-ink-4">
+            {recipient.company_name ?? "—"} ·{" "}
+            {recipient.unique_senders > 1 ? `${recipient.unique_senders} senders` : "1 sender"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          className="shrink-0 rounded-lg border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
+        >
+          {isOpen ? "Hide" : "View sends"}
+        </button>
+      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+          <dt className="text-[11px] text-ink-4">Mails</dt>
+          <dd className="text-xs tabular-nums text-ink">{recipient.sends_count}</dd>
+        </div>
+        <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+          <dt className="text-[11px] text-ink-4">Clicks</dt>
+          <dd className="text-xs tabular-nums">
+            <span className={visibleClicks > 0 ? "text-warn" : "text-ink-4"}>{visibleClicks}</span>
+            {botSuffix ? <span className="text-[11px] text-ink-5">{botSuffix}</span> : null}
+          </dd>
+        </div>
+        <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+          <dt className="text-[11px] text-ink-4">Last click</dt>
+          <dd className="text-[11px] text-ink-3" title={fmtAbsolute(recipient.last_click_at)}>
+            {fmtRelative(recipient.last_click_at)}
+          </dd>
+        </div>
+      </dl>
+      {isOpen ? (
+        <div className="mt-3 border-t border-glass/10 pt-3">
+          <SendDetailsList
+            recipient={recipient}
+            detailBySend={detailBySend}
+            showBots={showBots}
+            onDeleteSend={onDeleteSend}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The expanded per-send detail list, shared by the desktop row and mobile card. */
+function SendDetailsList({
+  recipient,
+  detailBySend,
+  showBots,
+  onDeleteSend,
+}: {
+  recipient: Recipient;
+  detailBySend: Record<string, SendDetailResponse | "loading" | { error: string }>;
+  showBots: boolean;
+  onDeleteSend: (sendId: string) => Promise<void>;
+}) {
+  return (
+    <div className="space-y-3">
+      {recipient.send_ids.map((sendId) => {
+        const detail = detailBySend[sendId];
+        if (!detail) return null;
+        if (detail === "loading") {
+          return (
+            <div key={sendId} className="text-xs text-ink-4">
+              Loading send…
+            </div>
+          );
+        }
+        if ("error" in detail) {
+          return (
+            <div
+              key={sendId}
+              className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-danger"
+            >
+              {detail.error}
+            </div>
+          );
+        }
+        return (
+          <SendDetailBlock
+            key={sendId}
+            detail={detail}
+            showBots={showBots}
+            onDeleteSend={onDeleteSend}
+          />
+        );
+      })}
+    </div>
   );
 }
 

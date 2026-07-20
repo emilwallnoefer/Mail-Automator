@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { Button, Input } from "@/components/ui";
+import { AnimatePresence } from "framer-motion";
+import { Button, Input, Toast } from "@/components/ui";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { playUiSound } from "@/lib/ui-sounds";
 import { dayLabel, escapeHtml, fmtHM, type WeekResponse } from "./types";
 import type { TimeTrackerState } from "./use-time-tracker";
@@ -104,6 +106,9 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
   } = state;
 
   const exportCardRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // The modal only mounts while open, so the trap is active for its whole life.
+  useFocusTrap(dialogRef, true);
 
   async function handleCopyCompSourcesPng() {
     const node = exportCardRef.current;
@@ -181,7 +186,9 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
       />
       <div className="day-logger-dialog-wrap fixed inset-0 z-[210] flex items-center justify-center overflow-y-auto p-4 pointer-events-none sm:p-6 max-h-[100dvh]">
         <div
-          className="glass-card day-logger-card day-logger-dialog my-auto flex w-full max-w-3xl flex-col rounded-2xl shadow-2xl shadow-shade/50 pointer-events-auto max-h-[min(92dvh,880px)]"
+          ref={dialogRef}
+          tabIndex={-1}
+          className="glass-card day-logger-card day-logger-dialog my-auto flex w-full max-w-3xl flex-col rounded-2xl shadow-2xl shadow-shade/50 pointer-events-auto max-h-[min(92dvh,880px)] focus:outline-none"
           role="dialog"
           aria-modal="true"
           aria-labelledby="day-logger-title"
@@ -403,9 +410,18 @@ export function DayLoggerModal({ state }: { state: TimeTrackerState }) {
                 )}
               </div>
 
-              {toast && (
-                <p className={`mt-4 text-sm ${toast.kind === "ok" ? "text-positive" : "text-danger"}`}>{toast.message}</p>
-              )}
+              <AnimatePresence>
+                {toast ? (
+                  <Toast
+                    key="day-logger-toast"
+                    tone={toast.kind === "ok" ? "positive" : "danger"}
+                    onDismiss={() => setToast(null)}
+                    className="mt-4"
+                  >
+                    {toast.message}
+                  </Toast>
+                ) : null}
+              </AnimatePresence>
             </div>
 
             <aside className="h-fit self-start rounded-xl border border-glass/15 bg-glass/5 p-4">

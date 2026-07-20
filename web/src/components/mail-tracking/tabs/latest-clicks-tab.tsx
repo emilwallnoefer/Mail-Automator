@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FreshnessPill } from "@/components/freshness-pill";
-import { Badge, Notice } from "@/components/ui";
+import { Badge, Button, Notice } from "@/components/ui";
 import { fmtAbsolute, fmtRelative, parseUserAgent, pickTrustedHost } from "../format";
 import type { LatestClick, LatestClicksResponse } from "../types";
 
@@ -83,7 +83,21 @@ export function LatestClicksTab({ showBots }: { showBots: boolean }) {
             </button>
           ))}
         </div>
-        <FreshnessPill updatedAt={updatedAt} loading={loading} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="glass-quiet"
+            size="sm"
+            disabled={clicks.length === 0}
+            onClick={() => {
+              const params = new URLSearchParams({ days: String(days), format: "csv" });
+              if (showBots) params.set("include_bots", "1");
+              window.location.href = `/api/admin/mail-tracking/clicks?${params.toString()}`;
+            }}
+          >
+            Export CSV
+          </Button>
+          <FreshnessPill updatedAt={updatedAt} loading={loading} />
+        </div>
       </div>
 
       <p className="text-[11px] text-ink-4">

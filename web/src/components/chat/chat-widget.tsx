@@ -1,7 +1,9 @@
 "use client";
 
 import { AnimatePresence, m } from "framer-motion";
-import { type ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
+import { Toast } from "@/components/ui";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   dayKeyFromIso,
   formatDaySeparator,
@@ -81,6 +83,11 @@ export function ChatWidget(props: ChatWidgetProps) {
     setLightbox,
   } = chat;
 
+  const panelRef = useRef<HTMLElement>(null);
+  // Trap focus in the panel while it's open; suspend it when the image
+  // lightbox (a separate dialog layered on top) takes over.
+  useFocusTrap(panelRef, open && !lightbox);
+
   return (
     <>
       {/* Hide the floating trigger pill when the panel is open — it would
@@ -137,6 +144,8 @@ export function ChatWidget(props: ChatWidgetProps) {
             />
             <m.aside
               key="chat-panel"
+              ref={panelRef}
+              tabIndex={-1}
               role="dialog"
               aria-label="Team chat"
               initial={{ opacity: 0, scale: 0.9, y: 24 }}
@@ -303,22 +312,14 @@ export function ChatWidget(props: ChatWidgetProps) {
 
                 <AnimatePresence>
                   {pendingUndo ? (
-                    <m.div
+                    <Toast
                       key="undo-toast"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 6 }}
-                      className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-xl border border-glass/10 bg-panel/95 px-3 py-2 text-xs text-ink-2 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.7)]"
+                      tone="neutral"
+                      action={{ label: "Undo", onClick: handleUndoDelete }}
+                      className="mx-3 mb-2"
                     >
-                      <span>Message deleted</span>
-                      <button
-                        type="button"
-                        onClick={handleUndoDelete}
-                        className="rounded-md border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-soft transition hover:bg-accent/25"
-                      >
-                        Undo
-                      </button>
-                    </m.div>
+                      Message deleted
+                    </Toast>
                   ) : null}
                 </AnimatePresence>
 
