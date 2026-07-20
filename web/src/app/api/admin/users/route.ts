@@ -2,51 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { guardAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeUserRole, type UserRole } from "@/lib/user-role";
+import { fetchAdminUsers } from "@/lib/admin-queries";
+import { normalizeUserRole } from "@/lib/user-role";
 import { recordAdminAudit } from "@/lib/admin-audit";
-
-type ListedUser = {
-  id: string;
-  email: string;
-  role: UserRole | null;
-  created_at: string | null;
-  last_sign_in_at: string | null;
-};
-
-function extractRoleFromMetadata(metadata: unknown) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-  const record = metadata as Record<string, unknown>;
-  return normalizeUserRole(record.role);
-}
 
 export async function GET() {
   const guard = await guardAdmin();
   if (!guard.ok) return guard.response;
 
   const admin = createAdminClient();
-  const users: ListedUser[] = [];
-  let page = 1;
-  const perPage = 200;
-  for (;;) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const pageUsers = data?.users ?? [];
-    for (const user of pageUsers) {
-      users.push({
-        id: user.id,
-        email: user.email ?? "",
-        role: extractRoleFromMetadata(user.app_metadata),
-        created_at: user.created_at ?? null,
-        last_sign_in_at: user.last_sign_in_at ?? null,
-      });
-    }
-    if (pageUsers.length < perPage) break;
-    page += 1;
-    if (page > 50) break;
+  try {
+    const users = await fetchAdminUsers(admin);
+    return NextResponse.json({ users });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
-
-  users.sort((a, b) => a.email.localeCompare(b.email));
-  return NextResponse.json({ users });
 }
 
 const patchBodySchema = z.object({

@@ -55,7 +55,9 @@ async function resolveServerAppearance(): Promise<Appearance> {
       theme: t === "dark" || t === "light" || t === "blue" ? t : null,
       accent: a === "blue" ? "blue" : "amber",
     };
-  } catch {
+  } catch (error) {
+    // Non-blocking: fall back to the device-local bootstrap (no server theme).
+    console.error("RootLayout: resolveServerAppearance failed", error);
     return fallback;
   }
 }

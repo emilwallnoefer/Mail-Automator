@@ -2,9 +2,17 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import type { WeekResponse } from "@/components/time-tracker-panel";
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isAdminEmail } from "@/lib/admin";
 import { fetchCurrentUserWeek, getWeekStartDate } from "@/lib/time-tracker-queries";
+import { fetchInitialSettings, type InitialSettingsData } from "@/lib/settings-queries";
+import {
+  fetchAdminTimeOverview,
+  fetchAdminUsers,
+  type AdminListedUser,
+  type AdminTimeOverview,
+} from "@/lib/admin-queries";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -26,20 +34,58 @@ export default async function DashboardPage() {
       : null;
   const userRoleRaw = userMetadata && "role" in userMetadata ? userMetadata.role : null;
   const email = typeof claims.email === "string" ? claims.email : null;
+  const userId = typeof claims.sub === "string" ? claims.sub : null;
   const initialRole = normalizeUserRole(userRoleRaw);
   const isAdmin = isAdminEmail(email);
+  const isPilot = initialRole !== "sales" && initialRole !== "hr";
 
-  let initialWeek: WeekResponse | null = null;
-  if (initialRole === "sales" || initialRole === "hr") {
-    try {
-      const weekStartDate = getWeekStartDate();
-      if (weekStartDate) {
-        initialWeek = (await fetchCurrentUserWeek(supabase, weekStartDate)) as WeekResponse;
-      }
-    } catch {
-      // Non-blocking: panel falls back to its client-side fetch path.
-    }
-  }
+  // Prefetch each landing/panel's initial data server-side so the panels paint
+  // seeded instead of waterfalling client fetches on open. Every prefetch is
+  // non-blocking: on failure we log and fall back to the panel's client fetch.
+  const weekStartDate = getWeekStartDate();
+
+  const initialWeekPromise: Promise<WeekResponse | null> =
+    (initialRole === "sales" || initialRole === "hr") && weekStartDate
+      ? fetchCurrentUserWeek(supabase, weekStartDate)
+          .then((week) => week as WeekResponse)
+          .catch((error) => {
+            console.error("Dashboard SSR: fetchCurrentUserWeek failed", error);
+            return null;
+          })
+      : Promise.resolve(null);
+
+  // Settings data is cheap: travel mapping + signature come from the JWT metadata
+  // we already have; only the Gmail connection needs a service-role read.
+  const initialSettingsPromise: Promise<InitialSettingsData | null> =
+    isPilot && userId
+      ? fetchInitialSettings(userId, userMetadata).catch((error) => {
+          console.error("Dashboard SSR: fetchInitialSettings failed", error);
+          return null;
+        })
+      : Promise.resolve(null);
+
+  // Admin tables (users + current-week overview). Gated on the email-based admin
+  // check (equivalent to guardAdmin) before touching the service-role client.
+  const adminUsersPromise: Promise<AdminListedUser[] | null> = isAdmin
+    ? fetchAdminUsers(createAdminClient()).catch((error) => {
+        console.error("Dashboard SSR: fetchAdminUsers failed", error);
+        return null;
+      })
+    : Promise.resolve(null);
+  const adminOverviewPromise: Promise<AdminTimeOverview | null> =
+    isAdmin && weekStartDate
+      ? fetchAdminTimeOverview(createAdminClient(), weekStartDate).catch((error) => {
+          console.error("Dashboard SSR: fetchAdminTimeOverview failed", error);
+          return null;
+        })
+      : Promise.resolve(null);
+
+  const [initialWeek, initialSettings, initialAdminUsers, initialAdminOverview] = await Promise.all([
+    initialWeekPromise,
+    initialSettingsPromise,
+    adminUsersPromise,
+    adminOverviewPromise,
+  ]);
 
   return (
     <DashboardShell
@@ -47,6 +93,9 @@ export default async function DashboardPage() {
       initialRole={initialRole}
       isAdmin={isAdmin}
       initialWeek={initialWeek}
+      initialSettings={initialSettings}
+      initialAdminUsers={initialAdminUsers}
+      initialAdminOverview={initialAdminOverview}
     />
   );
 }

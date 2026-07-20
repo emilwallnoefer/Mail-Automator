@@ -9,6 +9,8 @@ import { MailComposerPanel } from "@/components/mail-composer/mail-composer-pane
 import { useMailComposer } from "@/components/mail-composer/use-mail-composer";
 import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
 import { Notice } from "@/components/ui";
+import type { InitialSettingsData } from "@/lib/settings-queries";
+import type { AdminListedUser, AdminTimeOverview } from "@/lib/admin-queries";
 import { playUiSound } from "@/lib/ui-sounds";
 import { createClient } from "@/lib/supabase/client";
 import { LATEST_RELEASE } from "@/lib/release-notes";
@@ -35,6 +37,11 @@ type DashboardShellProps = {
   initialRole: UserRole | null;
   isAdmin?: boolean;
   initialWeek?: WeekResponse | null;
+  /** SSR-prefetched Settings data (Gmail status + travel mapping + signature). */
+  initialSettings?: InitialSettingsData | null;
+  /** SSR-prefetched admin data, present only for admins. */
+  initialAdminUsers?: AdminListedUser[] | null;
+  initialAdminOverview?: AdminTimeOverview | null;
 };
 
 type ModuleKey = "mail" | "time" | "settings" | "admin";
@@ -109,7 +116,15 @@ const MODULE_CARD_CLASS =
 const MODULE_CARD_CORE_CLASS =
   "relative flex flex-1 flex-col overflow-hidden rounded-[calc(1.4rem-0.375rem)] bg-gradient-to-br from-panel/95 via-surface/90 to-surface/80 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
 
-export function DashboardShell({ email, initialRole, isAdmin = false, initialWeek = null }: DashboardShellProps) {
+export function DashboardShell({
+  email,
+  initialRole,
+  isAdmin = false,
+  initialWeek = null,
+  initialSettings = null,
+  initialAdminUsers = null,
+  initialAdminOverview = null,
+}: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [activeModule, setActiveModule] = useState<ModuleKey>(
@@ -126,9 +141,9 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
   const bottomPopupRef = useRef<HTMLDivElement | null>(null);
   const [bottomPopupHeight, setBottomPopupHeight] = useState(0);
   const [settingsReadmeOpenToken, setSettingsReadmeOpenToken] = useState(0);
-  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>({
-    connected: false,
-  });
+  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmail_email?: string | null }>(
+    initialSettings?.gmail ?? { connected: false },
+  );
   // Current Time Tracker week, warmed in the background on dashboard load so the
   // Time Logger opens instantly. Seeded from the SSR week when available.
   const [prefetchedWeek, setPrefetchedWeek] = useState<WeekResponse | null>(initialWeek);
@@ -198,7 +213,12 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
     };
   }, [availableModules, initialWeek]);
 
+  // Warm the Gmail connection status for the navbar pill. Skipped when the SSR
+  // already seeded it (pilots), so the pill is correct on first paint without a
+  // client round-trip; still runs as a fallback when props were absent.
+  const gmailStatusSeeded = initialSettings?.gmail != null;
   useEffect(() => {
+    if (gmailStatusSeeded) return;
     (async () => {
       if (userRole === "sales" || userRole === "hr") return;
       const response = await fetch("/api/gmail/status");
@@ -206,7 +226,7 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
       const data = (await response.json()) as { connected: boolean; gmail_email?: string | null };
       setGmailStatus(data);
     })();
-  }, [userRole]);
+  }, [userRole, gmailStatusSeeded]);
 
   useEffect(() => {
     try {
@@ -501,8 +521,16 @@ export function DashboardShell({ email, initialRole, isAdmin = false, initialWee
                   {activeModule === "time" ? (
                     <TimeTrackerPanel initialWeek={prefetchedWeek} />
                   ) : activeModule === "admin" ? (
-                    <AdminPanel canManageUsers={canManageUsers} />
+                    <AdminPanel
+                      canManageUsers={canManageUsers}
+                      initialUsers={initialAdminUsers}
+                      initialOverview={initialAdminOverview}
+                    />
                   ) : activeModule === "settings" ? (
+                    // SSR-prefetched settings (`initialSettings`) already seed the
+                    // navbar Gmail pill above. Seeding the panel's own three fetches
+                    // (gmail/travel-mapping/signature) is a follow-up: it needs an
+                    // `initialData` prop on SettingsPanel, which another branch owns.
                     <SettingsPanel
                       email={email}
                       autoOpenProgramReadmeToken={settingsReadmeOpenToken}
