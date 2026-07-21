@@ -527,14 +527,14 @@ export function DashboardShell({
                       initialOverview={initialAdminOverview}
                     />
                   ) : activeModule === "settings" ? (
-                    // SSR-prefetched settings (`initialSettings`) already seed the
-                    // navbar Gmail pill above. Seeding the panel's own three fetches
-                    // (gmail/travel-mapping/signature) is a follow-up: it needs an
-                    // `initialData` prop on SettingsPanel, which another branch owns.
+                    // SSR-prefetched settings seed both the navbar Gmail pill above
+                    // and the panel itself, so opening Settings fires none of its
+                    // three mount fetches.
                     <SettingsPanel
                       email={email}
                       autoOpenProgramReadmeToken={settingsReadmeOpenToken}
                       userRole={userRole ?? "eu_pilot"}
+                      initialData={initialSettings}
                     />
                   ) : (
                     <MailComposerPanel

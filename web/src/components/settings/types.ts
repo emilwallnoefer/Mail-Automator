@@ -27,11 +27,22 @@ export function filterSettingsNav(isSalesOnly: boolean, navFilter: string) {
   return q === "" ? visible : visible.filter((item) => item.label.toLowerCase().includes(q));
 }
 
+/** SSR-prefetched values matching the three fetches the panel fires on mount.
+ *  Shape mirrors `InitialSettingsData` from `@/lib/settings-queries` (kept
+ *  structural so this client module doesn't import the server-only file). */
+export type InitialSettings = {
+  gmail: { connected: boolean; gmail_email: string | null };
+  travelMapping: TravelMapping;
+  mailSignatureName: string;
+};
+
 export type SettingsPanelProps = {
   email: string;
   showStandaloneActions?: boolean;
   autoOpenProgramReadmeToken?: number;
   userRole?: UserRole;
+  /** When provided, seeds the panel so it doesn't refetch on mount. */
+  initialData?: InitialSettings | null;
 };
 
 export type GmailStatus = { connected: boolean; gmail_email?: string | null };

@@ -13,70 +13,39 @@ import {
 import {
   CHAT_MAX_ATTACHMENT_BYTES,
   CHAT_PAGE_SIZE,
-  deleteChatMessage,
   editChatMessage,
   fetchChatHistory,
   fetchVotesForMessages,
   markMessageDone,
   sendChatMessage,
-  setMessageVote,
-  shortNameFromEmail,
-  subscribeToChat,
-  summarizeVotes,
   uploadChatAttachment,
   type ChatMessageRow,
   type ChatPresenceUser,
-  type ChatVoteRow,
   type MessageKind,
 } from "@/lib/chat";
 import { playUiSound } from "@/lib/ui-sounds";
 import {
   ERROR_AUTO_DISMISS_MS,
   NEAR_BOTTOM_THRESHOLD_PX,
-  TYPING_BROADCAST_MIN_INTERVAL_MS,
-  TYPING_TIMEOUT_MS,
-  UNDO_DELETE_TIMEOUT_MS,
   votableMessageIds,
   type ChatWidgetProps,
   type FilterKey,
   type SendState,
 } from "./types";
+import { saveLastReadAt } from "./hooks/chat-last-read";
+import { useChatConnection } from "./hooks/use-chat-connection";
+import { useChatTyping } from "./hooks/use-chat-typing";
+import { useChatUndoDelete } from "./hooks/use-chat-undo-delete";
+import { useChatVotes } from "./hooks/use-chat-votes";
 
-// Per-user "last read" mark (ISO timestamp of the newest message seen with the
-// panel open). Lets the unread badge survive reloads: messages that arrived
-// while this tab was closed still light it up on the next visit.
-const CHAT_LAST_READ_AT_KEY = "ma_chat_last_read_at_v1";
-
-function readLastReadAt(userId: string): number | null {
-  try {
-    const raw = window.localStorage.getItem(`${CHAT_LAST_READ_AT_KEY}:${userId}`);
-    if (!raw) return null;
-    const parsed = Date.parse(raw);
-    return Number.isNaN(parsed) ? null : parsed;
-  } catch {
-    return null;
-  }
-}
-
-function saveLastReadAt(userId: string, isoTimestamp: string) {
-  try {
-    window.localStorage.setItem(`${CHAT_LAST_READ_AT_KEY}:${userId}`, isoTimestamp);
-  } catch {
-    // Storage blocked (e.g. private mode): the badge just resets per session.
-  }
-}
-
-/** All Team Chat widget state: initial history + realtime subscription, the
- *  scroll/unread bookkeeping, optimistic send/edit/delete/vote/mark flows,
- *  typing indicators, undo-delete timers, and the derived view models. */
+/** All Team Chat widget state. The realtime subscription, typing indicators,
+ *  votes and undo-delete live in `./hooks/`; this orchestrator owns the message
+ *  list, scroll/unread bookkeeping, composer, and the optimistic
+ *  send/edit/mark-done flows, and wires the pieces together. */
 export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessageRow[]>([]);
-  const [votes, setVotes] = useState<ChatVoteRow[]>([]);
   const [presence, setPresence] = useState<ChatPresenceUser[]>([]);
-  const [typingUsers, setTypingUsers] = useState<Record<string, { email: string; expiresAt: number }>>(
-    {},
-  );
   const [draft, setDraft] = useState("");
   const [pendingKind, setPendingKind] = useState<MessageKind>("message");
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -93,13 +62,6 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
   // Scroll bookkeeping for "stay where I am" + jump-to-bottom pill
   const [pendingNew, setPendingNew] = useState(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  // Pending delete with undo toast: keep the original row + a timer to commit
-  // the actual server delete if the user doesn't undo in time.
-  const [pendingUndo, setPendingUndo] = useState<{
-    id: string;
-    row: ChatMessageRow;
-    expiresAt: number;
-  } | null>(null);
   // Live announcement string for screen readers (last incoming message).
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
   // Lightbox state for attachment image previews.
@@ -109,197 +71,45 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const lastTypingSentAtRef = useRef(0);
-  const broadcastTypingRef = useRef<((isTyping: boolean) => Promise<void>) | null>(null);
   const openRef = useRef(open);
   openRef.current = open;
   // Refs to keep handlers stable while reflecting latest values.
   const isAtBottomRef = useRef(true);
   isAtBottomRef.current = isAtBottom;
-  const currentUserIdRef = useRef<string | null>(null);
-  currentUserIdRef.current = currentUserId;
   const messagesRef = useRef<ChatMessageRow[]>([]);
   messagesRef.current = messages;
-  // Pending delete commit timers, keyed by message id.
-  const undoTimersRef = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => {
-    let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
-    let typingSweep: number | null = null;
+  // Stable error sink shared with the extracted hooks.
+  const reportError = useCallback((message: string) => setError(message), []);
 
-    (async () => {
-      try {
-        const history = await fetchChatHistory();
-        if (cancelled) return;
-        setMessages(history);
-        const initialVotes = await fetchVotesForMessages(votableMessageIds(history));
-        if (cancelled) return;
-        setVotes(initialVotes);
-        // If the initial page is full, assume there's more history to page in.
-        setHasMoreHistory(history.length >= CHAT_PAGE_SIZE);
-        setLoading(false);
+  const {
+    broadcastTypingRef,
+    applyTypingEvent,
+    broadcastDraftTyping,
+    resetTyping,
+    otherTypingNames,
+  } = useChatTyping(currentUserId);
+  const { setVotes, voteSummary, handleVote } = useChatVotes(currentUserId, reportError);
+  const { pendingUndo, handleDelete, handleUndoDelete } = useChatUndoDelete(setMessages, reportError);
 
-        const sub = await subscribeToChat({
-          onInsert: (row) => {
-            let appended = false;
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === row.id)) return prev;
-              appended = true;
-              return [...prev, row];
-            });
-            if (!appended) return;
-            const isMine = row.sender_id === sub.currentUserId;
-            // Track unread + pending-new + screen-reader announcements only
-            // for messages from other people.
-            if (!isMine) {
-              if (!openRef.current) {
-                setUnread((n) => n + 1);
-                playUiSound("switchWhoosh");
-              } else if (!isAtBottomRef.current) {
-                setPendingNew((n) => n + 1);
-              }
-              const name = shortNameFromEmail(row.sender_email);
-              const summary = row.body
-                ? row.body.length > 140
-                  ? `${row.body.slice(0, 140)}…`
-                  : row.body
-                : row.attachment_name
-                  ? `sent an attachment: ${row.attachment_name}`
-                  : "sent a message";
-              setLiveAnnouncement(`${name}: ${summary}`);
-            }
-          },
-          onUpdate: (row) => {
-            setMessages((prev) => prev.map((m) => (m.id === row.id ? row : m)));
-          },
-          onDelete: (id) => {
-            setMessages((prev) => prev.filter((m) => m.id !== id));
-          },
-          onVoteInsert: (row) => {
-            setVotes((prev) => {
-              if (prev.some((v) => v.message_id === row.message_id && v.user_id === row.user_id)) {
-                return prev.map((v) =>
-                  v.message_id === row.message_id && v.user_id === row.user_id ? row : v,
-                );
-              }
-              return [...prev, row];
-            });
-          },
-          onVoteUpdate: (row) => {
-            setVotes((prev) =>
-              prev.map((v) =>
-                v.message_id === row.message_id && v.user_id === row.user_id ? row : v,
-              ),
-            );
-          },
-          onVoteDelete: ({ message_id, user_id }) => {
-            setVotes((prev) =>
-              prev.filter((v) => !(v.message_id === message_id && v.user_id === user_id)),
-            );
-          },
-          onPresence: (users) => setPresence(users),
-          // Patch up any messages/votes that were missed during a disconnect.
-          onReconnect: () => {
-            void (async () => {
-              try {
-                const last = messagesRef.current[messagesRef.current.length - 1];
-                const missed = await (last
-                  ? fetchChatHistory({ after: last.created_at, limit: CHAT_PAGE_SIZE })
-                  : fetchChatHistory());
-                if (missed.length > 0) {
-                  setMessages((prev) => {
-                    const seen = new Set(prev.map((m) => m.id));
-                    const additions = missed.filter((m) => !seen.has(m.id));
-                    if (additions.length === 0) return prev;
-                    return [...prev, ...additions];
-                  });
-                }
-                // Re-sync votes for everything currently loaded (existing window
-                // plus anything we just missed).
-                const loadedIds = votableMessageIds([...messagesRef.current, ...missed]);
-                const freshVotes = await fetchVotesForMessages(loadedIds);
-                setVotes(freshVotes);
-              } catch {
-                // Best-effort: a failed re-sync just leaves the state as-is.
-              }
-            })();
-          },
-          onTyping: (payload) => {
-            if (!payload.is_typing) {
-              setTypingUsers((prev) => {
-                if (!prev[payload.user_id]) return prev;
-                const next = { ...prev };
-                delete next[payload.user_id];
-                return next;
-              });
-              return;
-            }
-            setTypingUsers((prev) => ({
-              ...prev,
-              [payload.user_id]: {
-                email: payload.email,
-                expiresAt: Date.now() + TYPING_TIMEOUT_MS,
-              },
-            }));
-          },
-        });
-
-        if (cancelled) {
-          await sub.channel.unsubscribe();
-          return;
-        }
-
-        broadcastTypingRef.current = sub.broadcastTyping;
-        setCurrentUserId(sub.currentUserId);
-        setCurrentUserEmail(sub.currentEmail);
-
-        // Seed the unread badge from messages that arrived while this tab was
-        // closed: anything from someone else newer than the last-read mark.
-        // (Realtime inserts landing after the history fetch increment `unread`
-        // themselves and are not in `history`, so adding is double-count safe.)
-        const lastReadAt = readLastReadAt(sub.currentUserId);
-        if (lastReadAt != null) {
-          const missed = history.filter(
-            (m) => m.sender_id !== sub.currentUserId && Date.parse(m.created_at) > lastReadAt,
-          ).length;
-          if (missed > 0 && !openRef.current) setUnread((n) => n + missed);
-        } else if (history.length > 0) {
-          // First visit on this browser: treat existing history as read.
-          saveLastReadAt(sub.currentUserId, history[history.length - 1].created_at);
-        }
-
-        await sub.trackPresence();
-
-        typingSweep = window.setInterval(() => {
-          setTypingUsers((prev) => {
-            const now = Date.now();
-            let changed = false;
-            const next: typeof prev = {};
-            for (const [k, v] of Object.entries(prev)) {
-              if (v.expiresAt > now) next[k] = v;
-              else changed = true;
-            }
-            return changed ? next : prev;
-          });
-        }, 1000);
-
-        unsubscribe = () => {
-          void sub.channel.unsubscribe();
-        };
-      } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message || "Could not connect to chat.");
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (unsubscribe) unsubscribe();
-      if (typingSweep != null) window.clearInterval(typingSweep);
-    };
-  }, []);
+  useChatConnection({
+    openRef,
+    isAtBottomRef,
+    messagesRef,
+    broadcastTypingRef,
+    setMessages,
+    setVotes,
+    setPresence,
+    applyTypingEvent,
+    setUnread,
+    setPendingNew,
+    setLiveAnnouncement,
+    setLoading,
+    setError,
+    setHasMoreHistory,
+    setCurrentUserId,
+    setCurrentUserEmail,
+  });
 
   // Whenever the panel opens, jump to the latest message and clear unread.
   useEffect(() => {
@@ -422,9 +232,7 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMoreHistory]);
-
-  const voteSummary = useMemo(() => summarizeVotes(votes, currentUserId), [votes, currentUserId]);
+  }, [loadingMore, hasMoreHistory, setVotes]);
 
   const visibleMessages = useMemo(() => {
     if (filter === "all") return messages;
@@ -447,22 +255,14 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     return counts;
   }, [messages]);
 
-  const handleDraftChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value;
-    setDraft(value);
-    const broadcast = broadcastTypingRef.current;
-    if (!broadcast) return;
-    const now = Date.now();
-    if (value.trim().length === 0) {
-      lastTypingSentAtRef.current = 0;
-      void broadcast(false);
-      return;
-    }
-    if (now - lastTypingSentAtRef.current > TYPING_BROADCAST_MIN_INTERVAL_MS) {
-      lastTypingSentAtRef.current = now;
-      void broadcast(true);
-    }
-  }, []);
+  const handleDraftChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      setDraft(value);
+      broadcastDraftTyping(value);
+    },
+    [broadcastDraftTyping],
+  );
 
   /*
    * All mutating actions below follow the same pattern: update local state
@@ -501,9 +301,7 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     setDraft("");
     setPendingKind("message");
     setError(null);
-    lastTypingSentAtRef.current = 0;
-    const broadcast = broadcastTypingRef.current;
-    if (broadcast) void broadcast(false);
+    resetTyping();
     playUiSound("mailSend");
 
     void (async () => {
@@ -517,7 +315,7 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
         setError((err as Error).message || "Failed to send.");
       }
     })();
-  }, [draft, pendingKind, currentUserId, currentUserEmail]);
+  }, [draft, pendingKind, currentUserId, currentUserEmail, resetTyping]);
 
   const uploadAndSendAttachment = useCallback(
     async (file: File) => {
@@ -600,29 +398,6 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     [handleSend],
   );
 
-  const handleVote = useCallback(
-    (messageId: string, current: -1 | 0 | 1, next: -1 | 1) => {
-      if (!currentUserId) return;
-      const newVote = current === next ? 0 : next;
-      // Snapshot so we can revert on error.
-      const snapshot = votes;
-      setVotes((prev) => {
-        const without = prev.filter((v) => !(v.message_id === messageId && v.user_id === currentUserId));
-        if (newVote === 0) return without;
-        return [...without, { message_id: messageId, user_id: currentUserId, vote: newVote }];
-      });
-      void (async () => {
-        try {
-          await setMessageVote(messageId, newVote);
-        } catch (err) {
-          setVotes(snapshot);
-          setError((err as Error).message || "Vote failed.");
-        }
-      })();
-    },
-    [currentUserId, votes],
-  );
-
   const handleMarkDone = useCallback(
     (messageId: string, done: boolean) => {
       const timestamp = done ? new Date().toISOString() : null;
@@ -679,61 +454,6 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
   }, []);
 
   /*
-   * Soft-delete with Undo: the message is removed from the UI immediately and
-   * an Undo toast appears. The actual server delete is fired only after the
-   * undo window expires. Tapping Undo restores the row and cancels the
-   * pending commit.
-   */
-  const handleDelete = useCallback((messageId: string) => {
-    let previous: ChatMessageRow | undefined;
-    setMessages((prev) => {
-      previous = prev.find((m) => m.id === messageId);
-      return prev.filter((m) => m.id !== messageId);
-    });
-    if (!previous) return;
-    const row = previous;
-    setPendingUndo({ id: messageId, row, expiresAt: Date.now() + UNDO_DELETE_TIMEOUT_MS });
-    const existing = undoTimersRef.current.get(messageId);
-    if (existing) window.clearTimeout(existing);
-    const timerId = window.setTimeout(() => {
-      undoTimersRef.current.delete(messageId);
-      setPendingUndo((current) => (current && current.id === messageId ? null : current));
-      void (async () => {
-        try {
-          await deleteChatMessage(messageId);
-        } catch (err) {
-          // Server rejected the delete — bring the message back.
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === messageId)) return prev;
-            return [...prev, row].sort(
-              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-            );
-          });
-          setError((err as Error).message || "Delete failed.");
-        }
-      })();
-    }, UNDO_DELETE_TIMEOUT_MS);
-    undoTimersRef.current.set(messageId, timerId);
-  }, []);
-
-  const handleUndoDelete = useCallback(() => {
-    setPendingUndo((current) => {
-      if (!current) return null;
-      const timer = undoTimersRef.current.get(current.id);
-      if (timer) window.clearTimeout(timer);
-      undoTimersRef.current.delete(current.id);
-      const restored = current.row;
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === restored.id)) return prev;
-        return [...prev, restored].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-        );
-      });
-      return null;
-    });
-  }, []);
-
-  /*
    * Paste-to-upload: when the user pastes an image into the textarea, treat
    * it as an attachment send. Falls through to default paste behavior if no
    * image is present in the clipboard.
@@ -756,12 +476,6 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
   );
 
   const onlineCount = presence.length;
-  const otherTypingNames = useMemo(() => {
-    const now = Date.now();
-    return Object.entries(typingUsers)
-      .filter(([id, v]) => id !== currentUserId && v.expiresAt > now)
-      .map(([, v]) => shortNameFromEmail(v.email));
-  }, [typingUsers, currentUserId]);
 
   return {
     // props echoed for the orchestrator

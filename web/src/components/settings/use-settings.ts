@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MAIL_SIGNATURE_CUSTOM_VALUE,
   MAIL_SIGNATURE_DEFAULT_NAME,
@@ -11,23 +11,40 @@ import type { UserRole } from "@/lib/user-role";
 import {
   filterSettingsNav,
   type GmailStatus,
+  type InitialSettings,
   type ReadmeKey,
   type SettingsSectionId,
   type TravelMapping,
 } from "./types";
 
-export function useSettings(userRole: UserRole, autoOpenProgramReadmeToken: number) {
+function presetStateFor(name: string): { preset: string; custom: string } {
+  const trimmed = name.trim() || MAIL_SIGNATURE_DEFAULT_NAME;
+  return isPresetSignatureName(trimmed)
+    ? { preset: trimmed, custom: "" }
+    : { preset: MAIL_SIGNATURE_CUSTOM_VALUE, custom: trimmed };
+}
+
+export function useSettings(
+  userRole: UserRole,
+  autoOpenProgramReadmeToken: number,
+  initialData?: InitialSettings | null,
+) {
   const isSalesOnly = userRole === "sales" || userRole === "hr";
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
     userRole === "sales" ? "time_data" : "gmail",
   );
   const [navFilter, setNavFilter] = useState("");
-  const [gmailStatus, setGmailStatus] = useState<GmailStatus>({ connected: false });
-  const [travelMapping, setTravelMapping] = useState<TravelMapping>({
-    clientColumn: "",
-    locationColumn: "",
-    responsibleColumn: "",
-  });
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus>(
+    () => initialData?.gmail ?? { connected: false },
+  );
+  const [travelMapping, setTravelMapping] = useState<TravelMapping>(
+    () =>
+      initialData?.travelMapping ?? {
+        clientColumn: "",
+        locationColumn: "",
+        responsibleColumn: "",
+      },
+  );
   const [mappingSaving, setMappingSaving] = useState(false);
   const [openReadme, setOpenReadme] = useState<ReadmeKey | null>(null);
   const [importing, setImporting] = useState(false);
@@ -36,13 +53,25 @@ export function useSettings(userRole: UserRole, autoOpenProgramReadmeToken: numb
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [mailSigPreset, setMailSigPreset] = useState<string>(MAIL_SIGNATURE_NAME_PRESETS[0]);
-  const [mailSigCustom, setMailSigCustom] = useState("");
+  const [mailSigPreset, setMailSigPreset] = useState<string>(
+    () => (initialData ? presetStateFor(initialData.mailSignatureName).preset : MAIL_SIGNATURE_NAME_PRESETS[0]),
+  );
+  const [mailSigCustom, setMailSigCustom] = useState(
+    () => (initialData ? presetStateFor(initialData.mailSignatureName).custom : ""),
+  );
   const [mailSigSaving, setMailSigSaving] = useState(false);
+
+  // Seeded from SSR: the three requests below would only re-fetch what we
+  // already have, so skip them entirely on first paint.
+  const seededRef = useRef(initialData != null);
 
   useEffect(() => {
     (async () => {
       if (isSalesOnly) return;
+      if (seededRef.current) {
+        seededRef.current = false;
+        return;
+      }
       const [gmailResponse, mappingResponse, sigResponse] = await Promise.all([
         fetch("/api/gmail/status"),
         fetch("/api/settings/travel-mapping"),
