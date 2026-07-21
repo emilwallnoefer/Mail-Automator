@@ -142,16 +142,23 @@ export function useChatConnection(params: ChatConnectionParams) {
           onReconnect: () => {
             void (async () => {
               try {
-                const last = messagesRef.current[messagesRef.current.length - 1];
-                const missed = await (last
-                  ? fetchChatHistory({ after: last.created_at, limit: CHAT_PAGE_SIZE })
-                  : fetchChatHistory());
+                // Deliberately cursor-less: the newest local row is often an
+                // optimistic message stamped with the *client* clock, and
+                // paging from a client timestamp that runs ahead of the server
+                // silently skips everything written in the gap. Refetching the
+                // latest page and de-duping by id costs one page on reconnect
+                // and cannot lose messages to clock skew.
+                const missed = await fetchChatHistory({ limit: CHAT_PAGE_SIZE });
                 if (missed.length > 0) {
                   setMessages((prev) => {
                     const seen = new Set(prev.map((m) => m.id));
                     const additions = missed.filter((m) => !seen.has(m.id));
                     if (additions.length === 0) return prev;
-                    return [...prev, ...additions];
+                    // The refetched page is not guaranteed to be newer than
+                    // everything held locally, so sort rather than append.
+                    return [...prev, ...additions].sort(
+                      (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
+                    );
                   });
                 }
                 // Re-sync votes for everything currently loaded (existing window
