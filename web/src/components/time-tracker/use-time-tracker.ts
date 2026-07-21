@@ -3,17 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { playUiSound, stopUiSound } from "@/lib/ui-sounds";
 import {
-  addDays,
   bankDeltaForDay,
-  buildMonthWeeks,
   computeNetMins,
   dayLabel,
   type DayBreak,
   type DayData,
-  fromDateKey,
   getMonday,
-  PREFETCH_IDLE_FALLBACK_MS,
-  PREFETCH_WEEKS_EACH_SIDE,
   RECONCILE_DEBOUNCE_MS,
   TARGET_MINS,
   type TimeTrackerPanelProps,
@@ -21,10 +16,14 @@ import {
   type ToastState,
   type WeekResponse,
 } from "./types";
+import { useDayForm } from "./hooks/use-day-form";
+import { useWeekCache } from "./hooks/use-week-cache";
+import { useWeekCalendar } from "./hooks/use-week-calendar";
 
-/** All Hour Logger state: week navigation + caching/prefetch, the reveal
- * cascade, the day editor form, optimistic writes with debounced reconcile,
- * and the week-picker calendar. */
+/** All Hour Logger state. Week fetching/caching, the week-picker calendar and
+ * the day editor form live in `./hooks/`; this orchestrator owns week
+ * navigation, the reveal cascade, and the optimistic writes with debounced
+ * reconcile, and wires the pieces together. */
 export function useTimeTracker({
   readOnly = false,
   apiBase,
@@ -50,46 +49,19 @@ export function useTimeTracker({
   const [revealedDayCount, setRevealedDayCount] = useState(7);
   const [showUpToDateSweep, setShowUpToDateSweep] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [calendarView, setCalendarView] = useState<"year" | "month">("year");
-  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
-  const [calendarMonth, setCalendarMonth] = useState<string>(() => toDateKey(getMonday()));
-  const calendarRef = useRef<HTMLDivElement | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorPortalReady, setEditorPortalReady] = useState(false);
   const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
-  const weekCacheRef = useRef<Map<string, WeekResponse>>(new Map());
-  const weekInflightRef = useRef<Map<string, Promise<WeekResponse>>>(new Map());
   const previousEditorOpenRef = useRef<boolean | null>(null);
-  const initialWeekSeededRef = useRef(false);
-  // Tracks which day the editor form has already been seeded for, so that
-  // background week refreshes don't overwrite in-progress edits.
-  const seededFormDateRef = useRef<string | null>(null);
   // Monotonic counter so a slow background refresh can't overwrite the result
   // of a newer one (e.g. when saving several days in quick succession).
   const refreshSeqRef = useRef(0);
 
-  if (!initialWeekSeededRef.current) {
-    initialWeekSeededRef.current = true;
-    if (initialWeek && initialWeek.week_start === weekStart) {
-      weekCacheRef.current.set(initialWeek.week_start, initialWeek);
-    }
-  }
-
-  // When the picker opens it starts on the year view, synced to the active
-  // week's year. While open, dismiss it on Escape.
-  useEffect(() => {
-    if (!calendarOpen) return;
-    setCalendarView("year");
-    setCalendarYear(fromDateKey(weekStart).getFullYear());
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setCalendarOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-    // weekStart is intentionally only read on open, not tracked.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calendarOpen]);
+  const { weekCacheRef, fetchWeekData, prefetchNearbyWeeks, clearWeekCaches } = useWeekCache(
+    apiBase,
+    initialWeek && initialWeek.week_start === weekStart ? initialWeek : null,
+  );
+  const calendar = useWeekCalendar(weekStart);
 
   const selectedDay = useMemo(() => {
     if (!data?.days?.length) return null;
@@ -129,13 +101,18 @@ export function useTimeTracker({
     [compSourceRows],
   );
 
-  const [formStart, setFormStart] = useState("");
-  const [formStop, setFormStop] = useState("");
-  const [formHoliday, setFormHoliday] = useState(false);
-  const [formPublicHoliday, setFormPublicHoliday] = useState(false);
-  const [formSickLeave, setFormSickLeave] = useState(false);
-  const [formBreaks, setFormBreaks] = useState<DayBreak[]>([]);
-  const currentWeekStartKey = toDateKey(getMonday());
+  // Monday of the current week, read once per mount so it stays stable across
+  // renders (a session crossing midnight re-renders on the next week change).
+  const [currentWeekStartKey] = useState(() => toDateKey(getMonday()));
+  const form = useDayForm({ editorOpen, selectedDate, data, currentWeekStartKey });
+  const {
+    formStart,
+    formStop,
+    formHoliday,
+    formPublicHoliday,
+    formSickLeave,
+    formBreaks,
+  } = form;
 
   const applyWeekData = useCallback((weekData: WeekResponse) => {
     setData(weekData);
@@ -146,90 +123,6 @@ export function useTimeTracker({
     });
     setEditorOpen(false);
   }, []);
-
-  const fetchWeekData = useCallback(async (
-    targetWeekStart: string,
-    options?: { force?: boolean; includeTravel?: boolean },
-  ): Promise<WeekResponse> => {
-    const force = options?.force ?? false;
-    const includeTravel = options?.includeTravel ?? true;
-    if (!force) {
-      const cached = weekCacheRef.current.get(targetWeekStart);
-      if (cached) return cached;
-      const inflight = weekInflightRef.current.get(targetWeekStart);
-      if (inflight) return inflight;
-    }
-
-    const requestPromise = (async () => {
-      const base = apiBase ?? "/api/time-tracker";
-      const separator = base.includes("?") ? "&" : "?";
-      const url = `${base}${separator}weekStart=${encodeURIComponent(targetWeekStart)}&includeTravel=${includeTravel ? "1" : "0"}`;
-      const response = await fetch(url);
-      const payload = (await response.json()) as WeekResponse | { error: string };
-      if (!response.ok) throw new Error((payload as { error: string }).error || "Failed to load tracker");
-      const weekData = payload as WeekResponse;
-      weekCacheRef.current.set(targetWeekStart, weekData);
-      return weekData;
-    })();
-
-    weekInflightRef.current.set(targetWeekStart, requestPromise);
-    try {
-      return await requestPromise;
-    } finally {
-      weekInflightRef.current.delete(targetWeekStart);
-    }
-  }, [apiBase]);
-
-  const prefetchNearbyWeeks = useCallback((centerWeekStart: string) => {
-    const runPrefetch = () => {
-      const center = getMonday(centerWeekStart);
-      for (let i = -PREFETCH_WEEKS_EACH_SIDE; i <= PREFETCH_WEEKS_EACH_SIDE; i += 1) {
-        if (i === 0) continue;
-        const key = toDateKey(addDays(center, i * 7));
-        if (weekCacheRef.current.has(key) || weekInflightRef.current.has(key)) continue;
-        void fetchWeekData(key, { includeTravel: false }).catch(() => {
-          // Silent prefetch failures should not interrupt UI interactions.
-        });
-      }
-    };
-
-    if (typeof window === "undefined") return;
-    const idle = (window as typeof window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
-    }).requestIdleCallback;
-    if (typeof idle === "function") {
-      idle(runPrefetch, { timeout: PREFETCH_IDLE_FALLBACK_MS * 2 });
-    } else {
-      window.setTimeout(runPrefetch, PREFETCH_IDLE_FALLBACK_MS);
-    }
-  }, [fetchWeekData]);
-
-  useEffect(() => {
-    // Only seed the form when a day is freshly opened. Keying on the date
-    // string (not the `selectedDay` object) means background week refreshes
-    // — which replace the `data` object and therefore `selectedDay` — no
-    // longer clobber values the user is actively editing.
-    if (!editorOpen || !selectedDate) {
-      seededFormDateRef.current = null;
-      return;
-    }
-    if (seededFormDateRef.current === selectedDate) return;
-    const day = data?.days.find((item) => item.date === selectedDate);
-    if (!day) return; // details may still be loading; seed once they arrive.
-    seededFormDateRef.current = selectedDate;
-    setFormStart(day.start_time ?? "");
-    setFormStop(day.stop_time ?? "");
-    setFormHoliday(Boolean(day.holiday));
-    setFormPublicHoliday(Boolean(day.public_holiday));
-    setFormSickLeave(Boolean(day.sick_leave));
-    const useBreakCounter = day.date >= currentWeekStartKey;
-    if (useBreakCounter) {
-      const totalBreakMins = (day.breaks ?? []).reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0);
-      setFormBreaks(totalBreakMins > 0 ? [{ name: "Break", mins: totalBreakMins }] : []);
-      return;
-    }
-    setFormBreaks(day.breaks?.map((item) => ({ ...item })) ?? []);
-  }, [editorOpen, selectedDate, data, currentWeekStartKey]);
 
   useEffect(() => {
     let active = true;
@@ -264,7 +157,7 @@ export function useTimeTracker({
     return () => {
       active = false;
     };
-  }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart]);
+  }, [applyWeekData, fetchWeekData, prefetchNearbyWeeks, weekStart, weekCacheRef]);
 
   useEffect(() => {
     const total = data?.days?.length ?? 0;
@@ -329,7 +222,7 @@ export function useTimeTracker({
     weekCacheRef.current.set(targetWeek, merged);
     setData((prev) => (prev && prev.week_start !== targetWeek ? prev : merged));
     prefetchNearbyWeeks(targetWeek);
-  }, [fetchWeekData, prefetchNearbyWeeks, weekStart]);
+  }, [fetchWeekData, prefetchNearbyWeeks, weekStart, weekCacheRef]);
 
   // Debounced, coalesced background reconcile. A burst of compensate / save
   // clicks schedules at most one server refetch once writes have settled,
@@ -372,7 +265,7 @@ export function useTimeTracker({
     } finally {
       setDayDetailsLoading(false);
     }
-  }, [fetchWeekData, weekStart]);
+  }, [fetchWeekData, weekStart, weekCacheRef]);
 
   const returnToWeekdays = useCallback(() => {
     setEditorOpen(false);
@@ -435,7 +328,7 @@ export function useTimeTracker({
         }
       }
     },
-    [weekStart],
+    [weekStart, weekCacheRef],
   );
 
   async function postAction<T extends Record<string, unknown>>(body: unknown): Promise<T> {
@@ -726,8 +619,7 @@ export function useTimeTracker({
       // A JSON import rewrites days across many weeks, so the cached/prefetched
       // neighbor weeks can't be patched incrementally — drop them and let them
       // refetch on next visit. (Single-day edits keep their caches in step.)
-      weekCacheRef.current.clear();
-      weekInflightRef.current.clear();
+      clearWeekCaches();
       void refreshWeek()
         .then(() => {
           setToast({
@@ -742,15 +634,14 @@ export function useTimeTracker({
 
     window.addEventListener("time-tracker-imported", onImported as EventListener);
     return () => window.removeEventListener("time-tracker-imported", onImported as EventListener);
-  }, [refreshWeek]);
+  }, [refreshWeek, clearWeekCaches]);
 
   useEffect(() => {
     // Saving/resetting the travel mapping in Settings changes what every
     // cached week's travel data means, so drop all caches and re-read the
     // sheet with the new columns for the visible week right away.
     function onTravelMappingChanged() {
-      weekCacheRef.current.clear();
-      weekInflightRef.current.clear();
+      clearWeekCaches();
       void fetchWeekData(weekStart, { force: true, includeTravel: true })
         .then((fullWeek) => {
           setData((prev) => (prev && prev.week_start !== fullWeek.week_start ? prev : fullWeek));
@@ -762,7 +653,7 @@ export function useTimeTracker({
 
     window.addEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
     return () => window.removeEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
-  }, [fetchWeekData, weekStart]);
+  }, [fetchWeekData, weekStart, clearWeekCaches]);
 
   function handleEditDay(date: string) {
     setSelectedDate(date);
@@ -775,20 +666,10 @@ export function useTimeTracker({
   const selectedDayUsesBreakCounter = Boolean(
     selectedDay && selectedDay.date >= currentWeekStartKey,
   );
-  const formTotalBreakMins = useMemo(
-    () => formBreaks.reduce((sum, item) => sum + Math.max(0, item.mins || 0), 0),
-    [formBreaks],
-  );
-  function setFormBreakCounter(totalMins: number) {
-    const safeTotal = Math.max(0, totalMins);
-    setFormBreaks(safeTotal > 0 ? [{ name: "Break", mins: safeTotal }] : []);
-  }
   const computedNet = computeNetMins(formStart, formStop, selectedDaySupportsBreaks ? formBreaks : []);
   const panelDateLabel = selectedDay ? dayLabel(selectedDay.date) : "Select a day";
   const activeWeekData = data?.week_start === weekStart ? data : null;
   const hasActiveWeekData = Boolean(activeWeekData);
-  const calendarTodayKey = toDateKey(new Date());
-  const calendarMonthWeeks = useMemo(() => buildMonthWeeks(calendarMonth), [calendarMonth]);
   const weekdayDays = useMemo(() => (activeWeekData?.days ?? []).slice(0, 5), [activeWeekData?.days]);
   const weekendDays = useMemo(() => (activeWeekData?.days ?? []).slice(5, 7), [activeWeekData?.days]);
 
@@ -805,15 +686,15 @@ export function useTimeTracker({
     revealedDayCount,
     showUpToDateSweep,
     selectedDate,
-    calendarOpen,
-    setCalendarOpen,
-    calendarView,
-    setCalendarView,
-    calendarYear,
-    setCalendarYear,
-    calendarMonth,
-    setCalendarMonth,
-    calendarRef,
+    calendarOpen: calendar.calendarOpen,
+    setCalendarOpen: calendar.setCalendarOpen,
+    calendarView: calendar.calendarView,
+    setCalendarView: calendar.setCalendarView,
+    calendarYear: calendar.calendarYear,
+    setCalendarYear: calendar.setCalendarYear,
+    calendarMonth: calendar.calendarMonth,
+    setCalendarMonth: calendar.setCalendarMonth,
+    calendarRef: calendar.calendarRef,
     editorOpen,
     editorPortalReady,
     dayDetailsLoading,
@@ -822,17 +703,17 @@ export function useTimeTracker({
     compSourceRows,
     compTotalMins,
     formStart,
-    setFormStart,
+    setFormStart: form.setFormStart,
     formStop,
-    setFormStop,
+    setFormStop: form.setFormStop,
     formHoliday,
-    setFormHoliday,
+    setFormHoliday: form.setFormHoliday,
     formPublicHoliday,
-    setFormPublicHoliday,
+    setFormPublicHoliday: form.setFormPublicHoliday,
     formSickLeave,
-    setFormSickLeave,
+    setFormSickLeave: form.setFormSickLeave,
     formBreaks,
-    setFormBreaks,
+    setFormBreaks: form.setFormBreaks,
     currentWeekStartKey,
     returnToWeekdays,
     handleSaveDay,
@@ -842,14 +723,14 @@ export function useTimeTracker({
     handleEditDay,
     selectedDaySupportsBreaks,
     selectedDayUsesBreakCounter,
-    formTotalBreakMins,
-    setFormBreakCounter,
+    formTotalBreakMins: form.formTotalBreakMins,
+    setFormBreakCounter: form.setFormBreakCounter,
     computedNet,
     panelDateLabel,
     activeWeekData,
     hasActiveWeekData,
-    calendarTodayKey,
-    calendarMonthWeeks,
+    calendarTodayKey: calendar.calendarTodayKey,
+    calendarMonthWeeks: calendar.calendarMonthWeeks,
     weekdayDays,
     weekendDays,
   };
