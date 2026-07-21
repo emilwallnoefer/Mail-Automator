@@ -56,6 +56,13 @@ export function useTimeTracker({
   // Monotonic counter so a slow background refresh can't overwrite the result
   // of a newer one (e.g. when saving several days in quick succession).
   const refreshSeqRef = useRef(0);
+  // Bumped by every optimistic local edit. A reconcile compares this before and
+  // after its fetch so it can tell whether the response it got back is already
+  // out of date with respect to what the user has done since.
+  const writeSeqRef = useRef(0);
+  // Set below once scheduleReconcile exists; lets refreshWeek re-arm the
+  // debounce without a circular useCallback dependency.
+  const scheduleReconcileRef = useRef<(() => void) | null>(null);
 
   const { weekCacheRef, fetchWeekData, prefetchNearbyWeeks, clearWeekCaches } = useWeekCache(
     apiBase,
@@ -205,12 +212,23 @@ export function useTimeTracker({
     const seq = ++refreshSeqRef.current;
     const targetWeek = weekStart;
     const previous = weekCacheRef.current.get(targetWeek);
+    // Snapshot the write counter: any optimistic edit that lands while the GET
+    // below is in flight makes this response stale by definition, because the
+    // server had not seen that edit when it built the payload.
+    const writeSeqAtStart = writeSeqRef.current;
     // Reconcile hours / comp / bank only — never re-fetch the slow Google
     // Sheets travel data here. Re-pulling travel on every save was the main
     // source of the post-edit lag; we carry the already-loaded travel forward.
     const fresh = await fetchWeekData(targetWeek, { force: true, includeTravel: false });
     // Drop the result if a newer refresh started or the week changed meanwhile.
     if (seq !== refreshSeqRef.current) return;
+    // Drop it too if the user edited anything mid-flight — applying it would
+    // visibly revert that edit until the next reconcile ("save → unsave →
+    // save"). Re-arm instead so the newer state still gets reconciled.
+    if (writeSeqRef.current !== writeSeqAtStart || pendingWritesRef.current > 0) {
+      scheduleReconcileRef.current?.();
+      return;
+    }
     const merged: WeekResponse = previous?.includes_travel
       ? {
           ...fresh,
@@ -247,6 +265,8 @@ export function useTimeTracker({
     reconcileTimerRef.current = window.setTimeout(runReconcile, RECONCILE_DEBOUNCE_MS);
   }, [runReconcile]);
 
+  scheduleReconcileRef.current = scheduleReconcile;
+
   useEffect(() => {
     return () => {
       if (reconcileTimerRef.current != null) window.clearTimeout(reconcileTimerRef.current);
@@ -257,9 +277,30 @@ export function useTimeTracker({
     const current = weekCacheRef.current.get(weekStart);
     if (current?.includes_travel) return;
     setDayDetailsLoading(true);
+    // This fires on every day-open, so a save very often lands while it is
+    // still in flight — see the note on `writeSeqRef`.
+    const writeSeqAtStart = writeSeqRef.current;
     try {
       const fullWeek = await fetchWeekData(weekStart, { force: true, includeTravel: true });
-      setData(fullWeek);
+      const staleForLocalEdits =
+        writeSeqRef.current !== writeSeqAtStart || pendingWritesRef.current > 0;
+      if (!staleForLocalEdits) {
+        setData(fullWeek);
+        return;
+      }
+      // The user edited a day while this was loading. Replacing the week
+      // wholesale would revert that edit, so graft on only the travel fields
+      // (which the user never edits) and keep the local day values.
+      const live = dataRef.current;
+      if (!live || live.week_start !== fullWeek.week_start) return;
+      const merged: WeekResponse = {
+        ...live,
+        travel_by_date: fullWeek.travel_by_date,
+        travel_debug: fullWeek.travel_debug,
+        includes_travel: true,
+      };
+      weekCacheRef.current.set(merged.week_start, merged);
+      setData(merged);
     } catch {
       // Keep editor interaction responsive even if details fetch fails.
     } finally {
@@ -293,6 +334,8 @@ export function useTimeTracker({
   const patchDayInCurrentWeek = useCallback(
     (date: string, updater: (day: DayData) => DayData, options?: { bankDeltaMins?: number }) => {
       const bankDelta = options?.bankDeltaMins ?? 0;
+      // Mark local state as newer than any reconcile response already in flight.
+      writeSeqRef.current += 1;
       setData((prev) => {
         if (!prev) return prev;
         const dayIndex = prev.days.findIndex((day) => day.date === date);
@@ -642,8 +685,24 @@ export function useTimeTracker({
     // sheet with the new columns for the visible week right away.
     function onTravelMappingChanged() {
       clearWeekCaches();
+      const writeSeqAtStart = writeSeqRef.current;
       void fetchWeekData(weekStart, { force: true, includeTravel: true })
         .then((fullWeek) => {
+          // Same staleness rule as the other server-payload appliers: never let
+          // a response that predates a local edit overwrite that edit.
+          if (writeSeqRef.current !== writeSeqAtStart || pendingWritesRef.current > 0) {
+            const live = dataRef.current;
+            if (!live || live.week_start !== fullWeek.week_start) return;
+            const merged: WeekResponse = {
+              ...live,
+              travel_by_date: fullWeek.travel_by_date,
+              travel_debug: fullWeek.travel_debug,
+              includes_travel: true,
+            };
+            weekCacheRef.current.set(merged.week_start, merged);
+            setData(merged);
+            return;
+          }
           setData((prev) => (prev && prev.week_start !== fullWeek.week_start ? prev : fullWeek));
         })
         .catch(() => {
@@ -653,7 +712,7 @@ export function useTimeTracker({
 
     window.addEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
     return () => window.removeEventListener("ma-travel-mapping-changed", onTravelMappingChanged);
-  }, [fetchWeekData, weekStart, clearWeekCaches]);
+  }, [fetchWeekData, weekStart, clearWeekCaches, weekCacheRef]);
 
   function handleEditDay(date: string) {
     setSelectedDate(date);
