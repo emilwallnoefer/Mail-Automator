@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { csvResponse, toCsv } from "@/lib/csv";
+
+const CSV_HEADERS = [
+  "Clicked at",
+  "Type",
+  "Recipient",
+  "Company",
+  "Email",
+  "Subject",
+  "Mail type",
+  "Link label",
+  "Link URL",
+  "User agent",
+];
 
 type ClickRow = {
   id: string;
@@ -49,17 +63,23 @@ export async function GET(request: Request) {
     ? Math.min(daysRaw, RANGE_DAYS_MAX)
     : RANGE_DAYS_DEFAULT;
   const includeBots = url.searchParams.get("include_bots") === "1";
+  const asCsv = url.searchParams.get("format") === "csv";
 
   const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   const admin = createAdminClient();
+
+  // A CSV export should cover the whole range, not just one UI page.
+  const CSV_EXPORT_MAX = 1000;
+  const queryLimit = asCsv ? CSV_EXPORT_MAX : limit;
+  const queryOffset = asCsv ? 0 : offset;
 
   let clicksQuery = admin
     .from("mail_link_clicks")
     .select("id, link_id, clicked_at, is_likely_bot, user_agent, referer", { count: "exact" })
     .gte("clicked_at", rangeStart.toISOString())
     .order("clicked_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(queryOffset, queryOffset + queryLimit - 1);
   if (!includeBots) clicksQuery = clicksQuery.eq("is_likely_bot", false);
 
   const { data: clicks, error: clicksError, count } = await clicksQuery;
@@ -69,6 +89,9 @@ export async function GET(request: Request) {
   const clickRows = (clicks ?? []) as ClickRow[];
 
   if (clickRows.length === 0) {
+    if (asCsv) {
+      return csvResponse(toCsv(CSV_HEADERS, []), `mail-clicks-${days}d.csv`);
+    }
     return NextResponse.json({
       clicks: [],
       total: count ?? 0,
@@ -138,6 +161,25 @@ export async function GET(request: Request) {
         : null,
     };
   });
+
+  if (asCsv) {
+    const csv = toCsv(
+      CSV_HEADERS,
+      payload.map((c) => [
+        c.clicked_at,
+        c.is_likely_bot ? "scanner" : "real",
+        c.send?.recipient_name ?? "",
+        c.send?.company_name ?? "",
+        c.send?.recipient_email ?? "",
+        c.send?.subject ?? "",
+        c.send?.mail_type ?? "",
+        c.link?.link_label ?? c.link?.link_key ?? "",
+        c.link?.original_url ?? "",
+        c.user_agent ?? "",
+      ]),
+    );
+    return csvResponse(csv, `mail-clicks-${days}d.csv`);
+  }
 
   return NextResponse.json({
     clicks: payload,

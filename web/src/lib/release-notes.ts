@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-20-ui-completion-pass",
+    date: "Jul 20, 2026",
+    title: "Cleaner notifications, mobile tables & CSV export",
+    highlights: [
+      "Unified, consistent toast notifications across the day logger and team chat, keeping chat's Undo.",
+      "Admin time and users tables, plus mail-tracking recipients, now read cleanly on phones.",
+      "Better keyboard access: focus stays inside the day editor and chat popup, and returns where it started on close.",
+      "Export admin time overview, mail recipients, and clicks to CSV with one tap.",
+    ],
+  },
+  {
     version: "2026-07-17-ui-polish",
     date: "Jul 17, 2026",
     title: "Snappier, cleaner interface",

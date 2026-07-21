@@ -1,6 +1,6 @@
 "use client";
 
-import { Notice } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import {
   useCallback,
   useEffect,
@@ -337,6 +337,7 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
                       <button
                         type="button"
                         onClick={() => setSection(entry.id)}
+                        aria-current={active ? "page" : undefined}
                         className={`flex w-full items-center border-l-[3px] px-3 py-2.5 text-left text-sm transition ${
                           active
                             ? "border-amber-400 bg-amber-400/15 font-medium text-warn"
@@ -388,6 +389,16 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
                     />
                     <span className="ml-auto text-xs text-ink-3/80">{weekRangeLabel}</span>
                     <FreshnessPill updatedAt={overviewUpdatedAt} loading={overviewLoading} />
+                    <Button
+                      variant="glass-quiet"
+                      size="sm"
+                      disabled={!overview || overview.users.length === 0}
+                      onClick={() => {
+                        window.location.href = `/api/admin/time-overview?week=${encodeURIComponent(weekStart)}&format=csv`;
+                      }}
+                    >
+                      Export CSV
+                    </Button>
                   </div>
 
                   {overviewError ? (
@@ -400,7 +411,63 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
                     {overviewUpdatedAt != null ? (
                       <span key={`sweep-${overviewUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
                     ) : null}
-                    <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
+                    {/* Mobile: stacked cards (below md). */}
+                    <div className="space-y-2 md:hidden">
+                      {overviewLoading && !overview ? (
+                        <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+                          Loading overview...
+                        </p>
+                      ) : overview?.users.length === 0 ? (
+                        <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+                          No users found.
+                        </p>
+                      ) : (
+                        overview?.users.map((user) => (
+                          <div key={user.user_id} className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm text-ink">{user.email || user.user_id}</p>
+                                <p className="text-[11px] text-ink-3">{userRoleLabel(user.role)}</p>
+                                {user.error ? <p className="text-[11px] text-danger">{user.error}</p> : null}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDrilldownUserId(user.user_id);
+                                  setDrilldownEmail(user.email);
+                                }}
+                                className="shrink-0 rounded-lg border border-glass/20 bg-glass/10 px-2 py-1 text-xs hover:bg-glass/15"
+                              >
+                                View week
+                              </button>
+                            </div>
+                            <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                              <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+                                <dt className="text-[11px] text-ink-4">Weekly</dt>
+                                <dd className="text-xs tabular-nums text-ink">{fmtHM(user.weekly_total_mins)}</dd>
+                              </div>
+                              <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+                                <dt className="text-[11px] text-ink-4">Overtime</dt>
+                                <dd className="text-xs tabular-nums text-ink">{fmtSignedHM(user.overtime_bank_mins)}</dd>
+                              </div>
+                              <div className="rounded-lg border border-glass/10 bg-glass/[0.04] px-2 py-1.5">
+                                <dt className="text-[11px] text-ink-4">Missing</dt>
+                                <dd className="text-xs tabular-nums">
+                                  {user.missing_days > 0 ? (
+                                    <span className="text-danger">{user.missing_days}</span>
+                                  ) : (
+                                    <span className="text-ink-4">0</span>
+                                  )}
+                                </dd>
+                              </div>
+                            </dl>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Desktop: full table (md and up). */}
+                    <div className="hidden overflow-x-auto rounded-xl border border-glass/10 bg-glass/5 md:block">
                       <table className="min-w-full text-left text-sm">
                         <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
                           <tr>
@@ -498,7 +565,58 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
                     {usersUpdatedAt != null ? (
                       <span key={`sweep-${usersUpdatedAt}`} aria-hidden className="data-refresh-sweep" />
                     ) : null}
-                    <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/5">
+                    {/* Mobile: stacked cards (below md). */}
+                    <div className="space-y-2 md:hidden">
+                      {usersLoading && users.length === 0 ? (
+                        <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+                          Loading users...
+                        </p>
+                      ) : filteredUsers.length === 0 ? (
+                        <p className="rounded-xl border border-glass/10 bg-glass/5 px-3 py-6 text-center text-sm text-ink-3/80">
+                          {users.length === 0 ? "No users found." : "No users match your filter."}
+                        </p>
+                      ) : (
+                        filteredUsers.map((user) => {
+                          const pending = Boolean(rolePending[user.id]);
+                          const currentValue: UserRole | "none" = user.role ?? "none";
+                          return (
+                            <div key={user.id} className="rounded-xl border border-glass/10 bg-glass/5 p-3">
+                              <p className="truncate text-sm text-ink">{user.email || user.id}</p>
+                              <p className="mt-0.5 text-[11px] text-ink-4">
+                                {userRoleLabel(user.role)}
+                                {" · last sign-in "}
+                                {user.last_sign_in_at
+                                  ? new Date(user.last_sign_in_at).toLocaleString()
+                                  : "-"}
+                              </p>
+                              <label className="mt-3 flex items-center gap-2">
+                                <span className="text-[11px] text-ink-4">Change role</span>
+                                <select
+                                  value={currentValue}
+                                  disabled={pending}
+                                  onChange={(event) => {
+                                    const value = event.target.value as UserRole | "none";
+                                    const next = value === "none" ? null : value;
+                                    void changeRole(user.id, next);
+                                  }}
+                                  className="flex-1 rounded-lg border border-glass/20 bg-panel/80 px-2 py-1 text-xs text-ink"
+                                >
+                                  {ROLE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                {pending ? <span className="text-[11px] text-ink-4">Saving...</span> : null}
+                              </label>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Desktop: full table (md and up). */}
+                    <div className="hidden overflow-x-auto rounded-xl border border-glass/10 bg-glass/5 md:block">
                       <table className="min-w-full text-left text-sm">
                         <thead className="bg-glass/5 text-xs uppercase tracking-wider text-ink-3/80">
                           <tr>

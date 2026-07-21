@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addDays, getWeekStartDate, toDateString } from "@/lib/time-tracker-queries";
+import { csvResponse, toCsv } from "@/lib/csv";
 
 type RecipientGroup = {
   key: string;
@@ -31,6 +32,32 @@ const SEARCH_RESULT_LIMIT = 200;
 const RECENT_PAGE_DEFAULT = 10;
 const RECENT_PAGE_MAX = 100;
 
+// Return the recipient payload as JSON, or as a CSV download when `?format=csv`
+// is present. The CSV covers whatever recipients the current scope resolved.
+function respond(
+  url: URL,
+  payload: { recipients: RecipientGroup[] } & Record<string, unknown>,
+  filenameBase: string,
+) {
+  if (url.searchParams.get("format") === "csv") {
+    const csv = toCsv(
+      ["Recipient", "Company", "Mails", "Real clicks", "Scanner clicks", "Unique senders", "Last click", "Last send"],
+      payload.recipients.map((r) => [
+        r.recipient_name,
+        r.company_name ?? "",
+        r.sends_count,
+        r.real_clicks,
+        r.bot_clicks,
+        r.unique_senders,
+        r.last_click_at ?? "",
+        r.last_send_at,
+      ]),
+    );
+    return csvResponse(csv, `${filenameBase}.csv`);
+  }
+  return NextResponse.json(payload);
+}
+
 export async function GET(request: Request) {
   const guard = await guardAdmin();
   if (!guard.ok) return guard.response;
@@ -57,19 +84,23 @@ export async function GET(request: Request) {
       recipients: [],
       totals: { mails_sent: 0, recipients: 0, real_clicks: 0, bot_clicks: 0 },
     }) as RecipientPayload;
-    return NextResponse.json({
-      scope: "all" as const,
-      query,
-      week_start: null,
-      recipients: payload.recipients ?? [],
-      totals: {
-        mails_sent: payload.totals?.mails_sent ?? 0,
-        recipients: payload.totals?.recipients ?? 0,
-        real_clicks: payload.totals?.real_clicks ?? 0,
-        bot_clicks: payload.totals?.bot_clicks ?? 0,
-        truncated: Boolean(payload.totals?.truncated),
+    return respond(
+      url,
+      {
+        scope: "all" as const,
+        query,
+        week_start: null,
+        recipients: payload.recipients ?? [],
+        totals: {
+          mails_sent: payload.totals?.mails_sent ?? 0,
+          recipients: payload.totals?.recipients ?? 0,
+          real_clicks: payload.totals?.real_clicks ?? 0,
+          bot_clicks: payload.totals?.bot_clicks ?? 0,
+          truncated: Boolean(payload.totals?.truncated),
+        },
       },
-    });
+      "mail-recipients-search",
+    );
   }
 
   const weekStartDate = getWeekStartDate(url.searchParams.get("week") ?? undefined);
@@ -92,19 +123,23 @@ export async function GET(request: Request) {
     totals: { mails_sent: 0, recipients: 0, real_clicks: 0, bot_clicks: 0 },
   }) as RecipientPayload;
 
-  return NextResponse.json({
-    scope: "week" as const,
-    query: "",
-    week_start: toDateString(weekStartDate),
-    recipients: payload.recipients ?? [],
-    totals: {
-      mails_sent: payload.totals?.mails_sent ?? 0,
-      recipients: payload.totals?.recipients ?? 0,
-      real_clicks: payload.totals?.real_clicks ?? 0,
-      bot_clicks: payload.totals?.bot_clicks ?? 0,
-      truncated: false,
+  return respond(
+    url,
+    {
+      scope: "week" as const,
+      query: "",
+      week_start: toDateString(weekStartDate),
+      recipients: payload.recipients ?? [],
+      totals: {
+        mails_sent: payload.totals?.mails_sent ?? 0,
+        recipients: payload.totals?.recipients ?? 0,
+        real_clicks: payload.totals?.real_clicks ?? 0,
+        bot_clicks: payload.totals?.bot_clicks ?? 0,
+        truncated: false,
+      },
     },
-  });
+    `mail-recipients-week-${toDateString(weekStartDate)}`,
+  );
 }
 
 type RecentPayload = RecipientPayload & { total?: number };
@@ -134,18 +169,22 @@ async function recentRecipients(admin: ReturnType<typeof createAdminClient>, url
     totals: { mails_sent: 0, recipients: 0, real_clicks: 0, bot_clicks: 0 },
   }) as RecentPayload;
 
-  return NextResponse.json({
-    scope: "recent" as const,
-    query: "",
-    week_start: null,
-    recipients: payload.recipients ?? [],
-    total: payload.total ?? payload.totals?.recipients ?? 0,
-    totals: {
-      mails_sent: payload.totals?.mails_sent ?? 0,
-      recipients: payload.totals?.recipients ?? 0,
-      real_clicks: payload.totals?.real_clicks ?? 0,
-      bot_clicks: payload.totals?.bot_clicks ?? 0,
-      truncated: false,
+  return respond(
+    url,
+    {
+      scope: "recent" as const,
+      query: "",
+      week_start: null,
+      recipients: payload.recipients ?? [],
+      total: payload.total ?? payload.totals?.recipients ?? 0,
+      totals: {
+        mails_sent: payload.totals?.mails_sent ?? 0,
+        recipients: payload.totals?.recipients ?? 0,
+        real_clicks: payload.totals?.real_clicks ?? 0,
+        bot_clicks: payload.totals?.bot_clicks ?? 0,
+        truncated: false,
+      },
     },
-  });
+    "mail-recipients-recent",
+  );
 }
