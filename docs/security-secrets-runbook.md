@@ -11,7 +11,7 @@ This runbook defines how secrets are stored, rotated, and safely handled for thi
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `GOOGLE_OAUTH_REDIRECT_URI`
-- `NEXT_PUBLIC_SITE_URL` — public origin (e.g. `https://mail.flyability.com`); used to build `/r/<id>` link tracking URLs in outbound email HTML.
+- `NEXT_PUBLIC_SITE_URL` — public origin (currently `https://flya.space`); used to build `/r/<id>` link tracking URLs in outbound email HTML. Not a secret, but load-bearing: it is baked in at build time, so changing it requires a redeploy.
 - `TRACKING_SALT` — random secret (≥32 bytes) mixed into the SHA-256 hash of click IPs in `mail_link_clicks`. Never store raw IPs. Rotate on suspected leak; rotation invalidates correlation between past and future click hashes.
 
 ## 2) Storage Policy
