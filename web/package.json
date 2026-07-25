@@ -22,7 +22,7 @@
     "framer-motion": "^12.38.0",
     "google-auth-library": "^10.9.0",
     "html-to-image": "^1.11.13",
-    "next": "16.2.6",
+    "next": "16.2.12",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "zod": "^4.4.3"
@@ -36,13 +36,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5",
     "vitest": "^4.1.10"
   },
   "overrides": {
-    "gaxios": "7.1.4"
+    "gaxios": "7.1.4",
+    "postcss": "^8.5.23",
+    "sharp": "^0.35.3"
   }
 }
