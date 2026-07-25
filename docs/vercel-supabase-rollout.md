@@ -9,10 +9,12 @@ This guide deploys the web app in `web/` for you and one colleague.
    - `Project URL`
    - `anon public key`
 3. In `Authentication -> URL Configuration` set:
-   - **Site URL**: your Vercel production URL (later), e.g. `https://mail-helper.vercel.app`
+   - **Site URL**: the production origin — currently `https://flya.space`
    - **Redirect URLs**:
      - `http://localhost:3000/auth/callback`
-     - `https://mail-helper.vercel.app/auth/callback`
+     - `https://flya.space/auth/callback`
+     - `https://flya.space/**`
+     - the previous production origin (`https://mail-automator.vercel.app/auth/callback`) stays listed; see `domain-change-runbook.md`
 4. In `Authentication -> Providers -> Email`, enable email/password sign-in.
 
 ## 2) Local run

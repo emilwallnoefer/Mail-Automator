@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-25-flya-space-domain",
+    date: "Jul 25, 2026",
+    title: "New home: flya.space",
+    highlights: [
+      "The dashboard now lives at flya.space — update your bookmarks.",
+      "You were signed out once during the move; the old address still works.",
+      "Tracked links in new emails use flya.space; links in already-sent emails keep working.",
+      "Reminder emails now come from noreply@flya.space.",
+    ],
+  },
+  {
     version: "2026-07-20-ui-completion-pass",
     date: "Jul 20, 2026",
     title: "Cleaner notifications, mobile tables & CSV export",
