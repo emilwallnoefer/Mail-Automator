@@ -29,11 +29,22 @@ cd web && npm run import:hourlogger   # node scripts/import-hourlogger.mjs
 
 Tests (run from `web/`): `npm run test` — Vitest unit suite (`src/**/*.test.ts`, colocated with sources); `npm run test:e2e` — Playwright smoke (`e2e/`, needs `.env.local` with the public Supabase vars and a one-time `npx playwright install chromium`); `npm run test:rls` — RLS smoke script. New pure-logic modules should get a colocated `*.test.ts`.
 
+## Dependencies & CI
+
+`.github/workflows/security-baseline.yml` is the only CI job. On every PR touching `web/**` it runs `npm ci`, `npm run lint`, then `npm audit --omit=dev --audit-level=high`. That last gate fails the **whole PR** on any high-severity advisory in a production dependency — including PRs that only touch markdown. A red check on an unrelated PR usually means the gate is failing on `main`, not that the PR broke something.
+
+Two rules when touching `web/package.json`:
+
+- **Regenerate the lockfile with npm 10**, not whatever npm you have locally: `npx -y npm@10 install --package-lock-only`. The runner's Node 22 ships npm 10, and the two majors resolve nested optional platform packages differently (`@img/sharp-wasm32` + `@rolldown/binding-wasm32-wasi` both want `@emnapi/*`, one via a range and one via an exact pin). A lock written by npm 11 installs fine on macOS and then fails `npm ci` on the runner with `Missing: @emnapi/core@… from lock file`. Validate before pushing with `npx -y npm@10 ci --dry-run` against a copy of `package.json` + `package-lock.json`.
+- **Never delete `package-lock.json` to regenerate it.** That re-resolves every semver range at once; the last time it silently pulled newer eslint plugins whose React Compiler rules flagged 34 pre-existing violations across the components. Use `--package-lock-only` so unrelated packages keep the resolution they had.
+
+Vulnerabilities that live *inside* `next` (it vendors a pinned `postcss` and an optional `sharp`) can't be fixed by bumping next alone — npm will propose an absurd downgrade. Pin them in the `overrides` block in `web/package.json` instead.
+
 ## Big-picture architecture (`web/`)
 
 ### Auth & roles
 
-- Supabase handles auth; the SSR client lives in `src/lib/supabase/server.ts` and the browser client in `client.ts`. `middleware.ts` refreshes the session cookie on every request.
+- Supabase handles auth; the SSR client lives in `src/lib/supabase/server.ts` and the browser client in `client.ts`. `src/proxy.ts` (Next 16's rename of middleware) refreshes the session cookie and gates `/dashboard`, `/settings`, `/login` via `lib/supabase/middleware.ts`. It is not the only guard — both gated pages re-check the session server-side and redirect, so a proxy bypass exposes nothing.
 - `src/lib/supabase/admin.ts` is `"server-only"` and holds the **service-role** client. It bypasses RLS — only call it after a successful `guardAdmin()` / `guardTimeViewer()` check.
 - Role resolution: `ADMIN_EMAILS` (env, comma-separated) → admin. Otherwise `user_metadata.role` ∈ {`sales`, `eu_pilot`, `us_pilot`, `hr`}. `hr` is admin-assigned only and gets read-only access to team-time endpoints via `guardTimeViewer()`. See `src/lib/admin-guard.ts` and `src/lib/user-role.ts`.
 - All `/api/admin/*` routes must start with `guardAdmin()` or `guardTimeViewer()` before touching the service-role client. This is the single most important security invariant.
