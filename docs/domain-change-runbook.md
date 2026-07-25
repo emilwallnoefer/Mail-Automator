@@ -99,20 +99,18 @@ Resend displays **absolute** record names; Vercel's DNS panel wants the name
 - **Google** — new redirect URI added to "Web client 1" in project
   `mail-automator-drafts`. Existing Gmail connections survived; no reconnect was
   needed, since stored refresh tokens are unaffected by redirect-URI changes.
+  The OAuth consent screen was published out of "Testing" straight afterwards —
+  Google expires refresh tokens for unpublished apps after 7 days, which had
+  been forcing users to reconnect Gmail every week.
 - **Supabase** — Site URL updated; six Redirect URLs, both origins present.
 - **Verification** — all checks passed, including an older
   `mail-automator.vercel.app/r/...` link still resolving and recording, and a
   test reminder delivered to Inbox (not spam) with no unverified-sender warning.
 
-### Known follow-ups, unrelated to the domain
+### What Resend actually carries
 
-- The OAuth consent screen for `mail-automator-drafts` is in **Testing**. Google
-  expires refresh tokens for unpublished apps after 7 days, so Gmail connections
-  need periodic reconnecting. Publishing the app fixes it.
-- Resend deliverability Insights suggests not sending from a `no-reply` address.
-  Setting `RESEND_REPLY_TO` is the cheap mitigation. Its "use a subdomain"
-  suggestion is not worth acting on at this volume.
-- Only two internal flows send via Resend — the weekly time-log reminder and
-  `web/src/lib/security/breach-alert.ts`. Customer training email goes out as
-  Gmail **drafts** from the sender's own account, never through Resend. Anything
-  that breaks Resend therefore affects internal mail only.
+Only two internal flows send via Resend — the weekly time-log reminder and
+`web/src/lib/security/breach-alert.ts`. Customer training email goes out as
+Gmail **drafts** from the sender's own account, never through Resend. Anything
+that breaks Resend therefore affects internal mail only, which is worth
+remembering before paying for a plan upgrade to solve a sender-address problem.
