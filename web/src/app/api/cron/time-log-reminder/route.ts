@@ -16,6 +16,7 @@ import {
   type SendEmailResult,
 } from "@/lib/email/resend";
 import { readWorkspaceSettings } from "@/lib/workspace-settings";
+import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -302,6 +303,29 @@ function timingSafeStrEqual(a: string, b: string): boolean {
   return timingSafeEqual(ah, bh);
 }
 
+/**
+ * Reject state-changing invocations that arrive as a CROSS-SITE request.
+ *
+ * This route sends real email but is a GET, and Supabase session cookies are
+ * SameSite=Lax — which means they ARE attached to a cross-site top-level
+ * navigation. So a link an admin clicks anywhere ("look at this")
+ * fires `?send_test=attacker@evil.example` or a full `?force=1` reminder blast
+ * with no confirmation. See security audit run-3, F8.
+ *
+ * `Sec-Fetch-Site` distinguishes the cases precisely:
+ *   none         -> typed/bookmarked by the admin (the documented runbook flow)
+ *   same-origin  -> our own dashboard calling it
+ *   same-site    -> another subdomain
+ *   cross-site   -> somebody else's page linked here  <- block this
+ *
+ * Non-browser callers (Vercel Cron, curl) send no Sec-Fetch-* headers at all and
+ * are unaffected; they are authorized by CRON_SECRET regardless.
+ */
+function isCrossSiteRequest(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  return site === "cross-site" || site === "same-site";
+}
+
 async function authorize(request: Request): Promise<
   { ok: true; mode: "cron" | "admin" } | { ok: false; response: NextResponse }
 > {
@@ -324,11 +348,40 @@ export async function GET(request: Request) {
   const auth = await authorize(request);
   if (!auth.ok) return auth.response;
 
+  // This route sends mail on a verified domain and had no limit at all, so a
+  // single admin session (or a leaked CRON_SECRET) was an unmetered outbound
+  // mail primitive. Keyed per-IP; generous enough that the two weekly Vercel
+  // cron hits and ordinary manual runs never touch it. (run-3, F8)
+  const limitResult = checkRateLimit(`cron-reminder:${getClientIp(request)}`, {
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+  });
+  if (!limitResult.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Please retry later." },
+      { status: 429, headers: createRateLimitHeaders(limitResult) },
+    );
+  }
+
   const url = new URL(request.url);
   const isDryRun = url.searchParams.get("dry") === "1";
   const isForced = url.searchParams.get("force") === "1";
   const preview = url.searchParams.get("preview");
   const sendTestTo = url.searchParams.get("send_test")?.trim() ?? "";
+
+  // `preview` renders without sending and a dry run only writes skip rows, so
+  // both stay reachable from anywhere. Every other shape of this request can put
+  // mail on the wire — `send_test`, `force`, and equally the plain unforced call
+  // when it lands inside the real Monday 09:00 Zurich window. Refuse those if we
+  // were navigated here from another site.
+  const isPreview = preview === "html" || preview === "text";
+  const sendsMail = !isPreview && !isDryRun;
+  if (sendsMail && isCrossSiteRequest(request)) {
+    return NextResponse.json(
+      { error: "Cross-site invocation refused for a mail-sending request." },
+      { status: 403 },
+    );
+  }
 
   if (preview === "html" || preview === "text") {
     return buildPreviewResponse(request, preview, url);

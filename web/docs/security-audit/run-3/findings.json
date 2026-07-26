@@ -1,0 +1,623 @@
+[
+  {
+    "verdict": "confirmed",
+    "title": "SECURITY DEFINER RPC tt_refresh_overtime_bank_stats allows any anon/authenticated caller to read and write another user's overtime data",
+    "description": "public.tt_refresh_overtime_bank_stats(p_user uuid, p_today date) is declared SECURITY DEFINER, so it reads time_day_logs and time_comp_adjustments with RLS bypassed. It takes the target user id as an argument and never compares it to auth.uid(). It RETURNS that user's total overtime-bank minutes and upserts their time_tracker_user_stats row. Critically, its grant is not paired with `revoke all on function ... from public` — unlike all 11 other RPCs in this schema, every one of which does revoke. Postgres grants EXECUTE TO PUBLIC by default on CREATE FUNCTION, and CREATE OR REPLACE preserves the existing ACL, so both `anon` and `authenticated` hold EXECUTE across all five historical definitions of the function. An attacker calls it through PostgREST with the public anon key and a victim uuid and receives that employee's overtime balance — data the RLS policies on time_day_logs (time-tracker-schema.sql:63) and time_comp_adjustments (:140) exist specifically to hide. Victim uuids are trivially obtainable: chat_messages.sender_id is readable by every authenticated user under a `using (true)` policy that is intentional for the shared team channel. The call also writes the victim's cached stats row, bypassing that table's own-row-only policies.",
+    "root_cause": "The function was created without `revoke all on function ... from public`, leaving Postgres's default PUBLIC EXECUTE grant in place, and its body performs a SECURITY DEFINER read/write keyed on a caller-supplied user id with no auth.uid() authorization check.",
+    "intended_behavior": "A user's time-tracker data is visible only to that user (via RLS) and to admins/HR (via service-role RPCs behind guardAdmin/guardTimeViewer). The overtime-bank refresh is meant to recompute the caller's own cached balance, and is only ever invoked with the caller's own id by the application.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/supabase/2026-07-16-public-holiday.sql",
+        "line": 99,
+        "scope": "grant execute",
+        "description": "grant execute ... to authenticated, with no preceding `revoke all on function ... from public` — so the Postgres default PUBLIC EXECUTE remains and anon can call it too."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/supabase/2026-07-16-public-holiday.sql",
+        "line": 26,
+        "scope": "tt_refresh_overtime_bank_stats",
+        "description": "`security definer` — the body executes with the owner's rights, bypassing RLS on the tables it reads."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/supabase/2026-07-16-public-holiday.sql",
+        "line": 62,
+        "scope": "tt_refresh_overtime_bank_stats",
+        "description": "Selects from time_day_logs and time_comp_adjustments filtered only by `user_id = p_user` — the caller-supplied argument — and returns the aggregate. No auth.uid() comparison anywhere in the function."
+      },
+      {
+        "kind": "sink",
+        "file": "web/supabase/2026-07-16-public-holiday.sql",
+        "line": 78,
+        "scope": "tt_refresh_overtime_bank_stats",
+        "description": "Upserts public.time_tracker_user_stats for p_user, a cross-user write that bypasses that table's own-row insert/update policies."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "None beyond possession of the public NEXT_PUBLIC_SUPABASE_ANON_KEY, which ships in the client bundle. An authenticated session makes victim-uuid discovery easier (chat_messages.sender_id) but is not required to call the function."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Any employee with a normal (non-admin, non-HR) account, or any internet caller who has the public anon key and a target user uuid.",
+      "payloads": [
+        "POST /rest/v1/rpc/tt_refresh_overtime_bank_stats HTTP/1.1\napikey: <NEXT_PUBLIC_SUPABASE_ANON_KEY>\nContent-Type: application/json\n\n{\"p_user\": \"<victim-user-uuid>\"}",
+        "supabase.rpc('tt_refresh_overtime_bank_stats', { p_user: '<victim-user-uuid>' })"
+      ],
+      "instructions": [
+        "Sign in as an ordinary user (or use the anon key directly).",
+        "Collect colleague uuids: `supabase.from('chat_messages').select('sender_id, sender_email')` — the select policy is `using (true)`.",
+        "Call the RPC with p_user set to a colleague's uuid.",
+        "Read the returned integer: it is that colleague's overtime-bank balance in minutes."
+      ],
+      "expected_result": "The RPC returns the target employee's overtime-bank minutes to a caller who has no authorization to see them, and silently rewrites that employee's time_tracker_user_stats row."
+    },
+    "remediation": {
+      "strategy": "Revoke the default PUBLIC EXECUTE and add an auth.uid() authorization check to the function body. The check must be skipped when auth.uid() is null, because the statement triggers in 2026-05-11-admin-perf-rpcs.sql and all service-role paths invoke the function with no JWT context; when an ordinary user's own DML fires those triggers, auth.uid() equals the target id anyway because RLS confines them to their own rows. Also reorder search_path so pg_catalog resolves first.",
+      "code_changes": [
+        {
+          "file_name": "web/supabase/2026-07-26-rpc-privilege-hardening.sql",
+          "fixed_code": "if auth.uid() is not null and auth.uid() <> p_user then\n  raise exception 'tt_refresh_overtime_bank_stats: not authorized for another user'\n    using errcode = '42501';\nend if;"
+        },
+        {
+          "file_name": "web/supabase/2026-07-26-rpc-privilege-hardening.sql",
+          "fixed_code": "revoke all on function public.tt_refresh_overtime_bank_stats(uuid, date) from public;\ngrant execute on function public.tt_refresh_overtime_bank_stats(uuid, date) to authenticated;"
+        },
+        {
+          "file_name": "web/scripts/rls-smoke.mjs",
+          "fixed_code": "const { error: crossErr } = await a.supabase.rpc('tt_refresh_overtime_bank_stats', { p_user: b.user.id });\ncheck('tt_refresh_overtime_bank_stats: A cannot read B\\'s overtime bank', Boolean(crossErr));"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "A single PostgREST call with the public anon key. No special access, no timing, no user interaction. Victim uuids are readable by any authenticated user by design."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Cross-user disclosure of HR/payroll-adjacent data (overtime balance) plus a cross-user write, defeating the RLS boundary the whole time-tracker schema rests on. Bounded to one derived integer per user rather than full day-level logs."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Read all five definitions of the function and grepped every revoke/grant in web/supabase/*.sql: 19 revoke lines cover the other 11 RPCs and none names this function. The missing auth.uid() check is visible in the body. Not verified against the live database's proacl — the DB was unreachable from this session — so the migration header carries the exact pg_proc query to confirm it."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "SECURITY DEFINER helper tt_resolve_audit_user_id is callable by anon and maps day-log ids to their owning user",
+    "description": "public.tt_resolve_audit_user_id(p_table_name text, p_new_row jsonb, p_old_row jsonb) is SECURITY DEFINER and has neither a grant nor a revoke anywhere in the repository, so it sits on Postgres's default PUBLIC EXECUTE. It is intended purely as a helper for the tt_audit_row_change() trigger, but it is an ordinary `returns uuid` function and is therefore directly callable through PostgREST. Given a table name of 'time_day_breaks' and a jsonb payload containing a day_log_id, it selects user_id from public.time_day_logs with RLS bypassed and returns it. time_day_logs.id is a sequential bigint identity column, so an attacker can iterate the id space and build a complete map of day-log id to employee uuid, which also reveals roughly how many days each employee has logged.",
+    "root_cause": "A SECURITY DEFINER trigger helper was created without revoking the default PUBLIC EXECUTE grant, exposing an RLS-bypassing lookup as a directly callable RPC.",
+    "intended_behavior": "The function is an implementation detail of the time-tracker audit trigger. Only the trigger — which runs as the definer — should ever invoke it; no client should be able to call it at all.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/supabase/time-tracker-durability.sql",
+        "line": 47,
+        "scope": "tt_resolve_audit_user_id",
+        "description": "Function created with no grant and no revoke, leaving the default PUBLIC EXECUTE in place; PostgREST exposes it at /rest/v1/rpc/tt_resolve_audit_user_id."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/supabase/time-tracker-durability.sql",
+        "line": 54,
+        "scope": "tt_resolve_audit_user_id",
+        "description": "`security definer` — the lookup below runs with the owner's rights and bypasses RLS on time_day_logs."
+      },
+      {
+        "kind": "sink",
+        "file": "web/supabase/time-tracker-durability.sql",
+        "line": 75,
+        "scope": "tt_resolve_audit_user_id",
+        "description": "`select user_id into candidate from public.time_day_logs where id = day_log_id` — returns the owning user id for any caller-supplied, guessable row id."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "None — the public anon key is sufficient."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Any caller holding the public anon key.",
+      "payloads": [
+        "supabase.rpc('tt_resolve_audit_user_id', { p_table_name: 'time_day_breaks', p_new_row: { day_log_id: 1 }, p_old_row: null })"
+      ],
+      "instructions": [
+        "Call the RPC with p_new_row.day_log_id set to 1.",
+        "Increment day_log_id and repeat; the ids are a sequential bigint identity sequence.",
+        "Record each returned uuid to build a day-log-id to employee map."
+      ],
+      "expected_result": "The RPC returns the uuid of the employee owning each day-log row, disclosing cross-user ownership data that RLS is meant to hide and leaking the relative volume of time entries per employee."
+    },
+    "remediation": {
+      "strategy": "Revoke EXECUTE from public, anon and authenticated with no re-grant. Nothing but the audit trigger calls it, and triggers execute as the definer, so no legitimate caller is affected. Also pin search_path with pg_catalog first.",
+      "code_changes": [
+        {
+          "file_name": "web/supabase/2026-07-26-rpc-privilege-hardening.sql",
+          "fixed_code": "revoke all on function public.tt_resolve_audit_user_id(text, jsonb, jsonb) from public;\nrevoke all on function public.tt_resolve_audit_user_id(text, jsonb, jsonb) from anon;\nrevoke all on function public.tt_resolve_audit_user_id(text, jsonb, jsonb) from authenticated;"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "One unauthenticated PostgREST call, trivially scriptable over a sequential id space."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Discloses day-log-id to employee-uuid mapping and per-employee entry volume. No time values, no personal detail. Useful mainly as a building block alongside the overtime-bank finding."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Grepped every reference to the function across web/supabase/*.sql: three hits, all either the definition or a call from within a trigger body, and no grant/revoke line at all. SECURITY DEFINER and the unfiltered lookup are visible in the body."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Unauthenticated open redirect in the OAuth callback via an unvalidated `next` parameter",
+    "description": "GET /auth/callback reads the `next` query parameter and passes it straight to NextResponse.redirect(new URL(next, requestUrl.origin)) with no validation. Resolving against a base URL does not constrain the target: for an absolute or protocol-relative value the base is discarded entirely, so new URL('https://evil.example', origin) yields https://evil.example/ and '//evil.example' behaves identically. When no `code` parameter is supplied the OAuth exchange block is skipped and the handler returns that redirect directly, so the route is reachable with no session and no OAuth flow. src/proxy.ts scopes middleware to /dashboard, /settings and /login, so this route has no gate whatsoever. The result is an open redirect served from the company's own trusted origin — a phishing primitive. It is not an account-takeover: the OAuth code is consumed server-side and is not forwarded in the Location header, and session cookies are not exposed to the redirect target.",
+    "root_cause": "A user-controlled query parameter is used as a redirect destination without validating that it is a same-origin relative path; new URL(value, base) was incorrectly relied upon to enforce the origin.",
+    "intended_behavior": "After the OAuth callback the user should be returned to a page within the application — /dashboard by default, or another in-app path — never to an external site.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/src/app/auth/callback/route.ts",
+        "line": 8,
+        "scope": "GET",
+        "description": "`const next = requestUrl.searchParams.get(\"next\") ?? \"/dashboard\"` — attacker-controlled, unvalidated, on a route with no auth and no middleware coverage."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/src/app/auth/callback/route.ts",
+        "line": 9,
+        "scope": "GET",
+        "description": "`NextResponse.redirect(new URL(next, requestUrl.origin))` — for an absolute or protocol-relative `next` the origin base is ignored and the response 307s off-site."
+      },
+      {
+        "kind": "sink",
+        "file": "web/src/app/auth/callback/route.ts",
+        "line": 45,
+        "scope": "GET",
+        "description": "`return response` — reached without any `code`, so the redirect fires for a wholly unauthenticated request."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "None."
+      },
+      {
+        "kind": "user_interaction",
+        "description": "A victim must click the crafted link; its value is that the visible domain is the company's own."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anyone able to put a link in front of an employee — email, chat, a search result.",
+      "payloads": [
+        "https://<app-domain>/auth/callback?next=https://evil.example",
+        "https://<app-domain>/auth/callback?next=//evil.example"
+      ],
+      "instructions": [
+        "Send the crafted URL to a target.",
+        "Observe the 307 Location header pointing at the attacker-controlled origin.",
+        "Host a credential-harvesting page there that imitates the app's login screen."
+      ],
+      "expected_result": "The application issues a redirect from its own trusted origin to an attacker-controlled site, lending that site the company domain's credibility in the link the victim inspects."
+    },
+    "remediation": {
+      "strategy": "Validate the parameter before using it: accept only a path rooted at exactly one forward slash, rejecting absolute URLs, protocol-relative '//host', backslash variants that browsers normalise to '//', and any value containing control characters. Fall back to /dashboard otherwise.",
+      "code_changes": [
+        {
+          "file_name": "web/src/lib/safe-redirect.ts",
+          "fixed_code": "export function safeRedirectPath(raw: string | null | undefined, fallback = DEFAULT_REDIRECT_PATH): string {\n  if (typeof raw !== \"string\") return fallback;\n  const value = raw.trim();\n  if (!value) return fallback;\n  if (hasControlChars(value)) return fallback;\n  if (value.includes(\"\\\\\")) return fallback;\n  if (!value.startsWith(\"/\")) return fallback;\n  if (value.startsWith(\"//\")) return fallback;\n  return value;\n}"
+        },
+        {
+          "file_name": "web/src/app/auth/callback/route.ts",
+          "fixed_code": "const next = safeRedirectPath(requestUrl.searchParams.get(\"next\"));"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "Unauthenticated, no preconditions, a single crafted URL."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Phishing credibility only. No token or cookie leaks to the redirect target, and the OAuth code is already consumed server-side."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Confirmed by execution against a running `next start`: ?next=https://evil.example, //evil.example and /%5Cevil.example all returned an off-origin Location before the fix and all return /dashboard after it, while a legitimate /dashboard is unaffected."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Users can forge their own overtime-bank balance, which the admin and HR dashboards report verbatim",
+    "description": "2026-04-16-overtime-bank-stats.sql grants `authenticated` select, insert and update on public.time_tracker_user_stats with own-row RLS policies but no column-level restriction and no value validation. overtime_bank_mins on that table is a DERIVED cache, recomputed from time_day_logs and time_comp_adjustments by tt_refresh_overtime_bank_stats. tt_admin_overview reads the cached column verbatim into the Admin -> Team time dashboard rather than recomputing it. A user can therefore run a single UPDATE from the browser with the public anon key and set their own overtime balance to any value; the own-row policy is satisfied because they are editing their own row. Because the recompute triggers only fire on DML against time_day_logs and time_comp_adjustments, a forged value persists until that user next edits a day. This is an integrity finding, not a disclosure one: the user misreports their own overtime to management.",
+    "root_cause": "A derived cache column is directly writable by the client because the table-level INSERT/UPDATE grant to `authenticated` was never narrowed, and no trigger or check validates that overtime_bank_mins matches the computed value.",
+    "intended_behavior": "overtime_bank_mins is computed by the application from the user's logged days and comp adjustments. The only writer should be tt_refresh_overtime_bank_stats (and the service role); clients should read it and never set it.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/supabase/2026-04-16-overtime-bank-stats.sql",
+        "line": 19,
+        "scope": "grant",
+        "description": "`grant select, insert, update on table public.time_tracker_user_stats to authenticated` — table-wide, no column list."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/supabase/2026-04-16-overtime-bank-stats.sql",
+        "line": 32,
+        "scope": "time_tracker_user_stats_update_own",
+        "description": "`using (auth.uid() = user_id) with check (auth.uid() = user_id)` — confirms row ownership but places no constraint on the value written to overtime_bank_mins."
+      },
+      {
+        "kind": "sink",
+        "file": "web/supabase/2026-07-16-public-holiday.sql",
+        "line": 255,
+        "scope": "tt_admin_overview",
+        "description": "`coalesce(s.overtime_bank_mins, 0)::int` — the admin/HR Team time view reads the cached column directly, so the forged figure is what management sees."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any ordinary authenticated user of the workspace."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An employee who wants their reported overtime balance to differ from the hours they actually logged.",
+      "payloads": [
+        "supabase.from('time_tracker_user_stats').update({ overtime_bank_mins: 99999 }).eq('user_id', <own uuid>)"
+      ],
+      "instructions": [
+        "Sign in normally and open the browser console on the dashboard.",
+        "Issue the update above against your own row using the app's anon Supabase client.",
+        "Avoid editing any day log afterwards, so the statement triggers do not recompute the cache.",
+        "Have an admin open Admin -> Team time."
+      ],
+      "expected_result": "The Team time overview reports the forged overtime balance for that employee instead of the value derived from their logged hours."
+    },
+    "remediation": {
+      "strategy": "Revoke INSERT and UPDATE on the table from `authenticated`, keeping SELECT so the Time Tracker can still read the cache. Remove the client-side upsert that made the write grant necessary — the fallback path should compute the value for display only and let the definer RPC remain the sole writer. Leave the own-row policies in place: a policy never grants privilege, and they still guard the writer under `force row level security`.",
+      "code_changes": [
+        {
+          "file_name": "web/supabase/2026-07-26-user-stats-integrity.sql",
+          "fixed_code": "revoke insert, update on table public.time_tracker_user_stats from authenticated;\ngrant select on table public.time_tracker_user_stats to authenticated;"
+        },
+        {
+          "file_name": "web/src/lib/time-tracker-queries.ts",
+          "fixed_code": "// Compute for display only; never write the derived cache from the client.\nconst overtimeBankMins = await computeOvertimeBankMinsForUser(supabase, userId);\nreturn { overtimeBankMins, includesBank: true };"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "A single PostgREST update from any signed-in user's browser, with no tooling beyond the app's own client."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Corrupts the figure management uses for time and overtime oversight, in the employee's own favour. Confined to the attacker's own record; no cross-user access."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Read the grant, both policies, and the admin RPC that consumes the column. Confirmed the client is the only other writer (src/lib/time-tracker-queries.ts) and that no trigger validates the value."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "markdownToHtml emitted raw HTML tags from source prose into outgoing email, leaving the run-2 T0.4 fix incomplete",
+    "description": "markdownBlockToHtml converted markdown to HTML and then attempted to escape the surrounding prose by splitting on /(<[^>]+>)/ and passing through any fragment beginning with '<' while escaping the rest. That split cannot distinguish tags the function generated from tags already present in the source text, so any tag-shaped input was emitted verbatim. Executing the function in isolation confirmed that <script>, <style>, <a href=...> and <img onerror=...> all survived unescaped, while only a bare ampersand was encoded. run-2's T0.4 fix hardened the URL interpolation in the same function (adding safeAttrUrl with scheme allowlisting and attribute escaping) but left this second, broader hole. Impact is bounded and should not be overstated: the prose author is always an authenticated employee, and html_body is never rendered in the application's DOM — the only dangerouslySetInnerHTML in the tree is a static theme bootstrap — so this was not XSS. What it was is a broken escaping control and a falsification of the guarantee documented in mail-brief-llm.ts, that the model never emits or formats links so tracking can never break. Brief-mode prose is written by the LLM from a free-text brief that routinely contains text pasted from customer correspondence, so injected markup reaches the outgoing customer email as live HTML.",
+    "root_cause": "The escaping pass ran after HTML generation and used a regex to guess which angle-bracket sequences it had produced itself, which is not decidable; source text matching the same shape was therefore treated as trusted markup.",
+    "intended_behavior": "Prose supplied to the mail renderer is text. Only the small vocabulary the renderer itself emits — div, p, h2, h3, span, a, img, br with inline styles — should appear as markup in the generated email body.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/src/app/api/render-brief/route.ts",
+        "line": 70,
+        "scope": "POST",
+        "description": "prose.opener / recap_intro / feedback_ask / closing are taken from the request body; sanitizeText strips control characters but deliberately preserves angle brackets."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/src/lib/mail-engine/render.ts",
+        "line": 139,
+        "scope": "renderBriefMail",
+        "description": "html_body = markdownToHtml(markdownBody), where markdownBody concatenates the prose sections."
+      },
+      {
+        "kind": "sink",
+        "file": "web/src/lib/mail-engine/html.ts",
+        "line": 75,
+        "scope": "markdownBlockToHtml",
+        "description": "`if (part.startsWith(\"<\")) return part;` — every fragment matching /<[^>]+>/ in the SOURCE text is emitted into the email HTML without escaping."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "An authenticated session; /api/render-brief and /api/generate-brief both require getUser()."
+      },
+      {
+        "kind": "user_interaction",
+        "description": "For injected markup to reach a customer, an operator must send the resulting draft."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An authenticated employee, or anyone who can influence the free-text brief an operator pastes in — for example text copied from a customer email carrying a hidden instruction to the model.",
+      "payloads": [
+        "{\"language\":\"en\",\"recipient_name\":\"Client\",\"prose\":{\"subject\":\"Recap\",\"opener\":\"Hello <a href=\\\"https://evil.example/invoice\\\">view your invoice</a>\",\"recap_intro\":\"\",\"feedback_ask\":\"\",\"closing\":\"\"},\"selected_change_ids\":[]}",
+        "markdownToHtml('Hello <img src=x onerror=alert(1)> world')"
+      ],
+      "instructions": [
+        "POST the payload above to /api/render-brief with a valid session.",
+        "Inspect html_body in the JSON response.",
+        "Observe the anchor or image tag present verbatim, not escaped."
+      ],
+      "expected_result": "Attacker-chosen markup — arbitrary anchors, remote images acting as tracking pixels, hidden content — appears in the outgoing customer email, bypassing the deterministic tracked-link builders the renderer is supposed to be the only source of."
+    },
+    "remediation": {
+      "strategy": "Invert the order so escaping never has to identify generated markup. Replace each markdown construct with an opaque placeholder token before escaping, escape the remaining prose wholesale, then substitute the generated HTML back in. Strip the placeholder sentinel from the input first so it cannot be forged. Additionally sanitize html_body at the create-draft boundary as a second layer.",
+      "code_changes": [
+        {
+          "file_name": "web/src/lib/mail-engine/html.ts",
+          "fixed_code": "const hold = (html: string) => { generated.push(html); return `${PLACEHOLDER}${generated.length - 1}${PLACEHOLDER}`; };\nlet c = trimmed.replaceAll(PLACEHOLDER, \"\");\n// ...markdown replacements now call hold(...)...\nconst escaped = escapeHtmlText(c);\nconst merged = escaped.replace(new RegExp(`${PLACEHOLDER}(\\\\d+)${PLACEHOLDER}`, \"g\"), (_m, i) => generated[Number(i)] ?? \"\");"
+        },
+        {
+          "file_name": "web/src/app/api/gmail/create-draft/route.ts",
+          "fixed_code": "html_body: sanitizeMailHtml(parsedPayload.data.html_body),"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Requires an authenticated session, and reaching a customer requires an operator to send the draft. The prompt-injection route via pasted customer text needs no direct attacker access to the app."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Attacker-chosen links and remote images in outgoing company email, and a documented tracking-integrity guarantee that did not hold. Not XSS: html_body has no in-app rendering sink, and mainstream mail clients strip scripts."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Confirmed by execution rather than reading. Extracted the function into a standalone harness and ran the payloads: all four survived unescaped before the fix, and all five escape after it while every legitimate markdown construct still renders with ampersands escaped exactly once."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "html_body was the only create-draft field to bypass sanitization",
+    "description": "In POST /api/gmail/create-draft every field of the payload is passed through a sanitizer — subject and body through sanitizeText, the recipient lists through sanitizeEmailList, and every tracking_meta field through sanitizeText or sanitizeNullableText — except html_body, which was assigned straight from the parsed payload with only a zod .max(60000) length bound. The value is base64-encoded into the MIME part and stored as a Gmail draft under the user's connected account, so an authenticated caller could place arbitrary markup, inline event handlers and script-bearing URL schemes into an outgoing message. This compounds the markdownToHtml finding: even once the renderer stops emitting injected markup, the client can still post an html_body the renderer never produced. MIME header injection was checked separately and is not reachable, because sanitizeEmailList regex-validates each address so no CR/LF can reach the To/Cc/Bcc headers.",
+    "root_cause": "The field was omitted from the sanitization pass applied to every sibling field, leaving a length check as its only validation.",
+    "intended_behavior": "Every externally-supplied field on this endpoint is normalised and stripped of dangerous content before it is used to build the outgoing MIME message.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/src/app/api/gmail/create-draft/route.ts",
+        "line": 55,
+        "scope": "draftPayloadSchema",
+        "description": "`html_body: z.string().max(60000).optional()` — a length bound and nothing else."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/src/app/api/gmail/create-draft/route.ts",
+        "line": 102,
+        "scope": "POST",
+        "description": "`html_body: parsedPayload.data.html_body` — assigned unsanitized while every neighbouring field is passed through a sanitizer."
+      },
+      {
+        "kind": "sink",
+        "file": "web/src/lib/gmail.ts",
+        "line": 87,
+        "scope": "buildMimeMessage",
+        "description": "The value is base64-encoded into the text/html MIME part of the created draft."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "An authenticated user with Gmail connected."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An authenticated employee posting directly to the API rather than through the composer UI.",
+      "payloads": [
+        "{\"to\":\"target@example.com\",\"subject\":\"Recap\",\"body\":\"text\",\"html_body\":\"<p>ok</p><script>alert(1)</script><img src=x onerror=alert(1)>\"}"
+      ],
+      "instructions": [
+        "POST the payload to /api/gmail/create-draft with a valid session and a connected Gmail account.",
+        "Open the created draft in Gmail and inspect its HTML source."
+      ],
+      "expected_result": "The draft's HTML part contains the attacker-supplied active-content markup exactly as posted, with no sanitization applied."
+    },
+    "remediation": {
+      "strategy": "Add a sanitizer for the outgoing HTML body and apply it at this boundary. It removes script, style, iframe, object, embed, applet, form and noscript elements with their contents, document-level tags, inline on* event handler attributes in every quoting style, and javascript:/vbscript:/data: URLs in href, src, action and formaction. Document it as a denylist and a second layer, since the primary control is the renderer no longer emitting injected markup.",
+      "code_changes": [
+        {
+          "file_name": "web/src/lib/security/input-sanitize.ts",
+          "fixed_code": "export function sanitizeMailHtml(value: unknown, maxLen = 60000): string | undefined {\n  const raw = String(value ?? \"\");\n  if (!raw) return undefined;\n  const cleaned = stripControlChars(raw)\n    .replace(/<\\s*(script|style|iframe|object|embed|applet|form|noscript)\\b[\\s\\S]*?<\\s*\\/\\s*\\1\\s*>/gi, \"\")\n    .replace(/\\son\\w+\\s*=\\s*\"[^\"]*\"/gi, \"\")\n    .replace(/(href|src|action|formaction)\\s*=\\s*\"\\s*(javascript|vbscript|data)\\s*:[^\"]*\"/gi, '$1=\"#\"');\n  return cleaned.trim().slice(0, maxLen) || undefined;\n}"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Trivial for any authenticated user, but requires a session and a connected Gmail account, and the resulting draft is sent from that user's own mailbox."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "The sender is authenticated and the content goes out under their own identity, so this mainly removes a defence rather than crossing a boundary on its own. Its real weight is as the second half of the outgoing-HTML injection path."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Read the schema, the payload construction and the MIME builder. The omission is unambiguous — every sibling field on the same object literal is wrapped in a sanitizer call and this one is not."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Dashboard resolved the user role from self-writable user_metadata, the last residual reader from T0.1",
+    "description": "src/app/dashboard/page.tsx read the role from claims.user_metadata.role, while src/app/settings/page.tsx and src/lib/admin-guard.ts correctly read app_metadata. Supabase lets any authenticated user rewrite their own user_metadata with the anon key via supabase.auth.updateUser, so a user could self-assign role 'hr' and cause dashboard-shell.tsx to render the admin / Team time module for them. The consequence today is cosmetic: every endpoint behind that module calls guardAdmin or guardTimeViewer, both of which read app_metadata, so the panels render empty and each attempt is recorded as a failed_admin_access security event. It is reported because it was the last live reader of the field the T0.1 remediation was meant to retire, it made two pages disagree about the same user's role, and it is a trap for the next developer who hangs a data fetch off initialRole.",
+    "root_cause": "The T0.1 migration moved the role to app_metadata and updated the guards and the settings page, but this one server component was not updated with them.",
+    "intended_behavior": "The role is read from app_metadata everywhere. app_metadata is writable only by the service role, so a user cannot influence their own role; user_metadata holds only non-privilege preferences such as appearance, travel-sheet mapping and signature.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/src/app/dashboard/page.tsx",
+        "line": 35,
+        "scope": "DashboardPage",
+        "description": "`const userRoleRaw = userMetadata && \"role\" in userMetadata ? userMetadata.role : null` — reads the user-writable half of the JWT metadata."
+      },
+      {
+        "kind": "sink",
+        "file": "web/src/components/dashboard-shell.tsx",
+        "line": 160,
+        "scope": "module list",
+        "description": "`if (isAdmin || userRole === \"hr\") base.push(\"admin\")` — the self-set role decides whether the admin module is rendered."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any authenticated user."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An ordinary employee probing what the interface will show them.",
+      "payloads": [
+        "supabase.auth.updateUser({ data: { role: 'hr' } })"
+      ],
+      "instructions": [
+        "Run the update above from the browser console with the app's anon client.",
+        "Reload /dashboard.",
+        "Observe the admin / Team time tab now rendered in the module switcher."
+      ],
+      "expected_result": "The admin module appears for a user with no admin or HR authorization. Its panels then fail closed with 403 from every API call, so no data is disclosed."
+    },
+    "remediation": {
+      "strategy": "Read the role from claims.app_metadata, matching settings/page.tsx and admin-guard.ts. Keep the separate user_metadata read for genuine per-user preferences, which is correct and still required by the settings prefetch.",
+      "code_changes": [
+        {
+          "file_name": "web/src/app/dashboard/page.tsx",
+          "fixed_code": "const appMetadata =\n  claims.app_metadata && typeof claims.app_metadata === \"object\" && !Array.isArray(claims.app_metadata)\n    ? (claims.app_metadata as Record<string, unknown>)\n    : null;\nconst userRoleRaw = appMetadata && \"role\" in appMetadata ? appMetadata.role : null;"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "One API call from the browser console, available to every user."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Rendering only. No data is disclosed and no authorization is bypassed, because every endpoint behind the module re-checks app_metadata and logs the attempt."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Read the dashboard page, the shell's module gating, and both correct readers for comparison. Confirmed by grep that after the fix no reader of the role from user_metadata remains anywhere in src/."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Cron reminder route performs mail-sending side effects on GET with no CSRF defence and no rate limit",
+    "description": "GET /api/cron/time-log-reminder authorizes correctly — a constant-time SHA-256 comparison of CRON_SECRET, falling back to guardAdmin, and failing closed when the secret is unset. But it is a GET that sends real email, and Supabase session cookies are SameSite=Lax, which means they ARE attached to a cross-site top-level navigation. An admin who clicks a link on any external page therefore triggers the request with full authority and no confirmation step. ?send_test=<address> sends a message from the verified Resend domain to an arbitrary address, validated only by a loose regex, and ?force=1 bypasses the Monday-09:00 schedule gate and fires a real reminder blast to every user with zero logged hours. The route had no rate limit of any kind, so a leaked CRON_SECRET or a single admin session was an unmetered outbound-mail primitive against the sending domain's reputation.",
+    "root_cause": "State-changing operations were exposed on a GET endpoint with no CSRF token or equivalent same-origin requirement, and with no rate limiting, relying solely on authorization.",
+    "intended_behavior": "Only Vercel Cron on its schedule, or an admin deliberately invoking the route, should be able to send mail through it, and the volume should be bounded.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/src/app/api/cron/time-log-reminder/route.ts",
+        "line": 347,
+        "scope": "GET",
+        "description": "A GET handler whose branches perform sends; SameSite=Lax cookies accompany a cross-site top-level navigation to it."
+      },
+      {
+        "kind": "propagation",
+        "file": "web/src/app/api/cron/time-log-reminder/route.ts",
+        "line": 252,
+        "scope": "sendTestResponse",
+        "description": "?send_test=<address> sends via Resend to an address taken from the query string, validated by /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/ only, with no rate limit."
+      },
+      {
+        "kind": "sink",
+        "file": "web/src/app/api/cron/time-log-reminder/route.ts",
+        "line": 369,
+        "scope": "GET",
+        "description": "?force=1 skips the not_monday / not_9am schedule guard, so a real reminder blast can be triggered at any time."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "An authenticated admin session (or possession of CRON_SECRET). The CSRF vector requires the admin to be signed in and to click an attacker-supplied link."
+      },
+      {
+        "kind": "user_interaction",
+        "description": "For the cross-site vector, the admin must follow a link; an <img> sub-resource load will not carry the Lax cookie, but an anchor or window.open will."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anyone who can get a link in front of a signed-in admin, or anyone who obtains CRON_SECRET.",
+      "payloads": [
+        "https://<app-domain>/api/cron/time-log-reminder?send_test=attacker@evil.example",
+        "https://<app-domain>/api/cron/time-log-reminder?force=1"
+      ],
+      "instructions": [
+        "Host a page containing an anchor to one of the URLs above.",
+        "Get a signed-in admin to click it.",
+        "The Lax session cookie is sent with the top-level navigation, guardAdmin succeeds, and the send executes."
+      ],
+      "expected_result": "Mail is sent from the company's verified sending domain — either to an attacker-chosen address or as a spurious reminder blast to staff — without the admin taking any deliberate action beyond following a link, and with no volume limit."
+    },
+    "remediation": {
+      "strategy": "Add a per-IP rate limit to the route, and refuse cross-site invocations of any request shape that can put mail on the wire. Sec-Fetch-Site distinguishes the cases precisely: 'none' is an admin typing or bookmarking the URL, 'same-origin' is the app's own dashboard, and 'cross-site'/'same-site' is a link from elsewhere. Non-browser callers such as Vercel Cron and curl send no Sec-Fetch headers at all and are unaffected, so the documented runbook keeps working. Read-only shapes — preview and dry runs — stay reachable from anywhere.",
+      "code_changes": [
+        {
+          "file_name": "web/src/app/api/cron/time-log-reminder/route.ts",
+          "fixed_code": "function isCrossSiteRequest(request: Request): boolean {\n  const site = request.headers.get(\"sec-fetch-site\")?.trim().toLowerCase();\n  return site === \"cross-site\" || site === \"same-site\";\n}"
+        },
+        {
+          "file_name": "web/src/app/api/cron/time-log-reminder/route.ts",
+          "fixed_code": "const isPreview = preview === \"html\" || preview === \"text\";\nconst sendsMail = !isPreview && !isDryRun;\nif (sendsMail && isCrossSiteRequest(request)) {\n  return NextResponse.json({ error: \"Cross-site invocation refused for a mail-sending request.\" }, { status: 403 });\n}"
+        },
+        {
+          "file_name": "web/src/app/api/cron/time-log-reminder/route.ts",
+          "fixed_code": "const limitResult = checkRateLimit(`cron-reminder:${getClientIp(request)}`, { windowMs: 60 * 60 * 1000, max: 20 });\nif (!limitResult.allowed) return NextResponse.json({ error: \"Rate limit exceeded. Please retry later.\" }, { status: 429, headers: createRateLimitHeaders(limitResult) });"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires a signed-in admin to click an attacker-controlled link, or a leaked CRON_SECRET. The admin population is small."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Mail sent from the company's verified domain to an arbitrary address, or a spurious all-staff reminder blast. Reputational and operational rather than a data breach."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Confirmed by execution against a running server with CRON_SECRET set: cross-site send_test and force=1 both return 403 after the fix, cross-site preview still returns 200, and both an admin-typed request (Sec-Fetch-Site: none) and a header-less curl reach the send logic unchanged."
+    }
+  }
+]

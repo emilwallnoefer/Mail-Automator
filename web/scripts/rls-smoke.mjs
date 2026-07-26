@@ -10,6 +10,15 @@
 //      become app_metadata.role (which is what the app authorizes on).
 //   3. The T0.5 fix: a spoofed chat sender_email is overwritten by the JWT email.
 //   4. Service-role-only tables (security_events) are unreadable by a user.
+//   5. The run-3 F1/F2 fix: SECURITY DEFINER RPCs are not a way around RLS —
+//      tt_refresh_overtime_bank_stats refuses a foreign p_user (while still
+//      working for your own), and tt_resolve_audit_user_id is not callable.
+//   6. The run-3 F4 fix: time_tracker_user_stats.overtime_bank_mins is readable
+//      but not writable by its own user (it is a derived cache admins report on).
+//
+// Note what (5) exists for: before run-3 this script checked table isolation
+// only, and never called an RPC. A SECURITY DEFINER function bypasses RLS by
+// design, so table-level checks cannot see that class of hole at all.
 //
 // Requires (env, e.g. via `node --env-file=.env.local`):
 //   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -124,6 +133,74 @@ async function main() {
     const { data, error } = await a.supabase.from("security_events").select("id").limit(1);
     // Deny-all RLS returns an empty set (or an error); either means "no access".
     check("security_events: not readable by a user", (data?.length ?? 0) === 0, error ? `error: ${error.code}` : "0 rows");
+  }
+
+  // 5. run-3 F1/F2 — SECURITY DEFINER RPCs must not be a way around RLS.
+  //
+  // This is the class the earlier revisions of this script missed entirely: it
+  // asserted table isolation but never called an RPC, and a definer function
+  // bypasses RLS by design. Two functions were created without the
+  // `revoke ... from public` that every other RPC pairs with its grant.
+  {
+    // 5a. tt_refresh_overtime_bank_stats must refuse a foreign p_user.
+    const { data: crossData, error: crossErr } = await a.supabase.rpc(
+      "tt_refresh_overtime_bank_stats",
+      { p_user: b.user.id },
+    );
+    check(
+      "tt_refresh_overtime_bank_stats: A cannot read B's overtime bank",
+      Boolean(crossErr),
+      crossErr ? `refused: ${crossErr.code ?? crossErr.message}` : `LEAKED value=${JSON.stringify(crossData)}`,
+    );
+
+    // 5b. ...but must still work for the caller's own id, or the Time Tracker
+    // silently loses its overtime bank.
+    const { error: ownErr } = await a.supabase.rpc("tt_refresh_overtime_bank_stats", {
+      p_user: a.user.id,
+    });
+    check(
+      "tt_refresh_overtime_bank_stats: A can still refresh its own stats",
+      !ownErr,
+      ownErr ? `unexpectedly refused: ${ownErr.message}` : "ok",
+    );
+
+    // 5c. tt_resolve_audit_user_id is a trigger helper; no client should reach
+    // it. It maps a sequential day_log_id to its owning user id.
+    const { data: resolveData, error: resolveErr } = await a.supabase.rpc(
+      "tt_resolve_audit_user_id",
+      { p_table_name: "time_day_breaks", p_new_row: { day_log_id: 1 }, p_old_row: null },
+    );
+    check(
+      "tt_resolve_audit_user_id: not callable by a user",
+      Boolean(resolveErr),
+      resolveErr ? `refused: ${resolveErr.code ?? resolveErr.message}` : `CALLABLE, returned ${JSON.stringify(resolveData)}`,
+    );
+  }
+
+  // 6. run-3 F4 — the overtime bank cache must not be client-writable. It is a
+  // derived value that Admin -> Team time reports verbatim.
+  {
+    const { error } = await a.supabase
+      .from("time_tracker_user_stats")
+      .update({ overtime_bank_mins: 99999 })
+      .eq("user_id", a.user.id);
+    check(
+      "time_tracker_user_stats: A cannot forge its own overtime bank",
+      Boolean(error),
+      error ? `refused: ${error.code ?? error.message}` : "UPDATE ACCEPTED",
+    );
+
+    // Reading it must still work — the Time Tracker depends on it.
+    const { error: readErr } = await a.supabase
+      .from("time_tracker_user_stats")
+      .select("overtime_bank_mins")
+      .eq("user_id", a.user.id)
+      .maybeSingle();
+    check(
+      "time_tracker_user_stats: A can still read its own row",
+      !readErr,
+      readErr ? `unexpectedly refused: ${readErr.message}` : "ok",
+    );
   }
 
   console.log(`\n${failures === 0 ? "All RLS checks passed." : `${failures} check(s) FAILED.`}`);

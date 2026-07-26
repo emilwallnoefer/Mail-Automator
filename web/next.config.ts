@@ -63,7 +63,11 @@ const csp = [
 ].join("; ");
 
 const securityHeaders = [
-  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  // `preload` makes the domain eligible for the browser-baked HSTS preload list
+  // (submit at hstspreload.org). Only meaningful once every subdomain is
+  // HTTPS-only — which is the case here; the app is Vercel-hosted and Supabase
+  // is a separate domain.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

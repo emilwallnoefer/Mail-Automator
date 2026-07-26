@@ -66,6 +66,10 @@ export function addDays(date: Date, days: number) {
 }
 
 function looksLikeMissingStatsObjects(detail: string) {
+  // An authorization refusal from the RPC is NOT a missing object — it means the
+  // caller asked for someone else's stats (see 2026-07-26-rpc-privilege-hardening.sql).
+  // Never swallow it into the "schema not migrated yet" fallback.
+  if (/not authorized/i.test(detail)) return false;
   return /tt_refresh_overtime_bank_stats|time_tracker_user_stats|relation .* does not exist|function .* does not exist/i.test(
     detail,
   );
@@ -248,24 +252,15 @@ export async function getOvertimeBankMinsForUser(
     };
   }
 
-  const detail = refreshRes.error.message ?? "";
+  // The RPC failed (not migrated yet, or a transient error). Compute the value
+  // on the fly so the week still renders — but never write it back from here.
+  // `time_tracker_user_stats` is a derived cache that only
+  // `tt_refresh_overtime_bank_stats` may write: clients hold no INSERT/UPDATE
+  // grant on it, because a directly-writable cache let a user forge the overtime
+  // balance that Admin -> Team time reports for them (security audit run-3, F4;
+  // see 2026-07-26-user-stats-integrity.sql). The next successful RPC call
+  // repopulates the cache.
   const overtimeBankMins = await computeOvertimeBankMinsForUser(supabase, userId);
-  if (looksLikeMissingStatsObjects(detail)) {
-    return { overtimeBankMins, includesBank: true };
-  }
-
-  const persistRes = await supabase.from("time_tracker_user_stats").upsert(
-    {
-      user_id: userId,
-      overtime_bank_mins: overtimeBankMins,
-      computed_for_day: toDateString(new Date()),
-    },
-    { onConflict: "user_id" },
-  );
-  if (persistRes.error && !looksLikeMissingStatsObjects(persistRes.error.message ?? "")) {
-    throw new Error(persistRes.error.message);
-  }
-
   return { overtimeBankMins, includesBank: true };
 }
 

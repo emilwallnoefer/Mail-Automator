@@ -1,6 +1,12 @@
 # Security Masterplan — Mail Automator (`web/`)
 
-_Last updated: 2026-07-02. Owner: admin. This document is the running plan for hardening the web app; update it as items ship._
+_Last updated: 2026-07-26. Owner: admin. This document is the running plan for hardening the web app; update it as items ship._
+
+> **Run-3 (2026-07-26)** added Tier 0 items **T0.6–T0.9** and Tier 1 items **T1.9–T1.11** from a
+> third audit pass weighted to Postgres function privileges — the area runs 1 and 2 never
+> examined. All run-3 findings are fixed on `worktree-security-audit-run3`; three migrations
+> must be applied by hand. Artifacts: `docs/security-audit/run-3/`. The plain-language
+> write-up of the whole posture is `docs/security-posture.md` (repo root).
 
 ## Context
 
@@ -44,6 +50,30 @@ Each item: **what** · **impact** · **fix** · **effort**.
 - **Fix:** BEFORE INSERT trigger stamping `sender_email` from `auth.jwt()->>'email'` and nulling `done_at`/`done_by`; or a column-scoped insert grant. New dated migration.
 - **Effort:** S.
 
+**T0.6 — SECURITY DEFINER RPCs never revoked from `PUBLIC`, and unauthorized by user** _(HIGH, run-3 F1/F2)_
+- **What:** `tt_refresh_overtime_bank_stats(uuid, date)` is `security definer`, takes `p_user` and never compares it to `auth.uid()`, and its `grant execute ... to authenticated` was never paired with `revoke all on function ... from public`. Postgres default-grants `EXECUTE TO PUBLIC` on `CREATE FUNCTION` and `CREATE OR REPLACE` preserves the ACL, so `anon` held EXECUTE across all five definitions. `tt_resolve_audit_user_id(text, jsonb, jsonb)` has the same defect (no grant *or* revoke at all). Every other RPC in the schema *does* revoke — that asymmetry was the tell.
+- **Impact:** anyone with the public anon key reads any employee's overtime balance (and writes their stats row); the second function maps sequential `day_log_id`s to employee uuids. Defeats the RLS boundary the time-tracker schema rests on. Target uuids come free from `chat_messages.sender_id` (`using (true)`, intentional).
+- **Fix:** `supabase/2026-07-26-rpc-privilege-hardening.sql` — revoke from `public`, re-grant `authenticated` on the first only, add `if auth.uid() is not null and auth.uid() <> p_user then raise ... 42501`, and reorder `search_path` to `pg_catalog, public, pg_temp`. The null-uid clause is required: the statement triggers and all service-role paths call it with no JWT context.
+- **Effort:** S. **Applied by hand?** ⚠️ yes, required.
+
+**T0.7 — Unauthenticated open redirect at `/auth/callback?next=`** _(MEDIUM, run-3 F3)_
+- **What:** `next` fed straight into `NextResponse.redirect(new URL(next, origin))`. Resolving against a base does not constrain the target — an absolute or protocol-relative value discards the base. Route is not in the proxy matcher and needs no `code`, so it is reachable unauthenticated.
+- **Impact:** phishing links carrying our own trusted origin. No token leak (the OAuth code is consumed server-side, not forwarded).
+- **Fix:** `src/lib/safe-redirect.ts` (`safeRedirectPath`) — rooted single-`/` paths only; rejects absolute, `//host`, backslash variants and control chars. Colocated test; verified live.
+- **Effort:** XS.
+
+**T0.8 — Client-writable derived overtime cache** _(MEDIUM, run-3 F4)_
+- **What:** `time_tracker_user_stats` granted `authenticated` table-wide `insert, update` with own-row policies but no column restriction or value check. `overtime_bank_mins` is derived, and `tt_admin_overview` reports it verbatim to Admin → Team time.
+- **Impact:** a user sets their own reported overtime balance to any value; it survives until they next edit a day.
+- **Fix:** `supabase/2026-07-26-user-stats-integrity.sql` revokes `insert, update`, keeps `select`; the client-side upsert in `time-tracker-queries.ts` now computes for display only. Own-row policies deliberately left in place. 
+- **Effort:** S. **Applied by hand?** ⚠️ yes, required.
+
+**T0.9 — `markdownToHtml` emitted raw source HTML; `html_body` unsanitized** _(MEDIUM, run-3 F5/F6)_
+- **What:** T0.4 fixed the URL interpolation but left the escaping pass, which split on `/(<[^>]+>)/` and passed through anything tag-shaped — it cannot distinguish tags it generated from tags in the source. Confirmed by execution: `<script>`, `<style>`, `<a>`, `<img onerror>` all survived. Separately `html_body` was the only create-draft field bypassing sanitization.
+- **Impact:** **not XSS** — `html_body` has no in-app render sink and the author is authenticated. It is a broken escaping control and falsifies the "the model never emits or formats links" guarantee in `mail-brief-llm.ts`, since Brief-mode prose is LLM-written from briefs that carry pasted customer text.
+- **Fix:** placeholder-token approach — markdown constructs are swapped for `U+E000<n>U+E000` before the prose is escaped wholesale, then restored, so generated markup never passes through the escaper. Plus `sanitizeMailHtml` on `html_body` as an explicit second layer (a denylist, documented as such).
+- **Effort:** S.
+
 ### Tier 1 — Hardening (defense-in-depth)
 
 **T1.1 — Security headers.** `next.config.ts` sets none. Add a `headers()` block: `Content-Security-Policy` (the mitigating layer for T0.2), `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`. Effort: S (CSP tuning is the only real work).
@@ -61,6 +91,14 @@ Each item: **what** · **impact** · **fix** · **effort**.
 **T1.7 — Tighten `chat-attachments` Storage.** Read policy is bucket-wide for all authenticated (`team-chat.sql:76-80`) and the 10 MiB cap is client-only (`chat.ts:309-313`). Scope reads and add a bucket-level size limit. Low impact (message rows are already team-wide readable). Effort: S. _(run-2 H6)_
 
 **T1.8 — Unauthenticated outbound fetch on `/api/generate`.** Anonymous callers drive DuckDuckGo fetches via `enrichWithAutoResearch` (`company-research.ts:57`); fixed host so not SSRF, but compute amplification. Folds into T0.3's "require auth on generation routes." _(run-2 H7)_
+
+**T1.9 — Role read from `user_metadata` in the dashboard.** _(run-3 F7)_ `dashboard/page.tsx` was the last reader of the field T0.1 retired; it rendered the HR/admin tab for any self-assigned role (endpoints behind it still 403'd). Fixed to read `app_metadata`, matching `settings/page.tsx` and `admin-guard.ts`; stale docstring in `lib/user-role.ts` corrected. Effort: XS. **Done.**
+
+**T1.10 — Cron route: mail-sending GET with no CSRF defence or rate limit.** _(run-3 F8)_ `SameSite=Lax` cookies ride cross-site top-level navigations, so one admin click fired `?send_test=<any address>` or a real `?force=1` blast. Added a per-IP limit (20/h) and a `Sec-Fetch-Site` check refusing *cross-site* invocation of any shape that can send — including the plain unforced call inside the real Monday 09:00 window. `preview`/`dry` stay open; admin-typed URLs (`Sec-Fetch-Site: none`) and Vercel Cron (no `Sec-Fetch-*` at all) are unaffected, so the runbook still works. Effort: S. **Done.**
+
+**T1.11 — `chat-attachments` had no `allowed_mime_types`.** _(run-3 H4)_ Content-type is client-supplied (`chat.ts:328`). Bucket is private, signed-URL, and on a *different origin* from the app, so never app-session XSS — but it is script execution on the Supabase origin. `supabase/2026-07-26-chat-attachment-mime-allowlist.sql` sets a deliberately broad list excluding only browser-executable types (notably SVG). Effort: XS. **Applied by hand?** ⚠️ yes.
+
+**T1.12 — `search_path` ordering on the remaining nine RPCs.** _(run-3 H5)_ They list `public` before `pg_catalog`, so a `public` object can shadow a built-in inside a definer function. Only exploitable if a client role holds `CREATE` on schema `public` — not determinable from the migration files. The two functions touched in run-3 were reordered; the rest are **open**. Check first: `select has_schema_privilege('anon','public','CREATE'), has_schema_privilege('authenticated','public','CREATE');`
 
 ### Tier 2 — Detection & response (the second requested capability — build now)
 
@@ -110,3 +148,11 @@ The app records **no** security events and has **no** breach alerting. Extend th
   - **T1.8** — folded into T0.3 (auth now required on `/api/generate`, so the DDG outbound-fetch is no longer anonymous).
   - **T1.2 — still open** (durable rate limiting): needs an external store (Upstash / Vercel KV) or the Vercel edge firewall — an infra decision, not shipped here. The IP-source fix (T0.3) already removed the spoofable-key bypass.
   - **RLS testing** added: `web/scripts/rls-smoke.mjs` (`npm run test:rls`) signs in two ordinary users via the anon key and asserts cross-user read isolation, that `app_metadata.role` is not user-settable (T0.1), that a spoofed chat `sender_email` is stamped from the JWT (T0.5), and that service-role-only tables are unreadable. Needs `RLS_TEST_A_/RLS_TEST_B_` creds in the env; run against staging.
+- 2026-07-26 — **Audit run-3 completed** (3-agent recon fleet weighted to the areas runs 1–2 never examined: Postgres function privileges, the auth callback, the outbound-HTML builder after its T0.4 fix, cron CSRF, role-read consistency). Artifacts in `docs/security-audit/run-3/`; posture write-up at `docs/security-posture.md`.
+  - Re-verified **all** run-1/run-2 fixes against source rather than trusting this log — T0.1–T0.5 and T1.1/T1.3–T1.7 all hold.
+  - **8 new findings, all fixed in this branch:** T0.6 (HIGH, definer RPC privilege escalation), T0.7 (open redirect), T0.8 (forgeable overtime cache), T0.9 (HTML escaper + `html_body`), T1.9 (role read), T1.10 (cron CSRF/rate limit), T1.11 (attachment MIME), plus H-notes.
+  - **⚠️ Apply these three migrations by hand, BEFORE deploying the code:** `supabase/2026-07-26-rpc-privilege-hardening.sql`, `2026-07-26-user-stats-integrity.sql`, `2026-07-26-chat-attachment-mime-allowlist.sql`. The first two are load-bearing: the code no longer writes `time_tracker_user_stats` from the client, so without migration 2 the grant simply stays wider than it needs to be; without migration 1 the HIGH stays open. Deploy order: apply migrations → deploy code.
+  - **Two lessons worth keeping.** (1) `rls-smoke.mjs` was structurally blind to T0.6 — it asserted cross-user *table* isolation and never called an RPC, but a `SECURITY DEFINER` function bypasses RLS by design. RPC probes added, plus a check that the stats cache is read-only to clients. (2) T0.9 shows a prior fix can be incomplete: run-2's T0.4 hardened one hole in `markdownBlockToHtml` and left a second, broader one in the same function.
+  - **Verification:** 69 tests / 11 files pass; lint and build clean; `npm audit --omit=dev --audit-level=high` reports 0 (the 2 highs `npm audit` shows are dev-only). T0.7 and T1.10 confirmed fixed against a running `next start`; T0.9 confirmed broken-before/fixed-after by executing the escaper in isolation.
+  - **Not verified:** T0.6/T0.7's premise rests on the live `proacl` of the two functions, read from migrations but never queried — the DB was unreachable from that session. The confirming `pg_proc` query is in the migration header; run it before and after applying.
+  - **Still open:** T1.2 (durable rate limiting, needs an infra decision), T1.12 (`search_path` on nine RPCs), the CSP enforcement flag (`CSP_ENFORCE=1` in Vercel — the policy is currently Report-Only *and* has no report endpoint, so it is inert), HSTS preload submission, and the HR data-scope question (`guardTimeViewer` says "summaries" but `/api/admin/time-user` returns day-level sick leave and comp notes — deliberately left for a product decision).

@@ -32,6 +32,44 @@ export function sanitizeEmailList(value: unknown, maxLen = 500) {
   return emails.length > 0 ? emails.join(", ") : undefined;
 }
 
+/**
+ * Strip active content from an outgoing email's HTML body.
+ *
+ * `html_body` was the one field of the create-draft payload that reached Gmail
+ * unsanitized while every sibling went through `sanitizeText` (security audit
+ * run-3, F6). The body is normally produced by `markdownToHtml`, whose entire
+ * output vocabulary is div/p/h2/h3/span/a/img/br with inline styles — none of
+ * the constructs removed here are ever legitimately present.
+ *
+ * This is a denylist, not a parsing allowlist, and is deliberately a
+ * second layer: the primary control is that `markdownToHtml` no longer lets
+ * source prose emit markup at all (F5). Treat it as belt-and-braces for a body
+ * the client assembled, not as a substitute for a real HTML sanitizer.
+ */
+export function sanitizeMailHtml(value: unknown, maxLen = 60000): string | undefined {
+  const raw = String(value ?? "");
+  if (!raw) return undefined;
+
+  const cleaned = stripControlChars(raw)
+    // Elements that can execute, restyle the whole document, or pull in remote
+    // content. Removed with their contents.
+    .replace(/<\s*(script|style|iframe|object|embed|applet|form|noscript)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+    // The same tags unclosed, plus document-level tags that have no place in a
+    // mail fragment.
+    .replace(/<\s*\/?\s*(script|style|iframe|object|embed|applet|form|noscript|base|meta|link)\b[^>]*>/gi, "")
+    // Inline event handlers: onclick=, onerror=, onload=, ...
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+    // Script-bearing URL schemes in any attribute.
+    .replace(/(href|src|action|formaction)\s*=\s*"\s*(javascript|vbscript|data)\s*:[^"]*"/gi, '$1="#"')
+    .replace(/(href|src|action|formaction)\s*=\s*'\s*(javascript|vbscript|data)\s*:[^']*'/gi, "$1='#'")
+    .replace(/(href|src|action|formaction)\s*=\s*(javascript|vbscript|data)\s*:[^\s>]*/gi, '$1="#"');
+
+  const trimmed = cleaned.trim().slice(0, maxLen);
+  return trimmed || undefined;
+}
+
 export function sanitizeColumnLetter(value: unknown) {
   const text = sanitizeText(value, { maxLen: 5 }).toUpperCase();
   if (!text) return "";
