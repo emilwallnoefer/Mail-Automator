@@ -60,6 +60,15 @@ export function MailTrackingPanel() {
         </label>
       </div>
 
+      <p className="flex items-center gap-1.5 text-xs text-ink-4">
+        Pre-training mails are excluded.
+        <InfoTooltip label="Why pre-training mails are excluded">
+          Pre-training mails carry no resource links, so nothing in them can be tracked. Counting
+          them would inflate the send numbers and drag the click rates down, so every view here
+          ignores them.
+        </InfoTooltip>
+      </p>
+
       {subTab === "overview" ? <OverviewTab showBots={showBots} /> : null}
       {subTab === "recipients" ? <RecipientsTab showBots={showBots} /> : null}
       {subTab === "links" ? <LinksTab showBots={showBots} /> : null}

@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-26-mail-tracking-post-only",
+    date: "Jul 26, 2026",
+    title: "Mail Tracking ignores pre-training mails",
+    highlights: [
+      "Pre-training mails no longer appear in Mail Tracking — they carry no links to track.",
+      "Send counts, recipients, timeline and the type donut now reflect trackable mails only.",
+      "Click rates read true instead of being diluted by untrackable sends.",
+    ],
+  },
+  {
     version: "2026-07-25-flya-space-domain",
     date: "Jul 25, 2026",
     title: "New home: flya.space",
