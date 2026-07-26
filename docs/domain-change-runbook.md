@@ -96,7 +96,7 @@ Resend displays **absolute** record names; Vercel's DNS panel wants the name
   `v=spf1 include:amazonses.com ~all`; `TXT` at `_dmarc` → `v=DMARC1; p=none;`.
   The previous sending domain was removed (free plan allows one).
   `RESEND_FROM` = `Flya Allrounder <noreply@flya.space>`.
-- **Google** — new redirect URI added to "Web client 1" in project
+- **Google** — new redirect URI added to "Web client 1" in the Google Cloud project
   `mail-automator-drafts`. Existing Gmail connections survived; no reconnect was
   needed, since stored refresh tokens are unaffected by redirect-URI changes.
   The OAuth consent screen was published out of "Testing" straight afterwards —
