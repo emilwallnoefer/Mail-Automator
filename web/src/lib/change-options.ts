@@ -83,12 +83,6 @@ export const THINKIFIC_ONLINE_COURSES_ORDER: string[] = [
   "useful_academy_hub",
 ];
 
-/** @deprecated Use OTHER_TRAININGS_DISPLAY_ORDER + THINKIFIC_ONLINE_COURSES_ORDER */
-export const ONLINE_COURSES_DISPLAY_ORDER: string[] = [
-  ...OTHER_TRAININGS_DISPLAY_ORDER,
-  ...THINKIFIC_ONLINE_COURSES_ORDER,
-];
-
 export type ChangeOption = {
   id: string;
   category: ChangeOptionCategory;
