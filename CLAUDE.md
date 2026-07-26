@@ -64,7 +64,7 @@ Vulnerabilities that live *inside* `next` (it vendors a pinned `postcss` and an 
 
 ## Environment
 
-Required env (`web/.env.local` for dev, hosting platform for prod):
+Required env (dev: a gitignored dotenv in `web/` — this checkout uses `web/.env`, and Next loads `.env` and `.env.local` alike, so check which one exists before telling anyone a var is missing; prod: the hosting platform):
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public.
 - `SUPABASE_SERVICE_ROLE_KEY` — server-only; bypasses RLS. Referenced only from `lib/supabase/admin.ts`.
@@ -83,6 +83,32 @@ The `web/README.md` has the most detailed env-var reference and the cron/team-ch
 - Many UI panels are large client components (`"use client"`) that mount inside the SSR'd `dashboard/page.tsx`. Initial-data props from the server are deliberately prefetched to avoid a flash on first paint — keep that pattern when adding new modules.
 - Mail templates and link policies used at runtime live in `web/src/mail-config/` (`training-email-templates.md`, `*.json`), consumed by `web/src/lib/mail-engine.ts` via `/api/generate`. Older copies under `archive/mail-cli/` belong to the retired Python CLI and are **not** read by the web app — edit the `web/src/mail-config/` ones.
 - The retired `/mail` command's hard rule — never auto-send, never create a draft before an explicit `confirm draft` — still applies to any equivalent flow in this repo, including the web app's Gmail draft creation.
+
+## Housekeeping (do this without being asked)
+
+Handle these when they come up — right after a merge, or when a session notices the state is stale. Do not queue them up for the user to prompt. Every step has a verification that comes **first**; report what you verified alongside what you removed.
+
+**After a PR you opened gets merged**
+
+1. Fast-forward the primary checkout: `git pull --ff-only`. A squash merge always leaves it behind, and the next session then reads stale files.
+2. Delete the branch locally and on `origin`. Squash merges mean the branch's own commits are absent from `main`, so `git branch -d` refuses and `git worktree`/`ExitWorktree` warn about "unmerged" commits — that warning is expected, not a reason to keep the branch. Confirm the content landed with `git diff --stat origin/main <branch>` (must print nothing), then use `-D`.
+3. Remove the worktree you created (`ExitWorktree` with `action: "remove"`), gated on a clean `git status` plus the same empty diff.
+
+**Orphaned worktree directories**
+
+`.claude/worktrees/` accumulates leftovers from past sessions that `git worktree list` no longer knows about — their gitdir was pruned, so git can tell you *nothing* about them and "the branch is gone" proves nothing either. Each is typically 0.2–1.2 GB of `node_modules`. Prove a directory holds no unique work before deleting it, by hashing every source file and looking the hash up in the object database:
+
+```bash
+find "<dir>" -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.sql" -o -name "*.md" -o -name "*.json" -o -name "*.css" \) \
+  -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.git/*" |
+  while IFS= read -r f; do h=$(git hash-object "$f"); git cat-file -e "$h" 2>/dev/null || echo "UNIQUE: $f"; done
+```
+
+Only `web/next-env.d.ts` (Next generates it) and `.claude/settings.local.json` (machine-local) are expected to come back unique. **Anything else means unpushed work — stop and ask.** Also check for a dotenv inside the directory before removing it; if the primary checkout has none, that copy may be the only one. `rm -rf` has no undo.
+
+**Out of scope, always**
+
+Never rewrite or delete anything on `main`/`origin/main`, never force-push, and leave `archive/` as the historical snapshot it is — differences from `web/src/mail-config/` there are expected and are not yours to reconcile.
 
 ## Release notes ("What's new" popup)
 
