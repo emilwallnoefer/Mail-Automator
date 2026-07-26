@@ -244,11 +244,16 @@ send_test, no Sec-Fetch headers (cron/curl)          -> reaches send logic
 
 ## Hardening notes (defense-in-depth, not standalone findings)
 
-- **H1 — CSP is Report-Only by default and currently inert.** `next.config.ts:10,72` selects the
-  header name from `CSP_ENFORCE === "1"`, and the policy carries no `report-uri`/`report-to`, so
-  nothing is blocked *and* nothing is collected. **This is an ops action, not a code change:**
-  set `CSP_ENFORCE=1` in Vercel. Note `script-src 'unsafe-inline'` limits its XSS value even once
-  enforced — dropping it needs a nonce pipeline for the theme bootstrap (`layout.tsx:91`).
+- **H1 — CSP was Report-Only by default and therefore inert. RESOLVED 2026-07-26.**
+  `next.config.ts:10,72` selects the header name from `CSP_ENFORCE === "1"`, and the policy
+  carries no `report-uri`/`report-to` — so as shipped, nothing was blocked *and* nothing was
+  collected. This was an ops action rather than a code change, and it has been done:
+  `CSP_ENFORCE=1` is set in Vercel, so the policy now blocks. Confirm on the deployed site with
+  `curl -sI https://<app-domain>/login | grep -i content-security-policy` — the header name must
+  be `Content-Security-Policy`, not `...-Report-Only`.
+  **Still open:** `script-src` carries `'unsafe-inline'` for the theme bootstrap, so the enforced
+  policy is a strong framing/exfiltration control but not yet a strong XSS backstop. Dropping
+  `'unsafe-inline'` needs a nonce pipeline for `layout.tsx:91`.
 - **H2 — T1.2 still open.** The rate limiter is an in-process `Map` (`lib/security/rate-limit.ts:18`);
   on Vercel each lambda instance has its own, so effective limits are a multiple of `max` and
   reset on cold start. Needs an infra decision (Upstash / Vercel KV / edge firewall). The IP

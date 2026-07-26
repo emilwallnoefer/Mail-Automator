@@ -172,11 +172,15 @@ after applying.
 
 ## 5. Still open — these need a decision, not more code
 
-1. **CSP is Report-Only, and currently inert.** It selects its header name from `CSP_ENFORCE`,
-   and it carries no reporting endpoint — so right now nothing is blocked *and* nothing is
-   collected. **This is a one-line Vercel env change** (`CSP_ENFORCE=1`), not a deploy. Worth
-   knowing that `script-src` still needs `'unsafe-inline'` for the theme bootstrap, so even
-   enforced it is not a strong XSS backstop until we nonce that script.
+1. ~~**CSP is Report-Only, and currently inert.**~~ **Done — `CSP_ENFORCE=1` set in Vercel
+   (2026-07-26).** The policy now blocks rather than observes. Confirm on the deployed site with
+   `curl -sI https://<app-domain>/login | grep -i content-security-policy` — the header name must
+   be `Content-Security-Policy`, *not* `...-Report-Only`.
+   **Remaining caveat:** `script-src` still carries `'unsafe-inline'` for the theme bootstrap in
+   `layout.tsx`, so the policy is a solid framing/exfiltration control (`frame-ancestors 'none'`,
+   `connect-src` pinned to self + Supabase, `object-src 'none'`, `base-uri`/`form-action 'self'`)
+   but **not yet a strong XSS backstop**. Closing that means giving the bootstrap script a nonce
+   so `'unsafe-inline'` can be dropped. Separate, smaller piece of work.
 2. **Rate limiting is not durable** (the one Tier-1 item never closed). It's an in-process `Map`,
    so on Vercel each lambda has its own and limits reset on cold start. Fine as a courtesy
    throttle, not a security control. Closing it means Upstash / Vercel KV / the edge firewall —
