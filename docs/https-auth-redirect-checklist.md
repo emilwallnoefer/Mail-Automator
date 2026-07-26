@@ -24,6 +24,12 @@ Vercel project on purpose — see `domain-change-runbook.md`. Do not detach it.
   - [ ] `http://localhost:3000/auth/callback`
   - [ ] `http://localhost:3000/**`
   - [ ] `http://127.0.0.1:3000/**` (optional fallback)
+  - [ ] `https://mail-automator-git-*-emilwallnoefers-projects.vercel.app/**` — Vercel
+        preview deploys. Without it, preview logins do **not** error: Supabase falls back
+        to the Site URL, so you silently land on production. `app/login/page.tsx` builds
+        the return URL from `window.location.origin`, which is the preview host.
+        Remember previews run against the **production database** — anything you click
+        through there is real data.
 
 ## 3) Google OAuth Provider
 

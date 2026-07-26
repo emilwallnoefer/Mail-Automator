@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two distinct subsystems live side-by-side:
 
 1. **`web/`** — a Next.js 16 (App Router) + Supabase + Tailwind 4 dashboard. This is where almost all active development happens. It contains the Time Tracker, Mail Tracking, Admin module, Team Chat, Settings, Onboarding, and the Gmail draft-creation API used at runtime.
-2. **`archive/mail-cli/`** — the retired Python `/mail` Cursor workflow, kept for reference only. Nothing imports or runs it; see `archive/mail-cli/README.md`. Its configs no longer differ from the runtime copies in `web/src/mail-config/`.
+2. **`archive/mail-cli/`** — the retired Python `/mail` Cursor workflow, kept for reference only. Nothing imports or runs it; see `archive/mail-cli/README.md`. Its `training-links.json` carries two keys the web copy lacks, but both courses are offered by the web app via `industry-training-links.json` — a naming difference, nothing to port (closed 2026-07-26).
 
 `Mail training cursor/` is local sample data and is git-ignored.
 

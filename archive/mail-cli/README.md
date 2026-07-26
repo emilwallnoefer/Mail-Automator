@@ -1,8 +1,9 @@
 # Archived: Python `/mail` CLI
 
 Retired 2026-07-21. **Nothing here is imported or executed by the web app** — it is kept
-for reference only. The config drift that originally justified keeping it turned out to be a
-false alarm and was resolved 2026-07-26 (see below); the directory stays as history.
+for reference only. The config difference that originally justified keeping it turned out to be
+a naming difference, not a missing link (resolved 2026-07-26, see below); the directory stays as
+history and is left exactly as the CLI had it.
 
 This was the project's original workflow, before `web/` existed: you typed `/mail` in
 Cursor, it collected the training-email fields in one block, rendered the mail from
@@ -31,14 +32,17 @@ The web app keeps its own runtime copies in `web/src/mail-config/`. Comparing th
 - `industry-training-links.json`, `useful-links-policy.json` — identical.
 - `training-email-templates.md` — the **web copy is newer** (305 vs 288 lines, no template
   IDs unique to this one). Nothing lost here.
-- `training-links.json` — **resolved 2026-07-26: the drift was a false alarm.** This copy
-  carried two keys the web app's `training-links.json` does not have
+- `training-links.json` — **question closed 2026-07-26: nothing is missing.** This copy has two
+  keys the web app's `training-links.json` does not
   (`WASTEWATER_ONLINE_COURSE_URL`, `FARO_CONNECT_ONLINE_COURSE_URL`), but both courses *are*
   offered by the web app — it keeps their URLs on the course entries in
-  `web/src/mail-config/industry-training-links.json` (`wastewater`, `faro_connect`, which
-  become the `thinkific_wastewater` / `thinkific_faro_connect` composer options), byte-identical
-  to the ones that were here. Nothing was dropped in the port; the two keys were simply
-  redundant, so they have been removed here. No drift remains.
+  `web/src/mail-config/industry-training-links.json` (`wastewater`, `faro_connect`, which become
+  the `thinkific_wastewater` / `thinkific_faro_connect` composer options), byte-identical to the
+  ones here. `lib/mail-engine/links.ts` resolves `category: "thinkific"` options from that
+  per-course `url`, never from `training-links.json`, so the two keys here are simply how the old
+  CLI addressed the same links. Nothing was dropped in the port and there is nothing to port
+  forward — this is a naming difference, not drift. Both keys are left in place: this directory is
+  a historical snapshot of the CLI and is not edited to match the web app.
 
 ## Running it again
 
