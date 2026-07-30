@@ -16,6 +16,7 @@ import {
   replacePlaceholders,
 } from "./templates";
 import { markdownToHtml, stripMarkdownLinks } from "./html";
+import { stripLeadingGreeting } from "./greeting";
 import {
   addonsBlock,
   buildIndustryTrainingBlock,
@@ -114,14 +115,19 @@ export function renderBriefMail(input: BriefRenderInput, llm: BriefLlmResult): R
   const signature = (input.signature_name && input.signature_name.trim()) || MAIL_SIGNATURE_DEFAULT_NAME;
 
   const greeting = `${BRIEF_GREETING[language]} ${input.recipient_name},`;
+  // The model is told not to repeat the greeting but often does; strip it so it can't show twice.
+  const opener = stripLeadingGreeting(llm.opener, language);
   const feedbackAsk = llm.feedback_ask.trim();
   const feedbackSection = feedbackAsk
     ? `${feedbackAsk}\n\n![Training feedback](${feedbackQr.url})`
     : "";
   const signoff = `${llm.closing.trim()}\n\n${BRIEF_SIGNOFF[language]}\n${signature}\n${BRIEF_ROLE}`;
 
+  // Joined per-part so a stripped-to-empty opener can't leave a blank gap after the greeting.
+  const intro = [greeting, opener, llm.recap_intro.trim()].filter((part) => part.length > 0).join("\n\n");
+
   const sections = [
-    `${greeting}\n\n${llm.opener.trim()}\n\n${llm.recap_intro.trim()}`.trim(),
+    intro,
     buildTrainingMaterialsBlock(language, selectedChangeIds),
     buildUsefulLinksBlockFromChanges(language, selectedChangeIds),
     addonsBlock(language, input.datasets_link, singular),

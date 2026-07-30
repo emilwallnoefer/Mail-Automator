@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-07-30",
+    date: "Jul 30, 2026",
+    title: "AI brief mails greet you once",
+    highlights: [
+      "Fixed the duplicated welcome line in AI brief drafts.",
+      "A greeting written by the AI is now dropped, whether on its own line or inside the first sentence.",
+    ],
+  },
+  {
     version: "2026-07-26-mail-tracking-post-only",
     date: "Jul 26, 2026",
     title: "Mail Tracking ignores pre-training mails",
