@@ -62,7 +62,7 @@ const OUTPUT_JSON_SCHEMA = {
     opener: {
       type: "string",
       description:
-        "The warm opening paragraph(s) after the greeting. Reference the client and what was special about the training. Do NOT repeat the greeting line.",
+        "The warm opening paragraph(s) that follow the greeting. Reference the client and what was special about the training. The system already prints the greeting line ('Hallo <names>,') directly above this text, so start with the first sentence of the body — never with 'Hallo/Hello/Bonjour <name>,' in any form, not even inline at the start of that sentence.",
     },
     recap_intro: {
       type: "string",
@@ -132,6 +132,7 @@ function buildSystemPrompt(): string {
     "- Instead, choose which assets to include by returning their IDs in `selected_change_ids`, picking ONLY from the asset catalog below. Base the choice on what the brief says (client industry, payloads/methods used, what was covered). Include the core onboarding materials plus anything relevant to what was special.",
     "",
     "Return only the requested JSON fields. Write `opener`, `recap_intro`, `feedback_ask`, and `closing` prose; do not include the greeting line, the QR image, the 'Best regards' line, or the signature name — the system adds those.",
+    "- The greeting is printed for you above `opener`. Do not write it again, in any position: not as its own line, and not folded into the first sentence ('Hallo Roger, hallo Christoph, die Schulung…'). `opener` must begin with the body itself.",
     "",
     "=== REFERENCE TEMPLATES (for tone/structure only) ===",
     readTemplates(),
