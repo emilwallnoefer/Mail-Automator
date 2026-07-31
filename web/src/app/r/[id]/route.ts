@@ -49,7 +49,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!id || !LINK_ID_REGEX.test(id)) return fallback;
 
   const clientIp = getClientIp(request);
-  const limit = checkRateLimit(`mail-redirect:${clientIp}`, {
+  const limit = await checkRateLimit(`mail-redirect:${clientIp}`, {
     windowMs: 60_000,
     max: 600,
   });

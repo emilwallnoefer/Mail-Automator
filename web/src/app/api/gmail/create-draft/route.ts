@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const clientIp = getClientIp(request);
-  const limitResult = checkRateLimit(`gmail-draft:${user.id}:${clientIp}`, {
+  const limitResult = await checkRateLimit(`gmail-draft:${user.id}:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 80,
   });

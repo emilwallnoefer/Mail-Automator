@@ -352,7 +352,7 @@ export async function GET(request: Request) {
   // single admin session (or a leaked CRON_SECRET) was an unmetered outbound
   // mail primitive. Keyed per-IP; generous enough that the two weekly Vercel
   // cron hits and ordinary manual runs never touch it. (run-3, F8)
-  const limitResult = checkRateLimit(`cron-reminder:${getClientIp(request)}`, {
+  const limitResult = await checkRateLimit(`cron-reminder:${getClientIp(request)}`, {
     windowMs: 60 * 60 * 1000,
     max: 20,
   });

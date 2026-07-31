@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   const clientIp = getClientIp(request);
-  const limitResult = checkRateLimit(`account-delete:${user.id}:${clientIp}`, {
+  const limitResult = await checkRateLimit(`account-delete:${user.id}:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 10,
   });

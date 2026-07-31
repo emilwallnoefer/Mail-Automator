@@ -26,7 +26,7 @@ const briefSchema = z.object({
 export async function POST(request: Request) {
   const clientIp = getClientIp(request);
   // Brief mode calls a paid LLM, so keep the window tighter than the deterministic generator.
-  const limitResult = checkRateLimit(`generate-brief:${clientIp}`, {
+  const limitResult = await checkRateLimit(`generate-brief:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 40,
   });

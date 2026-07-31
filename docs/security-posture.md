@@ -173,36 +173,44 @@ refresh still returns a balance, and both the Time Tracker and Admin → Team ti
 
 ---
 
-## 5. Still open — these need a decision, not more code
+## 5. Follow-ups — all shipped 2026-07-31
 
-1. ~~**CSP is Report-Only, and currently inert.**~~ **Done — `CSP_ENFORCE=1` set in Vercel
-   (2026-07-26).** The policy now blocks rather than observes. Confirm on the deployed site with
-   `curl -sI https://<app-domain>/login | grep -i content-security-policy` — the header name must
-   be `Content-Security-Policy`, *not* `...-Report-Only`.
-   **Remaining caveat:** `script-src` still carries `'unsafe-inline'` for the theme bootstrap in
-   `layout.tsx`, so the policy is a solid framing/exfiltration control (`frame-ancestors 'none'`,
-   `connect-src` pinned to self + Supabase, `object-src 'none'`, `base-uri`/`form-action 'self'`)
-   but **not yet a strong XSS backstop**. Closing that means giving the bootstrap script a nonce
-   so `'unsafe-inline'` can be dropped. Separate, smaller piece of work.
-2. **Rate limiting is not durable** (the one Tier-1 item never closed). It's an in-process `Map`,
-   so on Vercel each lambda has its own and limits reset on cold start. Fine as a courtesy
-   throttle, not a security control. Closing it means Upstash / Vercel KV / the edge firewall —
-   an infra decision.
-3. **HR's data scope is wider than its docstring claims.** `guardTimeViewer` says HR "can only
-   view summaries", but `/api/admin/time-user?user_id=` returns day-level sick leave, break names
-   and free-text comp notes for any employee. That may well be exactly right for an HR role — I
-   deliberately did **not** narrow it, because guessing wrong would break a legitimate workflow.
-   It needs a product answer, and then either the code or the docstring should change.
-4. **`search_path` ordering on the other nine RPCs.** I fixed the two I touched. The rest still
-   list `public` before `pg_catalog`, which only matters if a client role holds `CREATE` on
-   schema `public`. One query settles it:
-   ```sql
-   select has_schema_privilege('anon','public','CREATE'),
-          has_schema_privilege('authenticated','public','CREATE');
-   ```
-5. **HSTS preload** needs the domain submitted at hstspreload.org to take effect.
+Everything on the previous "still open" list has been closed or reduced to a provisioning step.
 
----
+1. ~~CSP is Report-Only~~ **Enforced 2026-07-26**, and as of 2026-07-31 it also carries a
+   **per-request nonce**, so `script-src` no longer needs `'unsafe-inline'`. An injected inline
+   `<script>` is now refused outright, which it was not before. The policy moved out of
+   `next.config.ts` (static headers can't carry a nonce) into `lib/security/csp.ts`, emitted by
+   `src/proxy.ts`.
+   **Trade-off worth knowing:** reading the nonce in the root layout makes every page
+   dynamically rendered — `/dashboard`, `/login`, `/onboarding`, `/settings` were prerendered
+   before and now render per request. Negligible at our scale, but it is a real change and it is
+   why nobody should "optimise" the nonce back out.
+   `style-src` still allows inline styles; Tailwind and framer-motion mutate them per frame, and
+   inline style is a far weaker primitive than inline script.
+2. **Durable rate limiting — code done, needs provisioning.** The limiter now uses an
+   Upstash-compatible Redis store when configured and falls back to the in-memory counter
+   otherwise, or if the store errors — a Redis blip weakens the limit rather than removing it or
+   failing requests. **To activate**, set `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel KV) or
+   `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`. Until then behaviour is exactly as before.
+3. **HR data scope — decided: the wider scope is correct.** HR is meant to see day-level records
+   including sick leave. Accepting that came with two changes: the guard's docstring no longer
+   claims "summaries only" (it now spells out exactly what a time viewer can reach), and viewing
+   an individual's record writes an `employee_record_view` row to the admin audit log.
+   **Correction to what I said earlier:** I stated HR views were already audit-logged. They were
+   not — the audit log only covered *writes*. Reads of individual records were invisible until
+   this change.
+4. **`search_path` on the remaining functions — done.** `2026-07-31-search-path-pinning.sql`
+   repins all 14 via `alter function`, which changes the setting without re-declaring any
+   function body. Hardening rather than a live fix: we confirmed neither client role can create
+   objects in `public`.
+5. **RLS suite — now actually runnable.** `npm run test:rls` had hardcoded `.env.local` while
+   this checkout uses `.env`, so it could never have run as written. Fixed, plus
+   `npm run test:rls:setup` to create the two throwaway accounts it needs (dry-run by default —
+   it requires `--yes`, because it creates real users that admins will see).
+6. **HSTS preload** still needs the domain submitted at hstspreload.org. Two minutes, yours to do.
+
+**One migration to apply by hand:** `web/supabase/2026-07-31-search-path-pinning.sql`.
 
 ## 6. Where I'd push back on being reassured
 
@@ -217,7 +225,13 @@ tables; there are no committed secrets anywhere in history; there's no SQL or Po
 injection surface at all; OAuth `state` is properly implemented; and there are zero
 security-related TODOs, debug endpoints, or dev bypasses.
 
-The weak spot is not the code — it's that **two of our defensive layers were quietly not
-running**: the CSP is Report-Only in production, and the RLS test suite couldn't see the class of
-bug that produced this run's HIGH. A control you believe is on is worse than one you know is off.
-Both are addressed above; item 1 is the one I'd do this week.
+The weak spot was never the code — it was that **three of our defensive layers were quietly not
+running**. The CSP was Report-Only in production, so it blocked nothing. The RLS test suite
+couldn't see the class of bug that produced this run's HIGH, because it only ever tested tables
+and never called a function. And `npm run test:rls` pointed at a dotenv file this checkout does
+not have, so it could not have run at all.
+
+That is the pattern worth carrying forward: **a control you believe is on is worse than one you
+know is off**, because it buys silence instead of attention. All three are fixed, and the fixes
+are the kind that stay fixed — the CSP flag is asserted by a unit test, the RLS suite now probes
+functions as well as tables, and the runner resolves whichever dotenv actually exists.

@@ -41,10 +41,25 @@ const B_EMAIL = process.env.RLS_TEST_B_EMAIL;
 const B_PASSWORD = process.env.RLS_TEST_B_PASSWORD;
 
 if (!URL || !ANON || !A_EMAIL || !A_PASSWORD || !B_EMAIL || !B_PASSWORD) {
+  const missing = Object.entries({
+    NEXT_PUBLIC_SUPABASE_URL: URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: ANON,
+    RLS_TEST_A_EMAIL: A_EMAIL,
+    RLS_TEST_A_PASSWORD: A_PASSWORD,
+    RLS_TEST_B_EMAIL: B_EMAIL,
+    RLS_TEST_B_PASSWORD: B_PASSWORD,
+  })
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+
   console.error(
-    "RLS smoke test skipped — missing env. Set NEXT_PUBLIC_SUPABASE_URL, " +
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY, and RLS_TEST_A_/RLS_TEST_B_ EMAIL+PASSWORD.\n" +
-      "Run: cd web && node --env-file=.env.local scripts/rls-smoke.mjs",
+    `RLS smoke test skipped — missing env: ${missing.join(", ")}\n\n` +
+      "The suite needs two ordinary (non-admin, non-HR) accounts so it can prove\n" +
+      "that user A cannot reach user B's data. To create them:\n\n" +
+      "  cd web && npm run test:rls:setup           # dry run, shows what it would do\n" +
+      "  cd web && npm run test:rls:setup -- --yes  # create them, prints the env lines\n\n" +
+      "Then paste the printed RLS_TEST_* lines into web/.env.local and run:\n" +
+      "  cd web && npm run test:rls",
   );
   process.exit(2);
 }

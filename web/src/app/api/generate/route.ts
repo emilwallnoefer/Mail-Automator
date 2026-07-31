@@ -67,7 +67,7 @@ function sanitizeMailPayload(input: z.infer<typeof generateSchema>): MailInput {
 
 export async function POST(request: Request) {
   const clientIp = getClientIp(request);
-  const limitResult = checkRateLimit(`generate:${clientIp}`, {
+  const limitResult = await checkRateLimit(`generate:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 100,
   });

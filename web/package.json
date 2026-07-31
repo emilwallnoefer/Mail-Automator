@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "import:hourlogger": "node scripts/import-hourlogger.mjs",
-    "test:rls": "node --env-file=.env.local scripts/rls-smoke.mjs"
+    "test:rls": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/rls-smoke.mjs",
+    "test:rls:setup": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/rls-smoke-setup.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.0",

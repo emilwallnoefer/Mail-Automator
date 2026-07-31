@@ -30,7 +30,7 @@ const renderSchema = z.object({
 
 export async function POST(request: Request) {
   const clientIp = getClientIp(request);
-  const limitResult = checkRateLimit(`render-brief:${clientIp}`, {
+  const limitResult = await checkRateLimit(`render-brief:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 200,
   });
