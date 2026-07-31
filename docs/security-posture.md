@@ -188,11 +188,12 @@ Everything on the previous "still open" list has been closed or reduced to a pro
    why nobody should "optimise" the nonce back out.
    `style-src` still allows inline styles; Tailwind and framer-motion mutate them per frame, and
    inline style is a far weaker primitive than inline script.
-2. **Durable rate limiting — code done, needs provisioning.** The limiter now uses an
-   Upstash-compatible Redis store when configured and falls back to the in-memory counter
-   otherwise, or if the store errors — a Redis blip weakens the limit rather than removing it or
-   failing requests. **To activate**, set `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel KV) or
-   `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`. Until then behaviour is exactly as before.
+2. **Durable rate limiting — done and live.** The limiter uses an Upstash Redis store (free
+   tier, Frankfurt) and falls back to the in-memory counter if the store is absent or errors — a
+   Redis blip weakens the limit rather than removing it or failing requests. Verified in
+   production rather than assumed: two Time Tracker saves produced exactly *one* counter key,
+   which is the shared fixed-window counter working; an in-memory fallback would have left the
+   store empty. The rate limits are now real rather than per-instance.
 3. **HR data scope — decided: the wider scope is correct.** HR is meant to see day-level records
    including sick leave. Accepting that came with two changes: the guard's docstring no longer
    claims "summaries only" (it now spells out exactly what a time viewer can reach), and viewing
@@ -208,9 +209,14 @@ Everything on the previous "still open" list has been closed or reduced to a pro
    this checkout uses `.env`, so it could never have run as written. Fixed, plus
    `npm run test:rls:setup` to create the two throwaway accounts it needs (dry-run by default —
    it requires `--yes`, because it creates real users that admins will see).
-6. **HSTS preload** still needs the domain submitted at hstspreload.org. Two minutes, yours to do.
+6. **HSTS preload — no action needed.** `vercel.app` is itself on the browser preload list with
+   `includeSubDomains`, so `mail-automator.vercel.app` is already covered. Submitting a
+   subdomain of an already-preloaded domain is a no-op. This only becomes a real task if the
+   app moves to a custom domain — see `docs/domain-change-runbook.md`.
 
-**One migration to apply by hand:** `web/supabase/2026-07-31-search-path-pinning.sql`.
+**One migration to apply by hand:** `web/supabase/2026-07-31-search-path-pinning.sql`. *(Applied 2026-07-31.)*
+
+All run-3 follow-ups are now closed.
 
 ## 6. Where I'd push back on being reassured
 
