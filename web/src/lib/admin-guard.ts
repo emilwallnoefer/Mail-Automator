@@ -85,9 +85,26 @@ export type TimeViewerGuardSuccess = {
 };
 
 /**
- * Verifies the current request is from someone allowed to see aggregated time data:
- * either an admin (via `ADMIN_EMAILS`) or a user with the `hr` role in metadata.
- * HR is read-only: they can only view summaries, not manage roles.
+ * Verifies the current request is from someone allowed to see other people's time
+ * data: either an admin (via `ADMIN_EMAILS`) or a user with the `hr` role in
+ * `app_metadata`.
+ *
+ * SCOPE — read this before adding a route behind this guard. HR is **read-only**
+ * (no route behind this guard exports POST/PATCH/DELETE; every mutating admin
+ * route uses `guardAdmin` instead), but "read-only" is not "summaries only".
+ * A time viewer can currently reach, for ANY employee:
+ *   - `/api/admin/time-overview` — per-user weekly totals, overtime bank, missing days
+ *   - `/api/admin/onboarding`    — the full user directory and per-section progress
+ *   - `/api/admin/time-user`     — **day-level detail**: start/stop times, break
+ *     names, sick leave, and free-text comp-adjustment notes
+ *
+ * That day-level scope is deliberate and was confirmed as correct for HR
+ * (security audit run-3, H8). It is also why `/api/admin/time-user` writes an
+ * `employee_record_view` row to `admin_audit_log`: the access is legitimate, and
+ * it is still worth knowing who looked at whose record.
+ *
+ * If you put a new route behind this guard, assume HR will read everything it
+ * returns, and audit-log it if it exposes an individual's personal data.
  */
 export async function guardTimeViewer(): Promise<TimeViewerGuardSuccess | AdminGuardFailure> {
   const supabase = await createClient();

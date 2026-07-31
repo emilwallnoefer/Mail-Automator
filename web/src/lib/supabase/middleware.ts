@@ -2,8 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+/**
+ * @param requestHeaders headers to forward to the app (carries the CSP nonce set
+ *   by `proxy.ts`). Must be threaded through every `NextResponse.next()` here, or
+ *   the nonce is lost and Next cannot stamp its inline scripts.
+ */
+export async function updateSession(request: NextRequest, requestHeaders?: Headers) {
+  const nextRequest = requestHeaders ? { headers: requestHeaders } : request;
+  let response = NextResponse.next({ request: nextRequest });
   try {
     if (!isSupabaseConfigured()) {
       // Let public pages load with a clear UI; avoid hard middleware crashes.
@@ -19,7 +25,7 @@ export async function updateSession(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            response = NextResponse.next({ request });
+            response = NextResponse.next({ request: nextRequest });
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options),
             );
@@ -58,6 +64,6 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/login";
       return NextResponse.redirect(url);
     }
-    return NextResponse.next({ request });
+    return NextResponse.next({ request: nextRequest });
   }
 }

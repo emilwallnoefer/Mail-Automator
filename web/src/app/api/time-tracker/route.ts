@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const authedUser = user;
   const clientIp = getClientIp(request);
-  const limitResult = checkRateLimit(`time-tracker-write:${authedUser.id}:${clientIp}`, {
+  const limitResult = await checkRateLimit(`time-tracker-write:${authedUser.id}:${clientIp}`, {
     windowMs: 60 * 60 * 1000,
     max: 180,
   });

@@ -11,7 +11,12 @@ export type AdminAuditAction =
   | "reminder_pause"
   | "reminder_resume"
   | "mail_brief_model_change"
-  | "security_alerts_change";
+  | "security_alerts_change"
+  // Read, not a write. Viewing one employee's day-level time record exposes
+  // sick leave, break names and free-text comp notes, so who looked at whose
+  // record is worth an accountable trail even though nothing changed.
+  // See `guardTimeViewer` in admin-guard.ts.
+  | "employee_record_view";
 
 export type AdminAuditEntry = {
   id: number;

@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { MotionProvider } from "@/components/motion-provider";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { NONCE_HEADER } from "@/lib/security/csp";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +71,13 @@ export default async function RootLayout({
 }>) {
   const { theme, accent } = await resolveServerAppearance();
 
+  // Per-request CSP nonce, set by src/proxy.ts. Without it the inline theme
+  // bootstrap below is blocked, because script-src no longer allows
+  // 'unsafe-inline'. Null only if middleware did not run (it always does for
+  // HTML routes) — the script is then simply omitted rather than emitted in a
+  // form the browser would refuse.
+  const nonce = (await headers()).get(NONCE_HEADER);
+
   // When the account has a saved theme, apply it as data-* on <html> at SSR time
   // (authoritative, no flash) and flag the source so the bootstrap reconciles
   // localStorage instead of overriding. Otherwise leave it to the bootstrap.
@@ -88,7 +97,9 @@ export default async function RootLayout({
   return (
     <html {...htmlProps} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        {nonce ? (
+          <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        ) : null}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

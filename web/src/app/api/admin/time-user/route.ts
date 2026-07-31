@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { guardTimeViewer } from "@/lib/admin-guard";
+import { recordAdminAudit } from "@/lib/admin-audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchWeekForUser, getWeekStartDate } from "@/lib/time-tracker-queries";
 
@@ -43,6 +44,21 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
+
+  // This endpoint returns one employee's day-level record — start/stop times,
+  // break names, sick leave and free-text comp notes. HR seeing that is the
+  // intended design (see guardTimeViewer), but "intended" and "unrecorded" are
+  // different things: log who looked at whose record. Best-effort by design —
+  // recordAdminAudit never throws, so a failed audit write cannot break the read.
+  await recordAdminAudit(admin, {
+    actor_email: guard.user.email,
+    action: "employee_record_view",
+    target: lookup.data.user.email ?? parsed.data.user_id,
+    detail: {
+      week_start: week.week_start,
+      viewer_role: guard.isAdmin ? "admin" : "hr",
+    },
+  });
 
   return NextResponse.json({
     week_start: week.week_start,

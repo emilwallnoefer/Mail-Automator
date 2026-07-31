@@ -20,6 +20,8 @@ const ACTION_LABELS: Record<string, string> = {
   reminder_pause: "Reminder paused",
   reminder_resume: "Reminder resumed",
   mail_brief_model_change: "Mail model change",
+  security_alerts_change: "Security alerts change",
+  employee_record_view: "Employee record viewed",
 };
 
 function roleText(value: unknown): string {
@@ -38,6 +40,11 @@ function describeDetail(entry: AuditEntry): string | null {
   }
   if (entry.action === "mail_brief_model_change") {
     return detail.model ? `→ ${String(detail.model)}` : null;
+  }
+  if (entry.action === "employee_record_view") {
+    const week = detail.week_start ? `week of ${String(detail.week_start)}` : null;
+    const viewer = detail.viewer_role ? String(detail.viewer_role).toUpperCase() : null;
+    return [viewer, week].filter(Boolean).join(" · ") || null;
   }
   return null;
 }
