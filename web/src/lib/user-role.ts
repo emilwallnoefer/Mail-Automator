@@ -1,6 +1,11 @@
 export type UserRole = "sales" | "eu_pilot" | "us_pilot" | "hr";
 
-/** Maps Supabase `user_metadata.role` to a known role. Legacy `pilot` is treated as EU Pilot. */
+/**
+ * Maps a Supabase `app_metadata.role` value to a known role. Legacy `pilot` is
+ * treated as EU Pilot. The role is read from `app_metadata` (service-role
+ * writable only) everywhere — never `user_metadata`, which users can rewrite
+ * themselves. See SECURITY.md T0.1.
+ */
 export function normalizeUserRole(raw: unknown): UserRole | null {
   if (raw === "sales") return "sales";
   if (raw === "eu_pilot" || raw === "pilot") return "eu_pilot";

@@ -1,7 +1,12 @@
 import { createGmailDraft } from "@/lib/gmail";
 import { readGmailRefreshToken } from "@/lib/gmail-tokens";
 import { rewriteHtmlForTracking, resolveTrackingBaseUrl } from "@/lib/email/link-tracker";
-import { sanitizeEmailList, sanitizeNullableText, sanitizeText } from "@/lib/security/input-sanitize";
+import {
+  sanitizeEmailList,
+  sanitizeMailHtml,
+  sanitizeNullableText,
+  sanitizeText,
+} from "@/lib/security/input-sanitize";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -98,7 +103,11 @@ export async function POST(request: Request) {
     bcc: sanitizeEmailList(parsedPayload.data.bcc, 500),
     subject: sanitizeText(parsedPayload.data.subject, { maxLen: 300 }),
     body: sanitizeText(parsedPayload.data.body, { maxLen: 30000, allowNewlines: true }),
-    html_body: parsedPayload.data.html_body,
+    // Every other field here is sanitized; html_body used to be the one that
+    // wasn't (security audit run-3, F6). It carries active-content constructs
+    // the mail renderer never emits, so strip them before the body is
+    // base64-encoded into the MIME part.
+    html_body: sanitizeMailHtml(parsedPayload.data.html_body),
     inline_attachments: parsedPayload.data.inline_attachments,
     tracking_meta: trackingMeta,
   };

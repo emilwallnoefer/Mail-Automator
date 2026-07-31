@@ -28,11 +28,26 @@ export default async function DashboardPage() {
 
   if (!claims) redirect("/login");
 
+  // Role lives in app_metadata (service-role writable only), NOT user_metadata,
+  // which the user can rewrite themselves via supabase.auth.updateUser. Reading
+  // it from user_metadata here let anyone render the HR/admin tab for themselves
+  // — harmless on its own because every endpoint behind it re-checks
+  // app_metadata, but it disagreed with settings/page.tsx and admin-guard.ts and
+  // was a trap for the next data fetch hung off `initialRole`.
+  // See SECURITY.md T0.1 and security audit run-3, F7.
+  const appMetadata =
+    claims.app_metadata && typeof claims.app_metadata === "object" && !Array.isArray(claims.app_metadata)
+      ? (claims.app_metadata as Record<string, unknown>)
+      : null;
+  const userRoleRaw = appMetadata && "role" in appMetadata ? appMetadata.role : null;
+
+  // user_metadata is still the right home for the user's own non-privilege
+  // preferences (travel-sheet mapping, signature, appearance) — it is only the
+  // ROLE that must never be read from there.
   const userMetadata =
     claims.user_metadata && typeof claims.user_metadata === "object" && !Array.isArray(claims.user_metadata)
       ? (claims.user_metadata as Record<string, unknown>)
       : null;
-  const userRoleRaw = userMetadata && "role" in userMetadata ? userMetadata.role : null;
   const email = typeof claims.email === "string" ? claims.email : null;
   const userId = typeof claims.sub === "string" ? claims.sub : null;
   const initialRole = normalizeUserRole(userRoleRaw);

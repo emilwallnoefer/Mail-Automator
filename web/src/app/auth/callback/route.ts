@@ -1,11 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/dashboard";
+  // `next` is attacker-controllable and this route is unauthenticated (it is not
+  // in the proxy matcher). Without validation, `?next=https://evil.example`
+  // makes us 307 off-origin from a trusted URL — a phishing primitive on our own
+  // domain. `new URL(next, origin)` does not prevent that: an absolute or
+  // protocol-relative value discards the base entirely.
+  const next = safeRedirectPath(requestUrl.searchParams.get("next"));
   let response = NextResponse.redirect(new URL(next, requestUrl.origin));
 
   if (code) {

