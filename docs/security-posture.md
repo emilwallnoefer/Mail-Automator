@@ -149,7 +149,7 @@ text, so injected markup reached the customer email as live HTML. Also notable: 
 - `scripts/rls-smoke.mjs` — RPC probes, plus a check that the stats cache is read-only to clients.
 - `next.config.ts` — `preload` on HSTS.
 
-**Three migrations — must be applied by hand, before the code deploys.** `web/supabase/` is a
+**Three migrations — ✅ applied and verified against the live database on 2026-07-26.** `web/supabase/` is a
 flat, un-orchestrated directory, same rule as the July 3rd batch:
 
 1. `2026-07-26-rpc-privilege-hardening.sql` — revokes PUBLIC from both definer functions, adds
@@ -163,10 +163,13 @@ flat, un-orchestrated directory, same rule as the July 3rd batch:
 confirmed fixed against a running server, and the HTML escaper was confirmed both broken before
 and fixed after by executing it in isolation.
 
-**One caveat I want to be explicit about:** the two RPC findings rest on the live `EXECUTE` ACL,
-which I read from the migrations but could not query — the database wasn't reachable from my
-session. The confirming query is in the migration's header comment; please run it before and
-after applying.
+**The one caveat from audit time is now resolved.** The two RPC findings rested on the live
+`EXECUTE` ACL, which I could read from the migrations but not query. It was confirmed against the
+live database on 2026-07-26: a user JWT calling the function for another user now raises `42501`,
+`anon` is denied outright on both functions, the forged-overtime `update` is denied while `select`
+still works, and `proacl` carries no PUBLIC entry. The positive controls all pass too — own-id
+refresh still returns a balance, and both the Time Tracker and Admin → Team time render normally.
+**The HIGH is closed.**
 
 ---
 
