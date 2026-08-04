@@ -101,33 +101,43 @@ draft the training email, then see who actually clicked — scanners excluded.
 
 ## The cut — 15 shots
 Nothing crossfades: scene changes are the framework's clip windows, hard cut on the 0.40s grid.
-*Within* a scene the framing changes with an **animated camera move**, not a snap — 350ms in,
-300ms out, both on the app's own `cubic-bezier(0.22, 1, 0.36, 1)`, transform only. Each move's
-`transform-origin` is placed on the centre of the target region so the scale converges on it
-instead of sweeping the frame, and the translate only re-centres it. Durations, easing and the
-text timings are constants (`CAMERA`, `TEXT`) at the top of the script.
 
-With `prefers-reduced-motion: reduce`, `camera()` degrades to the instant cut it replaced.
+*Within* a scene the framing change is **a cut that then keeps moving** — not a zoom, and not a
+freeze. Each `camera()` move is four steps:
+
+1. **Cut in** — a single sub-frame step (0.02s) to the target framing at 94% of final scale, so
+   the shot changes between one frame and the next.
+2. **Drift in** — the camera keeps pushing from 94% to 100% over up to 0.8s on the app's own
+   `cubic-bezier(0.22, 1, 0.36, 1)`, so the shot is alive rather than frozen.
+3. **Cut out** — a single sub-frame step back to wide, landing 3.5% tight.
+4. **Settle** — 0.4s back to 1.0 on the same curve.
+
+`transform-origin` sits on the centre of the target region, so the scale converges on it instead
+of sweeping the frame; the translate only re-centres. Transform only — never width/height/top/left.
+Durations, scales, easing and the text cadence are constants (`CAMERA`, `TEXT`) at the top of the
+script.
+
+With `prefers-reduced-motion: reduce`, `camera()` drops the drift and settle and is a plain cut.
 
 | # | in | framing | what happens |
 |---|---|---|---|
 | 1 | 0.00 | wide | the login card |
-| 2 | 1.60 | **push in ×1.9** (350ms) | `Continue with Google` pressed |
-| 3 | 2.40 | **pull back** (300ms) | already on the dashboard; 3 module cards land on 16ths |
+| 2 | 1.60 | **cut in ×1.9** + drift | `Continue with Google` pressed |
+| 3 | 2.40 | **cut out** + settle | already on the dashboard; 3 module cards land on 16ths |
 | 4 | 4.00 | text | *"Your whole **week**."* — word by word, re-centring as it grows |
 | 5 | 5.60 | wide | the week fills, one day card per 16th |
-| 6 | 7.60 | **push in ×1.9** | Thursday clicked |
-| 7 | 8.40 | **pull back** | the day editor is already open |
-| 8 | 9.20 | **push in ×1.75** | `Day type` → **Vacation** (lands once settled, 9.56) |
-| 9 | 10.00 | **pull back** | `Save day` pressed |
+| 6 | 7.60 | **cut in ×1.9** + drift | Thursday clicked |
+| 7 | 8.40 | **cut out** + settle | the day editor is already open |
+| 8 | 9.20 | **cut in ×1.7** on the chip block | `Day type` → **Vacation**, cursor on the chip |
+| 9 | 10.00 | **cut out** + settle | `Save day` pressed |
 | 10 | 10.40 | cut | back to the week: `VAC` badge, bank → +12h 05m |
 | 11 | 11.20 | text | *"Now the **email**."* — word by word |
 | 12 | 12.80 | wide | the composer form fills |
-| 13 | 13.60 | **push in ×1.6** | the brief types, `Generate draft` pressed |
-| 14 | 14.80 | **pull back** | the draft is already there |
+| 13 | 13.60 | **cut in ×1.6** + drift | the brief types, `Generate draft` pressed |
+| 14 | 14.80 | **cut out** + settle | the draft is already there |
 | 15 | 16.00 | wide **(the drop)** | the stat row; tiles on 16ths |
-| — | 18.00 | **push in ×1.6** | `Scanner clicks` struck out at 18.38, once settled |
-| — | 19.60 | **pull back** | the whole row again |
+| — | 18.00 | **cut in ×2.0**, a clean two-up | `Scanner clicks` struck out, `Real clicks` lit |
+| — | 19.60 | **cut out** + settle | the whole row again |
 | — | 20.80 | cut | lockup |
 
 ## Storyboard

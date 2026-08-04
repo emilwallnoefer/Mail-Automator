@@ -702,6 +702,7 @@
         opacity: 0;
       }
       .cta {
+        position: relative;
         margin-top: 34px;
         display: inline-block;
         border-radius: 12px;
@@ -710,6 +711,14 @@
         font-weight: 600;
         color: #ffffff;
         background: #2f5876;
+      }
+      #cta-b {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
       }
       .mail-line {
         font-size: 25px;
@@ -1074,7 +1083,7 @@
                 <div class="field-label">Training brief</div>
                 <div class="field-box tall"><span id="s3-brief-text"></span><span id="s3-caret"></span></div>
               </div>
-              <div id="s3-cta" class="cta">Generate draft</div>
+              <div id="s3-cta" class="cta"><span id="cta-a">Generate draft</span><span id="cta-b">Generating…</span></div>
             </div>
 
             <div id="s3-preview" class="panel">
@@ -1237,8 +1246,11 @@
        * Tunables. Nothing below reaches for a magic number.
        * ------------------------------------------------------------- */
       var CAMERA = {
-        IN_DUR: 0.35, // push in
-        OUT_DUR: 0.3, // pull back
+        CUT: 0.02, // < one frame: the framing change is a cut, not a zoom
+        CUT_SCALE_IN: 0.94, // the cut lands just wide of the mark…
+        DRIFT_IN: 0.8, // …then the camera keeps pushing
+        CUT_SCALE_OUT: 1.035, // the cut back lands just tight…
+        DRIFT_OUT: 0.4, // …then settles
         BEZIER: [0.22, 1, 0.36, 1] // the app's own --ease-fluid
       };
       var TEXT = {
@@ -1297,11 +1309,25 @@
         tl.to(target, { scale: 0.96, duration: 0.07, ease: "power2.out" }, at);
         tl.to(target, { scale: 1, duration: 0.16, ease: EASE }, at + 0.07);
       }
-      function show(target, at) {
-        tl.set(target, { opacity: 1 }, at);
+      /* Zero-duration sets are not reverted when the playhead moves back
+       * past them, and are skipped entirely by a seek that starts after
+       * them — which is exactly what parallel render workers do. A
+       * sub-frame fromTo behaves identically on screen and is revertible. */
+      function show(target, at, to) {
+        tl.fromTo(
+          target,
+          { opacity: 0 },
+          { opacity: to === undefined ? 1 : to, duration: CAMERA.CUT, ease: "none", immediateRender: false },
+          at
+        );
       }
-      function hide(target, at) {
-        tl.set(target, { opacity: 0 }, at);
+      function hide(target, at, from) {
+        tl.fromTo(
+          target,
+          { opacity: from === undefined ? 1 : from },
+          { opacity: 0, duration: CAMERA.CUT, ease: "none", immediateRender: false },
+          at
+        );
       }
 
       /* ---------------------------------------------------------------
@@ -1315,17 +1341,52 @@
        * independent of s.
        * ------------------------------------------------------------- */
       function camera(target, tIn, tOut, s, px, py) {
-        var framed = { scale: s, x: 960 - px, y: 540 - py };
+        var X = 960 - px,
+          Y = 540 - py;
         var wide = { scale: 1, x: 0, y: 0 };
-        // safe to restate the origin here: the element is at identity
+        var landed = { scale: s * CAMERA.CUT_SCALE_IN, x: X, y: Y };
+        var framed = { scale: s, x: X, y: Y };
+        var recoil = { scale: CAMERA.CUT_SCALE_OUT, x: 0, y: 0 };
+
+        // Origin on the centre of the target region, so the scale converges
+        // on it rather than sweeping the frame; the translate only re-centres.
         tl.set(target, { transformOrigin: px + "px " + py + "px" }, tIn);
+
         if (REDUCED_MOTION) {
-          tl.set(target, framed, tIn);
-          tl.set(target, wide, tOut);
+          tl.fromTo(target, wide, Object.assign({ duration: CAMERA.CUT, ease: "none" }, framed), tIn);
+          tl.fromTo(
+            target,
+            framed,
+            Object.assign({ duration: CAMERA.CUT, ease: "none", immediateRender: false }, wide),
+            tOut
+          );
           return;
         }
-        tl.fromTo(target, wide, Object.assign({ duration: CAMERA.IN_DUR, ease: CAM_EASE }, framed), tIn);
-        tl.fromTo(target, framed, Object.assign({ duration: CAMERA.OUT_DUR, ease: CAM_EASE }, wide), tOut);
+
+        // CUT in — one sub-frame step to the new framing, slightly wide…
+        tl.fromTo(target, wide, Object.assign({ duration: CAMERA.CUT, ease: "none" }, landed), tIn);
+        // …then the camera keeps moving, so the shot is never frozen.
+        var driftIn = Math.min(CAMERA.DRIFT_IN, Math.max(0.2, tOut - tIn - CAMERA.CUT * 2));
+        tl.fromTo(
+          target,
+          landed,
+          Object.assign({ duration: driftIn, ease: CAM_EASE, immediateRender: false }, framed),
+          tIn + CAMERA.CUT
+        );
+        // CUT back out, landing a touch tight…
+        tl.fromTo(
+          target,
+          framed,
+          Object.assign({ duration: CAMERA.CUT, ease: "none", immediateRender: false }, recoil),
+          tOut
+        );
+        // …then settle.
+        tl.fromTo(
+          target,
+          recoil,
+          Object.assign({ duration: CAMERA.DRIFT_OUT, ease: CAM_EASE, immediateRender: false }, wide),
+          tOut + CAMERA.CUT
+        );
       }
 
       /* ---------------------------------------------------------------
@@ -1373,7 +1434,8 @@
                     return centreFor(measureId, i);
                   },
                   duration: TEXT.MOVE_DUR,
-                  ease: TEXT.MOVE_EASE
+                  ease: TEXT.MOVE_EASE,
+                  immediateRender: false
                 },
                 t
               );
@@ -1385,10 +1447,10 @@
 
       /* ---- background: drifts warm, cools into the drop, warms back --- */
       tl.fromTo("#stage-bg", { backgroundColor: "#fcfaf5" }, { backgroundColor: "#faf7ef", duration: 2.0, ease: "none" }, 4.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { backgroundColor: "#f6f2e8", duration: 3.0, ease: "none" }, 9.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { backgroundColor: "#eaeff4", duration: 0.8, ease: "none" }, 15.2);
-      tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 16.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 20.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { immediateRender: false, backgroundColor: "#f6f2e8", duration: 3.0, ease: "none" }, 9.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { immediateRender: false, backgroundColor: "#eaeff4", duration: 0.8, ease: "none" }, 15.2);
+      tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { immediateRender: false, backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 16.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { immediateRender: false, backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 20.0);
 
       /* ======= S1 · 0.00–4.00 — sign in, then the dashboard ========== */
       // SHOT 1 (0.00) wide: the login card
@@ -1433,13 +1495,16 @@
 
       // SHOT 6 (8.40) the editor is already open as the camera widens
       hide("#s2-cursor", 8.4);
-      tl.set("#s2-dim", { opacity: 0.2 }, 8.4); // scrim, not a blackout
+      show("#s2-dim", 8.4, 0.2); // scrim, not a blackout
       show("#s2-modal", 8.4);
 
       // SHOT 7 (9.20) push in on the Day type chips; Vacation lands once settled
-      camera("#s2-zoom", 9.2, 10.0, 1.75, 1127, 424);
-      show("#chip-vac-on", 9.56);
-      show("#s2-helper", 9.64);
+      camera("#s2-zoom", 9.2, 10.0, 1.7, 960, 457);
+      tl.set("#s2-cursor", { x: 1111, y: 417 }, 9.02);
+      show("#s2-cursor", 9.06);
+      show("#chip-vac-on", 9.26);
+      show("#s2-helper", 9.34);
+      hide("#s2-cursor", 9.9);
 
       // SHOT 8 (10.00) pull back to the editor, and save
       tl.set("#s2-cursor", { x: 1180, y: 765 }, 9.96);
@@ -1448,7 +1513,7 @@
 
       // SHOT 9 (10.40) CUT back to the week — Thursday is now Vacation
       hide("#s2-modal", 10.4);
-      hide("#s2-dim", 10.4);
+      hide("#s2-dim", 10.4, 0.2);
       hide("#s2-cursor", 10.4);
       hide("#thu-before", 10.4);
       hide("#thu-pct-before", 10.4);
@@ -1506,17 +1571,12 @@
       );
       hide("#s3-caret", 14.2);
       press("#s3-cta", 14.4);
-      tl.call(
-        function () {
-          document.getElementById("s3-cta").textContent = "Generating…";
-        },
-        [],
-        14.44
-      );
+      tl.fromTo("#cta-a", { opacity: 1 }, { opacity: 0, duration: 0.02, ease: "none", immediateRender: false }, 14.44);
+      tl.fromTo("#cta-b", { opacity: 0 }, { opacity: 1, duration: 0.02, ease: "none" }, 14.44);
 
       // SHOT 12 (14.80) — the draft is already there as the camera widens
       hide("#s3-preview-empty", 14.8);
-      tl.set("#s3-preview-inner", { x: 0, opacity: 1 }, 14.8);
+      tl.fromTo("#s3-preview-inner", { opacity: 0 }, { opacity: 1, duration: CAMERA.CUT, ease: "none", immediateRender: false }, 14.8);
 
       /* ======= S4 · 16.00–20.80 — Mail Tracking =====================
        * 16.00 is the drop in the score. */
@@ -1528,10 +1588,10 @@
 
       // SHOT 14 (18.00) push in on the Real / Scanner pair; the strike lands
       // once the camera has settled
-      camera("#s4-zoom", 18.0, 19.6, 1.6, 1342, 502);
-      tl.set("#tile-scanner-content", { opacity: 0.34 }, 18.38);
-      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.38);
-      show("#tile-real-ring", 18.38);
+      camera("#s4-zoom", 18.0, 19.6, 2.0, 1342, 502);
+      tl.fromTo("#tile-scanner-content", { opacity: 1 }, { opacity: 0.34, duration: 0.3, ease: "power2.out", immediateRender: false }, 18.1);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.1);
+      show("#tile-real-ring", 18.1);
 
       // SHOT 15 (19.60) pull back to the whole row
       rise("#s4-cap", 19.9, 14, 0.28);
@@ -1541,20 +1601,29 @@
       rise("#lk-word", 21.2, 18, 0.3);
       rise("#lk-url", 21.8, 12, 0.26);
 
-      /* ---- audio-reactive accent washes ---------------------------- */
+      /* ---- audio-reactive accent washes ----------------------------
+       * Driven by a single tween's onUpdate rather than ~700 tl.call()s:
+       * callbacks are suppressed on a seek, which is all the renderer does. */
       (function () {
         var AR = window.AUDIO_DATA;
         if (!AR || !AR.frames || !AR.frames.length) return;
-        function sampler(frame) {
-          var bass = (frame.bands[0] + frame.bands[1] + frame.bands[2]) / 3;
-          return function () {
-            root.style.setProperty("--a-rms", frame.rms.toFixed(3));
-            root.style.setProperty("--a-bass", bass.toFixed(3));
-          };
-        }
-        for (var k = 0; k < AR.totalFrames; k++) {
-          tl.call(sampler(AR.frames[k]), [], k / AR.fps);
-        }
+        var last = AR.totalFrames - 1;
+        var probe = { p: 0 };
+        tl.to(
+          probe,
+          {
+            p: 1,
+            duration: 23.2,
+            ease: "none",
+            onUpdate: function () {
+              var f = AR.frames[Math.max(0, Math.min(last, Math.round(probe.p * last)))];
+              var bass = (f.bands[0] + f.bands[1] + f.bands[2]) / 3;
+              root.style.setProperty("--a-rms", f.rms.toFixed(3));
+              root.style.setProperty("--a-bass", bass.toFixed(3));
+            }
+          },
+          0
+        );
       })();
 
       window.__timelines["main"] = tl;

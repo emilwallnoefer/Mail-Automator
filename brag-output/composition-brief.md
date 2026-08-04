@@ -114,36 +114,50 @@ Requirements:
 
 ---
 
-## Build notes (v6 — final)
+## Build notes (v7 — final)
 
-v5 made the edit fast. v6 replaces the hard-cut zooms with real camera moves and rebuilds the
-text beats.
+Two fixes on top of v6: the camera reads as a cut again, and a real rendering bug is gone.
 
-- **The zooms are animated now.** `camera(target, tIn, tOut, scale, px, py)` pushes in over
-  **350ms** and pulls back over **300ms**, both on `cubic-bezier(0.22, 1, 0.36, 1)` — the app's
-  own `--ease-fluid`. GSAP has no cubic-bezier ease without a paid plugin, so the curve is solved
-  inline (`cubicBezierEase`, fixed 24-iteration bisection, fully deterministic) rather than
-  approximated with `power4.out`.
-- **Only `transform` animates** — `scale` plus `x`/`y`. Nothing touches width/height/top/left, so
-  the moves stay GPU-composited.
-- **`transform-origin` is set to the centre of the target region** before each move, while the
-  element is at identity (safe — no jump). With the origin there, the point maps to
-  `origin + s·(p−origin) + (x,y)`, so the region lands dead centre when `(x,y) = (960−px, 540−py)`
-  *independent of scale* — the scale converges on the region instead of sweeping across the frame.
-- **Timings, easing and text cadence are constants** (`CAMERA`, `TEXT`) at the top of the script.
-- **`prefers-reduced-motion: reduce` degrades to the old instant cut.** Read once at init, so it
-  is constant for the render and determinism holds.
-- Actions that used to fire on the snap now fire **after the camera settles**: Vacation at 9.56
-  (not 9.20) and the strike-through at 18.38 (not 18.00).
-- **Text beats build word by word, centred.** Words are `inline-block` at `opacity: 0` so they
-  hold layout from the start and the row width is stable; each fades in on a 0.26s cadence while
-  the row's `x` animates to keep the *visible* sentence centred, over 0.24s with `power2.inOut`.
-  Word widths come from an off-screen twin (`#tb-measure`, `data-layout-ignore`) read through
-  GSAP function-based values, so measurement happens after webfont load rather than at parse time.
+### The rendering bug (why frames looked broken)
 
-Two bugs caught by `check` during this pass: `textBeat` was handed a selector but called
-`getElementById` (page error, blank text beats), and the strike-through now registers as occluding
-the number it strikes out — marked `data-layout-allow-occlusion` since that is the point of it.
+GSAP's `fromTo` defaults to **`immediateRender: true`** — it applies its *from* values the moment
+the tween is created, not when the playhead reaches it. With chained `fromTo`s that is disastrous:
+
+- The five background tweens each applied their from-colour at build time, last one winning, so
+  the entire opening rendered on `#e6edf3` — the cool blue that belongs to the Mail Tracking
+  section.
+- Every camera **pull-back** tween applied its zoomed from-state at build time, leaving the zoom
+  wrappers stuck framed. That is the magnified, offset login card in the reported frame.
+
+Snapshots hid it because `snapshot` seeks forward from 0 and the first tween to render corrects
+the state; the renderer's five parallel workers seek independently and exposed it. Fixed by
+marking every chained `fromTo` `immediateRender: false` except the one that legitimately owns the
+opening state.
+
+Two related seek-safety fixes while in there:
+
+- **`tl.set()` is not revertible** — the playhead moving back past a zero-duration tween does not
+  undo it, and a worker whose first seek is *after* it never applies it at all. `show()`/`hide()`
+  and the state flips are now sub-frame (0.02s) `fromTo`s, which look identical and behave.
+- **`tl.call()` is suppressed during seeks**, so the `Generate draft` → `Generating…` text swap
+  could silently not happen. It is now two stacked labels cross-faded. The audio-reactive washes
+  were ~700 `tl.call()`s for the same reason — replaced with one tween whose `onUpdate` samples
+  the frame table.
+
+### The camera reads as a cut again
+
+v6 replaced the jump cut with a 350ms animated push, which lost the cut entirely. It is now both:
+a **0.02s cut** to the new framing at 94% scale, then a **drift** to 100% over up to 0.8s; and on
+the way out, a **cut** back to wide landing 3.5% tight, then a 0.4s settle. So the framing change
+is instant — as it should be — and the shot still moves.
+
+### Framing
+
+- The `Day type` punch now centres on the **chip block** (960, 457) at ×1.7 rather than on the
+  Vacation chip, which had pushed the modal against the left edge of frame.
+- The Mail Tracking punch went to ×2.0 for a clean two-up on `Real clicks` / `Scanner clicks`,
+  instead of ×1.6 leaving a half-tile sliver.
+- The cursor is now visible making the Vacation choice.
 
 **Gate result:** `hyperframes check` — 0 errors, **40/40 WCAG AA text checks pass**.
-Levels: peak −2.1 dBFS, mean −21.8 dB.
+Levels: peak −2.0 dBFS. Runtime 23.20s.
