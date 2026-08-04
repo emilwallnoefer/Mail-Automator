@@ -41,31 +41,41 @@ def lp_sweep(x, cutoff_hz):
     return y
 
 
-def damp_whoosh(dur, top_hz, tilt=0.42, tone_hz=190.0, tone_amt=0.45):
+def damp_whoosh(dur, top_hz, tilt=0.42, tone_hz=120.0, tone_amt=0.62):
     """
-    A damp, lean whoosh.
+    A dark, slow whoosh — air moving, not a cymbal.
 
-    The cutoff never leaves the low-mids (140 Hz → `top_hz` → 140 Hz), so there
-    is no hiss; a short sine swell underneath gives it body so it reads as
-    movement rather than as noise. Envelope is a raised sine — no transient.
+    Three things keep it from sounding bright or cheap:
+
+    * the lowpass cutoff never leaves the **low** mids (90 Hz → `top_hz` →
+      90 Hz, with `top_hz` around 300), so the hiss band is simply never
+      opened;
+    * most of the signal is a tonal swell rather than noise (`tone_amt`),
+      which gives it pitch and body instead of texture;
+    * the envelope is asymmetric — a soft swell into a longer decay
+      (t^1.2 · e^-2.2t) rather than a symmetric bump — so it leads somewhere
+      and then gets out of the way.
     """
     n = int(SR * dur)
     t = np.linspace(0, 1, n)
     shape = np.where(t < tilt, t / tilt, 1 - (t - tilt) / (1 - tilt))
-    shape = np.clip(shape, 0, 1) ** 1.5
-    cutoff = 140 + (top_hz - 140) * shape
+    shape = np.clip(shape, 0, 1) ** 1.4
+    cutoff = 90 + (top_hz - 90) * shape
     body = lp_sweep(rng.standard_normal(n), cutoff)
     body /= np.max(np.abs(body)) + 1e-9
-    # a soft sine swell an octave under the sweep, for weight without hiss
-    tone = np.sin(2 * np.pi * np.cumsum(tone_hz * (0.7 + 0.6 * shape)) / SR)
-    env = np.sin(np.pi * t) ** 1.7
+    # the tonal core: a low swell that rises and falls with the sweep
+    tone = np.sin(2 * np.pi * np.cumsum(tone_hz * (0.75 + 0.5 * shape)) / SR)
+    tone += 0.35 * np.sin(2 * np.pi * np.cumsum(tone_hz * 0.5 * (0.75 + 0.5 * shape)) / SR)
+    env = (t ** 1.2) * np.exp(-2.2 * t)
+    env /= np.max(env) + 1e-9
     return (body * (1 - tone_amt) + tone * tone_amt) * env
 
 
-# scene changes — short, dry, low
-write("whoosh-soft.wav", damp_whoosh(0.22, top_hz=760, tilt=0.40, tone_hz=200, tone_amt=0.42))
+# scene changes — long, dark, mostly tonal. Placed to LEAD the cut, so the
+# swell arrives under it rather than trailing after it.
+write("whoosh-soft.wav", damp_whoosh(0.55, top_hz=300, tilt=0.38, tone_hz=120, tone_amt=0.62))
 # the one bigger move (into Mail Tracking) — same character, more weight
-write("whoosh-big.wav", damp_whoosh(0.34, top_hz=980, tilt=0.46, tone_hz=140, tone_amt=0.50))
+write("whoosh-big.wav", damp_whoosh(0.85, top_hz=380, tilt=0.42, tone_hz=80, tone_amt=0.66))
 
 # a soft blip for a cascading card/tile arriving
 n = int(0.055 * SR)
