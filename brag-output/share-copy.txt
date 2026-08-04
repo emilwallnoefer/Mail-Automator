@@ -1,0 +1,3 @@
+Flya Allrounder is live — the internal workspace that writes our training emails with Claude, drops them into Gmail as drafts, and counts link clicks honestly. Corporate security scanners open every link you send, so they get their own column instead of quietly inflating the click rate.
+
+flya.space
