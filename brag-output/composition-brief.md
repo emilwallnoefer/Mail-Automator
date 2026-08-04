@@ -8,6 +8,7 @@ you actually use it, with **how little work each step takes** as the through-lin
 - Composition directory: `brag-output/composition/`
 - Rendered video: `brag-output/brag.mp4`
 - Format: landscape — 1920x1080, 30fps
+- Appearance: **Solarized Light + Dusty Blue accent** (`data-theme="light"` `data-accent="blue"`)
 - Duration: 24.50 seconds
 
 ## Source Material
@@ -113,36 +114,43 @@ Requirements:
 
 ---
 
-## Build notes (v3 — final)
+## Build notes (v4 — final)
 
-Third and final cut. v1 was a single-claim video; v2 turned it into a functionality tour; v3
-replaces the music entirely, cleans the sound design, and fixes the dashboard to match the app.
+v1 was a single-claim video, v2 a functionality tour, v3 replaced the music. v4 moves the whole
+film to the light appearance, adds narration, and changes how it is cut.
 
-- **The bundled music is gone.** "Happy Beats / Business Moves" read as corporate library music
-  and did not match the product. `assets/music/make-theme.py` now generates the score:
-  deterministic (fixed seed), 120 BPM, A minor, with the arrangement written around this edit —
-  a break at 16–17s and a drop landing exactly on the Mail Tracking reveal at 17.00.
-- **HeyGen's 10k-track catalog was not used.** Its CLI installs via
-  `curl -fsSL https://static.heygen.ai/cli/install.sh | bash` and then needs either
-  `heygen auth login --oauth` (opens a browser) or an API key pasted at a prompt. Both require
-  the account holder, so the catalog stayed out of reach and the score was authored instead.
-- **Timing is now exact, not approximated.** v2 snapped to beats *detected* in a stock track;
-  v3 owns the tempo, so every boundary and reveal is a clean multiple of 0.50s from t=0.
-- **The SFX kit was rebuilt and thinned.** All Kenney samples were dropped except six keypresses.
-  The synthesised kit shares a palette with the score, and the big 17.00 moment is carried by the
-  music alone rather than stacked with SFX.
-- **Levels fixed.** The first v3 render peaked at −0.0 dBFS (clipping); music and payoff cues were
-  pulled down to land at **−1.8 dBFS peak / −22.4 dB mean**.
-- **The dashboard now matches the real app**: three cards — Settings, Mail Composer, Time Tracker —
-  in `dashboard-shell.tsx`'s real order, with their real tinted icons, real one-line descriptions
-  and `Continue` affordance. Mail tracking is admin-only and correctly absent as a card.
-- **Motion vocabulary unified**: one `rise()` helper and one `press()` helper drive every
-  entrance and every button tap, so panels (0.45s), cards (0.36s) and captions (0.40s) all
-  decelerate on the same curve. Nothing bounces or idles.
+- **Appearance is now Solarized Light + Dusty Blue** (`data-theme="light"` `data-accent="blue"`),
+  resolved from `tokens.css`. This is a real re-skin, not an inversion: `--glass` is ink-toned in
+  light, so every hairline and fill uses `rgba(88,110,117,…)` rather than white; panels get real
+  shadows because a light UI needs elevation; and the modal scrim is `--shade #073642` at 20%.
+  `--ink-4` was dropped for text entirely — it only reaches 3:1 on paper.
+- **A professional female voiceover** (Kokoro `bf_emma`, generated locally with
+  `npx hyperframes tts`) runs across all five scenes. It complements the picture rather than
+  reading it, and the two text beats are left unnarrated on purpose. Music ducks to ~0.19 under
+  the voice and swells to ~0.35 in the gaps.
+- **The whooshes were rebuilt.** The old ones were broadband noise sweeps — hissy and cheap.
+  `assets/sfx/make-sfx.py` now low-passes them hard (cutoff peaks at ~760 Hz) and mixes in a sine
+  swell, with a raised-sine envelope so there is no transient and no tail: damp and lean.
+- **Background is now a moving colour.** `#stage-bg` tweens across the paper tones
+  (`#fcfaf5` → `#faf7ef` → `#f6f2e8`), cools to `#eaeff4`/`#e6edf3` through the break and the
+  Mail Tracking section, then warms back to `#fcfaf5` for the lockup.
+- **Three jump cuts** punch in on the task at hand and cut straight back out — hard `tl.set`
+  transforms, one frame, no easing: the Thursday card as it is clicked (8.50–9.00), the
+  `Generate draft` button as it is pressed (15.00–15.50), and the Real/Scanner pair as the
+  strike lands (20.00–20.50). Each gets a dry `cut` marker in the mix.
+- **Two full-frame text beats** replace the old in-corner captions at the scene seams —
+  *"Your whole **week**."* (4.0–5.5) and *"Now the **email**."* (12.0–13.5) — so the film is not
+  wall-to-wall UI. Both are timed past their reading floor.
+- Runtime stays 24.50s on the exact 120 BPM grid; the score did not need regenerating because
+  the new beats were placed on it.
+- **Levels:** peak −2.0 dBFS, mean −20.4 dB (higher than the un-narrated cut, as expected with
+  voice).
 
-Fidelity notes carried forward from v2: every screen is rebuilt from the real components, and
-Thursday reads as genuinely unlogged (`0%`, `0h 00m worked`, empty bar) until the day is saved.
+Fidelity notes carried forward: every screen is rebuilt from the real components; the dashboard
+shows only the three real cards (Settings, Mail Composer, Time Tracker); Thursday reads as
+genuinely unlogged until the day is saved.
 
-**Gate result:** `hyperframes check` — 0 errors, **49/49 WCAG AA text checks pass**. Remaining
-output is one `composition_file_too_large` warning (monolithic by choice) and informational
-overlap/occlusion notes from the intentional crossfades and the day-editor dim.
+**Gate result:** `hyperframes check` — 0 errors, **42/42 WCAG AA text checks pass** on the light
+skin. Remaining output is one `composition_file_too_large` warning and informational
+overlap/overflow notes from the intentional crossfades, the day-editor dim, and the jump-cut
+zoom wrappers.

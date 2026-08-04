@@ -1,3 +1,3 @@
-Flya Allrounder: one login, and everything's in there. Your whole week is one screen — click a day, pick Vacation, done. Describe a training and Claude writes the mail into a Gmail draft. Then see who actually clicked, scanners excluded.
+Flya Allrounder: one login, and everything's in there. Your whole week is one screen — click a day, pick Vacation, save, and the overtime bank updates itself. Describe a training and Claude writes the email into a Gmail draft. Then see who actually clicked — security scanners don't count.
 
 flya.space
