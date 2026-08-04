@@ -220,26 +220,18 @@
       }
       #s1-google {
         margin: 56px auto 0;
-        width: 400px;
+        width: 300px;
         height: 72px;
         border-radius: 12px;
-        background: #ffffff;
-        border: 1px solid rgba(88, 110, 117, 0.28);
-        box-shadow: 0 1px 2px rgba(7, 54, 66, 0.08);
-        color: #586e75;
+        background: #2f5876;
+        box-shadow: 0 8px 20px -10px rgba(7, 54, 66, 0.55);
+        color: #ffffff;
         font-size: 27px;
         font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 14px;
-      }
-      #s1-google-dot {
-        display: block;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: conic-gradient(#ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
       }
       #s1-dash {
         position: absolute;
@@ -393,131 +385,154 @@
         background: radial-gradient(closest-side, #3e6d8e, rgba(62, 109, 142, 0));
         opacity: calc(0.03 + var(--a-rms) * 0.07);
       }
-      #s2-head {
+      #s2-panel {
         position: absolute;
-        left: 152px;
-        top: 230px;
-        width: 1616px;
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
+        left: 160px;
+        top: 220px;
+        width: 1600px;
+        height: 500px;
+        padding: 40px 44px;
       }
-      #s2-title {
-        font-size: 46px;
+      /* ---- hero: the week as one figure ---- */
+      #tt-hero {
+        position: absolute;
+        left: 44px;
+        top: 110px;
+        width: 350px;
+      }
+      #tt-total {
+        margin-top: 12px;
+        font-size: 104px;
         font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.035em;
         color: #586e75;
+      }
+      #tt-bank {
+        margin-top: 26px;
+        font-size: 54px;
+        font-weight: 600;
+        line-height: 1;
         letter-spacing: -0.02em;
+        color: #55670a;
       }
-      #s2-readouts {
-        display: flex;
-        gap: 64px;
+      .tt-cap {
+        margin-top: 10px;
+        font-size: 25px;
+        color: #657b83;
       }
-      .readout-label {
-        font-size: 24px;
-        color: #586e75;
+      .tt-rule {
+        width: 120px;
+        height: 2px;
+        margin-top: 30px;
+        background: rgba(88, 110, 117, 0.28);
       }
-      .readout-value {
-        margin-top: 6px;
-        font-family: "Geist Mono", ui-monospace, monospace;
-        font-size: 44px;
-        font-weight: 600;
-      }
+
+      /* ---- the week ---- */
       #s2-days {
         position: absolute;
-        left: 152px;
-        top: 370px;
-        width: 1616px;
+        left: 430px;
+        top: 152px;
+        width: 1126px;
         display: flex;
-        gap: 20px;
+        gap: 16px;
       }
+      /* No margin-top:auto anywhere — every element sits directly under the
+         one above it, so the card has no dead middle. */
       .day {
         flex: 1 1 0;
         min-width: 0;
-        height: 300px;
+        height: 240px;
         border-radius: 16px;
-        padding: 32px 28px;
-        display: flex;
-        flex-direction: column;
-      }
-      .day-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        padding: 30px 26px;
       }
       .day-name {
-        font-size: 26px;
-        color: #657b83;
+        font-size: 24px;
+        color: #586e75;
+        white-space: nowrap;
+      }
+      .day-hours {
+        position: relative;
+        margin-top: 14px;
+        height: 52px;
+        font-size: 40px;
+        font-weight: 600;
+        line-height: 1.1;
+        color: #586e75;
+        white-space: nowrap;
+      }
+      .day-hours > span {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      #thu-after {
+        opacity: 0;
+        color: #725500;
+      }
+      .day-track {
+        position: relative;
+        margin-top: 26px;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: rgba(88, 110, 117, 0.16);
+        overflow: hidden;
+      }
+      .day-bar {
+        display: block;
+        height: 10px;
+        border-radius: 5px;
+        background: #3e6d8e;
+        transform-origin: left center;
+      }
+      .day-bar-vac {
+        background: #b58900;
+      }
+      /* the 8h30 target, so the bar means something */
+      .day-target {
+        position: absolute;
+        left: 94%;
+        top: -2px;
+        width: 2px;
+        height: 14px;
+        background: rgba(88, 110, 117, 0.55);
       }
       .day-pct {
-        font-size: 26px;
+        font-size: 23px;
         font-weight: 600;
         color: #35617f;
       }
-      /* fixed well so the two percentage states cross-fade in place */
+      .day-pct-well,
+      .day-pct {
+        margin-top: 24px;
+      }
       .day-pct-well {
         position: relative;
-        display: inline-block;
-        min-width: 76px;
-        height: 32px;
+        display: block;
+        height: 26px;
       }
       .day-pct-well .day-pct {
         position: absolute;
-        right: 0;
+        left: 0;
         top: 0;
+        margin-top: 0;
+        white-space: nowrap;
       }
       #thu-pct-after {
         opacity: 0;
       }
-      .day-state {
-        position: relative;
-        height: 48px;
-        margin-top: 18px;
-      }
-      .day-worked {
-        position: absolute;
-        left: 0;
-        top: 0;
-        font-size: 30px;
-        font-weight: 500;
-        color: #586e75;
-        white-space: nowrap;
-      }
-      #thu-after {
-        opacity: 0;
-      }
       #thu-badge {
         display: inline-block;
-        margin-left: 12px;
+        margin-right: 8px;
         border: 1px solid rgba(154, 116, 0, 0.45);
         background: rgba(154, 116, 0, 0.14);
-        border-radius: 6px;
-        padding: 3px 9px;
-        font-size: 19px;
+        border-radius: 5px;
+        padding: 2px 7px;
+        font-size: 17px;
         font-weight: 700;
         letter-spacing: 0.08em;
         color: #725500;
-        vertical-align: 5px;
-      }
-      .day-track {
-        margin-top: auto;
-        width: 100%;
-        height: 14px;
-        border-radius: 7px;
-        background: rgba(88, 110, 117, 0.16);
-        overflow: hidden;
-        display: flex;
-      }
-      .day-bar {
-        display: block;
-        height: 14px;
-        background: #3e6d8e;
-        transform-origin: left center;
-      }
-      .day-bar-ot {
-        display: block;
-        height: 14px;
-        background: #6e96b4;
-        transform-origin: left center;
       }
 
       /* ---- the day editor ---- */
@@ -745,30 +760,85 @@
       #s4-panel {
         position: absolute;
         left: 160px;
-        top: 270px;
+        top: 190px;
         width: 1600px;
-        height: 400px;
-        padding: 44px 48px;
+        height: 640px;
+        padding: 40px 44px;
       }
+      #s4-chart {
+        position: absolute;
+        left: 44px;
+        top: 116px;
+        width: 980px;
+        height: 360px;
+        /* the wipe cover travels the full width — clip it to the chart, or it
+           slides on and parks over the stat tiles */
+        overflow: hidden;
+      }
+      #s4-chart svg {
+        position: absolute;
+        inset: 0;
+        width: 980px;
+        height: 360px;
+        font-family: "Geist", sans-serif;
+      }
+      #s4-line {
+        z-index: 1;
+      }
+      /* the wipe: panel-coloured, slides right to uncover the line */
+      #s4-wipe {
+        position: absolute;
+        left: 0;
+        top: -8px;
+        width: 1000px;
+        height: 376px;
+        background: #f4f1e9;
+        z-index: 2;
+      }
+      #s4-axes {
+        z-index: 3;
+        pointer-events: none;
+      }
+      #s4-dot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+        border-radius: 50%;
+        background: #3e6d8e;
+        box-shadow: 0 0 0 5px rgba(62, 109, 142, 0.18);
+        opacity: 0;
+        z-index: 4;
+      }
+      #s4-chart-cap {
+        position: absolute;
+        left: 122px;
+        top: 500px;
+        font-size: 21px;
+        color: #586e75;
+      }
+      /* stat tiles: a compact 2×2 beside the chart, so the chart is the hero */
       #s4-tiles {
         position: absolute;
-        left: 48px;
-        right: 48px;
-        top: 132px;
-        display: flex;
-        gap: 24px;
+        left: 1096px;
+        top: 116px;
+        width: 460px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
       }
       .tile {
         position: relative;
-        flex: 1 1 0;
         min-width: 0;
         border-radius: 16px;
-        padding: 26px 30px 30px;
+        padding: 22px 24px 24px;
       }
       .tile-label {
-        font-size: 22px;
+        font-size: 19px;
         font-weight: 600;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         color: #586e75;
         white-space: nowrap;
@@ -776,24 +846,17 @@
       .tile-value {
         position: relative;
         display: inline-block;
-        margin-top: 14px;
-        font-size: 64px;
+        margin-top: 10px;
+        font-size: 54px;
         font-weight: 600;
         line-height: 1;
         color: #586e75;
       }
-      .tile-hint {
-        margin-top: 12px;
-        font-size: 20px;
-        color: #586e75;
-      }
-      /* outside #tile-scanner-content so it holds full strength while the
-       * numbers behind it dim away */
       #tile-scanner-strike {
         position: absolute;
-        left: 24px;
-        top: 96px;
-        width: 128px;
+        left: 22px;
+        top: 84px;
+        width: 104px;
         height: 4px;
         background: #586e75;
         transform-origin: left center;
@@ -853,7 +916,7 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="23.20"
+      data-duration="24.80"
       data-fps="30"
       data-width="1920"
       data-height="1080"
@@ -863,7 +926,7 @@
         <div id="m-t2" class="tb-row"><span class="w">Now</span> <span class="w">the</span> <span class="w"><em>email.</em></span></div>
       </div>
 
-      <div id="stage-bg" class="clip" data-start="0" data-duration="23.20" data-track-index="0"></div>
+      <div id="stage-bg" class="clip" data-start="0" data-duration="24.80" data-track-index="0"></div>
 
       <!-- ============ Scene 1 — sign in, then the dashboard ============ -->
       <div id="s1" class="clip scene" data-start="0" data-duration="3.96" data-track-index="1">
@@ -874,7 +937,7 @@
           <div id="s1-login" class="panel">
             <div class="eyebrow">Flyability Internal</div>
             <div id="s1-login-title">Welcome back</div>
-            <div id="s1-google"><span id="s1-google-dot"></span>Continue with Google</div>
+            <div id="s1-google">Login</div>
           </div>
 
           <div id="s1-dash">
@@ -951,58 +1014,73 @@
           <div id="s2-zoom" class="zoom" data-layout-allow-overflow="true">
             <div id="s2-glow" class="glow"></div>
 
-            <div id="s2-head">
-              <div id="s2-title">Time Tracker</div>
-              <div id="s2-readouts">
-                <div>
-                  <div class="readout-label">Weekly hours:</div>
-                  <div class="readout-value num" style="color: #586e75">32.7</div>
-                </div>
-                <div>
-                  <div class="readout-label">Overtime bank:</div>
-                  <div id="tt-bank" class="readout-value num" style="color: #55670a">+4h 05m</div>
-                </div>
-              </div>
+            <div id="s2-panel" class="panel">
+              <div class="eyebrow">Time tracker</div>
+            <!-- Hero: the week as one figure, with the bank under it. The
+                 readouts used to float in the top-right corner, disconnected
+                 from the cards they describe. -->
+            <div id="tt-hero">
+              <div class="eyebrow">This week</div>
+              <div id="tt-total" class="num">32.7</div>
+              <div class="tt-cap">hours logged</div>
+              <div class="tt-rule"></div>
+              <div id="tt-bank" class="num">+4h 05m</div>
+              <div class="tt-cap">overtime bank</div>
             </div>
 
             <div id="s2-days">
               <div id="day-1" class="day surface">
-                <div class="day-top"><span class="day-name">Mon 04</span><span class="day-pct num">102%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 42m worked</span></div>
+                <div class="day-name">Mon 04</div>
+                <div class="day-hours num">8h 42m</div>
                 <div class="day-track">
-                  <span id="bar-1" class="day-bar" style="width: 82%"></span>
-                  <span id="bar-1o" class="day-bar-ot" style="width: 18%"></span>
+                  <span id="bar-1" class="day-bar" style="width: 100%"></span>
+                  <span class="day-target"></span>
                 </div>
+                <div class="day-pct num">102%</div>
               </div>
               <div id="day-2" class="day surface">
-                <div class="day-top"><span class="day-name">Tue 05</span><span class="day-pct num">96%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 12m worked</span></div>
-                <div class="day-track"><span id="bar-2" class="day-bar" style="width: 96%"></span></div>
+                <div class="day-name">Tue 05</div>
+                <div class="day-hours num">8h 12m</div>
+                <div class="day-track">
+                  <span id="bar-2" class="day-bar" style="width: 96%"></span>
+                  <span class="day-target"></span>
+                </div>
+                <div class="day-pct num">96%</div>
               </div>
               <div id="day-3" class="day surface">
-                <div class="day-top"><span class="day-name">Wed 06</span><span class="day-pct num">100%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 30m worked</span></div>
-                <div class="day-track"><span id="bar-3" class="day-bar" style="width: 100%"></span></div>
+                <div class="day-name">Wed 06</div>
+                <div class="day-hours num">8h 30m</div>
+                <div class="day-track">
+                  <span id="bar-3" class="day-bar" style="width: 100%"></span>
+                  <span class="day-target"></span>
+                </div>
+                <div class="day-pct num">100%</div>
               </div>
               <div id="day-4" class="day surface">
-                <div class="day-top">
-                  <span class="day-name">Thu 07</span>
-                  <span class="day-pct-well">
-                    <span id="thu-pct-before" class="day-pct num">0%</span>
-                    <span id="thu-pct-after" class="day-pct num">100%</span>
-                  </span>
+                <div class="day-name">Thu 07</div>
+                <div class="day-hours" data-layout-allow-overlap="true">
+                  <span id="thu-before" class="num">&mdash;</span>
+                  <span id="thu-after">Vacation</span>
                 </div>
-                <div class="day-state" data-layout-allow-overlap="true">
-                  <span id="thu-before" class="day-worked num">0h 00m worked</span>
-                  <span id="thu-after" class="day-worked">Vacation<span id="thu-badge">VAC</span></span>
+                <div class="day-track">
+                  <span id="bar-4" class="day-bar day-bar-vac" style="width: 100%"></span>
+                  <span class="day-target"></span>
                 </div>
-                <div class="day-track"><span id="bar-4" class="day-bar" style="width: 100%"></span></div>
+                <div class="day-pct-well">
+                  <span id="thu-pct-before" class="day-pct num">0%</span>
+                  <span id="thu-pct-after" class="day-pct num"><span id="thu-badge">VAC</span>100%</span>
+                </div>
               </div>
               <div id="day-5" class="day surface">
-                <div class="day-top"><span class="day-name">Fri 08</span><span class="day-pct num">88%</span></div>
-                <div class="day-state"><span class="day-worked num">7h 28m worked</span></div>
-                <div class="day-track"><span id="bar-5" class="day-bar" style="width: 88%"></span></div>
+                <div class="day-name">Fri 08</div>
+                <div class="day-hours num">7h 28m</div>
+                <div class="day-track">
+                  <span id="bar-5" class="day-bar" style="width: 88%"></span>
+                  <span class="day-target"></span>
+                </div>
+                <div class="day-pct num">88%</div>
               </div>
+            </div>
             </div>
 
             <div id="s2-dim"></div>
@@ -1115,46 +1193,70 @@
       </div>
 
       <!-- ================= Scene 4 — Mail Tracking ==================== -->
-      <div id="s4" class="clip scene" data-start="16.00" data-duration="4.76" data-track-index="2">
+      <div id="s4" class="clip scene" data-start="16.00" data-duration="6.36" data-track-index="2">
         <div id="s4-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s4-zoom" class="zoom" data-layout-allow-overflow="true">
             <div id="s4-glow" class="glow"></div>
             <div id="s4-panel" class="panel">
               <div class="eyebrow">Mail tracking</div>
+
+              <!-- Chart. Three stacked layers: the line+area sit under a
+                   panel-coloured cover that is TRANSLATED left→right to wipe
+                   them in (transform-only, so it stays composited and
+                   seek-safe), and the axes sit above the cover so the grid is
+                   visible the whole time. -->
+              <div id="s4-chart">
+                <svg id="s4-line" viewBox="0 0 980 360" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#3e6d8e" stop-opacity="0.28" />
+                      <stop offset="100%" stop-color="#3e6d8e" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 78.0 243.0 L 225.0 215.0 L 372.0 187.0 L 519.0 148.5 L 666.0 124.0 L 813.0 92.5 L 960.0 40.0 L 960.0 306.0 L 78.0 306.0 Z" fill="url(#areaFill)" />
+                  <path d="M 78.0 243.0 L 225.0 215.0 L 372.0 187.0 L 519.0 148.5 L 666.0 124.0 L 813.0 92.5 L 960.0 40.0" fill="none" stroke="#3e6d8e" stroke-width="3.5"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div id="s4-wipe"></div>
+                <svg id="s4-axes" viewBox="0 0 980 360" aria-hidden="true">
+                  <line x1="78" x2="960" y1="26.0" y2="26.0" stroke="rgba(88,110,117,.20)" stroke-width="1"/><text x="64" y="33.0" text-anchor="end" fill="#586e75" font-size="20">80</text><line x1="78" x2="960" y1="96.0" y2="96.0" stroke="rgba(88,110,117,.20)" stroke-width="1"/><text x="64" y="103.0" text-anchor="end" fill="#586e75" font-size="20">60</text><line x1="78" x2="960" y1="166.0" y2="166.0" stroke="rgba(88,110,117,.20)" stroke-width="1"/><text x="64" y="173.0" text-anchor="end" fill="#586e75" font-size="20">40</text><line x1="78" x2="960" y1="236.0" y2="236.0" stroke="rgba(88,110,117,.20)" stroke-width="1"/><text x="64" y="243.0" text-anchor="end" fill="#586e75" font-size="20">20</text><line x1="78" x2="960" y1="306.0" y2="306.0" stroke="rgba(88,110,117,.20)" stroke-width="1"/><text x="64" y="313.0" text-anchor="end" fill="#586e75" font-size="20">0</text>
+                  <line x1="78" x2="960" y1="306" y2="306" stroke="rgba(88,110,117,.38)" stroke-width="1.5"/>
+                  <text x="78.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Mon</text><text x="225.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Tue</text><text x="372.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Wed</text><text x="519.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Thu</text><text x="666.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Fri</text><text x="813.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Sat</text><text x="960.0" y="344.0" text-anchor="middle" fill="#586e75" font-size="20">Sun</text>
+                </svg>
+                <span id="s4-dot"></span>
+              </div>
+              <div id="s4-chart-cap">Real clicks &middot; last 7 days</div>
+
               <div id="s4-tiles">
                 <div id="tile-sent" class="tile surface">
                   <div class="tile-label">Mails sent</div>
                   <div class="tile-value num">148</div>
-                  <div class="tile-hint">Same period</div>
                 </div>
                 <div id="tile-recipients" class="tile surface">
                   <div class="tile-label">Recipients</div>
                   <div class="tile-value num">96</div>
-                  <div class="tile-hint">Same period</div>
                 </div>
                 <div id="tile-real" class="tile surface">
                   <div id="tile-real-ring"></div>
                   <div class="tile-label">Real clicks</div>
                   <div class="tile-value num">312</div>
-                  <div class="tile-hint">Humans only</div>
                 </div>
                 <div id="tile-scanner" class="tile surface">
                   <div id="tile-scanner-content">
                     <div class="tile-label">Scanner clicks</div>
                     <div class="tile-value num">972</div>
-                    <div class="tile-hint">Hidden unless enabled</div>
                   </div>
                   <span id="tile-scanner-strike" data-layout-allow-occlusion="true"></span>
                 </div>
               </div>
             </div>
-            <div id="s4-cap" class="caption" style="top: 762px">See who clicked.</div>
+            <div id="s4-cap" class="caption" style="top: 872px">See who clicked.</div>
           </div>
         </div>
       </div>
 
       <!-- ===================== Scene 5 — lockup ======================= -->
-      <div id="s5" class="clip scene" data-start="20.80" data-duration="2.40" data-track-index="1">
+      <div id="s5" class="clip scene" data-start="22.40" data-duration="2.40" data-track-index="1">
         <div id="s5-inner" class="scene-inner">
           <div id="lk-glow" class="glow"></div>
           <div id="lk-wrap">
@@ -1171,53 +1273,55 @@
            drop at 16.0 live in the music, so SFX stay out of their way.
            Every hard cut gets a marker; every zoom cut gets a dry `cut`.
       -->
-      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="23.20" data-track-index="10" data-volume="0.40"></audio>
+      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="24.80" data-track-index="10" data-volume="0.40"></audio>
 
       <!-- clicks on the presses -->
       <audio id="ck-signin" src="assets/sfx/synth/ui-click.wav" data-start="1.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
       <audio id="ck-day" src="assets/sfx/synth/ui-click.wav" data-start="7.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
-      <audio id="ck-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.20" data-duration="0.04" data-track-index="11" data-volume="0.38"></audio>
+      <audio id="ck-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.26" data-duration="0.04" data-track-index="11" data-volume="0.38"></audio>
       <audio id="ck-save" src="assets/sfx/synth/ui-click.wav" data-start="10.00" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
       <audio id="ck-gen" src="assets/sfx/synth/ui-click.wav" data-start="14.40" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
 
-      <!-- damp, lean whooshes on the scene cuts -->
-      <audio id="wh-1" src="assets/sfx/synth/whoosh-soft.wav" data-start="4.00" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.60" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-3" src="assets/sfx/synth/whoosh-soft.wav" data-start="11.20" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-4" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.80" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-5" src="assets/sfx/synth/whoosh-big.wav" data-start="16.00" data-duration="0.34" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-6" src="assets/sfx/synth/whoosh-soft.wav" data-start="20.80" data-duration="0.22" data-track-index="12" data-volume="0.30"></audio>
+      <!-- a click on every word as it lands in the text beats -->
+      <audio id="ck-w1" src="assets/sfx/synth/ui-click.wav" data-start="4.05" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
+      <audio id="ck-w2" src="assets/sfx/synth/ui-click.wav" data-start="4.31" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
+      <audio id="ck-w3" src="assets/sfx/synth/ui-click.wav" data-start="4.57" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
+      <audio id="ck-w4" src="assets/sfx/synth/ui-click.wav" data-start="11.25" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
+      <audio id="ck-w5" src="assets/sfx/synth/ui-click.wav" data-start="11.51" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
+      <audio id="ck-w6" src="assets/sfx/synth/ui-click.wav" data-start="11.77" data-duration="0.04" data-track-index="19" data-volume="0.26"></audio>
 
-      <!-- a dry marker on every zoom cut, in and out -->
-      <audio id="cut-1" src="assets/sfx/synth/cut.wav" data-start="1.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
-      <audio id="cut-2" src="assets/sfx/synth/cut.wav" data-start="2.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-3" src="assets/sfx/synth/cut.wav" data-start="7.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
-      <audio id="cut-4" src="assets/sfx/synth/cut.wav" data-start="8.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-5" src="assets/sfx/synth/cut.wav" data-start="9.20" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
-      <audio id="cut-6" src="assets/sfx/synth/cut.wav" data-start="10.00" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-7" src="assets/sfx/synth/cut.wav" data-start="10.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-8" src="assets/sfx/synth/cut.wav" data-start="13.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
-      <audio id="cut-9" src="assets/sfx/synth/cut.wav" data-start="14.80" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-10" src="assets/sfx/synth/cut.wav" data-start="18.00" data-duration="0.09" data-track-index="14" data-volume="0.32"></audio>
-      <audio id="cut-11" src="assets/sfx/synth/cut.wav" data-start="19.60" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <!-- Whooshes now LEAD their cut by ~0.25s, so the swell arrives under
+           the cut instead of trailing it. Dark and long. -->
+      <audio id="wh-1" src="assets/sfx/synth/whoosh-soft.wav" data-start="3.75" data-duration="0.55" data-track-index="12" data-volume="0.36"></audio>
+      <audio id="wh-2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.35" data-duration="0.55" data-track-index="12" data-volume="0.36"></audio>
+      <audio id="wh-3" src="assets/sfx/synth/whoosh-soft.wav" data-start="10.95" data-duration="0.55" data-track-index="12" data-volume="0.36"></audio>
+      <audio id="wh-4" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.55" data-duration="0.55" data-track-index="12" data-volume="0.36"></audio>
+      <audio id="wh-5" src="assets/sfx/synth/whoosh-big.wav" data-start="15.70" data-duration="0.85" data-track-index="12" data-volume="0.44"></audio>
+      <audio id="wh-6" src="assets/sfx/synth/whoosh-soft.wav" data-start="22.15" data-duration="0.55" data-track-index="12" data-volume="0.32"></audio>
 
-      <!-- a soft tick per cascading element -->
-      <audio id="tk-1" src="assets/sfx/synth/ui-tick.wav" data-start="2.50" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-2" src="assets/sfx/synth/ui-tick.wav" data-start="2.70" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-3" src="assets/sfx/synth/ui-tick.wav" data-start="2.90" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-4" src="assets/sfx/synth/ui-tick.wav" data-start="5.60" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-5" src="assets/sfx/synth/ui-tick.wav" data-start="5.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-6" src="assets/sfx/synth/ui-tick.wav" data-start="6.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-7" src="assets/sfx/synth/ui-tick.wav" data-start="6.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-8" src="assets/sfx/synth/ui-tick.wav" data-start="6.40" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <!-- one soft tick per cascading element; quieter now the stagger is tight -->
+      <audio id="tk-1" src="assets/sfx/synth/ui-tick.wav" data-start="2.50" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-2" src="assets/sfx/synth/ui-tick.wav" data-start="2.61" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-3" src="assets/sfx/synth/ui-tick.wav" data-start="2.72" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-4" src="assets/sfx/synth/ui-tick.wav" data-start="5.82" data-duration="0.055" data-track-index="13" data-volume="0.11"></audio>
+      <audio id="tk-5" src="assets/sfx/synth/ui-tick.wav" data-start="5.93" data-duration="0.055" data-track-index="13" data-volume="0.11"></audio>
+      <audio id="tk-6" src="assets/sfx/synth/ui-tick.wav" data-start="6.04" data-duration="0.055" data-track-index="13" data-volume="0.11"></audio>
+      <audio id="tk-7" src="assets/sfx/synth/ui-tick.wav" data-start="6.15" data-duration="0.055" data-track-index="13" data-volume="0.11"></audio>
+      <audio id="tk-8" src="assets/sfx/synth/ui-tick.wav" data-start="6.26" data-duration="0.055" data-track-index="13" data-volume="0.11"></audio>
       <audio id="tk-9" src="assets/sfx/synth/ui-tick.wav" data-start="10.45" data-duration="0.055" data-track-index="13" data-volume="0.24"></audio>
-      <audio id="tk-10" src="assets/sfx/synth/ui-tick.wav" data-start="12.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-11" src="assets/sfx/synth/ui-tick.wav" data-start="13.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-12" src="assets/sfx/synth/ui-tick.wav" data-start="13.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-13" src="assets/sfx/synth/ui-tick.wav" data-start="16.00" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-14" src="assets/sfx/synth/ui-tick.wav" data-start="16.20" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-15" src="assets/sfx/synth/ui-tick.wav" data-start="16.40" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
-      <audio id="tk-16" src="assets/sfx/synth/ui-tick.wav" data-start="16.60" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-10" src="assets/sfx/synth/ui-tick.wav" data-start="12.80" data-duration="0.055" data-track-index="13" data-volume="0.14"></audio>
+      <audio id="tk-11" src="assets/sfx/synth/ui-tick.wav" data-start="13.00" data-duration="0.055" data-track-index="13" data-volume="0.14"></audio>
+      <audio id="tk-12" src="assets/sfx/synth/ui-tick.wav" data-start="13.20" data-duration="0.055" data-track-index="13" data-volume="0.14"></audio>
+      <audio id="tk-13" src="assets/sfx/synth/ui-tick.wav" data-start="18.20" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-14" src="assets/sfx/synth/ui-tick.wav" data-start="18.31" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-15" src="assets/sfx/synth/ui-tick.wav" data-start="18.42" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+      <audio id="tk-16" src="assets/sfx/synth/ui-tick.wav" data-start="18.53" data-duration="0.055" data-track-index="13" data-volume="0.12"></audio>
+
+      <!-- a dry marker on the two remaining camera moves -->
+      <audio id="cut-1" src="assets/sfx/synth/cut.wav" data-start="9.20" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-2" src="assets/sfx/synth/cut.wav" data-start="10.00" data-duration="0.09" data-track-index="14" data-volume="0.22"></audio>
+      <audio id="cut-3" src="assets/sfx/synth/cut.wav" data-start="19.60" data-duration="0.09" data-track-index="14" data-volume="0.28"></audio>
+      <audio id="cut-4" src="assets/sfx/synth/cut.wav" data-start="21.00" data-duration="0.09" data-track-index="14" data-volume="0.22"></audio>
 
       <!-- typing texture -->
       <audio id="key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="13.66" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
@@ -1228,9 +1332,9 @@
       <audio id="key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.11" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
 
       <!-- the strike-through payoff, and the wordmark -->
-      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="18.00" data-duration="1.10" data-track-index="16" data-volume="0.30"></audio>
-      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="18.00" data-duration="0.85" data-track-index="17" data-volume="0.24"></audio>
-      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="21.20" data-duration="1.40" data-track-index="18" data-volume="0.30"></audio>
+      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="19.70" data-duration="1.10" data-track-index="16" data-volume="0.30"></audio>
+      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="19.70" data-duration="0.85" data-track-index="17" data-volume="0.24"></audio>
+      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="22.80" data-duration="1.40" data-track-index="18" data-volume="0.30"></audio>
     </div>
 
     <script>
@@ -1247,10 +1351,10 @@
        * ------------------------------------------------------------- */
       var CAMERA = {
         CUT: 0.02, // < one frame: the framing change is a cut, not a zoom
-        CUT_SCALE_IN: 0.94, // the cut lands just wide of the mark…
-        DRIFT_IN: 0.8, // …then the camera keeps pushing
+        CUT_SCALE_IN: 0.9, // the cut lands just wide of the mark…
+        DRIFT_IN: 1.1, // …then the camera keeps pushing
         CUT_SCALE_OUT: 1.035, // the cut back lands just tight…
-        DRIFT_OUT: 0.4, // …then settles
+        DRIFT_OUT: 0.6, // …then settles
         BEZIER: [0.22, 1, 0.36, 1] // the app's own --ease-fluid
       };
       var TEXT = {
@@ -1261,6 +1365,7 @@
         RULE_DUR: 0.3
       };
 
+      var CASCADE = { DUR: 0.5, STAGGER: 0.11 }; // heavy overlap: a wave, not a queue
       var EASE = "power4.out"; // UI entrances
       var root = document.getElementById("root");
       var tl = gsap.timeline({ paused: true });
@@ -1302,8 +1407,22 @@
         }
       })();
 
+      /* Cards used to arrive one at a time — 0.24s each, 0.20s apart, so
+       * consecutive cards overlapped by only 0.04s and the group read as a
+       * queue. Longer and much tighter-staggered lands as one wave: smoother
+       * AND quicker. */
       function rise(target, at, dist, dur) {
-        tl.fromTo(target, { y: dist, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: EASE }, at);
+        tl.fromTo(
+          target,
+          { y: dist, opacity: 0, scale: 0.985 },
+          { y: 0, opacity: 1, scale: 1, duration: dur === undefined ? CASCADE.DUR : dur, ease: EASE },
+          at
+        );
+      }
+      function cascade(targets, at, dist) {
+        for (var c = 0; c < targets.length; c++) {
+          rise(targets[c], at + c * CASCADE.STAGGER, dist === undefined ? 22 : dist, CASCADE.DUR);
+        }
       }
       function press(target, at) {
         tl.to(target, { scale: 0.96, duration: 0.07, ease: "power2.out" }, at);
@@ -1450,7 +1569,7 @@
       tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { immediateRender: false, backgroundColor: "#f6f2e8", duration: 3.0, ease: "none" }, 9.0);
       tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { immediateRender: false, backgroundColor: "#eaeff4", duration: 0.8, ease: "none" }, 15.2);
       tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { immediateRender: false, backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 16.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { immediateRender: false, backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 20.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { immediateRender: false, backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 21.6);
 
       /* ======= S1 · 0.00–4.00 — sign in, then the dashboard ========== */
       // SHOT 1 (0.00) wide: the login card
@@ -1460,46 +1579,38 @@
       tl.to("#s1-cursor", { x: 944, y: 590, duration: 0.72, ease: EASE }, 0.62);
       press("#s1-google", 1.6);
 
-      // SHOT 2 (1.60) push in on the button being pressed, hold, pull back
-      camera("#s1-zoom", 1.6, 2.4, 1.9, 960, 590);
-
-      // SHOT 3 (2.40) — we are already on the dashboard as the camera widens
+      // SHOT 2 (2.40) — the dashboard replaces the card. No camera move: the
+      // button reads perfectly well at full width.
       hide("#s1-login", 2.4);
       hide("#s1-cursor", 2.4);
       show("#s1-dash", 2.4);
-      rise("#mod-settings", 2.5, 20, 0.24);
-      rise("#mod-mail", 2.7, 20, 0.24);
-      rise("#mod-time", 2.9, 20, 0.24);
+      cascade(["#mod-settings", "#mod-mail", "#mod-time"], 2.5, 24);
 
       /* ======= T1 · 4.00–5.60 — text ================================= */
       textBeat("#t1-row", "#t1-rule", "m-t1", 4.0);
 
       /* ======= S2 · 5.60–11.20 — Time Tracker ======================== */
       // SHOT 4 (5.60) wide: the week fills in, one card per 16th
-      var DAY_BEATS = [5.6, 5.8, 6.0, 6.2, 6.4];
       tl.set("#bar-4", { scaleX: 0 }, 0); // Thursday has nothing logged yet
-      for (var d = 0; d < DAY_BEATS.length; d++) {
-        rise("#day-" + (d + 1), DAY_BEATS[d], 16, 0.24);
-        if (d === 3) continue;
-        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.34, ease: EASE }, DAY_BEATS[d] + 0.06);
+      rise("#tt-hero", 5.6, 26);
+      cascade(["#day-1", "#day-2", "#day-3", "#day-4", "#day-5"], 5.82, 20);
+      for (var d = 0; d < 5; d++) {
+        if (d === 3) continue; // Thursday fills only once it is saved
+        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: EASE }, 5.9 + d * 0.11);
       }
-      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.24, ease: EASE }, 5.95);
 
       tl.set("#s2-cursor", { x: 1560, y: 1040 }, 6.9);
       tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, 6.95);
       tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.5, ease: EASE }, 7.05);
       press("#day-4", 7.56);
 
-      // SHOT 5 (7.60) push in on Thursday as it is clicked
-      camera("#s2-zoom", 7.6, 8.4, 1.9, 1287, 505);
-
-      // SHOT 6 (8.40) the editor is already open as the camera widens
+      // (no camera move on the click — the editor opening is the beat)
       hide("#s2-cursor", 8.4);
       show("#s2-dim", 8.4, 0.2); // scrim, not a blackout
       show("#s2-modal", 8.4);
 
       // SHOT 7 (9.20) push in on the Day type chips; Vacation lands once settled
-      camera("#s2-zoom", 9.2, 10.0, 1.7, 960, 457);
+      camera("#s2-zoom", 9.2, 10.0, 1.55, 960, 457);
       tl.set("#s2-cursor", { x: 1111, y: 417 }, 9.02);
       show("#s2-cursor", 9.06);
       show("#chip-vac-on", 9.26);
@@ -1549,8 +1660,7 @@
       rise("#s3-f3", 13.2, 12, 0.22);
       rise("#s3-f4", 13.3, 12, 0.22);
 
-      // SHOT 11 (13.60) push in on the brief and the button
-      camera("#s3-zoom", 13.6, 14.8, 1.6, 520, 800);
+      // (no camera move: the 27px brief is legible at full width)
       hide("#s3-cursor", 0);
 
       var BRIEF = "Two-day operator training, on site.";
@@ -1581,25 +1691,35 @@
       /* ======= S4 · 16.00–20.80 — Mail Tracking =====================
        * 16.00 is the drop in the score. */
       // SHOT 13 (16.00) wide: the stat row, one tile per 16th
-      rise("#tile-sent", 16.0, 16, 0.24);
-      rise("#tile-recipients", 16.2, 16, 0.24);
-      rise("#tile-real", 16.4, 16, 0.24);
-      rise("#tile-scanner", 16.6, 16, 0.24);
+      cascade(["#tile-sent", "#tile-recipients", "#tile-real", "#tile-scanner"], 18.2, 20);
 
-      // SHOT 14 (18.00) push in on the Real / Scanner pair; the strike lands
+      /* The chart draws: a panel-coloured cover slides right to uncover the
+       * line, and the dot rides the leading edge. Transform-only on both, so
+       * it stays composited and seek-safe. */
+      tl.fromTo("#s4-wipe", { x: 0 }, { x: 1010, duration: 1.9, ease: "power1.inOut", immediateRender: false }, 16.2);
+      show("#s4-dot", 16.26);
+      tl.fromTo(
+        "#s4-dot",
+        { x: 78.0, y: 243.0 },
+        { keyframes: [{x:78.0,y:243.0},{x:225.0,y:215.0},{x:372.0,y:187.0},{x:519.0,y:148.5},{x:666.0,y:124.0},{x:813.0,y:92.5},{x:960.0,y:40.0}], duration: 1.9, ease: "power1.inOut", immediateRender: false },
+        16.2
+      );
+      hide("#s4-dot", 18.3);
+
+      // SHOT 14 (19.60) push in on the Real / Scanner pair; the strike lands
       // once the camera has settled
-      camera("#s4-zoom", 18.0, 19.6, 2.0, 1342, 502);
-      tl.fromTo("#tile-scanner-content", { opacity: 1 }, { opacity: 0.34, duration: 0.3, ease: "power2.out", immediateRender: false }, 18.1);
-      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.1);
-      show("#tile-real-ring", 18.1);
+      camera("#s4-zoom", 19.6, 21.0, 2.0, 1486, 517);
+      tl.fromTo("#tile-scanner-content", { opacity: 1 }, { opacity: 0.34, duration: 0.3, ease: "power2.out", immediateRender: false }, 19.7);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 19.7);
+      show("#tile-real-ring", 19.7);
 
       // SHOT 15 (19.60) pull back to the whole row
-      rise("#s4-cap", 19.9, 14, 0.28);
+      rise("#s4-cap", 21.3, 14, 0.36);
 
       /* ======= S5 · 20.80–23.20 — lockup ============================= */
-      tl.fromTo("#lk-mark", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: EASE }, 20.8);
-      rise("#lk-word", 21.2, 18, 0.3);
-      rise("#lk-url", 21.8, 12, 0.26);
+      tl.fromTo("#lk-mark", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: EASE }, 22.4);
+      rise("#lk-word", 22.8, 18, 0.34);
+      rise("#lk-url", 23.4, 12, 0.3);
 
       /* ---- audio-reactive accent washes ----------------------------
        * Driven by a single tween's onUpdate rather than ~700 tl.call()s:
@@ -1613,7 +1733,7 @@
           probe,
           {
             p: 1,
-            duration: 23.2,
+            duration: 24.8,
             ease: "none",
             onUpdate: function () {
               var f = AR.frames[Math.max(0, Math.min(last, Math.round(probe.p * last)))];

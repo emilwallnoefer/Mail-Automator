@@ -9,7 +9,7 @@ you actually use it, with **how little work each step takes** as the through-lin
 - Rendered video: `brag-output/brag.mp4`
 - Format: landscape — 1920x1080, 30fps
 - Appearance: **Solarized Light + Dusty Blue accent** (`data-theme="light"` `data-accent="blue"`)
-- Duration: 23.20 seconds
+- Duration: 24.80 seconds
 
 ## Source Material
 - Project root: `<repo>/web` (Next.js 16 App Router + Supabase + Tailwind 4)
@@ -114,50 +114,39 @@ Requirements:
 
 ---
 
-## Build notes (v7 — final)
+## Build notes (v8 — visual rework)
 
-Two fixes on top of v6: the camera reads as a cut again, and a real rendering bug is gone.
+v7 was structurally right but three screens and two behaviours were called out. Planned first
+(`~/.claude/plans/lets-rework-it-one-rippling-metcalfe.md`), then executed.
 
-### The rendering bug (why frames looked broken)
+- **Login** is now a plain `Login` button in the solid `#2f5876` treatment. *Deliberate deviation:*
+  the app really uses Google sign-in, changed on request.
+- **Time Tracker rebuilt.** The diagnosis was in the CSS — `.day` was 300px tall with
+  `margin-top: auto` pinning the bar to the bottom of a mostly-empty card, and the readouts floated
+  in the corner. Now a hero total plus five dense cards, inside the same `.panel` container Mail
+  Tracking uses; that container is what stopped it floating on the page background.
+- **Mail Tracking rebuilt** around a rising area chart with a leading dot, revealed by a
+  transform-only cover wipe, with the stat tiles restacked as a 2×2.
+- **Cascades** went from 0.24s/0.20s-gap (0.04s overlap — a queue) to 0.50s/0.11s-stagger (four
+  cards in flight — one wave). Smoother and faster at once.
+- **Camera moves cut from five to two**, and softened: less magnification, a smaller cut step, a
+  longer drift.
+- **Whooshes reworked a third time** — see the audio direction in `brag-plan.md`. Now measurably
+  dark: 0.4–0.6% of energy above 1 kHz.
+- **A click on each word** in the text beats.
+- Score extended to 25.2s; `BUILD` 15.2 and `DROP` 16.0 unchanged, so the drop still lands on the
+  Mail Tracking cut.
 
-GSAP's `fromTo` defaults to **`immediateRender: true`** — it applies its *from* values the moment
-the tween is created, not when the playhead reaches it. With chained `fromTo`s that is disastrous:
+Two bugs caught by inspecting the *rendered* file rather than snapshots:
 
-- The five background tweens each applied their from-colour at build time, last one winning, so
-  the entire opening rendered on `#e6edf3` — the cool blue that belongs to the Mail Tracking
-  section.
-- Every camera **pull-back** tween applied its zoomed from-state at build time, leaving the zoom
-  wrappers stuck framed. That is the magnified, offset login card in the reported frame.
+1. **The chart's wipe cover slid out of the chart box and parked over the stat tiles**, so they
+   never appeared and the payoff camera move framed empty panel. Fixed with `overflow: hidden` on
+   the chart container (and the caption moved out of it, since it sat below the clip boundary).
+2. The payoff camera target was still computed for the old single-row tile layout; recomputed for
+   the 2×2 grid.
 
-Snapshots hid it because `snapshot` seeks forward from 0 and the first tween to render corrects
-the state; the renderer's five parallel workers seek independently and exposed it. Fixed by
-marking every chained `fromTo` `immediateRender: false` except the one that legitimately owns the
-opening state.
+Also fixed: `.day-name` at 22px in `--ink-2` measured 4.27:1 against paper and needed 4.5:1 —
+darkened to `--ink`. This is the recurring light-theme trap.
 
-Two related seek-safety fixes while in there:
-
-- **`tl.set()` is not revertible** — the playhead moving back past a zero-duration tween does not
-  undo it, and a worker whose first seek is *after* it never applies it at all. `show()`/`hide()`
-  and the state flips are now sub-frame (0.02s) `fromTo`s, which look identical and behave.
-- **`tl.call()` is suppressed during seeks**, so the `Generate draft` → `Generating…` text swap
-  could silently not happen. It is now two stacked labels cross-faded. The audio-reactive washes
-  were ~700 `tl.call()`s for the same reason — replaced with one tween whose `onUpdate` samples
-  the frame table.
-
-### The camera reads as a cut again
-
-v6 replaced the jump cut with a 350ms animated push, which lost the cut entirely. It is now both:
-a **0.02s cut** to the new framing at 94% scale, then a **drift** to 100% over up to 0.8s; and on
-the way out, a **cut** back to wide landing 3.5% tight, then a 0.4s settle. So the framing change
-is instant — as it should be — and the shot still moves.
-
-### Framing
-
-- The `Day type` punch now centres on the **chip block** (960, 457) at ×1.7 rather than on the
-  Vacation chip, which had pushed the modal against the left edge of frame.
-- The Mail Tracking punch went to ×2.0 for a clean two-up on `Real clicks` / `Scanner clicks`,
-  instead of ×1.6 leaving a half-tile sliver.
-- The cursor is now visible making the Vacation choice.
-
-**Gate result:** `hyperframes check` — 0 errors, **40/40 WCAG AA text checks pass**.
-Levels: peak −2.0 dBFS. Runtime 23.20s.
+**Gate result:** `hyperframes check` — 0 errors, **42/42 WCAG AA text checks pass**.
+Levels: peak −3.6 dBFS, mean −20.6 dB. Runtime 24.80s.

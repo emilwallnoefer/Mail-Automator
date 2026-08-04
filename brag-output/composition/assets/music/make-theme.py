@@ -9,8 +9,8 @@ backbeat clap, and a sidechained sub. Built around the cut:
     0.0 -  1.6  pad + pluck, no drums ..... the login card, wide
     1.6 - 15.2  full groove ............... dashboard → tracker → composer
    15.2 - 16.0  BUILD: drums thin, riser ..
-   16.0 - 21.6  DROP: everything ......... Mail Tracking
-   21.6 - 23.2  outro tail ............... the lockup
+   16.0 - 23.2  DROP: everything ......... Mail Tracking
+   23.2 - 24.8  outro tail ............... the lockup
 
 Everything is deterministic (fixed seed), so re-running reproduces the file.
 Run:  python3 assets/music/make-theme.py
@@ -21,7 +21,7 @@ import wave
 import os
 
 SR = 44100
-DUR = 23.6
+DUR = 25.2
 BEAT = 0.4  # 150 BPM
 BAR = BEAT * 4
 N = int(SR * DUR)
@@ -30,7 +30,7 @@ rng = np.random.default_rng(7314)
 
 DROP = 16.0
 BUILD = 15.2
-END = 21.6
+END = 23.2
 
 mix = np.zeros(N)
 
@@ -64,7 +64,8 @@ CHORDS = [
     (12.8, 110.00, [261.63, 329.63, 440.00]),  # Am
     (16.0, 110.00, [261.63, 329.63, 440.00]),  # Am — the drop
     (19.2, 87.31, [261.63, 349.23, 440.00]),   # F
-    (22.4, 110.00, [261.63, 329.63, 440.00]),  # Am — tail
+    (22.4, 110.00, [261.63, 329.63, 440.00]),  # Am — the lockup
+    (25.6, 110.00, [261.63, 329.63, 440.00]),  # Am — tail
 ]
 
 
@@ -271,7 +272,7 @@ tail = (np.sin(2 * np.pi * 110 * tt) + 0.5 * np.sin(2 * np.pi * 220 * tt)) * np.
 add(tail, END - 0.2, 0.32)
 
 fade = np.ones(N)
-fi = int(22.1 * SR)
+fi = int(23.7 * SR)
 fade[fi:] = np.linspace(1, 0, N - fi) ** 1.3
 mix *= fade
 
