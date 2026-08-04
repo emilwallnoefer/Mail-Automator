@@ -8,7 +8,7 @@ you actually use it, with **how little work each step takes** as the through-lin
 - Composition directory: `brag-output/composition/`
 - Rendered video: `brag-output/brag.mp4`
 - Format: landscape — 1920x1080, 30fps
-- Duration: 24.52 seconds
+- Duration: 24.50 seconds
 
 ## Source Material
 - Project root: `<repo>/web` (Next.js 16 App Router + Supabase + Tailwind 4)
@@ -24,7 +24,11 @@ you actually use it, with **how little work each step takes** as the through-lin
 - Product name: **Flya Allrounder** · domain `flya.space`
 - Copy that must appear verbatim (all real app copy):
   - `Flyability Internal` / `Welcome back` / `Continue with Google` / `Good morning`
-  - `Time Tracker` / `Mail Composer` / `Mail tracking` / `Settings` / `Continue`
+  - `Time Tracker` / `Mail Composer` / `Settings` / `Continue` (the three real dashboard cards)
+  - `Gmail, signatures, travel mapping, sounds, and account tools.`
+  - `Training email drafts and Gmail handoff in one flow.`
+  - `Workdays, breaks, compensation time, and overtime in one place.`
+  - `Mail tracking` (the admin section heading)
   - `Weekly hours:` / `Overtime bank:` / `8h 12m worked` / `Vacation` / `VAC`
   - `Day type` / `Normal` / `Vacation` / `Public Holiday` / `Sick leave` / `Start` / `Stop` /
     `Breaks` / `Save day`
@@ -63,39 +67,37 @@ Verbatim from `web/src/app/tokens.css` (`:root`, the dark base skin):
 ## Storyboard
 `brag-output/brag-plan.md` is the creative contract. Scene summary:
 
-1. **Sign in → dashboard** — 5.03s (0.00 → 5.03) — the login card, one cursor press, then
-   `Good morning, Emil` and four module cards landing in pairs on beats 3.02 / 3.52.
-2. **Time Tracker** — 6.99s (5.03 → 12.02) — five day cards cascade on the beat grid; the cursor
-   opens Thursday, picks `Vacation`, presses `Save day`; the card returns with a `VAC` badge and
-   the overtime bank ticks +4h 05m → +12h 05m.
-3. **Mail Composer** — 5.00s (12.02 → 17.02) — three fields fill, the brief types itself, one
-   press of `Generate draft`, the live preview lands.
-4. **Mail Tracking** — 4.99s (17.02 → 22.01) — the StatTile row lands hard on a strong cue, four
-   tiles cascade, then `Scanner clicks` strikes through and `Real clicks` lights up.
-5. **Lockup** — 2.51s (22.01 → 24.52) — mark, wordmark, `flya.space`.
+1. **Sign in → dashboard** — 5.00s (0.00 → 5.00) — the login card, one cursor press at 2.00,
+   then `Good morning, Emil` and the three real module cards (Settings · Mail Composer · Time
+   Tracker) arriving on 3.00 / 3.25 / 3.50.
+2. **Time Tracker** — 7.00s (5.00 → 12.00) — five day cards cascade on 5.50–7.50; the cursor
+   opens Thursday (8.00), the editor opens (8.50), `Vacation` is picked (9.50), `Save day` is
+   pressed (10.00), the editor closes (10.50) and the card returns with a `VAC` badge while the
+   overtime bank ticks +4h 05m → +12h 05m.
+3. **Mail Composer** — 5.00s (12.00 → 17.00) — fields fill on 12.50 / 13.00 / 13.50, the brief
+   types itself, `Generate draft` is pressed at 14.50, the preview lands at 15.00.
+4. **Mail Tracking** — 5.00s (17.00 → 22.00) — the panel lands **on the drop** at 17.00, four
+   tiles cascade on 17.50–19.00, then at 20.00 `Scanner clicks` strikes through and `Real
+   clicks` lights up.
+5. **Lockup** — 2.50s (22.00 → 24.50) — mark at 22.50, wordmark at 23.00, `flya.space` at 23.35.
 
 ## Audio
-- Role: **driving bed + a dense, immersive accent layer.** This cut is scored, not decorated.
-- Music: `happy-beats-business-moves-vol-1-by-ende-dot-app.mp3` — the most energetic bundled
-  track, 120.19 BPM, at volume 0.35, fading to 0 across the final 1.2s (23.32 → 24.52).
-- Music cue guidance: bundled preset in `assets/music/cues/`. The beat grid is a clean 0.50s
-  pulse from 3.02s, and **every scene boundary and sequential reveal sits on it**.
-  - **Strong-cue locks (3):** `17.02` (Mail Tracking lands), `20.02` (the Real/Scanner payoff),
-    `23.02` (the wordmark) — all 1.00-intensity strong beats.
-  - **Beat grids:** module cards `3.02 / 3.52`; day cards `5.53 / 6.03 / 6.52 / 7.02 / 7.52`;
-    editor `8.52`, Vacation `9.52`, Save `10.02`, close `10.52`; fields
-    `12.52 / 13.01 / 13.51`, Generate `14.52`, preview `15.02`; tiles
-    `17.52 / 18.02 / 18.52 / 19.02`.
-- **Whooshes** on every scene change and on the day editor opening/closing; a bigger one carries
-  the Mail Tracking entrance.
-- **Riser** — 1.3s, 15.72 → 17.02, the one deliberately cinematic gesture.
-- **Sub-boom** under both strong-cue payoffs (17.02, 20.02) for weight.
-- **Clicks** on every cursor action; **soft drops** on every cascading element, on the beat.
-- Audio-reactive: subtle. Music RMS/bass drive blurred accent glows behind the active panel and
-  the outro mark via CSS custom properties. Nothing that moves, scales or reflows text; no
-  waveform, equalizer or particle visuals.
-- Volumes: music 0.35 · whooshes 0.45–0.62 · clicks 0.55–0.60 · soft cues 0.42–0.45 · typing
-  0.28 · payoff stacks up to 0.72. Target: nothing clips.
+- Role: **a score written for this edit**, plus a light interaction layer.
+- Music: `assets/music/flya-theme.mp3` — **bespoke**, produced by `assets/music/make-theme.py`.
+  Modern minimal electronica: 120 BPM, A minor, i–VI–III–VII, sidechained sub bass, plucked arp,
+  offbeat hats, backbeat clap. Volume 0.44; the track fades itself out, so no volume tween.
+- Arrangement is mapped to the cut: pad only 0–2 (login), arp in at 2 (dashboard), full groove
+  4–16 (Time Tracker + Composer), **break 16–17** (drums out, riser, 16th hats), **drop at 17.00**
+  landing on the Mail Tracking reveal, outro tail from 23.
+- Because the score is ours, the grid is exact: every scene boundary and every sequential reveal
+  sits on a 0.50s beat from t=0.
+- SFX: a fully synthesised kit in `assets/sfx/synth/` — `ui-click`, `ui-tick`, `whoosh-soft`,
+  `whoosh-big`, `impact`, `sub-boom`, `bell`. Only six CC0 keypresses remain sampled.
+- The riser and the 17.00 hit live in the music and are **not** doubled by SFX.
+- Volumes: music 0.44 · whooshes 0.30–0.40 · clicks 0.42–0.45 · ticks 0.20–0.30 · typing 0.20 ·
+  payoff 0.32–0.40 · bell 0.38. Mixed peak −1.8 dBFS, mean −22.4 dB.
+- Audio-reactive: subtle. The score's RMS/bass drive blurred accent glows via CSS custom
+  properties. Nothing that moves, scales or reflows text.
 
 ## Hyperframes Instructions
 Load `hyperframes-core`, `hyperframes-animation`, `hyperframes-creative`, `hyperframes-keyframes`
@@ -111,53 +113,36 @@ Requirements:
 
 ---
 
-## Build notes (what actually shipped — v2, the functionality tour)
+## Build notes (v3 — final)
 
-This is the **second cut**. The first was a single-claim video built on Real vs Scanner clicks;
-this one is a guided tour through the app in the order you use it, per the follow-up brief:
-sign in → Time Tracker → Mail Composer → Mail Tracking, with simplicity as the through-line.
+Third and final cut. v1 was a single-claim video; v2 turned it into a functionality tour; v3
+replaces the music entirely, cleans the sound design, and fixes the dashboard to match the app.
 
-Structure and timing changes:
+- **The bundled music is gone.** "Happy Beats / Business Moves" read as corporate library music
+  and did not match the product. `assets/music/make-theme.py` now generates the score:
+  deterministic (fixed seed), 120 BPM, A minor, with the arrangement written around this edit —
+  a break at 16–17s and a drop landing exactly on the Mail Tracking reveal at 17.00.
+- **HeyGen's 10k-track catalog was not used.** Its CLI installs via
+  `curl -fsSL https://static.heygen.ai/cli/install.sh | bash` and then needs either
+  `heygen auth login --oauth` (opens a browser) or an API key pasted at a prompt. Both require
+  the account holder, so the catalog stayed out of reach and the score was authored instead.
+- **Timing is now exact, not approximated.** v2 snapped to beats *detected* in a stock track;
+  v3 owns the tempo, so every boundary and reveal is a clean multiple of 0.50s from t=0.
+- **The SFX kit was rebuilt and thinned.** All Kenney samples were dropped except six keypresses.
+  The synthesised kit shares a palette with the score, and the big 17.00 moment is carried by the
+  music alone rather than stacked with SFX.
+- **Levels fixed.** The first v3 render peaked at −0.0 dBFS (clipping); music and payoff cues were
+  pulled down to land at **−1.8 dBFS peak / −22.4 dB mean**.
+- **The dashboard now matches the real app**: three cards — Settings, Mail Composer, Time Tracker —
+  in `dashboard-shell.tsx`'s real order, with their real tinted icons, real one-line descriptions
+  and `Continue` affordance. Mail tracking is admin-only and correctly absent as a card.
+- **Motion vocabulary unified**: one `rise()` helper and one `press()` helper drive every
+  entrance and every button tap, so panels (0.45s), cards (0.36s) and captions (0.40s) all
+  decelerate on the same curve. Nothing bounces or idles.
 
-- **Runtime 24.52s** (was 23.46s), five scenes, every boundary on the music's beat grid.
-- **Scene order is now the user's order.** Login/dashboard and Time Tracker are new; the
-  Real/Scanner payoff moved from the opening claim to the closing beat of the tour.
-- **Music swapped** to `happy-beats-business-moves-vol-1` — the most energetic bundled track
-  (120.19 BPM vs vol-12's 109.96), which gives the 0.50s beat grid everything is scored to.
-- **Captions are now counts of effort**, not claims: "Your whole week." / "Click a day. Done." /
-  "Describe it. Get a draft." / "See who actually clicked."
+Fidelity notes carried forward from v2: every screen is rebuilt from the real components, and
+Thursday reads as genuinely unlogged (`0%`, `0h 00m worked`, empty bar) until the day is saved.
 
-Audio — the layer the follow-up asked for:
-
-- **Whooshes, riser and sub-boom are synthesised in this repo**, not sourced. The bundled CC0
-  library has no whoosh, and the HeyGen catalog behind `media-use --type bgm` needs an
-  interactive OAuth login. `assets/sfx/synth/*.wav` are generated by a seeded numpy script
-  (fixed seed `20260804`): noise driven through a per-sample sweeping one-pole lowpass for the
-  whooshes, an exponentially falling sine for the sub-boom, and a rising filtered-noise plus
-  pitch ramp for the riser.
-- **26 cues over 24.5s**: 5 clicks (one per cursor action), 7 whooshes (every scene change plus
-  the day editor opening and closing), 14 soft drops (one per cascading card/field/tile), a
-  1.3s riser into 17.02, two sub-boom + impact stacks on the strong cues, and one bell on the
-  wordmark.
-- Mixed peak is **−0.4 dBFS, mean −23.4 dB** — dense but not clipping.
-- Honest limitation: the bundled library is corporate-upbeat, not orchestral. The "epic" here
-  comes from arrangement (riser + sub-boom + a hard beat grid), not from an orchestral bed. A
-  genuinely cinematic track needs `heygen auth login --oauth`, which is the user's to run.
-
-Fidelity notes:
-
-- Every screen is rebuilt from the real components: the login card, the dashboard greeting and
-  module cards, the day card (badges, `%`, segmented bar), the day editor (`Day type` chips with
-  the real Normal/Vacation/Public Holiday/Sick leave set, the real "Excused from your target"
-  helper line, `Start`/`Stop`/`Breaks`, `Save day`), the composer, and the StatTile row.
-- **Thursday is genuinely unlogged before the edit** — `0%`, `0h 00m worked`, empty bar — and
-  only fills once Vacation is saved. An unlogged day showing 100% would have been a lie about
-  the product.
-- `--ease-fluid` is approximated by GSAP `power4.out` (same quintic-out family, no CustomEase
-  plugin needed).
-- `hyperframes check` caught a real bug during the build: `Save day` was positioned in viewport
-  coordinates inside an absolutely-positioned modal (`escaped_container`), which put it off the
-  panel. Fixed to modal-relative coordinates.
-- **Gate result:** 0 errors, **49/49 WCAG AA text checks pass**. Remaining output is one
-  `composition_file_too_large` warning (monolithic by choice) and informational overlap/occlusion
-  notes from the intentional crossfades and the day-editor dim.
+**Gate result:** `hyperframes check` — 0 errors, **49/49 WCAG AA text checks pass**. Remaining
+output is one `composition_file_too_large` warning (monolithic by choice) and informational
+overlap/occlusion notes from the intentional crossfades and the day-editor dim.

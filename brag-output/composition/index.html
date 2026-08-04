@@ -8,8 +8,13 @@
     <script src="assets/music/audio-data.js"></script>
     <style>
       /* ---------------------------------------------------------------
-       * Flya Allrounder — a product tour in the order you actually use it:
+       * Flya Allrounder — a product tour in the order you use it:
        * sign in → Time Tracker → Mail Composer → Mail Tracking.
+       *
+       * Timing runs on an exact 120 BPM grid (0.50s beat) from t=0,
+       * because the score was written for this edit — see
+       * assets/music/make-theme.py.
+       *
        * Every colour is copied from the app's own design tokens
        * (web/src/app/tokens.css, :root = the dark base skin).
        * ------------------------------------------------------------- */
@@ -122,7 +127,7 @@
         width: 700px;
         height: 380px;
         background: radial-gradient(closest-side, #22d3ee, rgba(34, 211, 238, 0));
-        opacity: calc(0.06 + var(--a-rms) * 0.22);
+        opacity: calc(0.06 + var(--a-rms) * 0.2);
       }
       #s1-login {
         position: absolute;
@@ -170,7 +175,7 @@
       #s1-greet {
         position: absolute;
         left: 152px;
-        top: 210px;
+        top: 200px;
         font-size: 66px;
         font-weight: 600;
         letter-spacing: -0.025em;
@@ -179,45 +184,132 @@
       #s1-sub {
         position: absolute;
         left: 152px;
-        top: 306px;
+        top: 296px;
         font-size: 32px;
         color: #94a3b8;
       }
       .mod-row {
         position: absolute;
         left: 152px;
-        top: 430px;
+        top: 390px;
         width: 1616px;
         display: flex;
         gap: 24px;
       }
+      /* The three cards a signed-in user actually lands on, in the real
+       * order from dashboard-shell.tsx: Settings, Mail Composer, Time
+       * Tracker. Mail tracking lives inside Admin, so it is not here. */
       .mod {
+        position: relative;
         flex: 1 1 0;
         min-width: 0;
-        height: 300px;
+        height: 380px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.05);
         border-radius: 20px;
-        padding: 32px;
+        padding: 40px;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+      }
+      .mod-orb {
+        position: absolute;
+        right: -60px;
+        top: -60px;
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        filter: blur(46px);
+      }
+      .mod-icon {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 28px;
+      }
+      .mod-icon svg {
+        width: 36px;
+        height: 36px;
+        fill: none;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .mod-name {
-        font-size: 34px;
+        position: relative;
+        font-size: 40px;
         font-weight: 600;
         color: #f1f5f9;
-        letter-spacing: -0.01em;
+        letter-spacing: -0.015em;
       }
       .mod-desc {
-        margin-top: 12px;
-        font-size: 24px;
+        position: relative;
+        margin-top: 14px;
+        font-size: 26px;
+        line-height: 1.45;
         color: #94a3b8;
       }
       .mod-go {
+        position: relative;
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
         font-size: 24px;
-        font-weight: 500;
+        font-weight: 600;
+      }
+      .mod-go span {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      /* per-module accents, matching the real icon tints */
+      #mod-settings .mod-orb {
+        background: rgba(167, 139, 250, 0.22);
+      }
+      #mod-settings .mod-icon {
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        background: rgba(167, 139, 250, 0.12);
+      }
+      #mod-settings .mod-icon svg {
+        stroke: #ddd6fe;
+      }
+      #mod-settings .mod-go {
+        color: #ddd6fe;
+      }
+      #mod-mail .mod-orb {
+        background: rgba(34, 211, 238, 0.22);
+      }
+      #mod-mail .mod-icon {
+        border: 1px solid rgba(34, 211, 238, 0.3);
+        background: rgba(34, 211, 238, 0.12);
+      }
+      #mod-mail .mod-icon svg {
+        stroke: #a5f3fc;
+      }
+      #mod-mail .mod-go {
         color: #a5f3fc;
+      }
+      #mod-time .mod-orb {
+        background: rgba(52, 211, 153, 0.2);
+      }
+      #mod-time .mod-icon {
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        background: rgba(52, 211, 153, 0.12);
+      }
+      #mod-time .mod-icon svg {
+        stroke: #a7f3d0;
+      }
+      #mod-time .mod-go {
+        color: #a7f3d0;
       }
 
       /* ================= Scene 2 — time tracker ====================== */
@@ -227,12 +319,12 @@
         width: 800px;
         height: 340px;
         background: radial-gradient(closest-side, #22d3ee, rgba(34, 211, 238, 0));
-        opacity: calc(0.05 + var(--a-rms) * 0.18);
+        opacity: calc(0.05 + var(--a-rms) * 0.16);
       }
       #s2-head {
         position: absolute;
         left: 152px;
-        top: 190px;
+        top: 230px;
         width: 1616px;
         display: flex;
         align-items: flex-end;
@@ -291,8 +383,21 @@
         font-weight: 500;
         color: #a5f3fc;
       }
-      /* Fixed-height well so the Thu card's two states can cross-fade
-       * without either one reflowing the card. */
+      /* fixed well so the two percentage states cross-fade in place */
+      .day-pct-well {
+        position: relative;
+        display: inline-block;
+        min-width: 76px;
+        height: 32px;
+      }
+      .day-pct-well .day-pct {
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+      #thu-pct-after {
+        opacity: 0;
+      }
       .day-state {
         position: relative;
         height: 48px;
@@ -308,21 +413,6 @@
         white-space: nowrap;
       }
       #thu-after {
-        opacity: 0;
-      }
-      /* fixed well so the two percentage states can cross-fade in place */
-      .day-pct-well {
-        position: relative;
-        display: inline-block;
-        min-width: 76px;
-        height: 32px;
-      }
-      .day-pct-well .day-pct {
-        position: absolute;
-        right: 0;
-        top: 0;
-      }
-      #thu-pct-after {
         opacity: 0;
       }
       #thu-badge {
@@ -455,6 +545,7 @@
         font-weight: 600;
         color: #f1f5f9;
       }
+      /* coordinates are relative to #s2-modal, its offset parent */
       #s2-save {
         position: absolute;
         left: 516px;
@@ -478,7 +569,7 @@
         width: 800px;
         height: 360px;
         background: radial-gradient(closest-side, #22d3ee, rgba(34, 211, 238, 0));
-        opacity: calc(0.05 + var(--a-rms) * 0.2);
+        opacity: calc(0.05 + var(--a-rms) * 0.18);
       }
       #s3-form {
         position: absolute;
@@ -569,7 +660,7 @@
         width: 1000px;
         height: 420px;
         background: radial-gradient(closest-side, #22d3ee, rgba(34, 211, 238, 0));
-        opacity: calc(0.08 + var(--a-rms) * 0.32);
+        opacity: calc(0.08 + var(--a-rms) * 0.3);
       }
       #s4-panel {
         position: absolute;
@@ -618,8 +709,8 @@
         font-size: 20px;
         color: #94a3b8;
       }
-      /* Outside #tile-scanner-content so it stays full strength while the
-       * numbers behind it dim away. */
+      /* outside #tile-scanner-content so it holds full strength while the
+       * numbers behind it dim away */
       #tile-scanner-strike {
         position: absolute;
         left: 24px;
@@ -645,7 +736,7 @@
         width: 600px;
         height: 400px;
         background: radial-gradient(closest-side, #818cf8, rgba(129, 140, 248, 0));
-        opacity: calc(0.1 + var(--a-bass) * 0.45);
+        opacity: calc(0.1 + var(--a-bass) * 0.42);
       }
       #lk-wrap {
         position: absolute;
@@ -683,15 +774,15 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="24.52"
+      data-duration="24.50"
       data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      <div id="stage-bg" class="clip" data-start="0" data-duration="24.52" data-track-index="0"></div>
+      <div id="stage-bg" class="clip" data-start="0" data-duration="24.50" data-track-index="0"></div>
 
       <!-- ============ Scene 1 — sign in, then the dashboard ============ -->
-      <div id="s1" class="clip scene" data-start="0" data-duration="5.33" data-track-index="1">
+      <div id="s1" class="clip scene" data-start="0" data-duration="5.30" data-track-index="1">
         <div id="s1-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s1-glow" class="glow"></div>
 
@@ -705,33 +796,43 @@
             <div id="s1-greet">Good morning, Emil</div>
             <div id="s1-sub">Everything in one place.</div>
             <div class="mod-row">
-              <div id="mod-1" class="mod">
-                <div>
-                  <div class="mod-name">Time Tracker</div>
-                  <div class="mod-desc">Hours &amp; overtime</div>
-                </div>
-                <div class="mod-go">Continue →</div>
+              <div id="mod-settings" class="mod">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3.2" />
+                    <circle cx="12" cy="12" r="7.4" stroke-dasharray="2.4 2.1" />
+                  </svg>
+                </span>
+                <div class="mod-name">Settings</div>
+                <div class="mod-desc">Gmail, signatures, travel mapping, sounds, and account tools.</div>
+                <div class="mod-go">Continue<span>→</span></div>
               </div>
-              <div id="mod-2" class="mod">
-                <div>
-                  <div class="mod-name">Mail Composer</div>
-                  <div class="mod-desc">Draft with AI</div>
-                </div>
-                <div class="mod-go">Continue →</div>
+
+              <div id="mod-mail" class="mod">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="5.5" width="18" height="13" rx="2.6" />
+                    <path d="M3.8 7.2 L12 13.2 L20.2 7.2" />
+                  </svg>
+                </span>
+                <div class="mod-name">Mail Composer</div>
+                <div class="mod-desc">Training email drafts and Gmail handoff in one flow.</div>
+                <div class="mod-go">Continue<span>→</span></div>
               </div>
-              <div id="mod-3" class="mod">
-                <div>
-                  <div class="mod-name">Mail tracking</div>
-                  <div class="mod-desc">Clicks &amp; recipients</div>
-                </div>
-                <div class="mod-go">Continue →</div>
-              </div>
-              <div id="mod-4" class="mod">
-                <div>
-                  <div class="mod-name">Settings</div>
-                  <div class="mod-desc">Theme &amp; account</div>
-                </div>
-                <div class="mod-go">Continue →</div>
+
+              <div id="mod-time" class="mod">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.4" />
+                    <path d="M12 7.2 V12 L15.4 14" />
+                  </svg>
+                </span>
+                <div class="mod-name">Time Tracker</div>
+                <div class="mod-desc">Workdays, breaks, compensation time, and overtime in one place.</div>
+                <div class="mod-go">Continue<span>→</span></div>
               </div>
             </div>
           </div>
@@ -749,63 +850,61 @@
       </div>
 
       <!-- ================== Scene 2 — Time Tracker ==================== -->
-      <div id="s2" class="clip scene" data-start="5.03" data-duration="7.29" data-track-index="2">
+      <div id="s2" class="clip scene" data-start="5.00" data-duration="7.30" data-track-index="2">
         <div id="s2-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s2-glow" class="glow"></div>
 
-          <div id="s2-week">
-            <div id="s2-head">
-              <div id="s2-title">Time Tracker</div>
-              <div id="s2-readouts">
-                <div>
-                  <div class="readout-label">Weekly hours:</div>
-                  <div class="readout-value num" style="color: #f1f5f9">32.7</div>
-                </div>
-                <div>
-                  <div class="readout-label">Overtime bank:</div>
-                  <div id="tt-bank" class="readout-value num" style="color: #a7f3d0">+4h 05m</div>
-                </div>
+          <div id="s2-head">
+            <div id="s2-title">Time Tracker</div>
+            <div id="s2-readouts">
+              <div>
+                <div class="readout-label">Weekly hours:</div>
+                <div class="readout-value num" style="color: #f1f5f9">32.7</div>
+              </div>
+              <div>
+                <div class="readout-label">Overtime bank:</div>
+                <div id="tt-bank" class="readout-value num" style="color: #a7f3d0">+4h 05m</div>
               </div>
             </div>
+          </div>
 
-            <div id="s2-days">
-              <div id="day-1" class="day">
-                <div class="day-top"><span class="day-name">Mon 04</span><span class="day-pct num">102%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 42m worked</span></div>
-                <div class="day-track">
-                  <span id="bar-1" class="day-bar" style="width: 82%"></span>
-                  <span id="bar-1o" class="day-bar-ot" style="width: 18%"></span>
-                </div>
+          <div id="s2-days">
+            <div id="day-1" class="day">
+              <div class="day-top"><span class="day-name">Mon 04</span><span class="day-pct num">102%</span></div>
+              <div class="day-state"><span class="day-worked num">8h 42m worked</span></div>
+              <div class="day-track">
+                <span id="bar-1" class="day-bar" style="width: 82%"></span>
+                <span id="bar-1o" class="day-bar-ot" style="width: 18%"></span>
               </div>
-              <div id="day-2" class="day">
-                <div class="day-top"><span class="day-name">Tue 05</span><span class="day-pct num">96%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 12m worked</span></div>
-                <div class="day-track"><span id="bar-2" class="day-bar" style="width: 96%"></span></div>
+            </div>
+            <div id="day-2" class="day">
+              <div class="day-top"><span class="day-name">Tue 05</span><span class="day-pct num">96%</span></div>
+              <div class="day-state"><span class="day-worked num">8h 12m worked</span></div>
+              <div class="day-track"><span id="bar-2" class="day-bar" style="width: 96%"></span></div>
+            </div>
+            <div id="day-3" class="day">
+              <div class="day-top"><span class="day-name">Wed 06</span><span class="day-pct num">100%</span></div>
+              <div class="day-state"><span class="day-worked num">8h 30m worked</span></div>
+              <div class="day-track"><span id="bar-3" class="day-bar" style="width: 100%"></span></div>
+            </div>
+            <div id="day-4" class="day">
+              <div class="day-top">
+                <span class="day-name">Thu 07</span>
+                <span class="day-pct-well">
+                  <span id="thu-pct-before" class="day-pct num">0%</span>
+                  <span id="thu-pct-after" class="day-pct num">100%</span>
+                </span>
               </div>
-              <div id="day-3" class="day">
-                <div class="day-top"><span class="day-name">Wed 06</span><span class="day-pct num">100%</span></div>
-                <div class="day-state"><span class="day-worked num">8h 30m worked</span></div>
-                <div class="day-track"><span id="bar-3" class="day-bar" style="width: 100%"></span></div>
+              <div class="day-state" data-layout-allow-overlap="true">
+                <span id="thu-before" class="day-worked num">0h 00m worked</span>
+                <span id="thu-after" class="day-worked">Vacation<span id="thu-badge">VAC</span></span>
               </div>
-              <div id="day-4" class="day">
-                <div class="day-top">
-                  <span class="day-name">Thu 07</span>
-                  <span class="day-pct-well">
-                    <span id="thu-pct-before" class="day-pct num">0%</span>
-                    <span id="thu-pct-after" class="day-pct num">100%</span>
-                  </span>
-                </div>
-                <div class="day-state" data-layout-allow-overlap="true">
-                  <span id="thu-before" class="day-worked num">0h 00m worked</span>
-                  <span id="thu-after" class="day-worked">Vacation<span id="thu-badge">VAC</span></span>
-                </div>
-                <div class="day-track"><span id="bar-4" class="day-bar" style="width: 100%"></span></div>
-              </div>
-              <div id="day-5" class="day">
-                <div class="day-top"><span class="day-name">Fri 08</span><span class="day-pct num">88%</span></div>
-                <div class="day-state"><span class="day-worked num">7h 28m worked</span></div>
-                <div class="day-track"><span id="bar-5" class="day-bar" style="width: 88%"></span></div>
-              </div>
+              <div class="day-track"><span id="bar-4" class="day-bar" style="width: 100%"></span></div>
+            </div>
+            <div id="day-5" class="day">
+              <div class="day-top"><span class="day-name">Fri 08</span><span class="day-pct num">88%</span></div>
+              <div class="day-state"><span class="day-worked num">7h 28m worked</span></div>
+              <div class="day-track"><span id="bar-5" class="day-bar" style="width: 88%"></span></div>
             </div>
           </div>
 
@@ -856,7 +955,7 @@
       </div>
 
       <!-- ================= Scene 3 — Mail Composer ==================== -->
-      <div id="s3" class="clip scene" data-start="12.02" data-duration="5.30" data-track-index="1">
+      <div id="s3" class="clip scene" data-start="12.00" data-duration="5.30" data-track-index="1">
         <div id="s3-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s3-glow" class="glow"></div>
 
@@ -911,7 +1010,7 @@
       </div>
 
       <!-- ================= Scene 4 — Mail Tracking ==================== -->
-      <div id="s4" class="clip scene" data-start="17.02" data-duration="5.29" data-track-index="2">
+      <div id="s4" class="clip scene" data-start="17.00" data-duration="5.30" data-track-index="2">
         <div id="s4-inner" class="scene-inner">
           <div id="s4-glow" class="glow"></div>
           <div id="s4-panel" class="panel">
@@ -948,7 +1047,7 @@
       </div>
 
       <!-- ===================== Scene 5 — lockup ======================= -->
-      <div id="s5" class="clip scene" data-start="22.01" data-duration="2.51" data-track-index="1">
+      <div id="s5" class="clip scene" data-start="22.00" data-duration="2.50" data-track-index="1">
         <div id="s5-inner" class="scene-inner">
           <div id="lk-glow" class="glow"></div>
           <div id="lk-wrap">
@@ -959,151 +1058,164 @@
         </div>
       </div>
 
-      <!-- ========================== audio ============================= -->
-      <audio id="bgm" src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3" data-start="0" data-duration="24.52" data-track-index="10" data-volume="0.35"></audio>
+      <!-- ==================== audio ====================================
+           Score: assets/music/flya-theme.mp3, written for this edit
+           (assets/music/make-theme.py). The 16-17s riser and the 17.0
+           drop live in the music itself, so the SFX layer stays light
+           and covers interaction only.
+      -->
+      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="24.50" data-track-index="10" data-volume="0.44"></audio>
 
-      <!-- clicks: every simulated cursor action -->
-      <audio id="sfx-click-signin" src="assets/sfx/interface/click_003.ogg" data-start="1.85" data-duration="0.01" data-track-index="11" data-volume="0.6"></audio>
-      <audio id="sfx-click-day" src="assets/sfx/interface/click_002.ogg" data-start="8.02" data-duration="0.01" data-track-index="11" data-volume="0.6"></audio>
-      <audio id="sfx-click-vac" src="assets/sfx/interface/click_003.ogg" data-start="9.52" data-duration="0.01" data-track-index="11" data-volume="0.58"></audio>
-      <audio id="sfx-click-save" src="assets/sfx/interface/click_002.ogg" data-start="10.02" data-duration="0.01" data-track-index="11" data-volume="0.6"></audio>
-      <audio id="sfx-click-gen" src="assets/sfx/interface/click_003.ogg" data-start="14.52" data-duration="0.01" data-track-index="11" data-volume="0.6"></audio>
+      <!-- one click per cursor press -->
+      <audio id="sfx-click-signin" src="assets/sfx/synth/ui-click.wav" data-start="2.00" data-duration="0.04" data-track-index="11" data-volume="0.45"></audio>
+      <audio id="sfx-click-day" src="assets/sfx/synth/ui-click.wav" data-start="8.00" data-duration="0.04" data-track-index="11" data-volume="0.45"></audio>
+      <audio id="sfx-click-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.50" data-duration="0.04" data-track-index="11" data-volume="0.42"></audio>
+      <audio id="sfx-click-save" src="assets/sfx/synth/ui-click.wav" data-start="10.00" data-duration="0.04" data-track-index="11" data-volume="0.45"></audio>
+      <audio id="sfx-click-gen" src="assets/sfx/synth/ui-click.wav" data-start="14.50" data-duration="0.04" data-track-index="11" data-volume="0.45"></audio>
 
-      <!-- whooshes: every scene change, plus the day editor opening/closing -->
-      <audio id="sfx-wh-dash" src="assets/sfx/synth/whoosh-soft.wav" data-start="2.00" data-duration="0.30" data-track-index="12" data-volume="0.55"></audio>
-      <audio id="sfx-wh-s2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.03" data-duration="0.30" data-track-index="12" data-volume="0.55"></audio>
-      <audio id="sfx-wh-modal-in" src="assets/sfx/synth/whoosh-soft.wav" data-start="8.45" data-duration="0.30" data-track-index="12" data-volume="0.5"></audio>
-      <audio id="sfx-wh-modal-out" src="assets/sfx/synth/whoosh-soft.wav" data-start="10.45" data-duration="0.30" data-track-index="12" data-volume="0.5"></audio>
-      <audio id="sfx-wh-s3" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.02" data-duration="0.30" data-track-index="12" data-volume="0.55"></audio>
-      <audio id="sfx-wh-s4" src="assets/sfx/synth/whoosh-big.wav" data-start="17.02" data-duration="0.52" data-track-index="12" data-volume="0.62"></audio>
-      <audio id="sfx-wh-s5" src="assets/sfx/synth/whoosh-soft.wav" data-start="22.31" data-duration="0.30" data-track-index="12" data-volume="0.45"></audio>
+      <!-- one whoosh per scene change, plus the day editor opening/closing -->
+      <audio id="sfx-wh-dash" src="assets/sfx/synth/whoosh-soft.wav" data-start="2.02" data-duration="0.28" data-track-index="12" data-volume="0.40"></audio>
+      <audio id="sfx-wh-s2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.00" data-duration="0.28" data-track-index="12" data-volume="0.40"></audio>
+      <audio id="sfx-wh-modal-in" src="assets/sfx/synth/whoosh-soft.wav" data-start="8.50" data-duration="0.28" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="sfx-wh-modal-out" src="assets/sfx/synth/whoosh-soft.wav" data-start="10.50" data-duration="0.28" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="sfx-wh-s3" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.00" data-duration="0.28" data-track-index="12" data-volume="0.40"></audio>
+      <audio id="sfx-wh-preview" src="assets/sfx/synth/whoosh-soft.wav" data-start="15.00" data-duration="0.28" data-track-index="12" data-volume="0.30"></audio>
+      <audio id="sfx-wh-s4" src="assets/sfx/synth/whoosh-big.wav" data-start="17.00" data-duration="0.50" data-track-index="12" data-volume="0.38"></audio>
+      <audio id="sfx-wh-s5" src="assets/sfx/synth/whoosh-soft.wav" data-start="22.00" data-duration="0.28" data-track-index="12" data-volume="0.32"></audio>
 
-      <!-- soft cue per cascading element, on the beat -->
-      <audio id="sfx-mod-1" src="assets/sfx/interface/drop_001.ogg" data-start="3.02" data-duration="0.11" data-track-index="13" data-volume="0.45"></audio>
-      <audio id="sfx-mod-2" src="assets/sfx/interface/drop_002.ogg" data-start="3.52" data-duration="0.19" data-track-index="13" data-volume="0.45"></audio>
-      <audio id="sfx-day-1" src="assets/sfx/interface/drop_001.ogg" data-start="5.53" data-duration="0.11" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-day-2" src="assets/sfx/interface/drop_001.ogg" data-start="6.03" data-duration="0.11" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-day-3" src="assets/sfx/interface/drop_001.ogg" data-start="6.52" data-duration="0.11" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-day-4" src="assets/sfx/interface/drop_001.ogg" data-start="7.02" data-duration="0.11" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-day-5" src="assets/sfx/interface/drop_001.ogg" data-start="7.52" data-duration="0.11" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-fld-1" src="assets/sfx/interface/drop_002.ogg" data-start="12.52" data-duration="0.19" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-fld-2" src="assets/sfx/interface/drop_002.ogg" data-start="13.01" data-duration="0.19" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-fld-3" src="assets/sfx/interface/drop_002.ogg" data-start="13.51" data-duration="0.19" data-track-index="14" data-volume="0.42"></audio>
-      <audio id="sfx-tile-1" src="assets/sfx/interface/drop_001.ogg" data-start="17.52" data-duration="0.11" data-track-index="14" data-volume="0.45"></audio>
-      <audio id="sfx-tile-2" src="assets/sfx/interface/drop_001.ogg" data-start="18.02" data-duration="0.11" data-track-index="14" data-volume="0.45"></audio>
-      <audio id="sfx-tile-3" src="assets/sfx/interface/drop_001.ogg" data-start="18.52" data-duration="0.11" data-track-index="14" data-volume="0.45"></audio>
-      <audio id="sfx-tile-4" src="assets/sfx/interface/drop_001.ogg" data-start="19.02" data-duration="0.11" data-track-index="14" data-volume="0.45"></audio>
-
-      <!-- the day saved, and the badge landing -->
-      <audio id="sfx-saved" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="10.58" data-duration="0.15" data-track-index="15" data-volume="0.5"></audio>
-      <audio id="sfx-bank" src="assets/sfx/casino/chips-stack-2.ogg" data-start="10.70" data-duration="0.17" data-track-index="22" data-volume="0.4"></audio>
+      <!-- a soft tick per cascading element, on the beat -->
+      <audio id="sfx-t-mod1" src="assets/sfx/synth/ui-tick.wav" data-start="3.00" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-mod2" src="assets/sfx/synth/ui-tick.wav" data-start="3.25" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-mod3" src="assets/sfx/synth/ui-tick.wav" data-start="3.50" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-day1" src="assets/sfx/synth/ui-tick.wav" data-start="5.50" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-day2" src="assets/sfx/synth/ui-tick.wav" data-start="6.00" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-day3" src="assets/sfx/synth/ui-tick.wav" data-start="6.50" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-day4" src="assets/sfx/synth/ui-tick.wav" data-start="7.00" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-day5" src="assets/sfx/synth/ui-tick.wav" data-start="7.50" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-saved" src="assets/sfx/synth/ui-tick.wav" data-start="10.60" data-duration="0.055" data-track-index="13" data-volume="0.30"></audio>
+      <audio id="sfx-t-fld1" src="assets/sfx/synth/ui-tick.wav" data-start="12.50" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-fld2" src="assets/sfx/synth/ui-tick.wav" data-start="13.00" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-fld3" src="assets/sfx/synth/ui-tick.wav" data-start="13.50" data-duration="0.055" data-track-index="13" data-volume="0.20"></audio>
+      <audio id="sfx-t-tile1" src="assets/sfx/synth/ui-tick.wav" data-start="17.50" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-tile2" src="assets/sfx/synth/ui-tick.wav" data-start="18.00" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-tile3" src="assets/sfx/synth/ui-tick.wav" data-start="18.50" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
+      <audio id="sfx-t-tile4" src="assets/sfx/synth/ui-tick.wav" data-start="19.00" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
 
       <!-- typing texture, thinned -->
-      <audio id="sfx-key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="13.58" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
-      <audio id="sfx-key-2" src="assets/sfx/keyboard/keypress-009.wav" data-start="13.72" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
-      <audio id="sfx-key-3" src="assets/sfx/keyboard/keypress-014.wav" data-start="13.86" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
-      <audio id="sfx-key-4" src="assets/sfx/keyboard/keypress-019.wav" data-start="14.00" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
-      <audio id="sfx-key-5" src="assets/sfx/keyboard/keypress-023.wav" data-start="14.14" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
-      <audio id="sfx-key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.28" data-duration="0.12" data-track-index="16" data-volume="0.28"></audio>
+      <audio id="sfx-key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="13.58" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
+      <audio id="sfx-key-2" src="assets/sfx/keyboard/keypress-009.wav" data-start="13.72" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
+      <audio id="sfx-key-3" src="assets/sfx/keyboard/keypress-014.wav" data-start="13.86" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
+      <audio id="sfx-key-4" src="assets/sfx/keyboard/keypress-019.wav" data-start="14.00" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
+      <audio id="sfx-key-5" src="assets/sfx/keyboard/keypress-023.wav" data-start="14.14" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
+      <audio id="sfx-key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.28" data-duration="0.12" data-track-index="14" data-volume="0.20"></audio>
 
-      <audio id="sfx-preview" src="assets/sfx/casino/card-slide-1.ogg" data-start="15.02" data-duration="0.60" data-track-index="17" data-volume="0.5"></audio>
-
-      <!-- the cinematic build into Mail Tracking, and the two payoffs -->
-      <audio id="sfx-riser" src="assets/sfx/synth/riser.wav" data-start="15.72" data-duration="1.30" data-track-index="18" data-volume="0.5"></audio>
-      <audio id="sfx-boom-1" src="assets/sfx/synth/sub-boom.wav" data-start="17.02" data-duration="0.85" data-track-index="19" data-volume="0.6"></audio>
-      <audio id="sfx-hit-1" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="17.02" data-duration="0.18" data-track-index="20" data-volume="0.6"></audio>
-      <audio id="sfx-boom-2" src="assets/sfx/synth/sub-boom.wav" data-start="20.02" data-duration="0.85" data-track-index="19" data-volume="0.55"></audio>
-      <audio id="sfx-hit-2" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="20.02" data-duration="0.18" data-track-index="20" data-volume="0.72"></audio>
-
-      <audio id="sfx-bell" src="assets/sfx/impact/impactBell_heavy_000.ogg" data-start="23.02" data-duration="1.48" data-track-index="21" data-volume="0.62"></audio>
+      <!-- the strike-through payoff, and the wordmark -->
+      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="20.00" data-duration="1.10" data-track-index="15" data-volume="0.40"></audio>
+      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="20.00" data-duration="0.85" data-track-index="16" data-volume="0.32"></audio>
+      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="23.00" data-duration="1.50" data-track-index="17" data-volume="0.38"></audio>
     </div>
 
     <script>
       window.__timelines = window.__timelines || {};
 
-      var EASE = "power4.out"; // ≈ the app's --ease-fluid cubic-bezier(0.22, 1, 0.36, 1)
+      /* One motion vocabulary for the whole film, so nothing reads as a
+       * different animator's work. Everything decelerates on the app's own
+       * curve (--ease-fluid ≈ power4.out); nothing bounces or idles. */
+      var EASE = "power4.out";
       var XFADE = 0.3;
-      var root = document.getElementById("root");
+      var D_PANEL = 0.45; // a panel or section arriving
+      var D_CARD = 0.36; // a card / tile in a cascade
+      var D_CAP = 0.4; // a caption
+      var Y_CARD = 18;
+      var Y_CAP = 16;
 
+      var root = document.getElementById("root");
       var tl = gsap.timeline({ paused: true });
 
-      /* Scene crossfades. Each clip is authored 0.30s longer than its slot so
-       * the outgoing inner fades under the incoming one. */
+      function rise(target, at, dist, dur) {
+        tl.fromTo(target, { y: dist, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: EASE }, at);
+      }
+      function press(target, at) {
+        tl.to(target, { scale: 0.965, duration: 0.09, ease: "power2.out" }, at);
+        tl.to(target, { scale: 1, duration: 0.2, ease: EASE }, at + 0.09);
+      }
       function sceneFade(id, start, end, fadeIn) {
         tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: fadeIn, ease: "none" }, start);
         if (end !== null) tl.to(id, { opacity: 0, duration: XFADE, ease: "none" }, end);
       }
-      sceneFade("#s1-inner", 0.0, 5.03, 0.3);
-      sceneFade("#s2-inner", 5.03, 12.02, XFADE);
-      sceneFade("#s3-inner", 12.02, 17.02, XFADE);
-      sceneFade("#s4-inner", 17.02, 22.01, XFADE);
-      sceneFade("#s5-inner", 22.01, null, XFADE);
+
+      sceneFade("#s1-inner", 0.0, 5.0, 0.3);
+      sceneFade("#s2-inner", 5.0, 12.0, XFADE);
+      sceneFade("#s3-inner", 12.0, 17.0, XFADE);
+      sceneFade("#s4-inner", 17.0, 22.0, XFADE);
+      sceneFade("#s5-inner", 22.0, null, XFADE);
 
       /* ============ Scene 1 — sign in, then the dashboard ============ */
-      tl.fromTo("#s1-login", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: EASE }, 0.2);
-      tl.set("#s1-cursor", { x: 1480, y: 1050 }, 1.05);
-      tl.fromTo("#s1-cursor", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "none" }, 1.08);
-      tl.to("#s1-cursor", { x: 944, y: 579, duration: 0.6, ease: EASE }, 1.2);
-      tl.to("#s1-google", { scale: 0.96, duration: 0.09, ease: "power2.out" }, 1.85);
-      tl.to("#s1-google", { scale: 1, duration: 0.22, ease: EASE }, 1.94);
-      tl.to("#s1-cursor", { opacity: 0, duration: 0.2, ease: "none" }, 1.98);
+      rise("#s1-login", 0.2, 22, 0.55);
+      tl.set("#s1-cursor", { x: 1480, y: 1050 }, 0.95);
+      tl.fromTo("#s1-cursor", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "none" }, 1.0);
+      tl.to("#s1-cursor", { x: 944, y: 579, duration: 0.65, ease: EASE }, 1.1);
+      press("#s1-google", 2.0); // beat
+      tl.to("#s1-cursor", { opacity: 0, duration: 0.2, ease: "none" }, 2.1);
 
       // the card drops away and the dashboard is simply there
-      tl.to("#s1-login", { scale: 0.94, opacity: 0, duration: 0.34, ease: "power2.in" }, 2.0);
-      tl.fromTo("#s1-dash", { opacity: 0 }, { opacity: 1, duration: 0.32, ease: "none" }, 2.12);
-      tl.fromTo("#s1-greet", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: EASE }, 2.3);
-      tl.fromTo("#s1-sub", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 2.52);
+      tl.to("#s1-login", { scale: 0.94, opacity: 0, duration: 0.32, ease: "power2.in" }, 2.05);
+      tl.fromTo("#s1-dash", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 2.12);
+      rise("#s1-greet", 2.25, 24, D_PANEL);
+      rise("#s1-sub", 2.5, Y_CAP, D_CAP);
 
-      // beat-grid: module cards land in two pairs at 3.02s and 3.52s
-      tl.fromTo("#mod-1", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 3.02);
-      tl.fromTo("#mod-2", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 3.08);
-      tl.fromTo("#mod-3", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 3.52);
-      tl.fromTo("#mod-4", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 3.58);
+      // beat-grid: the three real module cards, an eighth apart
+      rise("#mod-settings", 3.0, 26, D_CARD);
+      rise("#mod-mail", 3.25, 26, D_CARD);
+      rise("#mod-time", 3.5, 26, D_CARD);
 
       /* ================== Scene 2 — Time Tracker ==================== */
-      tl.fromTo("#s2-head", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: EASE }, 5.13);
+      rise("#s2-head", 5.1, 20, D_PANEL);
 
-      // beat-grid: day cards at 5.53 / 6.03 / 6.52 / 7.02 / 7.52
-      var DAY_BEATS = [5.53, 6.03, 6.52, 7.02, 7.52];
+      // beat-grid: one day card per beat, 5.50 → 7.50
+      var DAY_BEATS = [5.5, 6.0, 6.5, 7.0, 7.5];
       tl.set("#bar-4", { scaleX: 0 }, 0); // Thursday has nothing logged yet
       for (var d = 0; d < DAY_BEATS.length; d++) {
-        tl.fromTo("#day-" + (d + 1), { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: EASE }, DAY_BEATS[d]);
+        rise("#day-" + (d + 1), DAY_BEATS[d], Y_CARD, D_CARD);
         if (d === 3) continue;
-        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, DAY_BEATS[d] + 0.1);
+        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, DAY_BEATS[d] + 0.08);
       }
-      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: EASE }, 5.98);
+      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: EASE }, 5.95);
 
-      tl.fromTo("#s2-cap1", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 6.03);
-      tl.to("#s2-cap1", { opacity: 0, duration: 0.25, ease: "none" }, 7.95);
+      rise("#s2-cap1", 6.0, Y_CAP, D_CAP);
+      tl.to("#s2-cap1", { opacity: 0, duration: 0.25, ease: "none" }, 7.9);
 
       // the cursor opens Thursday
-      tl.set("#s2-cursor", { x: 1560, y: 1050 }, 7.28);
+      tl.set("#s2-cursor", { x: 1560, y: 1050 }, 7.25);
       tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "none" }, 7.3);
-      tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.6, ease: EASE }, 7.42);
-      tl.to("#day-4", { scale: 0.975, duration: 0.09, ease: "power2.out" }, 8.02);
-      tl.to("#day-4", { scale: 1, duration: 0.22, ease: EASE }, 8.11);
+      tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.6, ease: EASE }, 7.4);
+      press("#day-4", 8.0); // beat
 
       // the day editor
-      tl.to("#s2-dim", { opacity: 0.72, duration: 0.32, ease: "power2.out" }, 8.42);
-      tl.fromTo("#s2-modal", { y: 34, scale: 0.97, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.42, ease: EASE }, 8.45);
+      tl.to("#s2-dim", { opacity: 0.72, duration: 0.3, ease: "power2.out" }, 8.48);
+      tl.fromTo(
+        "#s2-modal",
+        { y: 30, scale: 0.975, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.42, ease: EASE },
+        8.5
+      );
       tl.to("#s2-cursor", { x: 1112, y: 417, duration: 0.55, ease: EASE }, 8.85);
 
       // pick Vacation
-      tl.fromTo("#chip-vac-on", { opacity: 0 }, { opacity: 1, duration: 0.26, ease: EASE }, 9.52);
-      tl.fromTo("#s2-helper", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EASE }, 9.62);
-      tl.to("#s2-cursor", { x: 1180, y: 765, duration: 0.36, ease: EASE }, 9.66);
+      tl.fromTo("#chip-vac-on", { opacity: 0 }, { opacity: 1, duration: 0.24, ease: EASE }, 9.5);
+      tl.fromTo("#s2-helper", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: EASE }, 9.6);
+      tl.to("#s2-cursor", { x: 1180, y: 765, duration: 0.34, ease: EASE }, 9.66);
 
       // save
-      tl.to("#s2-save", { scale: 0.96, duration: 0.09, ease: "power2.out" }, 10.02);
-      tl.to("#s2-save", { scale: 1, duration: 0.2, ease: EASE }, 10.11);
+      press("#s2-save", 10.0); // beat
       tl.to("#s2-cursor", { opacity: 0, duration: 0.2, ease: "none" }, 10.2);
 
-      // editor closes, the card comes back as Vacation, the bank ticks up
-      tl.to("#s2-modal", { y: 22, scale: 0.98, opacity: 0, duration: 0.32, ease: "power2.in" }, 10.45);
-      tl.to("#s2-dim", { opacity: 0, duration: 0.32, ease: "power2.in" }, 10.45);
-      tl.to("#thu-before", { opacity: 0, duration: 0.26, ease: "none" }, 10.55);
+      // the editor closes and the card comes back as Vacation
+      tl.to("#s2-modal", { y: 20, scale: 0.985, opacity: 0, duration: 0.3, ease: "power2.in" }, 10.5);
+      tl.to("#s2-dim", { opacity: 0, duration: 0.3, ease: "power2.in" }, 10.5);
+      tl.to("#thu-before", { opacity: 0, duration: 0.24, ease: "none" }, 10.55);
+      tl.to("#thu-pct-before", { opacity: 0, duration: 0.24, ease: "none" }, 10.55);
       tl.fromTo("#thu-after", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EASE }, 10.6);
-      tl.to("#thu-pct-before", { opacity: 0, duration: 0.26, ease: "none" }, 10.55);
       tl.fromTo("#thu-pct-after", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EASE }, 10.6);
       tl.to("#bar-4", { scaleX: 1, duration: 0.5, ease: EASE }, 10.6);
 
@@ -1112,7 +1224,7 @@
       tl.to(
         bankState,
         {
-          m: 725, // +12h 05m — a full vacation day booked as overtime
+          m: 725, // +12h 05m — a vacation day books as overtime
           duration: 0.6,
           ease: "power2.out",
           onUpdate: function () {
@@ -1122,24 +1234,22 @@
             bankEl.textContent = "+" + h + "h " + (mm < 10 ? "0" : "") + mm + "m";
           }
         },
-        10.7
+        10.65
       );
 
-      tl.fromTo("#s2-cap2", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: EASE }, 10.42);
+      rise("#s2-cap2", 10.4, Y_CAP, D_CAP);
 
       /* ================= Scene 3 — Mail Composer ==================== */
-      tl.fromTo("#s3-form", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: EASE }, 12.12);
+      rise("#s3-form", 12.1, 22, D_PANEL);
 
-      // beat-grid: fields at 12.52 / 13.01 / 13.51
-      var FIELD_BEATS = [12.52, 13.01, 13.51];
-      var FIELD_IDS = ["#s3-f1", "#s3-f2", "#s3-f3"];
-      for (var f = 0; f < FIELD_IDS.length; f++) {
-        tl.fromTo(FIELD_IDS[f], { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, ease: EASE }, FIELD_BEATS[f]);
-      }
-      tl.fromTo("#s3-f4", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, ease: EASE }, 13.45);
+      // beat-grid: 12.50 / 13.00 / 13.50
+      rise("#s3-f1", 12.5, 14, 0.28);
+      rise("#s3-f2", 13.0, 14, 0.28);
+      rise("#s3-f3", 13.5, 14, 0.28);
+      rise("#s3-f4", 13.45, 14, 0.28);
 
       // typed brief — the character count is interpolated from timeline time,
-      // so any seek resolves to the same string
+      // so every seek resolves to the same string
       var BRIEF = "Two-day operator training, on site.";
       var briefEl = document.getElementById("s3-brief-text");
       var typeState = { n: 0 };
@@ -1148,7 +1258,7 @@
         typeState,
         {
           n: BRIEF.length,
-          duration: 0.76,
+          duration: 0.74,
           ease: "none",
           onUpdate: function () {
             briefEl.textContent = BRIEF.slice(0, Math.round(typeState.n));
@@ -1156,57 +1266,57 @@
         },
         13.56
       );
-      tl.to("#s3-caret", { opacity: 0, duration: 0.14, ease: "none" }, 14.45);
+      tl.to("#s3-caret", { opacity: 0, duration: 0.14, ease: "none" }, 14.42);
 
-      tl.set("#s3-cursor", { x: 1500, y: 1050 }, 13.9);
-      tl.fromTo("#s3-cursor", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "none" }, 13.94);
-      tl.to("#s3-cursor", { x: 269, y: 811, duration: 0.5, ease: EASE }, 14.02);
-      tl.to("#s3-cta", { scale: 0.965, duration: 0.09, ease: "power2.out" }, 14.52);
-      tl.to("#s3-cta", { scale: 1, duration: 0.2, ease: EASE }, 14.61);
+      tl.set("#s3-cursor", { x: 1500, y: 1050 }, 13.85);
+      tl.fromTo("#s3-cursor", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "none" }, 13.9);
+      tl.to("#s3-cursor", { x: 269, y: 811, duration: 0.52, ease: EASE }, 13.98);
+      press("#s3-cta", 14.5); // beat
       tl.call(
         function () {
           document.getElementById("s3-cta").textContent = "Generating…";
         },
         [],
-        14.56
+        14.54
       );
-      tl.to("#s3-cursor", { opacity: 0, duration: 0.22, ease: "none" }, 14.85);
+      tl.to("#s3-cursor", { opacity: 0, duration: 0.22, ease: "none" }, 14.82);
 
       // the draft lands
-      tl.to("#s3-preview-empty", { opacity: 0, duration: 0.28, ease: "none" }, 15.02);
-      tl.fromTo("#s3-preview-inner", { x: 44, opacity: 0 }, { x: 0, opacity: 1, duration: 0.52, ease: EASE }, 15.02);
-      tl.fromTo("#s3-cap", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: EASE }, 15.02);
+      tl.to("#s3-preview-empty", { opacity: 0, duration: 0.26, ease: "none" }, 15.0);
+      tl.fromTo("#s3-preview-inner", { x: 44, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: EASE }, 15.0);
+      rise("#s3-cap", 15.0, Y_CAP, D_CAP);
 
-      /* ================= Scene 4 — Mail Tracking ==================== */
-      // beat-locked: 17.02s (strong cue) — the panel lands hard
-      tl.fromTo("#s4-panel", { y: 30, scale: 0.985, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: EASE }, 17.02);
+      /* ================= Scene 4 — Mail Tracking ====================
+       * 17.00 is the drop in the score — the panel arrives with it. */
+      tl.fromTo(
+        "#s4-panel",
+        { y: 30, scale: 0.985, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: EASE },
+        17.0
+      );
 
-      // beat-grid: tiles at 17.52 / 18.02 / 18.52 / 19.02, then the set holds
-      var TILE_BEATS = [17.52, 18.02, 18.52, 19.02];
-      var TILE_IDS = ["#tile-sent", "#tile-recipients", "#tile-real", "#tile-scanner"];
-      for (var i = 0; i < TILE_IDS.length; i++) {
-        tl.fromTo(TILE_IDS[i], { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.34, ease: EASE }, TILE_BEATS[i]);
-      }
+      // beat-grid: 17.50 / 18.00 / 18.50 / 19.00, then the set holds
+      rise("#tile-sent", 17.5, Y_CARD, D_CARD);
+      rise("#tile-recipients", 18.0, Y_CARD, D_CARD);
+      rise("#tile-real", 18.5, Y_CARD, D_CARD);
+      rise("#tile-scanner", 19.0, Y_CARD, D_CARD);
 
-      // beat-locked: 20.02s (strong cue) — scanners struck out, humans lit up
-      tl.to("#tile-scanner-content", { opacity: 0.3, duration: 0.35, ease: "power2.out" }, 20.02);
-      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: EASE }, 20.02);
-      tl.fromTo("#tile-real-ring", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EASE }, 20.02);
-      tl.fromTo("#s4-cap", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: EASE }, 20.4);
+      // 20.00 — scanners struck out, humans lit up
+      tl.to("#tile-scanner-content", { opacity: 0.3, duration: 0.35, ease: "power2.out" }, 20.0);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: EASE }, 20.0);
+      tl.fromTo("#tile-real-ring", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EASE }, 20.0);
+      rise("#s4-cap", 20.4, Y_CAP, 0.42);
 
       /* ===================== Scene 5 — lockup ======================= */
-      tl.fromTo("#lk-mark", { scale: 0.84, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.48, ease: EASE }, 22.51);
-      // beat-locked: 23.02s (strong cue) — the wordmark
-      tl.fromTo("#lk-word", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.44, ease: EASE }, 23.02);
-      tl.fromTo("#lk-url", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.36, ease: EASE }, 23.35);
-
-      /* ================= music fade under the lockup ================ */
-      tl.fromTo("#bgm", { volume: 0.35 }, { volume: 0, duration: 1.2, ease: "none" }, 23.32);
+      tl.fromTo("#lk-mark", { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.46, ease: EASE }, 22.5);
+      rise("#lk-word", 23.0, 22, 0.44);
+      rise("#lk-url", 23.35, 14, 0.36);
 
       /* ================= audio-reactive channels ====================
-       * Per-frame sampling of the pre-extracted music data. Two CSS custom
-       * properties feed the blurred accent glows. Nothing here moves,
-       * scales, or reflows text. */
+       * Per-frame sampling of the score's own energy. Two CSS custom
+       * properties feed the blurred accent glows — nothing here moves,
+       * scales, or reflows text. The score fades itself out, so no
+       * volume tween is needed. */
       (function () {
         var AR = window.AUDIO_DATA;
         if (!AR || !AR.frames || !AR.frames.length) return;
