@@ -53,7 +53,7 @@ This whole video *is* the user flow, in sequence:
   readable line still holds past its reading floor. Nothing wobbles or idles.
 
 ## Format: landscape — 1920x1080
-## Duration: 23.20 seconds — 15 shots, hard cut throughout
+## Duration: 23.20 seconds — 15 shots; hard cuts between scenes, animated camera moves within them
 
 ## Visual identity (from the project)
 **Appearance: Solarized Light + the Dusty Blue accent** — the app under
@@ -100,30 +100,34 @@ draft the training email, then see who actually clicked — scanners excluded.
 - Audio-reactive: subtle dusty-blue washes driven by the score's RMS/bass.
 
 ## The cut — 15 shots
-Nothing crossfades. Scene changes are the framework's clip windows; framing changes are
-**zero-duration transform sets** on a `.zoom` wrapper — real punch-in / punch-out jump cuts.
-Every cut is on the 0.40s grid and **every zoom level holds ≥0.8s**, so it reads as a shot rather
-than a glitch.
+Nothing crossfades: scene changes are the framework's clip windows, hard cut on the 0.40s grid.
+*Within* a scene the framing changes with an **animated camera move**, not a snap — 350ms in,
+300ms out, both on the app's own `cubic-bezier(0.22, 1, 0.36, 1)`, transform only. Each move's
+`transform-origin` is placed on the centre of the target region so the scale converges on it
+instead of sweeping the frame, and the translate only re-centres it. Durations, easing and the
+text timings are constants (`CAMERA`, `TEXT`) at the top of the script.
+
+With `prefers-reduced-motion: reduce`, `camera()` degrades to the instant cut it replaced.
 
 | # | in | framing | what happens |
 |---|---|---|---|
 | 1 | 0.00 | wide | the login card |
-| 2 | 1.60 | **punch in ×1.9** | `Continue with Google` pressed |
-| 3 | 2.40 | **punch out** | already on the dashboard; 3 module cards land on 16ths |
-| 4 | 4.00 | text | *"Your whole **week**."* |
+| 2 | 1.60 | **push in ×1.9** (350ms) | `Continue with Google` pressed |
+| 3 | 2.40 | **pull back** (300ms) | already on the dashboard; 3 module cards land on 16ths |
+| 4 | 4.00 | text | *"Your whole **week**."* — word by word, re-centring as it grows |
 | 5 | 5.60 | wide | the week fills, one day card per 16th |
-| 6 | 7.60 | **punch in ×1.9** | Thursday clicked |
-| 7 | 8.40 | **punch out** | the day editor is already open |
-| 8 | 9.20 | **punch in ×1.75** | `Day type` → **Vacation** |
-| 9 | 10.00 | **punch out** | `Save day` pressed |
+| 6 | 7.60 | **push in ×1.9** | Thursday clicked |
+| 7 | 8.40 | **pull back** | the day editor is already open |
+| 8 | 9.20 | **push in ×1.75** | `Day type` → **Vacation** (lands once settled, 9.56) |
+| 9 | 10.00 | **pull back** | `Save day` pressed |
 | 10 | 10.40 | cut | back to the week: `VAC` badge, bank → +12h 05m |
-| 11 | 11.20 | text | *"Now the **email**."* |
+| 11 | 11.20 | text | *"Now the **email**."* — word by word |
 | 12 | 12.80 | wide | the composer form fills |
-| 13 | 13.60 | **punch in ×1.6** | the brief types, `Generate draft` pressed |
-| 14 | 14.80 | **punch out** | the draft is already there |
+| 13 | 13.60 | **push in ×1.6** | the brief types, `Generate draft` pressed |
+| 14 | 14.80 | **pull back** | the draft is already there |
 | 15 | 16.00 | wide **(the drop)** | the stat row; tiles on 16ths |
-| — | 18.00 | **punch in ×1.6** | `Scanner clicks` struck out, `Real clicks` lit |
-| — | 19.60 | **punch out** | the whole row again |
+| — | 18.00 | **push in ×1.6** | `Scanner clicks` struck out at 18.38, once settled |
+| — | 19.60 | **pull back** | the whole row again |
 | — | 20.80 | cut | lockup |
 
 ## Storyboard
@@ -208,3 +212,15 @@ cursor action is clicked, and every cascading element has its own soft cue on th
 riser builds into the Mail Tracking entrance at 17.02, where a big whoosh, an impact and a
 sub-boom land together; the same weight returns on the strike-through at 20.02. A single deep
 bell closes it on the wordmark at 23.02 as the bed fades out.
+
+## Text beats — word by word
+Both text beats build a word at a time, centred, sliding left to make room:
+
+- The row is laid out left-aligned with `white-space: nowrap`; the words are `inline-block` and
+  start at `opacity: 0`, so they occupy layout from the start and the row's width never changes.
+- Each word fades in (0.18s) on a 0.26s cadence, and **the row's own `x` animates** to
+  `(1920 − rightEdgeOf(word k)) / 2` over 0.24s with `power2.inOut` — ease in *and* out — so the
+  visible sentence stays centred while the earlier words slide left.
+- Widths are read from an off-screen twin (`#tb-measure`) through GSAP function-based values, so
+  the measurement happens after the webfont has loaded rather than at parse time.
+- The accent rule draws from its centre once the last word has landed.

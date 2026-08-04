@@ -114,37 +114,36 @@ Requirements:
 
 ---
 
-## Build notes (v5 — final)
+## Build notes (v6 — final)
 
-v4 was the light-theme narrated cut. v5 is the fast one: quicker tempo, hard cuts throughout,
-proper punch-in/punch-out jump cuts, and no voiceover.
+v5 made the edit fast. v6 replaces the hard-cut zooms with real camera moves and rebuilds the
+text beats.
 
-- **Voiceover removed.** `assets/voice/` is deleted and the five VO clips are gone from the
-  timeline. With the faster cut there is no room for a read, and the music no longer ducks —
-  it sits at a constant 0.40 and fades itself out.
-- **Score rewritten at 150 BPM** (was 120). Short dry 16th arp notes, 16th hats with an accent
-  pattern, a hard backbeat clap, a pushed offbeat kick in the drop, and a tighter sidechain.
-  The build moved to 15.2–16.0 and the drop to 16.0, so the biggest musical moment still lands
-  exactly on the Mail Tracking cut.
-- **Every crossfade is gone.** Scene changes are now the framework's clip windows — each clip is
-  authored 0.04s short of its slot so no frame shows two scenes. That alone is most of what makes
-  the edit feel quick.
-- **The jump cuts were the note from last round, and they were wrong.** They were 0.5s punches
-  that snapped back before the eye could register the new framing, so they read as glitches. Now
-  each punch is a *shot*: a zero-duration transform set on a `.zoom` wrapper, held **at least
-  0.8s** (up to 1.6s), always cutting on the beat, and always paired with a punch-out that reveals
-  the next state already in place. Seven of them across the film — see the shot table in
-  `brag-plan.md`.
-- **Entrance animation is minimal.** Only cascading elements move, for ~0.24s each; panels,
-  modals and the generated draft simply *are there* on the cut.
-- **Runtime 23.20s** (was 24.50s), 15 shots.
-- **Levels:** the first render of this cut peaked at −0.3 dBFS; the bed and the payoff cues were
-  pulled down to **−2.0 dBFS peak, −22.0 dB mean**.
-- One bug caught in review: the `show()` helper sets opacity to 1, which turned the day-editor
-  scrim into a full blackout. It is now set explicitly to 0.2.
+- **The zooms are animated now.** `camera(target, tIn, tOut, scale, px, py)` pushes in over
+  **350ms** and pulls back over **300ms**, both on `cubic-bezier(0.22, 1, 0.36, 1)` — the app's
+  own `--ease-fluid`. GSAP has no cubic-bezier ease without a paid plugin, so the curve is solved
+  inline (`cubicBezierEase`, fixed 24-iteration bisection, fully deterministic) rather than
+  approximated with `power4.out`.
+- **Only `transform` animates** — `scale` plus `x`/`y`. Nothing touches width/height/top/left, so
+  the moves stay GPU-composited.
+- **`transform-origin` is set to the centre of the target region** before each move, while the
+  element is at identity (safe — no jump). With the origin there, the point maps to
+  `origin + s·(p−origin) + (x,y)`, so the region lands dead centre when `(x,y) = (960−px, 540−py)`
+  *independent of scale* — the scale converges on the region instead of sweeping across the frame.
+- **Timings, easing and text cadence are constants** (`CAMERA`, `TEXT`) at the top of the script.
+- **`prefers-reduced-motion: reduce` degrades to the old instant cut.** Read once at init, so it
+  is constant for the render and determinism holds.
+- Actions that used to fire on the snap now fire **after the camera settles**: Vacation at 9.56
+  (not 9.20) and the strike-through at 18.38 (not 18.00).
+- **Text beats build word by word, centred.** Words are `inline-block` at `opacity: 0` so they
+  hold layout from the start and the row width is stable; each fades in on a 0.26s cadence while
+  the row's `x` animates to keep the *visible* sentence centred, over 0.24s with `power2.inOut`.
+  Word widths come from an off-screen twin (`#tb-measure`, `data-layout-ignore`) read through
+  GSAP function-based values, so measurement happens after webfont load rather than at parse time.
 
-Carried forward: Solarized Light + Dusty Blue throughout, the three real dashboard cards, the
-damp/lean whooshes, the moving background, the two full-frame text beats, and Thursday reading as
-genuinely unlogged until it is saved.
+Two bugs caught by `check` during this pass: `textBeat` was handed a selector but called
+`getElementById` (page error, blank text beats), and the strike-through now registers as occluding
+the number it strikes out — marked `data-layout-allow-occlusion` since that is the point of it.
 
 **Gate result:** `hyperframes check` — 0 errors, **40/40 WCAG AA text checks pass**.
+Levels: peak −2.1 dBFS, mean −21.8 dB.

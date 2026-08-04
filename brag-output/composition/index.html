@@ -144,31 +144,52 @@
         pointer-events: none;
       }
 
-      /* ================= text beats ================================== */
+      /* ================= text beats ==================================
+       * The row is laid out left-aligned and centred by animating its own
+       * x: as each word fades in, the row slides left so the *visible*
+       * words stay centred in frame. Words are inline-block, so opacity
+       * costs no layout and the row's width is stable. */
       .textbeat {
         position: absolute;
-        left: 152px;
-        top: 430px;
-        width: 1500px;
+        left: 0;
+        right: 0;
+        top: 448px;
+        height: 220px;
       }
-      .textbeat p {
+      .tb-row {
+        position: absolute;
+        left: 0;
+        top: 0;
+        white-space: nowrap;
         font-size: 92px;
         font-weight: 600;
         letter-spacing: -0.03em;
         line-height: 1.1;
         color: #586e75;
       }
-      .textbeat em {
+      .tb-row .w {
+        display: inline-block;
+        opacity: 0;
+      }
+      .tb-row em {
         font-style: normal;
         color: #35617f;
       }
-      .textbeat span.rule {
-        display: block;
+      .tb-rule {
+        position: absolute;
+        left: 750px;
+        top: 166px;
         width: 420px;
         height: 3px;
-        margin-top: 46px;
         background: #3e6d8e;
-        transform-origin: left center;
+        transform-origin: center center;
+      }
+      /* Off-screen twin used only to measure word widths after webfont load. */
+      #tb-measure {
+        position: absolute;
+        left: -99999px;
+        top: 0;
+        visibility: hidden;
       }
 
       /* ================= Scene 1 — sign in → dashboard =============== */
@@ -828,6 +849,11 @@
       data-width="1920"
       data-height="1080"
     >
+      <div id="tb-measure" data-layout-ignore="true" aria-hidden="true">
+        <div id="m-t1" class="tb-row"><span class="w">Your</span> <span class="w">whole</span> <span class="w"><em>week.</em></span></div>
+        <div id="m-t2" class="tb-row"><span class="w">Now</span> <span class="w">the</span> <span class="w"><em>email.</em></span></div>
+      </div>
+
       <div id="stage-bg" class="clip" data-start="0" data-duration="23.20" data-track-index="0"></div>
 
       <!-- ============ Scene 1 — sign in, then the dashboard ============ -->
@@ -904,8 +930,8 @@
       <div id="t1" class="clip scene" data-start="4.00" data-duration="1.56" data-track-index="2">
         <div id="t1-inner" class="scene-inner">
           <div class="textbeat">
-            <p id="t1-line">Your whole <em>week</em>.</p>
-            <span id="t1-rule" class="rule"></span>
+            <div id="t1-row" class="tb-row"><span class="w">Your</span> <span class="w">whole</span> <span class="w"><em>week.</em></span></div>
+            <span id="t1-rule" class="tb-rule"></span>
           </div>
         </div>
       </div>
@@ -1018,8 +1044,8 @@
       <div id="t2" class="clip scene" data-start="11.20" data-duration="1.56" data-track-index="2">
         <div id="t2-inner" class="scene-inner">
           <div class="textbeat">
-            <p id="t2-line">Now the <em>email</em>.</p>
-            <span id="t2-rule" class="rule"></span>
+            <div id="t2-row" class="tb-row"><span class="w">Now</span> <span class="w">the</span> <span class="w"><em>email.</em></span></div>
+            <span id="t2-rule" class="tb-rule"></span>
           </div>
         </div>
       </div>
@@ -1109,7 +1135,7 @@
                     <div class="tile-value num">972</div>
                     <div class="tile-hint">Hidden unless enabled</div>
                   </div>
-                  <span id="tile-scanner-strike"></span>
+                  <span id="tile-scanner-strike" data-layout-allow-occlusion="true"></span>
                 </div>
               </div>
             </div>
@@ -1207,9 +1233,62 @@
        * jump cuts. Every cut lands on the 150 BPM grid (0.40s beat), and
        * every zoom level holds at least 0.8s so it reads as a shot, not a
        * glitch. Only cascading elements animate, and only for ~0.24s. */
-      var EASE = "power4.out";
+      /* ---------------------------------------------------------------
+       * Tunables. Nothing below reaches for a magic number.
+       * ------------------------------------------------------------- */
+      var CAMERA = {
+        IN_DUR: 0.35, // push in
+        OUT_DUR: 0.3, // pull back
+        BEZIER: [0.22, 1, 0.36, 1] // the app's own --ease-fluid
+      };
+      var TEXT = {
+        WORD_GAP: 0.26, // between word reveals
+        WORD_FADE: 0.18, // each word's fade
+        MOVE_DUR: 0.24, // the row sliding left to re-centre
+        MOVE_EASE: "power2.inOut", // ease in AND out on the slide
+        RULE_DUR: 0.3
+      };
+
+      var EASE = "power4.out"; // UI entrances
       var root = document.getElementById("root");
       var tl = gsap.timeline({ paused: true });
+
+      /* An exact cubic-bezier ease, so the camera uses the same curve the
+       * app does. Fixed iteration count → deterministic. */
+      function cubicBezierEase(x1, y1, x2, y2) {
+        function cx(t) {
+          return 3 * x1 * t * (1 - t) * (1 - t) + 3 * x2 * t * t * (1 - t) + t * t * t;
+        }
+        function cy(t) {
+          return 3 * y1 * t * (1 - t) * (1 - t) + 3 * y2 * t * t * (1 - t) + t * t * t;
+        }
+        return function (p) {
+          if (p <= 0) return 0;
+          if (p >= 1) return 1;
+          var lo = 0,
+            hi = 1,
+            t = p;
+          for (var i = 0; i < 24; i++) {
+            var x = cx(t);
+            if (x < p) lo = t;
+            else hi = t;
+            t = (lo + hi) / 2;
+          }
+          return cy(t);
+        };
+      }
+      var CAM_EASE = cubicBezierEase(CAMERA.BEZIER[0], CAMERA.BEZIER[1], CAMERA.BEZIER[2], CAMERA.BEZIER[3]);
+
+      /* Accessibility: with reduced motion requested, the camera falls back
+       * to the instant cut it used to be. Read once — constant for the whole
+       * render, so determinism holds. */
+      var REDUCED_MOTION = (function () {
+        try {
+          return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        } catch (e) {
+          return false;
+        }
+      })();
 
       function rise(target, at, dist, dur) {
         tl.fromTo(target, { y: dist, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: EASE }, at);
@@ -1218,18 +1297,90 @@
         tl.to(target, { scale: 0.96, duration: 0.07, ease: "power2.out" }, at);
         tl.to(target, { scale: 1, duration: 0.16, ease: EASE }, at + 0.07);
       }
-      /* A jump cut. transform-origin is 0 0, so a point p lands at x + s·p. */
-      function cutIn(target, at, s, px, py) {
-        tl.set(target, { scale: s, x: 960 - s * px, y: 540 - s * py }, at);
-      }
-      function cutOut(target, at) {
-        tl.set(target, { scale: 1, x: 0, y: 0 }, at);
-      }
       function show(target, at) {
         tl.set(target, { opacity: 1 }, at);
       }
       function hide(target, at) {
         tl.set(target, { opacity: 0 }, at);
+      }
+
+      /* ---------------------------------------------------------------
+       * Camera move. transform-origin is placed on the centre of the target
+       * region, so the scale converges on that point instead of sweeping
+       * the frame; the translate only re-centres it. Transform only — never
+       * width/height/top/left — so it stays on the compositor.
+       *
+       * With origin at (px,py): point p maps to origin + s·(p−origin) + (x,y),
+       * so the region lands dead centre when (x,y) = (960−px, 540−py),
+       * independent of s.
+       * ------------------------------------------------------------- */
+      function camera(target, tIn, tOut, s, px, py) {
+        var framed = { scale: s, x: 960 - px, y: 540 - py };
+        var wide = { scale: 1, x: 0, y: 0 };
+        // safe to restate the origin here: the element is at identity
+        tl.set(target, { transformOrigin: px + "px " + py + "px" }, tIn);
+        if (REDUCED_MOTION) {
+          tl.set(target, framed, tIn);
+          tl.set(target, wide, tOut);
+          return;
+        }
+        tl.fromTo(target, wide, Object.assign({ duration: CAMERA.IN_DUR, ease: CAM_EASE }, framed), tIn);
+        tl.fromTo(target, framed, Object.assign({ duration: CAMERA.OUT_DUR, ease: CAM_EASE }, wide), tOut);
+      }
+
+      /* ---------------------------------------------------------------
+       * Text beat: words fade in one at a time while the row slides left so
+       * the visible sentence stays centred. Widths come from an off-screen
+       * twin, read lazily via function-based values so the measurement
+       * happens after the webfont has loaded rather than at parse time.
+       * ------------------------------------------------------------- */
+      function wordRight(measureId, index) {
+        var m = document.getElementById(measureId);
+        var ws = m.querySelectorAll(".w");
+        var base = m.getBoundingClientRect().left;
+        return ws[index].getBoundingClientRect().right - base;
+      }
+      function centreFor(measureId, index) {
+        return (1920 - wordRight(measureId, index)) / 2;
+      }
+      function textBeat(rowId, ruleId, measureId, at) {
+        var words = document.querySelector(rowId).querySelectorAll(".w");
+        tl.set(rowId, {
+          x: function () {
+            return centreFor(measureId, 0);
+          }
+        }, at);
+        var t = at;
+        for (var k = 0; k < words.length; k++) {
+          t = at + 0.05 + k * TEXT.WORD_GAP;
+          tl.fromTo(
+            words[k],
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: TEXT.WORD_FADE, ease: CAM_EASE },
+            t
+          );
+          if (k > 0) {
+            (function (i) {
+              tl.fromTo(
+                rowId,
+                {
+                  x: function () {
+                    return centreFor(measureId, i - 1);
+                  }
+                },
+                {
+                  x: function () {
+                    return centreFor(measureId, i);
+                  },
+                  duration: TEXT.MOVE_DUR,
+                  ease: TEXT.MOVE_EASE
+                },
+                t
+              );
+            })(k);
+          }
+        }
+        tl.fromTo(ruleId, { scaleX: 0 }, { scaleX: 1, duration: TEXT.RULE_DUR, ease: CAM_EASE }, t + 0.16);
       }
 
       /* ---- background: drifts warm, cools into the drop, warms back --- */
@@ -1247,11 +1398,10 @@
       tl.to("#s1-cursor", { x: 944, y: 590, duration: 0.72, ease: EASE }, 0.62);
       press("#s1-google", 1.6);
 
-      // SHOT 2 (1.60) PUNCH IN on the button being pressed — holds 0.8s
-      cutIn("#s1-zoom", 1.6, 1.9, 960, 590);
+      // SHOT 2 (1.60) push in on the button being pressed, hold, pull back
+      camera("#s1-zoom", 1.6, 2.4, 1.9, 960, 590);
 
-      // SHOT 3 (2.40) PUNCH OUT — we are already on the dashboard
-      cutOut("#s1-zoom", 2.4);
+      // SHOT 3 (2.40) — we are already on the dashboard as the camera widens
       hide("#s1-login", 2.4);
       hide("#s1-cursor", 2.4);
       show("#s1-dash", 2.4);
@@ -1260,8 +1410,7 @@
       rise("#mod-time", 2.9, 20, 0.24);
 
       /* ======= T1 · 4.00–5.60 — text ================================= */
-      rise("#t1-line", 4.05, 24, 0.36);
-      tl.fromTo("#t1-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, 4.2);
+      textBeat("#t1-row", "#t1-rule", "m-t1", 4.0);
 
       /* ======= S2 · 5.60–11.20 — Time Tracker ======================== */
       // SHOT 4 (5.60) wide: the week fills in, one card per 16th
@@ -1279,22 +1428,20 @@
       tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.5, ease: EASE }, 7.05);
       press("#day-4", 7.56);
 
-      // SHOT 5 (7.60) PUNCH IN on Thursday as it is clicked — holds 0.8s
-      cutIn("#s2-zoom", 7.6, 1.9, 1287, 505);
+      // SHOT 5 (7.60) push in on Thursday as it is clicked
+      camera("#s2-zoom", 7.6, 8.4, 1.9, 1287, 505);
 
-      // SHOT 6 (8.40) PUNCH OUT straight into the open day editor
-      cutOut("#s2-zoom", 8.4);
+      // SHOT 6 (8.40) the editor is already open as the camera widens
       hide("#s2-cursor", 8.4);
       tl.set("#s2-dim", { opacity: 0.2 }, 8.4); // scrim, not a blackout
       show("#s2-modal", 8.4);
 
-      // SHOT 7 (9.20) PUNCH IN on the Day type chips — Vacation is picked
-      cutIn("#s2-zoom", 9.2, 1.75, 1127, 424);
-      show("#chip-vac-on", 9.2);
-      show("#s2-helper", 9.28);
+      // SHOT 7 (9.20) push in on the Day type chips; Vacation lands once settled
+      camera("#s2-zoom", 9.2, 10.0, 1.75, 1127, 424);
+      show("#chip-vac-on", 9.56);
+      show("#s2-helper", 9.64);
 
-      // SHOT 8 (10.00) PUNCH OUT to the editor, and save
-      cutOut("#s2-zoom", 10.0);
+      // SHOT 8 (10.00) pull back to the editor, and save
       tl.set("#s2-cursor", { x: 1180, y: 765 }, 9.96);
       show("#s2-cursor", 9.98);
       press("#s2-save", 10.0);
@@ -1328,8 +1475,7 @@
       );
 
       /* ======= T2 · 11.20–12.80 — text =============================== */
-      rise("#t2-line", 11.25, 24, 0.36);
-      tl.fromTo("#t2-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, 11.4);
+      textBeat("#t2-row", "#t2-rule", "m-t2", 11.2);
 
       /* ======= S3 · 12.80–16.00 — Mail Composer ====================== */
       // SHOT 10 (12.80) wide: the form fills in
@@ -1338,8 +1484,8 @@
       rise("#s3-f3", 13.2, 12, 0.22);
       rise("#s3-f4", 13.3, 12, 0.22);
 
-      // SHOT 11 (13.60) PUNCH IN on the brief and the button — holds 1.2s
-      cutIn("#s3-zoom", 13.6, 1.6, 520, 800);
+      // SHOT 11 (13.60) push in on the brief and the button
+      camera("#s3-zoom", 13.6, 14.8, 1.6, 520, 800);
       hide("#s3-cursor", 0);
 
       var BRIEF = "Two-day operator training, on site.";
@@ -1368,8 +1514,7 @@
         14.44
       );
 
-      // SHOT 12 (14.80) PUNCH OUT — the draft is already there
-      cutOut("#s3-zoom", 14.8);
+      // SHOT 12 (14.80) — the draft is already there as the camera widens
       hide("#s3-preview-empty", 14.8);
       tl.set("#s3-preview-inner", { x: 0, opacity: 1 }, 14.8);
 
@@ -1381,15 +1526,15 @@
       rise("#tile-real", 16.4, 16, 0.24);
       rise("#tile-scanner", 16.6, 16, 0.24);
 
-      // SHOT 14 (18.00) PUNCH IN on the Real / Scanner pair — holds 1.6s
-      cutIn("#s4-zoom", 18.0, 1.6, 1342, 502);
-      tl.set("#tile-scanner-content", { opacity: 0.34 }, 18.0);
-      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.0);
-      show("#tile-real-ring", 18.0);
+      // SHOT 14 (18.00) push in on the Real / Scanner pair; the strike lands
+      // once the camera has settled
+      camera("#s4-zoom", 18.0, 19.6, 1.6, 1342, 502);
+      tl.set("#tile-scanner-content", { opacity: 0.34 }, 18.38);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.38);
+      show("#tile-real-ring", 18.38);
 
-      // SHOT 15 (19.60) PUNCH OUT to the whole row
-      cutOut("#s4-zoom", 19.6);
-      rise("#s4-cap", 19.65, 14, 0.28);
+      // SHOT 15 (19.60) pull back to the whole row
+      rise("#s4-cap", 19.9, 14, 0.28);
 
       /* ======= S5 · 20.80–23.20 — lockup ============================= */
       tl.fromTo("#lk-mark", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: EASE }, 20.8);
