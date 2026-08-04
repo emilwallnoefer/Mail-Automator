@@ -1,0 +1,1632 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Flya Allrounder — brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/music/audio-data.js"></script>
+    <style>
+      /* ---------------------------------------------------------------
+       * Flya Allrounder — a narrated product tour in the order you use it:
+       * sign in → Time Tracker → Mail Composer → Mail Tracking.
+       *
+       * APPEARANCE: Solarized Light + the Dusty Blue accent, i.e. the app
+       * under html[data-theme="light"][data-accent="blue"]. Every value
+       * below is resolved from web/src/app/tokens.css:
+       *   --paper-3 252 250 245  page     #fcfaf5
+       *   --paper-2 244 241 233  panel    #f4f1e9
+       *   --paper-1 235 231 221  raised   #ebe7dd
+       *   --ink     #586e75  --ink-2 #657b83  --ink-3 #6c7a80  --ink-4 #839496
+       *   --ac-strong 62 109 142  accent      #3e6d8e
+       *   --ac-deep   47 88 118   accent-deep #2f5876
+       *   --ac-text   53 97 127   accent-soft #35617f
+       *   --ac-from   110 150 180 → --ac-to 53 97 127
+       *   --glass #586e75 (ink-toned in light: borders/fills use it with alpha)
+       *
+       * Timing runs on an exact 120 BPM grid (0.50s beat) from t=0 — the
+       * score was written for this edit (assets/music/make-theme.py).
+       * ------------------------------------------------------------- */
+      @font-face {
+        font-family: "Geist";
+        src: url("assets/fonts/geist-latin.woff2") format("woff2");
+        font-weight: 400 700;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Geist Mono";
+        src: url("assets/fonts/geist-mono-latin.woff2") format("woff2");
+        font-weight: 400 600;
+        font-style: normal;
+        font-display: block;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #fcfaf5;
+      }
+      body {
+        font-family: "Geist", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        --a-rms: 0.3;
+        --a-bass: 0.2;
+      }
+
+      /* Opaque stage ground — a full-bleed CHILD, never the root's own
+       * background. Its colour is tweened across the film. */
+      #stage-bg {
+        position: absolute;
+        inset: 0;
+        background: #fcfaf5;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+      }
+      /* Hard-cut edit: no crossfades. The framework's clip window does the
+       * cutting, so the wrapper is simply visible for its whole slot. */
+      .scene-inner {
+        position: absolute;
+        inset: 0;
+      }
+      /* Jump-cut target: transform-origin 0 0 makes the punch-in maths
+       * simple — a point p lands at (x + s·p). */
+      .zoom {
+        position: absolute;
+        inset: 0;
+        transform-origin: 0 0;
+      }
+
+      /* ---- shared app language (Solarized Light) --------------------- */
+      .panel {
+        background: #f4f1e9;
+        border: 1px solid rgba(88, 110, 117, 0.16);
+        border-radius: 24px;
+        box-shadow:
+          0 1px 2px rgba(7, 54, 66, 0.05),
+          0 18px 40px -20px rgba(7, 54, 66, 0.22);
+      }
+      .surface {
+        background: #fcfaf5;
+        border: 1px solid rgba(88, 110, 117, 0.14);
+        box-shadow: 0 1px 2px rgba(7, 54, 66, 0.04);
+      }
+      .eyebrow {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #35617f;
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+      }
+      .caption {
+        position: absolute;
+        left: 152px;
+        font-size: 42px;
+        font-weight: 500;
+        color: #35617f;
+        letter-spacing: -0.01em;
+        opacity: 0;
+      }
+      .cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 68px;
+        height: 68px;
+        filter: drop-shadow(0 6px 12px rgba(7, 54, 66, 0.28));
+        opacity: 0;
+        z-index: 40;
+      }
+      .glow {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(110px);
+        pointer-events: none;
+      }
+
+      /* ================= text beats ==================================
+       * The row is laid out left-aligned and centred by animating its own
+       * x: as each word fades in, the row slides left so the *visible*
+       * words stay centred in frame. Words are inline-block, so opacity
+       * costs no layout and the row's width is stable. */
+      .textbeat {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 448px;
+        height: 220px;
+      }
+      .tb-row {
+        position: absolute;
+        left: 0;
+        top: 0;
+        white-space: nowrap;
+        font-size: 92px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        color: #586e75;
+      }
+      .tb-row .w {
+        display: inline-block;
+        opacity: 0;
+      }
+      .tb-row em {
+        font-style: normal;
+        color: #35617f;
+      }
+      .tb-rule {
+        position: absolute;
+        left: 750px;
+        top: 166px;
+        width: 420px;
+        height: 3px;
+        background: #3e6d8e;
+        transform-origin: center center;
+      }
+      /* Off-screen twin used only to measure word widths after webfont load. */
+      #tb-measure {
+        position: absolute;
+        left: -99999px;
+        top: 0;
+        visibility: hidden;
+      }
+
+      /* ================= Scene 1 — sign in → dashboard =============== */
+      #s1-glow {
+        left: 620px;
+        top: 300px;
+        width: 700px;
+        height: 380px;
+        background: radial-gradient(closest-side, #3e6d8e, rgba(62, 109, 142, 0));
+        opacity: calc(0.04 + var(--a-rms) * 0.09);
+      }
+      #s1-login {
+        position: absolute;
+        left: 650px;
+        top: 350px;
+        width: 620px;
+        height: 360px;
+        padding: 52px;
+        text-align: center;
+      }
+      #s1-login-title {
+        margin-top: 18px;
+        font-size: 54px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #586e75;
+        letter-spacing: -0.02em;
+      }
+      #s1-google {
+        margin: 56px auto 0;
+        width: 400px;
+        height: 72px;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid rgba(88, 110, 117, 0.28);
+        box-shadow: 0 1px 2px rgba(7, 54, 66, 0.08);
+        color: #586e75;
+        font-size: 27px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+      }
+      #s1-google-dot {
+        display: block;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: conic-gradient(#ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+      }
+      #s1-dash {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      #s1-greet {
+        position: absolute;
+        left: 152px;
+        top: 200px;
+        font-size: 66px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        color: #586e75;
+      }
+      #s1-sub {
+        position: absolute;
+        left: 152px;
+        top: 296px;
+        font-size: 32px;
+        color: #657b83;
+      }
+      .mod-row {
+        position: absolute;
+        left: 152px;
+        top: 390px;
+        width: 1616px;
+        display: flex;
+        gap: 24px;
+      }
+      /* The three cards a signed-in user actually lands on, in the real
+       * order from dashboard-shell.tsx: Settings, Mail Composer, Time
+       * Tracker. Mail tracking is admin-only, so it is not a card here. */
+      .mod {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 0;
+        height: 380px;
+        border-radius: 20px;
+        padding: 40px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .mod-orb {
+        position: absolute;
+        right: -70px;
+        top: -70px;
+        width: 250px;
+        height: 250px;
+        border-radius: 50%;
+        filter: blur(52px);
+      }
+      .mod-icon {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 28px;
+      }
+      .mod-icon svg {
+        width: 36px;
+        height: 36px;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .mod-name {
+        position: relative;
+        font-size: 40px;
+        font-weight: 600;
+        color: #586e75;
+        letter-spacing: -0.015em;
+      }
+      .mod-desc {
+        position: relative;
+        margin-top: 14px;
+        font-size: 26px;
+        line-height: 1.45;
+        color: #657b83;
+      }
+      .mod-go {
+        position: relative;
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .mod-go span {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid rgba(88, 110, 117, 0.22);
+        background: rgba(88, 110, 117, 0.06);
+      }
+      /* per-module accents, matching the real icon tints */
+      #mod-settings .mod-orb {
+        background: rgba(108, 113, 196, 0.2);
+      }
+      #mod-settings .mod-icon {
+        border: 1px solid rgba(108, 113, 196, 0.35);
+        background: rgba(108, 113, 196, 0.14);
+      }
+      #mod-settings .mod-icon svg {
+        stroke: #4b4f9c;
+      }
+      #mod-settings .mod-go {
+        color: #4b4f9c;
+      }
+      #mod-mail .mod-orb {
+        background: rgba(62, 109, 142, 0.2);
+      }
+      #mod-mail .mod-icon {
+        border: 1px solid rgba(62, 109, 142, 0.35);
+        background: rgba(62, 109, 142, 0.14);
+      }
+      #mod-mail .mod-icon svg {
+        stroke: #2f5876;
+      }
+      #mod-mail .mod-go {
+        color: #35617f;
+      }
+      #mod-time .mod-orb {
+        background: rgba(133, 153, 0, 0.18);
+      }
+      #mod-time .mod-icon {
+        border: 1px solid rgba(133, 153, 0, 0.35);
+        background: rgba(133, 153, 0, 0.14);
+      }
+      #mod-time .mod-icon svg {
+        stroke: #55670a;
+      }
+      #mod-time .mod-go {
+        color: #55670a;
+      }
+
+      /* ================= Scene 2 — time tracker ====================== */
+      #s2-glow {
+        left: 560px;
+        top: 260px;
+        width: 800px;
+        height: 340px;
+        background: radial-gradient(closest-side, #3e6d8e, rgba(62, 109, 142, 0));
+        opacity: calc(0.03 + var(--a-rms) * 0.07);
+      }
+      #s2-head {
+        position: absolute;
+        left: 152px;
+        top: 230px;
+        width: 1616px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+      }
+      #s2-title {
+        font-size: 46px;
+        font-weight: 600;
+        color: #586e75;
+        letter-spacing: -0.02em;
+      }
+      #s2-readouts {
+        display: flex;
+        gap: 64px;
+      }
+      .readout-label {
+        font-size: 24px;
+        color: #586e75;
+      }
+      .readout-value {
+        margin-top: 6px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 44px;
+        font-weight: 600;
+      }
+      #s2-days {
+        position: absolute;
+        left: 152px;
+        top: 370px;
+        width: 1616px;
+        display: flex;
+        gap: 20px;
+      }
+      .day {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 300px;
+        border-radius: 16px;
+        padding: 32px 28px;
+        display: flex;
+        flex-direction: column;
+      }
+      .day-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .day-name {
+        font-size: 26px;
+        color: #657b83;
+      }
+      .day-pct {
+        font-size: 26px;
+        font-weight: 600;
+        color: #35617f;
+      }
+      /* fixed well so the two percentage states cross-fade in place */
+      .day-pct-well {
+        position: relative;
+        display: inline-block;
+        min-width: 76px;
+        height: 32px;
+      }
+      .day-pct-well .day-pct {
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+      #thu-pct-after {
+        opacity: 0;
+      }
+      .day-state {
+        position: relative;
+        height: 48px;
+        margin-top: 18px;
+      }
+      .day-worked {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 30px;
+        font-weight: 500;
+        color: #586e75;
+        white-space: nowrap;
+      }
+      #thu-after {
+        opacity: 0;
+      }
+      #thu-badge {
+        display: inline-block;
+        margin-left: 12px;
+        border: 1px solid rgba(154, 116, 0, 0.45);
+        background: rgba(154, 116, 0, 0.14);
+        border-radius: 6px;
+        padding: 3px 9px;
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #725500;
+        vertical-align: 5px;
+      }
+      .day-track {
+        margin-top: auto;
+        width: 100%;
+        height: 14px;
+        border-radius: 7px;
+        background: rgba(88, 110, 117, 0.16);
+        overflow: hidden;
+        display: flex;
+      }
+      .day-bar {
+        display: block;
+        height: 14px;
+        background: #3e6d8e;
+        transform-origin: left center;
+      }
+      .day-bar-ot {
+        display: block;
+        height: 14px;
+        background: #6e96b4;
+        transform-origin: left center;
+      }
+
+      /* ---- the day editor ---- */
+      #s2-dim {
+        position: absolute;
+        inset: 0;
+        background: #073642;
+        opacity: 0;
+      }
+      #s2-modal {
+        position: absolute;
+        left: 580px;
+        top: 240px;
+        width: 760px;
+        height: 600px;
+        padding: 44px;
+        opacity: 0;
+        z-index: 20;
+      }
+      #s2-modal-title {
+        font-size: 34px;
+        font-weight: 600;
+        color: #586e75;
+      }
+      .modal-label {
+        margin-top: 26px;
+        font-size: 22px;
+        color: #586e75;
+      }
+      #s2-chips {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        border: 1px solid rgba(88, 110, 117, 0.2);
+        background: rgba(88, 110, 117, 0.05);
+        border-radius: 12px;
+        padding: 6px;
+      }
+      .chip {
+        position: relative;
+        height: 56px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 500;
+        color: #586e75;
+      }
+      #chip-normal {
+        background: rgba(88, 110, 117, 0.14);
+        color: #586e75;
+      }
+      #chip-vac-on {
+        position: absolute;
+        inset: 0;
+        border-radius: 8px;
+        background: rgba(154, 116, 0, 0.22);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: #5c4600;
+        opacity: 0;
+      }
+      #s2-helper {
+        margin-top: 14px;
+        font-size: 22px;
+        line-height: 1.35;
+        color: #586e75;
+        opacity: 0;
+      }
+      #s2-times {
+        margin-top: 22px;
+        display: flex;
+        gap: 14px;
+      }
+      .time-box {
+        flex: 1 1 0;
+        border: 1px solid rgba(88, 110, 117, 0.2);
+        background: #f2eee6;
+        border-radius: 12px;
+        padding: 14px 18px;
+      }
+      .time-label {
+        font-size: 20px;
+        color: #586e75;
+      }
+      .time-value {
+        margin-top: 6px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 30px;
+        font-weight: 600;
+        color: #586e75;
+      }
+      /* coordinates are relative to #s2-modal, its offset parent */
+      #s2-save {
+        position: absolute;
+        left: 516px;
+        top: 500px;
+        width: 200px;
+        height: 64px;
+        border-radius: 12px;
+        background: #2f5876;
+        color: #ffffff;
+        font-size: 26px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* ================= Scene 3 — mail composer ===================== */
+      #s3-glow {
+        left: 560px;
+        top: 300px;
+        width: 800px;
+        height: 360px;
+        background: radial-gradient(closest-side, #3e6d8e, rgba(62, 109, 142, 0));
+        opacity: calc(0.03 + var(--a-rms) * 0.07);
+      }
+      #s3-form {
+        position: absolute;
+        left: 120px;
+        top: 140px;
+        width: 800px;
+        height: 750px;
+        padding: 40px;
+      }
+      #s3-preview {
+        position: absolute;
+        left: 1000px;
+        top: 140px;
+        width: 800px;
+        height: 750px;
+        padding: 40px;
+      }
+      #s3-preview-empty {
+        margin-top: 290px;
+        text-align: center;
+        font-size: 26px;
+        color: #657b83;
+      }
+      #s3-preview-inner {
+        position: absolute;
+        left: 40px;
+        right: 40px;
+        top: 106px;
+        opacity: 0;
+      }
+      .field {
+        margin-top: 26px;
+      }
+      .field-label {
+        font-size: 22px;
+        font-weight: 500;
+        color: #586e75;
+      }
+      .field-box {
+        margin-top: 10px;
+        min-height: 60px;
+        border: 1px solid rgba(88, 110, 117, 0.2);
+        background: #f2eee6;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 27px;
+        color: #586e75;
+      }
+      .field-box.tall {
+        min-height: 116px;
+        line-height: 1.32;
+      }
+      #s3-caret {
+        display: inline-block;
+        width: 3px;
+        height: 30px;
+        margin-left: 2px;
+        background: #3e6d8e;
+        vertical-align: -5px;
+        opacity: 0;
+      }
+      .cta {
+        position: relative;
+        margin-top: 34px;
+        display: inline-block;
+        border-radius: 12px;
+        padding: 18px 32px;
+        font-size: 27px;
+        font-weight: 600;
+        color: #ffffff;
+        background: #2f5876;
+      }
+      #cta-b {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+      }
+      .mail-line {
+        font-size: 25px;
+        line-height: 1.5;
+        color: #586e75;
+        margin-top: 18px;
+      }
+      .mail-link {
+        color: #2f5876;
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 5px;
+      }
+
+      /* ================= Scene 4 — mail tracking ===================== */
+      #s4-glow {
+        left: 460px;
+        top: 300px;
+        width: 1000px;
+        height: 420px;
+        background: radial-gradient(closest-side, #3e6d8e, rgba(62, 109, 142, 0));
+        opacity: calc(0.04 + var(--a-rms) * 0.11);
+      }
+      #s4-panel {
+        position: absolute;
+        left: 160px;
+        top: 270px;
+        width: 1600px;
+        height: 400px;
+        padding: 44px 48px;
+      }
+      #s4-tiles {
+        position: absolute;
+        left: 48px;
+        right: 48px;
+        top: 132px;
+        display: flex;
+        gap: 24px;
+      }
+      .tile {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 0;
+        border-radius: 16px;
+        padding: 26px 30px 30px;
+      }
+      .tile-label {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #586e75;
+        white-space: nowrap;
+      }
+      .tile-value {
+        position: relative;
+        display: inline-block;
+        margin-top: 14px;
+        font-size: 64px;
+        font-weight: 600;
+        line-height: 1;
+        color: #586e75;
+      }
+      .tile-hint {
+        margin-top: 12px;
+        font-size: 20px;
+        color: #586e75;
+      }
+      /* outside #tile-scanner-content so it holds full strength while the
+       * numbers behind it dim away */
+      #tile-scanner-strike {
+        position: absolute;
+        left: 24px;
+        top: 96px;
+        width: 128px;
+        height: 4px;
+        background: #586e75;
+        transform-origin: left center;
+      }
+      #tile-real-ring {
+        position: absolute;
+        inset: -1px;
+        border: 2px solid #3e6d8e;
+        border-radius: 16px;
+        box-shadow: 0 0 32px rgba(62, 109, 142, 0.28);
+        opacity: 0;
+      }
+
+      /* ================= Scene 5 — lockup ============================ */
+      #lk-glow {
+        left: 660px;
+        top: 250px;
+        width: 600px;
+        height: 400px;
+        background: radial-gradient(closest-side, #6e96b4, rgba(110, 150, 180, 0));
+        opacity: calc(0.05 + var(--a-bass) * 0.18);
+      }
+      #lk-wrap {
+        position: absolute;
+        left: 260px;
+        top: 380px;
+        width: 1400px;
+        text-align: center;
+      }
+      #lk-mark {
+        display: block;
+        width: 140px;
+        height: 140px;
+        margin: 0 auto;
+        border-radius: 32px;
+        background: linear-gradient(135deg, #6e96b4, #35617f);
+        box-shadow: 0 18px 40px -18px rgba(7, 54, 66, 0.4);
+      }
+      #lk-word {
+        margin-top: 44px;
+        font-size: 86px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        color: #586e75;
+      }
+      #lk-url {
+        margin-top: 30px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 34px;
+        color: #35617f;
+        letter-spacing: 0.04em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="23.20"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="tb-measure" data-layout-ignore="true" aria-hidden="true">
+        <div id="m-t1" class="tb-row"><span class="w">Your</span> <span class="w">whole</span> <span class="w"><em>week.</em></span></div>
+        <div id="m-t2" class="tb-row"><span class="w">Now</span> <span class="w">the</span> <span class="w"><em>email.</em></span></div>
+      </div>
+
+      <div id="stage-bg" class="clip" data-start="0" data-duration="23.20" data-track-index="0"></div>
+
+      <!-- ============ Scene 1 — sign in, then the dashboard ============ -->
+      <div id="s1" class="clip scene" data-start="0" data-duration="3.96" data-track-index="1">
+        <div id="s1-inner" class="scene-inner" data-layout-allow-overlap="true">
+          <div id="s1-zoom" class="zoom" data-layout-allow-overflow="true">
+          <div id="s1-glow" class="glow"></div>
+
+          <div id="s1-login" class="panel">
+            <div class="eyebrow">Flyability Internal</div>
+            <div id="s1-login-title">Welcome back</div>
+            <div id="s1-google"><span id="s1-google-dot"></span>Continue with Google</div>
+          </div>
+
+          <div id="s1-dash">
+            <div id="s1-greet">Good morning, Emil</div>
+            <div id="s1-sub">Everything in one place.</div>
+            <div class="mod-row">
+              <div id="mod-settings" class="mod surface">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3.2" />
+                    <circle cx="12" cy="12" r="7.4" stroke-dasharray="2.4 2.1" />
+                  </svg>
+                </span>
+                <div class="mod-name">Settings</div>
+                <div class="mod-desc">Gmail, signatures, travel mapping, sounds, and account tools.</div>
+                <div class="mod-go">Continue<span>→</span></div>
+              </div>
+
+              <div id="mod-mail" class="mod surface">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="5.5" width="18" height="13" rx="2.6" />
+                    <path d="M3.8 7.2 L12 13.2 L20.2 7.2" />
+                  </svg>
+                </span>
+                <div class="mod-name">Mail Composer</div>
+                <div class="mod-desc">Training email drafts and Gmail handoff in one flow.</div>
+                <div class="mod-go">Continue<span>→</span></div>
+              </div>
+
+              <div id="mod-time" class="mod surface">
+                <span class="mod-orb"></span>
+                <span class="mod-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.4" />
+                    <path d="M12 7.2 V12 L15.4 14" />
+                  </svg>
+                </span>
+                <div class="mod-name">Time Tracker</div>
+                <div class="mod-desc">Workdays, breaks, compensation time, and overtime in one place.</div>
+                <div class="mod-go">Continue<span>→</span></div>
+              </div>
+            </div>
+          </div>
+
+          <svg id="s1-cursor" class="cursor" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M5.5 2.3 L18.7 12.4 L12.4 13.1 L15.6 19.9 L12.9 21.2 L9.7 14.3 L5.5 18.2 Z"
+              fill="#586e75"
+              stroke="#ffffff"
+              stroke-width="1.2"
+              stroke-linejoin="round"
+            />
+          </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== Text beat 1 ============================= -->
+      <div id="t1" class="clip scene" data-start="4.00" data-duration="1.56" data-track-index="2">
+        <div id="t1-inner" class="scene-inner">
+          <div class="textbeat">
+            <div id="t1-row" class="tb-row"><span class="w">Your</span> <span class="w">whole</span> <span class="w"><em>week.</em></span></div>
+            <span id="t1-rule" class="tb-rule"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================== Scene 2 — Time Tracker ==================== -->
+      <div id="s2" class="clip scene" data-start="5.60" data-duration="5.56" data-track-index="1">
+        <div id="s2-inner" class="scene-inner" data-layout-allow-overlap="true">
+          <div id="s2-zoom" class="zoom" data-layout-allow-overflow="true">
+            <div id="s2-glow" class="glow"></div>
+
+            <div id="s2-head">
+              <div id="s2-title">Time Tracker</div>
+              <div id="s2-readouts">
+                <div>
+                  <div class="readout-label">Weekly hours:</div>
+                  <div class="readout-value num" style="color: #586e75">32.7</div>
+                </div>
+                <div>
+                  <div class="readout-label">Overtime bank:</div>
+                  <div id="tt-bank" class="readout-value num" style="color: #55670a">+4h 05m</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="s2-days">
+              <div id="day-1" class="day surface">
+                <div class="day-top"><span class="day-name">Mon 04</span><span class="day-pct num">102%</span></div>
+                <div class="day-state"><span class="day-worked num">8h 42m worked</span></div>
+                <div class="day-track">
+                  <span id="bar-1" class="day-bar" style="width: 82%"></span>
+                  <span id="bar-1o" class="day-bar-ot" style="width: 18%"></span>
+                </div>
+              </div>
+              <div id="day-2" class="day surface">
+                <div class="day-top"><span class="day-name">Tue 05</span><span class="day-pct num">96%</span></div>
+                <div class="day-state"><span class="day-worked num">8h 12m worked</span></div>
+                <div class="day-track"><span id="bar-2" class="day-bar" style="width: 96%"></span></div>
+              </div>
+              <div id="day-3" class="day surface">
+                <div class="day-top"><span class="day-name">Wed 06</span><span class="day-pct num">100%</span></div>
+                <div class="day-state"><span class="day-worked num">8h 30m worked</span></div>
+                <div class="day-track"><span id="bar-3" class="day-bar" style="width: 100%"></span></div>
+              </div>
+              <div id="day-4" class="day surface">
+                <div class="day-top">
+                  <span class="day-name">Thu 07</span>
+                  <span class="day-pct-well">
+                    <span id="thu-pct-before" class="day-pct num">0%</span>
+                    <span id="thu-pct-after" class="day-pct num">100%</span>
+                  </span>
+                </div>
+                <div class="day-state" data-layout-allow-overlap="true">
+                  <span id="thu-before" class="day-worked num">0h 00m worked</span>
+                  <span id="thu-after" class="day-worked">Vacation<span id="thu-badge">VAC</span></span>
+                </div>
+                <div class="day-track"><span id="bar-4" class="day-bar" style="width: 100%"></span></div>
+              </div>
+              <div id="day-5" class="day surface">
+                <div class="day-top"><span class="day-name">Fri 08</span><span class="day-pct num">88%</span></div>
+                <div class="day-state"><span class="day-worked num">7h 28m worked</span></div>
+                <div class="day-track"><span id="bar-5" class="day-bar" style="width: 88%"></span></div>
+              </div>
+            </div>
+
+            <div id="s2-dim"></div>
+            <div id="s2-modal" class="panel" data-layout-allow-overlap="true">
+              <div id="s2-modal-title">Thu 07 August</div>
+              <div class="modal-label">Day type</div>
+              <div id="s2-chips">
+                <div id="chip-normal" class="chip">Normal</div>
+                <div class="chip">
+                  Vacation
+                  <span id="chip-vac-on">Vacation</span>
+                </div>
+                <div class="chip">Public Holiday</div>
+                <div class="chip">Sick leave</div>
+              </div>
+              <div id="s2-helper">Excused from your target. Hours logged count as overtime.</div>
+              <div id="s2-times">
+                <div class="time-box">
+                  <div class="time-label">Start</div>
+                  <div class="time-value">08:15</div>
+                </div>
+                <div class="time-box">
+                  <div class="time-label">Stop</div>
+                  <div class="time-value">17:30</div>
+                </div>
+                <div class="time-box">
+                  <div class="time-label">Breaks</div>
+                  <div class="time-value">45 min</div>
+                </div>
+              </div>
+              <div id="s2-save">Save day</div>
+            </div>
+
+            <svg id="s2-cursor" class="cursor" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5.5 2.3 L18.7 12.4 L12.4 13.1 L15.6 19.9 L12.9 21.2 L9.7 14.3 L5.5 18.2 Z"
+                fill="#586e75"
+                stroke="#ffffff"
+                stroke-width="1.2"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== Text beat 2 ============================= -->
+      <div id="t2" class="clip scene" data-start="11.20" data-duration="1.56" data-track-index="2">
+        <div id="t2-inner" class="scene-inner">
+          <div class="textbeat">
+            <div id="t2-row" class="tb-row"><span class="w">Now</span> <span class="w">the</span> <span class="w"><em>email.</em></span></div>
+            <span id="t2-rule" class="tb-rule"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= Scene 3 — Mail Composer ==================== -->
+      <div id="s3" class="clip scene" data-start="12.80" data-duration="3.16" data-track-index="1">
+        <div id="s3-inner" class="scene-inner" data-layout-allow-overlap="true">
+          <div id="s3-zoom" class="zoom" data-layout-allow-overflow="true">
+            <div id="s3-glow" class="glow"></div>
+
+            <div id="s3-form" class="panel">
+              <div class="eyebrow">Mail Composer</div>
+              <div id="s3-f1" class="field">
+                <div class="field-label">Company Name</div>
+                <div class="field-box">Alpine Grid AG</div>
+              </div>
+              <div id="s3-f2" class="field">
+                <div class="field-label">Training type</div>
+                <div class="field-box">Operator</div>
+              </div>
+              <div id="s3-f3" class="field">
+                <div class="field-label">Training days</div>
+                <div class="field-box num">2</div>
+              </div>
+              <div id="s3-f4" class="field">
+                <div class="field-label">Training brief</div>
+                <div class="field-box tall"><span id="s3-brief-text"></span><span id="s3-caret"></span></div>
+              </div>
+              <div id="s3-cta" class="cta"><span id="cta-a">Generate draft</span><span id="cta-b">Generating…</span></div>
+            </div>
+
+            <div id="s3-preview" class="panel">
+              <div class="eyebrow">Live preview</div>
+              <div id="s3-preview-empty">Nothing generated yet.</div>
+              <div id="s3-preview-inner">
+                <div class="mail-line">Hi Alpine Grid team,</div>
+                <div class="mail-line">
+                  Thanks for the time on site last week. Ahead of your two-day operator training,
+                  here is the prep material for the Elios 3.
+                </div>
+                <div class="mail-line"><span class="mail-link">Operator training — pre-reading</span></div>
+                <div class="mail-line">Best, Emil</div>
+                <div id="s3-cta2" class="cta">Create Gmail draft</div>
+              </div>
+            </div>
+
+            <svg id="s3-cursor" class="cursor" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5.5 2.3 L18.7 12.4 L12.4 13.1 L15.6 19.9 L12.9 21.2 L9.7 14.3 L5.5 18.2 Z"
+                fill="#586e75"
+                stroke="#ffffff"
+                stroke-width="1.2"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= Scene 4 — Mail Tracking ==================== -->
+      <div id="s4" class="clip scene" data-start="16.00" data-duration="4.76" data-track-index="2">
+        <div id="s4-inner" class="scene-inner" data-layout-allow-overlap="true">
+          <div id="s4-zoom" class="zoom" data-layout-allow-overflow="true">
+            <div id="s4-glow" class="glow"></div>
+            <div id="s4-panel" class="panel">
+              <div class="eyebrow">Mail tracking</div>
+              <div id="s4-tiles">
+                <div id="tile-sent" class="tile surface">
+                  <div class="tile-label">Mails sent</div>
+                  <div class="tile-value num">148</div>
+                  <div class="tile-hint">Same period</div>
+                </div>
+                <div id="tile-recipients" class="tile surface">
+                  <div class="tile-label">Recipients</div>
+                  <div class="tile-value num">96</div>
+                  <div class="tile-hint">Same period</div>
+                </div>
+                <div id="tile-real" class="tile surface">
+                  <div id="tile-real-ring"></div>
+                  <div class="tile-label">Real clicks</div>
+                  <div class="tile-value num">312</div>
+                  <div class="tile-hint">Humans only</div>
+                </div>
+                <div id="tile-scanner" class="tile surface">
+                  <div id="tile-scanner-content">
+                    <div class="tile-label">Scanner clicks</div>
+                    <div class="tile-value num">972</div>
+                    <div class="tile-hint">Hidden unless enabled</div>
+                  </div>
+                  <span id="tile-scanner-strike" data-layout-allow-occlusion="true"></span>
+                </div>
+              </div>
+            </div>
+            <div id="s4-cap" class="caption" style="top: 762px">See who clicked.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== Scene 5 — lockup ======================= -->
+      <div id="s5" class="clip scene" data-start="20.80" data-duration="2.40" data-track-index="1">
+        <div id="s5-inner" class="scene-inner">
+          <div id="lk-glow" class="glow"></div>
+          <div id="lk-wrap">
+            <span id="lk-mark"></span>
+            <div id="lk-word">Flya Allrounder</div>
+            <div id="lk-url">flya.space</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== audio ====================================
+           Score: assets/music/flya-theme.mp3 — 150 BPM, written for this
+           edit (assets/music/make-theme.py). The build at 15.2-16.0 and the
+           drop at 16.0 live in the music, so SFX stay out of their way.
+           Every hard cut gets a marker; every zoom cut gets a dry `cut`.
+      -->
+      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="23.20" data-track-index="10" data-volume="0.40"></audio>
+
+      <!-- clicks on the presses -->
+      <audio id="ck-signin" src="assets/sfx/synth/ui-click.wav" data-start="1.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-day" src="assets/sfx/synth/ui-click.wav" data-start="7.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.20" data-duration="0.04" data-track-index="11" data-volume="0.38"></audio>
+      <audio id="ck-save" src="assets/sfx/synth/ui-click.wav" data-start="10.00" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-gen" src="assets/sfx/synth/ui-click.wav" data-start="14.40" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+
+      <!-- damp, lean whooshes on the scene cuts -->
+      <audio id="wh-1" src="assets/sfx/synth/whoosh-soft.wav" data-start="4.00" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.60" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-3" src="assets/sfx/synth/whoosh-soft.wav" data-start="11.20" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-4" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.80" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-5" src="assets/sfx/synth/whoosh-big.wav" data-start="16.00" data-duration="0.34" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-6" src="assets/sfx/synth/whoosh-soft.wav" data-start="20.80" data-duration="0.22" data-track-index="12" data-volume="0.30"></audio>
+
+      <!-- a dry marker on every zoom cut, in and out -->
+      <audio id="cut-1" src="assets/sfx/synth/cut.wav" data-start="1.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-2" src="assets/sfx/synth/cut.wav" data-start="2.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-3" src="assets/sfx/synth/cut.wav" data-start="7.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-4" src="assets/sfx/synth/cut.wav" data-start="8.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-5" src="assets/sfx/synth/cut.wav" data-start="9.20" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-6" src="assets/sfx/synth/cut.wav" data-start="10.00" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-7" src="assets/sfx/synth/cut.wav" data-start="10.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-8" src="assets/sfx/synth/cut.wav" data-start="13.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-9" src="assets/sfx/synth/cut.wav" data-start="14.80" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-10" src="assets/sfx/synth/cut.wav" data-start="18.00" data-duration="0.09" data-track-index="14" data-volume="0.32"></audio>
+      <audio id="cut-11" src="assets/sfx/synth/cut.wav" data-start="19.60" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+
+      <!-- a soft tick per cascading element -->
+      <audio id="tk-1" src="assets/sfx/synth/ui-tick.wav" data-start="2.50" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-2" src="assets/sfx/synth/ui-tick.wav" data-start="2.70" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-3" src="assets/sfx/synth/ui-tick.wav" data-start="2.90" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-4" src="assets/sfx/synth/ui-tick.wav" data-start="5.60" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-5" src="assets/sfx/synth/ui-tick.wav" data-start="5.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-6" src="assets/sfx/synth/ui-tick.wav" data-start="6.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-7" src="assets/sfx/synth/ui-tick.wav" data-start="6.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-8" src="assets/sfx/synth/ui-tick.wav" data-start="6.40" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-9" src="assets/sfx/synth/ui-tick.wav" data-start="10.45" data-duration="0.055" data-track-index="13" data-volume="0.24"></audio>
+      <audio id="tk-10" src="assets/sfx/synth/ui-tick.wav" data-start="12.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-11" src="assets/sfx/synth/ui-tick.wav" data-start="13.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-12" src="assets/sfx/synth/ui-tick.wav" data-start="13.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-13" src="assets/sfx/synth/ui-tick.wav" data-start="16.00" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-14" src="assets/sfx/synth/ui-tick.wav" data-start="16.20" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-15" src="assets/sfx/synth/ui-tick.wav" data-start="16.40" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-16" src="assets/sfx/synth/ui-tick.wav" data-start="16.60" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+
+      <!-- typing texture -->
+      <audio id="key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="13.66" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-2" src="assets/sfx/keyboard/keypress-009.wav" data-start="13.75" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-3" src="assets/sfx/keyboard/keypress-014.wav" data-start="13.84" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-4" src="assets/sfx/keyboard/keypress-019.wav" data-start="13.93" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-5" src="assets/sfx/keyboard/keypress-023.wav" data-start="14.02" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.11" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+
+      <!-- the strike-through payoff, and the wordmark -->
+      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="18.00" data-duration="1.10" data-track-index="16" data-volume="0.30"></audio>
+      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="18.00" data-duration="0.85" data-track-index="17" data-volume="0.24"></audio>
+      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="21.20" data-duration="1.40" data-track-index="18" data-volume="0.30"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      /* FAST CUT. There are no crossfades anywhere — the framework's clip
+       * window does every scene change, and framing changes are zero-duration
+       * transform sets on a .zoom wrapper, i.e. real punch-in / punch-out
+       * jump cuts. Every cut lands on the 150 BPM grid (0.40s beat), and
+       * every zoom level holds at least 0.8s so it reads as a shot, not a
+       * glitch. Only cascading elements animate, and only for ~0.24s. */
+      /* ---------------------------------------------------------------
+       * Tunables. Nothing below reaches for a magic number.
+       * ------------------------------------------------------------- */
+      var CAMERA = {
+        CUT: 0.02, // < one frame: the framing change is a cut, not a zoom
+        CUT_SCALE_IN: 0.94, // the cut lands just wide of the mark…
+        DRIFT_IN: 0.8, // …then the camera keeps pushing
+        CUT_SCALE_OUT: 1.035, // the cut back lands just tight…
+        DRIFT_OUT: 0.4, // …then settles
+        BEZIER: [0.22, 1, 0.36, 1] // the app's own --ease-fluid
+      };
+      var TEXT = {
+        WORD_GAP: 0.26, // between word reveals
+        WORD_FADE: 0.18, // each word's fade
+        MOVE_DUR: 0.24, // the row sliding left to re-centre
+        MOVE_EASE: "power2.inOut", // ease in AND out on the slide
+        RULE_DUR: 0.3
+      };
+
+      var EASE = "power4.out"; // UI entrances
+      var root = document.getElementById("root");
+      var tl = gsap.timeline({ paused: true });
+
+      /* An exact cubic-bezier ease, so the camera uses the same curve the
+       * app does. Fixed iteration count → deterministic. */
+      function cubicBezierEase(x1, y1, x2, y2) {
+        function cx(t) {
+          return 3 * x1 * t * (1 - t) * (1 - t) + 3 * x2 * t * t * (1 - t) + t * t * t;
+        }
+        function cy(t) {
+          return 3 * y1 * t * (1 - t) * (1 - t) + 3 * y2 * t * t * (1 - t) + t * t * t;
+        }
+        return function (p) {
+          if (p <= 0) return 0;
+          if (p >= 1) return 1;
+          var lo = 0,
+            hi = 1,
+            t = p;
+          for (var i = 0; i < 24; i++) {
+            var x = cx(t);
+            if (x < p) lo = t;
+            else hi = t;
+            t = (lo + hi) / 2;
+          }
+          return cy(t);
+        };
+      }
+      var CAM_EASE = cubicBezierEase(CAMERA.BEZIER[0], CAMERA.BEZIER[1], CAMERA.BEZIER[2], CAMERA.BEZIER[3]);
+
+      /* Accessibility: with reduced motion requested, the camera falls back
+       * to the instant cut it used to be. Read once — constant for the whole
+       * render, so determinism holds. */
+      var REDUCED_MOTION = (function () {
+        try {
+          return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        } catch (e) {
+          return false;
+        }
+      })();
+
+      function rise(target, at, dist, dur) {
+        tl.fromTo(target, { y: dist, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: EASE }, at);
+      }
+      function press(target, at) {
+        tl.to(target, { scale: 0.96, duration: 0.07, ease: "power2.out" }, at);
+        tl.to(target, { scale: 1, duration: 0.16, ease: EASE }, at + 0.07);
+      }
+      /* Zero-duration sets are not reverted when the playhead moves back
+       * past them, and are skipped entirely by a seek that starts after
+       * them — which is exactly what parallel render workers do. A
+       * sub-frame fromTo behaves identically on screen and is revertible. */
+      function show(target, at, to) {
+        tl.fromTo(
+          target,
+          { opacity: 0 },
+          { opacity: to === undefined ? 1 : to, duration: CAMERA.CUT, ease: "none", immediateRender: false },
+          at
+        );
+      }
+      function hide(target, at, from) {
+        tl.fromTo(
+          target,
+          { opacity: from === undefined ? 1 : from },
+          { opacity: 0, duration: CAMERA.CUT, ease: "none", immediateRender: false },
+          at
+        );
+      }
+
+      /* ---------------------------------------------------------------
+       * Camera move. transform-origin is placed on the centre of the target
+       * region, so the scale converges on that point instead of sweeping
+       * the frame; the translate only re-centres it. Transform only — never
+       * width/height/top/left — so it stays on the compositor.
+       *
+       * With origin at (px,py): point p maps to origin + s·(p−origin) + (x,y),
+       * so the region lands dead centre when (x,y) = (960−px, 540−py),
+       * independent of s.
+       * ------------------------------------------------------------- */
+      function camera(target, tIn, tOut, s, px, py) {
+        var X = 960 - px,
+          Y = 540 - py;
+        var wide = { scale: 1, x: 0, y: 0 };
+        var landed = { scale: s * CAMERA.CUT_SCALE_IN, x: X, y: Y };
+        var framed = { scale: s, x: X, y: Y };
+        var recoil = { scale: CAMERA.CUT_SCALE_OUT, x: 0, y: 0 };
+
+        // Origin on the centre of the target region, so the scale converges
+        // on it rather than sweeping the frame; the translate only re-centres.
+        tl.set(target, { transformOrigin: px + "px " + py + "px" }, tIn);
+
+        if (REDUCED_MOTION) {
+          tl.fromTo(target, wide, Object.assign({ duration: CAMERA.CUT, ease: "none" }, framed), tIn);
+          tl.fromTo(
+            target,
+            framed,
+            Object.assign({ duration: CAMERA.CUT, ease: "none", immediateRender: false }, wide),
+            tOut
+          );
+          return;
+        }
+
+        // CUT in — one sub-frame step to the new framing, slightly wide…
+        tl.fromTo(target, wide, Object.assign({ duration: CAMERA.CUT, ease: "none" }, landed), tIn);
+        // …then the camera keeps moving, so the shot is never frozen.
+        var driftIn = Math.min(CAMERA.DRIFT_IN, Math.max(0.2, tOut - tIn - CAMERA.CUT * 2));
+        tl.fromTo(
+          target,
+          landed,
+          Object.assign({ duration: driftIn, ease: CAM_EASE, immediateRender: false }, framed),
+          tIn + CAMERA.CUT
+        );
+        // CUT back out, landing a touch tight…
+        tl.fromTo(
+          target,
+          framed,
+          Object.assign({ duration: CAMERA.CUT, ease: "none", immediateRender: false }, recoil),
+          tOut
+        );
+        // …then settle.
+        tl.fromTo(
+          target,
+          recoil,
+          Object.assign({ duration: CAMERA.DRIFT_OUT, ease: CAM_EASE, immediateRender: false }, wide),
+          tOut + CAMERA.CUT
+        );
+      }
+
+      /* ---------------------------------------------------------------
+       * Text beat: words fade in one at a time while the row slides left so
+       * the visible sentence stays centred. Widths come from an off-screen
+       * twin, read lazily via function-based values so the measurement
+       * happens after the webfont has loaded rather than at parse time.
+       * ------------------------------------------------------------- */
+      function wordRight(measureId, index) {
+        var m = document.getElementById(measureId);
+        var ws = m.querySelectorAll(".w");
+        var base = m.getBoundingClientRect().left;
+        return ws[index].getBoundingClientRect().right - base;
+      }
+      function centreFor(measureId, index) {
+        return (1920 - wordRight(measureId, index)) / 2;
+      }
+      function textBeat(rowId, ruleId, measureId, at) {
+        var words = document.querySelector(rowId).querySelectorAll(".w");
+        tl.set(rowId, {
+          x: function () {
+            return centreFor(measureId, 0);
+          }
+        }, at);
+        var t = at;
+        for (var k = 0; k < words.length; k++) {
+          t = at + 0.05 + k * TEXT.WORD_GAP;
+          tl.fromTo(
+            words[k],
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: TEXT.WORD_FADE, ease: CAM_EASE },
+            t
+          );
+          if (k > 0) {
+            (function (i) {
+              tl.fromTo(
+                rowId,
+                {
+                  x: function () {
+                    return centreFor(measureId, i - 1);
+                  }
+                },
+                {
+                  x: function () {
+                    return centreFor(measureId, i);
+                  },
+                  duration: TEXT.MOVE_DUR,
+                  ease: TEXT.MOVE_EASE,
+                  immediateRender: false
+                },
+                t
+              );
+            })(k);
+          }
+        }
+        tl.fromTo(ruleId, { scaleX: 0 }, { scaleX: 1, duration: TEXT.RULE_DUR, ease: CAM_EASE }, t + 0.16);
+      }
+
+      /* ---- background: drifts warm, cools into the drop, warms back --- */
+      tl.fromTo("#stage-bg", { backgroundColor: "#fcfaf5" }, { backgroundColor: "#faf7ef", duration: 2.0, ease: "none" }, 4.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { immediateRender: false, backgroundColor: "#f6f2e8", duration: 3.0, ease: "none" }, 9.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { immediateRender: false, backgroundColor: "#eaeff4", duration: 0.8, ease: "none" }, 15.2);
+      tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { immediateRender: false, backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 16.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { immediateRender: false, backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 20.0);
+
+      /* ======= S1 · 0.00–4.00 — sign in, then the dashboard ========== */
+      // SHOT 1 (0.00) wide: the login card
+      rise("#s1-login", 0.15, 22, 0.4);
+      tl.set("#s1-cursor", { x: 1480, y: 1040 }, 0.45);
+      tl.fromTo("#s1-cursor", { opacity: 0 }, { opacity: 1, duration: 0.14, ease: "none" }, 0.5);
+      tl.to("#s1-cursor", { x: 944, y: 590, duration: 0.72, ease: EASE }, 0.62);
+      press("#s1-google", 1.6);
+
+      // SHOT 2 (1.60) push in on the button being pressed, hold, pull back
+      camera("#s1-zoom", 1.6, 2.4, 1.9, 960, 590);
+
+      // SHOT 3 (2.40) — we are already on the dashboard as the camera widens
+      hide("#s1-login", 2.4);
+      hide("#s1-cursor", 2.4);
+      show("#s1-dash", 2.4);
+      rise("#mod-settings", 2.5, 20, 0.24);
+      rise("#mod-mail", 2.7, 20, 0.24);
+      rise("#mod-time", 2.9, 20, 0.24);
+
+      /* ======= T1 · 4.00–5.60 — text ================================= */
+      textBeat("#t1-row", "#t1-rule", "m-t1", 4.0);
+
+      /* ======= S2 · 5.60–11.20 — Time Tracker ======================== */
+      // SHOT 4 (5.60) wide: the week fills in, one card per 16th
+      var DAY_BEATS = [5.6, 5.8, 6.0, 6.2, 6.4];
+      tl.set("#bar-4", { scaleX: 0 }, 0); // Thursday has nothing logged yet
+      for (var d = 0; d < DAY_BEATS.length; d++) {
+        rise("#day-" + (d + 1), DAY_BEATS[d], 16, 0.24);
+        if (d === 3) continue;
+        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.34, ease: EASE }, DAY_BEATS[d] + 0.06);
+      }
+      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.24, ease: EASE }, 5.95);
+
+      tl.set("#s2-cursor", { x: 1560, y: 1040 }, 6.9);
+      tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, 6.95);
+      tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.5, ease: EASE }, 7.05);
+      press("#day-4", 7.56);
+
+      // SHOT 5 (7.60) push in on Thursday as it is clicked
+      camera("#s2-zoom", 7.6, 8.4, 1.9, 1287, 505);
+
+      // SHOT 6 (8.40) the editor is already open as the camera widens
+      hide("#s2-cursor", 8.4);
+      show("#s2-dim", 8.4, 0.2); // scrim, not a blackout
+      show("#s2-modal", 8.4);
+
+      // SHOT 7 (9.20) push in on the Day type chips; Vacation lands once settled
+      camera("#s2-zoom", 9.2, 10.0, 1.7, 960, 457);
+      tl.set("#s2-cursor", { x: 1111, y: 417 }, 9.02);
+      show("#s2-cursor", 9.06);
+      show("#chip-vac-on", 9.26);
+      show("#s2-helper", 9.34);
+      hide("#s2-cursor", 9.9);
+
+      // SHOT 8 (10.00) pull back to the editor, and save
+      tl.set("#s2-cursor", { x: 1180, y: 765 }, 9.96);
+      show("#s2-cursor", 9.98);
+      press("#s2-save", 10.0);
+
+      // SHOT 9 (10.40) CUT back to the week — Thursday is now Vacation
+      hide("#s2-modal", 10.4);
+      hide("#s2-dim", 10.4, 0.2);
+      hide("#s2-cursor", 10.4);
+      hide("#thu-before", 10.4);
+      hide("#thu-pct-before", 10.4);
+      show("#thu-after", 10.4);
+      show("#thu-pct-after", 10.4);
+      tl.to("#bar-4", { scaleX: 1, duration: 0.3, ease: EASE }, 10.42);
+
+      var bankEl = document.getElementById("tt-bank");
+      var bankState = { m: 245 }; // +4h 05m
+      tl.to(
+        bankState,
+        {
+          m: 725, // +12h 05m — a vacation day books as overtime
+          duration: 0.45,
+          ease: "power2.out",
+          onUpdate: function () {
+            var m = Math.round(bankState.m);
+            var h = Math.floor(m / 60);
+            var mm = m % 60;
+            bankEl.textContent = "+" + h + "h " + (mm < 10 ? "0" : "") + mm + "m";
+          }
+        },
+        10.42
+      );
+
+      /* ======= T2 · 11.20–12.80 — text =============================== */
+      textBeat("#t2-row", "#t2-rule", "m-t2", 11.2);
+
+      /* ======= S3 · 12.80–16.00 — Mail Composer ====================== */
+      // SHOT 10 (12.80) wide: the form fills in
+      rise("#s3-f1", 12.8, 12, 0.22);
+      rise("#s3-f2", 13.0, 12, 0.22);
+      rise("#s3-f3", 13.2, 12, 0.22);
+      rise("#s3-f4", 13.3, 12, 0.22);
+
+      // SHOT 11 (13.60) push in on the brief and the button
+      camera("#s3-zoom", 13.6, 14.8, 1.6, 520, 800);
+      hide("#s3-cursor", 0);
+
+      var BRIEF = "Two-day operator training, on site.";
+      var briefEl = document.getElementById("s3-brief-text");
+      var typeState = { n: 0 };
+      show("#s3-caret", 13.62);
+      tl.to(
+        typeState,
+        {
+          n: BRIEF.length,
+          duration: 0.5,
+          ease: "none",
+          onUpdate: function () {
+            briefEl.textContent = BRIEF.slice(0, Math.round(typeState.n));
+          }
+        },
+        13.65
+      );
+      hide("#s3-caret", 14.2);
+      press("#s3-cta", 14.4);
+      tl.fromTo("#cta-a", { opacity: 1 }, { opacity: 0, duration: 0.02, ease: "none", immediateRender: false }, 14.44);
+      tl.fromTo("#cta-b", { opacity: 0 }, { opacity: 1, duration: 0.02, ease: "none" }, 14.44);
+
+      // SHOT 12 (14.80) — the draft is already there as the camera widens
+      hide("#s3-preview-empty", 14.8);
+      tl.fromTo("#s3-preview-inner", { opacity: 0 }, { opacity: 1, duration: CAMERA.CUT, ease: "none", immediateRender: false }, 14.8);
+
+      /* ======= S4 · 16.00–20.80 — Mail Tracking =====================
+       * 16.00 is the drop in the score. */
+      // SHOT 13 (16.00) wide: the stat row, one tile per 16th
+      rise("#tile-sent", 16.0, 16, 0.24);
+      rise("#tile-recipients", 16.2, 16, 0.24);
+      rise("#tile-real", 16.4, 16, 0.24);
+      rise("#tile-scanner", 16.6, 16, 0.24);
+
+      // SHOT 14 (18.00) push in on the Real / Scanner pair; the strike lands
+      // once the camera has settled
+      camera("#s4-zoom", 18.0, 19.6, 2.0, 1342, 502);
+      tl.fromTo("#tile-scanner-content", { opacity: 1 }, { opacity: 0.34, duration: 0.3, ease: "power2.out", immediateRender: false }, 18.1);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.1);
+      show("#tile-real-ring", 18.1);
+
+      // SHOT 15 (19.60) pull back to the whole row
+      rise("#s4-cap", 19.9, 14, 0.28);
+
+      /* ======= S5 · 20.80–23.20 — lockup ============================= */
+      tl.fromTo("#lk-mark", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: EASE }, 20.8);
+      rise("#lk-word", 21.2, 18, 0.3);
+      rise("#lk-url", 21.8, 12, 0.26);
+
+      /* ---- audio-reactive accent washes ----------------------------
+       * Driven by a single tween's onUpdate rather than ~700 tl.call()s:
+       * callbacks are suppressed on a seek, which is all the renderer does. */
+      (function () {
+        var AR = window.AUDIO_DATA;
+        if (!AR || !AR.frames || !AR.frames.length) return;
+        var last = AR.totalFrames - 1;
+        var probe = { p: 0 };
+        tl.to(
+          probe,
+          {
+            p: 1,
+            duration: 23.2,
+            ease: "none",
+            onUpdate: function () {
+              var f = AR.frames[Math.max(0, Math.min(last, Math.round(probe.p * last)))];
+              var bass = (f.bands[0] + f.bands[1] + f.bands[2]) / 3;
+              root.style.setProperty("--a-rms", f.rms.toFixed(3));
+              root.style.setProperty("--a-bass", bass.toFixed(3));
+            }
+          },
+          0
+        );
+      })();
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
