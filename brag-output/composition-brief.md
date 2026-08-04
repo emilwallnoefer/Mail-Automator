@@ -9,7 +9,7 @@ you actually use it, with **how little work each step takes** as the through-lin
 - Rendered video: `brag-output/brag.mp4`
 - Format: landscape — 1920x1080, 30fps
 - Appearance: **Solarized Light + Dusty Blue accent** (`data-theme="light"` `data-accent="blue"`)
-- Duration: 24.50 seconds
+- Duration: 23.20 seconds
 
 ## Source Material
 - Project root: `<repo>/web` (Next.js 16 App Router + Supabase + Tailwind 4)
@@ -114,43 +114,37 @@ Requirements:
 
 ---
 
-## Build notes (v4 — final)
+## Build notes (v5 — final)
 
-v1 was a single-claim video, v2 a functionality tour, v3 replaced the music. v4 moves the whole
-film to the light appearance, adds narration, and changes how it is cut.
+v4 was the light-theme narrated cut. v5 is the fast one: quicker tempo, hard cuts throughout,
+proper punch-in/punch-out jump cuts, and no voiceover.
 
-- **Appearance is now Solarized Light + Dusty Blue** (`data-theme="light"` `data-accent="blue"`),
-  resolved from `tokens.css`. This is a real re-skin, not an inversion: `--glass` is ink-toned in
-  light, so every hairline and fill uses `rgba(88,110,117,…)` rather than white; panels get real
-  shadows because a light UI needs elevation; and the modal scrim is `--shade #073642` at 20%.
-  `--ink-4` was dropped for text entirely — it only reaches 3:1 on paper.
-- **A professional female voiceover** (Kokoro `bf_emma`, generated locally with
-  `npx hyperframes tts`) runs across all five scenes. It complements the picture rather than
-  reading it, and the two text beats are left unnarrated on purpose. Music ducks to ~0.19 under
-  the voice and swells to ~0.35 in the gaps.
-- **The whooshes were rebuilt.** The old ones were broadband noise sweeps — hissy and cheap.
-  `assets/sfx/make-sfx.py` now low-passes them hard (cutoff peaks at ~760 Hz) and mixes in a sine
-  swell, with a raised-sine envelope so there is no transient and no tail: damp and lean.
-- **Background is now a moving colour.** `#stage-bg` tweens across the paper tones
-  (`#fcfaf5` → `#faf7ef` → `#f6f2e8`), cools to `#eaeff4`/`#e6edf3` through the break and the
-  Mail Tracking section, then warms back to `#fcfaf5` for the lockup.
-- **Three jump cuts** punch in on the task at hand and cut straight back out — hard `tl.set`
-  transforms, one frame, no easing: the Thursday card as it is clicked (8.50–9.00), the
-  `Generate draft` button as it is pressed (15.00–15.50), and the Real/Scanner pair as the
-  strike lands (20.00–20.50). Each gets a dry `cut` marker in the mix.
-- **Two full-frame text beats** replace the old in-corner captions at the scene seams —
-  *"Your whole **week**."* (4.0–5.5) and *"Now the **email**."* (12.0–13.5) — so the film is not
-  wall-to-wall UI. Both are timed past their reading floor.
-- Runtime stays 24.50s on the exact 120 BPM grid; the score did not need regenerating because
-  the new beats were placed on it.
-- **Levels:** peak −2.0 dBFS, mean −20.4 dB (higher than the un-narrated cut, as expected with
-  voice).
+- **Voiceover removed.** `assets/voice/` is deleted and the five VO clips are gone from the
+  timeline. With the faster cut there is no room for a read, and the music no longer ducks —
+  it sits at a constant 0.40 and fades itself out.
+- **Score rewritten at 150 BPM** (was 120). Short dry 16th arp notes, 16th hats with an accent
+  pattern, a hard backbeat clap, a pushed offbeat kick in the drop, and a tighter sidechain.
+  The build moved to 15.2–16.0 and the drop to 16.0, so the biggest musical moment still lands
+  exactly on the Mail Tracking cut.
+- **Every crossfade is gone.** Scene changes are now the framework's clip windows — each clip is
+  authored 0.04s short of its slot so no frame shows two scenes. That alone is most of what makes
+  the edit feel quick.
+- **The jump cuts were the note from last round, and they were wrong.** They were 0.5s punches
+  that snapped back before the eye could register the new framing, so they read as glitches. Now
+  each punch is a *shot*: a zero-duration transform set on a `.zoom` wrapper, held **at least
+  0.8s** (up to 1.6s), always cutting on the beat, and always paired with a punch-out that reveals
+  the next state already in place. Seven of them across the film — see the shot table in
+  `brag-plan.md`.
+- **Entrance animation is minimal.** Only cascading elements move, for ~0.24s each; panels,
+  modals and the generated draft simply *are there* on the cut.
+- **Runtime 23.20s** (was 24.50s), 15 shots.
+- **Levels:** the first render of this cut peaked at −0.3 dBFS; the bed and the payoff cues were
+  pulled down to **−2.0 dBFS peak, −22.0 dB mean**.
+- One bug caught in review: the `show()` helper sets opacity to 1, which turned the day-editor
+  scrim into a full blackout. It is now set explicitly to 0.2.
 
-Fidelity notes carried forward: every screen is rebuilt from the real components; the dashboard
-shows only the three real cards (Settings, Mail Composer, Time Tracker); Thursday reads as
-genuinely unlogged until the day is saved.
+Carried forward: Solarized Light + Dusty Blue throughout, the three real dashboard cards, the
+damp/lean whooshes, the moving background, the two full-frame text beats, and Thursday reading as
+genuinely unlogged until it is saved.
 
-**Gate result:** `hyperframes check` — 0 errors, **42/42 WCAG AA text checks pass** on the light
-skin. Remaining output is one `composition_file_too_large` warning and informational
-overlap/overflow notes from the intentional crossfades, the day-editor dim, and the jump-cut
-zoom wrappers.
+**Gate result:** `hyperframes check` — 0 errors, **40/40 WCAG AA text checks pass**.

@@ -53,7 +53,7 @@ This whole video *is* the user flow, in sequence:
   readable line still holds past its reading floor. Nothing wobbles or idles.
 
 ## Format: landscape — 1920x1080
-## Duration: 24.50 seconds
+## Duration: 23.20 seconds — 15 shots, hard cut throughout
 
 ## Visual identity (from the project)
 **Appearance: Solarized Light + the Dusty Blue accent** — the app under
@@ -78,32 +78,53 @@ Flya Allrounder: one login, and the whole week is one screen. Log a day in a cli
 draft the training email, then see who actually clicked — scanners excluded.
 
 ## Audio direction
-- Role: **narration first**, a bespoke score under it, and a light interaction layer.
-- **Voiceover: Kokoro `bf_emma`** — a measured British female read, generated locally by
-  `npx hyperframes tts`. Five lines, placed against the picture rather than reading it:
-  1. `0.45` "One login, and the whole workspace is already there."
-  2. `7.10` "Click a day, set it to vacation, and save. The overtime bank updates itself."
-  3. `13.85` "Describe the training, and get a finished draft in Gmail."
-  4. `17.50` "Then see who actually clicked. Security scanners don't count."
-  5. `22.70` "Flya Allrounder."
-  The two text beats are deliberately **not** narrated — the type carries those alone.
-- Music: `assets/music/flya-theme.mp3`, bespoke (`assets/music/make-theme.py`). 120 BPM, A minor,
-  i–VI–III–VII, sidechained sub bass, plucked arp, offbeat hats, backbeat clap. It sits at 0.19–0.22
-  under the voice and **swells to 0.34–0.36 in the gaps** — which are exactly the two text beats
-  and the beat before the lockup.
-- Arrangement: pad only 0–2 (login), arp in at 2 (dashboard), full groove 4–16, **break 16–17**
-  (drums out, riser), **drop at 17.00** landing on the Mail Tracking reveal, tail from 23.
-- **Whooshes reworked: damp and lean.** The previous pair were broadband noise sweeps and read
-  as hissy. `assets/sfx/make-sfx.py` now builds them from noise driven through a lowpass whose
-  cutoff never leaves the low-mids (140 Hz → ~760 Hz → 140 Hz), mixed with a soft sine swell and
-  shaped by a raised-sine envelope — no transient, no tail, no hiss. 0.22s for scene changes,
-  0.34s for the one bigger move into Mail Tracking.
-- Rest of the kit is synthesised to match: `ui-click`, `ui-tick`, `impact`, `sub-boom`, `bell`,
-  and a dry `cut` marker on each jump cut. Only six CC0 keypresses remain sampled.
-- Volumes: VO 1.0 · music 0.19–0.36 · whooshes 0.26–0.40 · clicks 0.32–0.34 · ticks 0.15–0.22 ·
-  cut markers 0.22–0.26 · typing 0.13. Mixed peak **−2.0 dBFS**, mean −20.4 dB.
-- Audio-reactive: subtle. The score's RMS/bass drive faint dusty-blue washes; on paper these are
-  barely-there tints rather than glows.
+- Role: **a fast score written for this edit**, plus a light interaction layer. **No voiceover** —
+  the cut is quick enough that narration would fight it.
+- Music: `assets/music/flya-theme.mp3`, bespoke (`assets/music/make-theme.py`). **150 BPM**
+  (0.40s beat, 1.60s bar), A minor, i–VI–III–VII. Short dry 16th arp notes, 16th hats with an
+  accent pattern, a hard backbeat clap, a pushed offbeat kick in the drop, and a sidechained sub.
+  Constant 0.40 — no ducking, and the track fades itself out.
+- Arrangement, mapped to the cut:
+  - `0.0–1.6` pad + pluck, no drums — the login card, wide
+  - `1.6–15.2` full groove — dashboard, tracker, composer
+  - `15.2–16.0` **build**: drums thin out, riser, accelerating hats
+  - `16.0–21.6` **drop** — lands exactly on the Mail Tracking cut
+  - `21.6–23.2` tail under the lockup
+- **Whooshes are damp and lean** (`assets/sfx/make-sfx.py`): noise through a lowpass whose cutoff
+  never leaves the low-mids (140 → ~760 Hz → 140), over a soft sine swell, shaped by a raised-sine
+  envelope. No transient, no tail, no hiss.
+- Every **zoom jump cut** gets a dry `cut` marker; every scene cut gets a whoosh; every press gets
+  a click; every cascading element gets a tick.
+- Volumes: music 0.40 · whooshes 0.30–0.34 · clicks 0.38–0.40 · cut markers 0.26–0.32 ·
+  ticks 0.16–0.24 · typing 0.14 · payoff 0.24–0.30 · bell 0.30. Peak **−2.0 dBFS**, mean −22.0 dB.
+- Audio-reactive: subtle dusty-blue washes driven by the score's RMS/bass.
+
+## The cut — 15 shots
+Nothing crossfades. Scene changes are the framework's clip windows; framing changes are
+**zero-duration transform sets** on a `.zoom` wrapper — real punch-in / punch-out jump cuts.
+Every cut is on the 0.40s grid and **every zoom level holds ≥0.8s**, so it reads as a shot rather
+than a glitch.
+
+| # | in | framing | what happens |
+|---|---|---|---|
+| 1 | 0.00 | wide | the login card |
+| 2 | 1.60 | **punch in ×1.9** | `Continue with Google` pressed |
+| 3 | 2.40 | **punch out** | already on the dashboard; 3 module cards land on 16ths |
+| 4 | 4.00 | text | *"Your whole **week**."* |
+| 5 | 5.60 | wide | the week fills, one day card per 16th |
+| 6 | 7.60 | **punch in ×1.9** | Thursday clicked |
+| 7 | 8.40 | **punch out** | the day editor is already open |
+| 8 | 9.20 | **punch in ×1.75** | `Day type` → **Vacation** |
+| 9 | 10.00 | **punch out** | `Save day` pressed |
+| 10 | 10.40 | cut | back to the week: `VAC` badge, bank → +12h 05m |
+| 11 | 11.20 | text | *"Now the **email**."* |
+| 12 | 12.80 | wide | the composer form fills |
+| 13 | 13.60 | **punch in ×1.6** | the brief types, `Generate draft` pressed |
+| 14 | 14.80 | **punch out** | the draft is already there |
+| 15 | 16.00 | wide **(the drop)** | the stat row; tiles on 16ths |
+| — | 18.00 | **punch in ×1.6** | `Scanner clicks` struck out, `Real clicks` lit |
+| — | 19.60 | **punch out** | the whole row again |
+| — | 20.80 | cut | lockup |
 
 ## Storyboard
 

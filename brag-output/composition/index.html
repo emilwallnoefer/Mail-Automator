@@ -80,11 +80,11 @@
         position: absolute;
         inset: 0;
       }
-      /* Crossfade target. Never animate the .clip itself. */
+      /* Hard-cut edit: no crossfades. The framework's clip window does the
+       * cutting, so the wrapper is simply visible for its whole slot. */
       .scene-inner {
         position: absolute;
         inset: 0;
-        opacity: 0;
       }
       /* Jump-cut target: transform-origin 0 0 makes the punch-in maths
        * simple — a point p lands at (x + s·p). */
@@ -823,16 +823,17 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="24.50"
+      data-duration="23.20"
       data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      <div id="stage-bg" class="clip" data-start="0" data-duration="24.50" data-track-index="0"></div>
+      <div id="stage-bg" class="clip" data-start="0" data-duration="23.20" data-track-index="0"></div>
 
       <!-- ============ Scene 1 — sign in, then the dashboard ============ -->
-      <div id="s1" class="clip scene" data-start="0" data-duration="4.30" data-track-index="1">
+      <div id="s1" class="clip scene" data-start="0" data-duration="3.96" data-track-index="1">
         <div id="s1-inner" class="scene-inner" data-layout-allow-overlap="true">
+          <div id="s1-zoom" class="zoom" data-layout-allow-overflow="true">
           <div id="s1-glow" class="glow"></div>
 
           <div id="s1-login" class="panel">
@@ -895,11 +896,12 @@
               stroke-linejoin="round"
             />
           </svg>
+          </div>
         </div>
       </div>
 
       <!-- ==================== Text beat 1 ============================= -->
-      <div id="t1" class="clip scene" data-start="4.00" data-duration="1.80" data-track-index="2">
+      <div id="t1" class="clip scene" data-start="4.00" data-duration="1.56" data-track-index="2">
         <div id="t1-inner" class="scene-inner">
           <div class="textbeat">
             <p id="t1-line">Your whole <em>week</em>.</p>
@@ -909,7 +911,7 @@
       </div>
 
       <!-- ================== Scene 2 — Time Tracker ==================== -->
-      <div id="s2" class="clip scene" data-start="5.50" data-duration="6.80" data-track-index="1">
+      <div id="s2" class="clip scene" data-start="5.60" data-duration="5.56" data-track-index="1">
         <div id="s2-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s2-zoom" class="zoom" data-layout-allow-overflow="true">
             <div id="s2-glow" class="glow"></div>
@@ -1013,7 +1015,7 @@
       </div>
 
       <!-- ==================== Text beat 2 ============================= -->
-      <div id="t2" class="clip scene" data-start="12.00" data-duration="1.80" data-track-index="2">
+      <div id="t2" class="clip scene" data-start="11.20" data-duration="1.56" data-track-index="2">
         <div id="t2-inner" class="scene-inner">
           <div class="textbeat">
             <p id="t2-line">Now the <em>email</em>.</p>
@@ -1023,7 +1025,7 @@
       </div>
 
       <!-- ================= Scene 3 — Mail Composer ==================== -->
-      <div id="s3" class="clip scene" data-start="13.50" data-duration="3.80" data-track-index="1">
+      <div id="s3" class="clip scene" data-start="12.80" data-duration="3.16" data-track-index="1">
         <div id="s3-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s3-zoom" class="zoom" data-layout-allow-overflow="true">
             <div id="s3-glow" class="glow"></div>
@@ -1078,7 +1080,7 @@
       </div>
 
       <!-- ================= Scene 4 — Mail Tracking ==================== -->
-      <div id="s4" class="clip scene" data-start="17.00" data-duration="5.30" data-track-index="2">
+      <div id="s4" class="clip scene" data-start="16.00" data-duration="4.76" data-track-index="2">
         <div id="s4-inner" class="scene-inner" data-layout-allow-overlap="true">
           <div id="s4-zoom" class="zoom" data-layout-allow-overflow="true">
             <div id="s4-glow" class="glow"></div>
@@ -1117,7 +1119,7 @@
       </div>
 
       <!-- ===================== Scene 5 — lockup ======================= -->
-      <div id="s5" class="clip scene" data-start="22.00" data-duration="2.50" data-track-index="1">
+      <div id="s5" class="clip scene" data-start="20.80" data-duration="2.40" data-track-index="1">
         <div id="s5-inner" class="scene-inner">
           <div id="lk-glow" class="glow"></div>
           <div id="lk-wrap">
@@ -1128,88 +1130,84 @@
         </div>
       </div>
 
-      <!-- ==================== audio ==================================== -->
-      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="24.50" data-track-index="10" data-volume="0.22"></audio>
+      <!-- ==================== audio ====================================
+           Score: assets/music/flya-theme.mp3 — 150 BPM, written for this
+           edit (assets/music/make-theme.py). The build at 15.2-16.0 and the
+           drop at 16.0 live in the music, so SFX stay out of their way.
+           Every hard cut gets a marker; every zoom cut gets a dry `cut`.
+      -->
+      <audio id="bgm" src="assets/music/flya-theme.mp3" data-start="0" data-duration="23.20" data-track-index="10" data-volume="0.40"></audio>
 
-      <!-- narration (Kokoro, bf_emma) -->
-      <audio id="vo-1" src="assets/voice/vo-1.wav" data-start="0.45" data-duration="2.71" data-track-index="20" data-volume="1"></audio>
-      <audio id="vo-2" src="assets/voice/vo-2.wav" data-start="7.10" data-duration="4.71" data-track-index="20" data-volume="1"></audio>
-      <audio id="vo-3" src="assets/voice/vo-3.wav" data-start="13.85" data-duration="3.11" data-track-index="20" data-volume="1"></audio>
-      <audio id="vo-4" src="assets/voice/vo-4.wav" data-start="17.50" data-duration="3.41" data-track-index="20" data-volume="1"></audio>
-      <audio id="vo-5" src="assets/voice/vo-5.wav" data-start="22.70" data-duration="1.37" data-track-index="20" data-volume="1"></audio>
+      <!-- clicks on the presses -->
+      <audio id="ck-signin" src="assets/sfx/synth/ui-click.wav" data-start="1.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-day" src="assets/sfx/synth/ui-click.wav" data-start="7.60" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.20" data-duration="0.04" data-track-index="11" data-volume="0.38"></audio>
+      <audio id="ck-save" src="assets/sfx/synth/ui-click.wav" data-start="10.00" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
+      <audio id="ck-gen" src="assets/sfx/synth/ui-click.wav" data-start="14.40" data-duration="0.04" data-track-index="11" data-volume="0.40"></audio>
 
-      <!-- one click per cursor press -->
-      <audio id="sfx-click-signin" src="assets/sfx/synth/ui-click.wav" data-start="1.50" data-duration="0.04" data-track-index="11" data-volume="0.34"></audio>
-      <audio id="sfx-click-day" src="assets/sfx/synth/ui-click.wav" data-start="8.50" data-duration="0.04" data-track-index="11" data-volume="0.34"></audio>
-      <audio id="sfx-click-vac" src="assets/sfx/synth/ui-click.wav" data-start="9.50" data-duration="0.04" data-track-index="11" data-volume="0.32"></audio>
-      <audio id="sfx-click-save" src="assets/sfx/synth/ui-click.wav" data-start="10.50" data-duration="0.04" data-track-index="11" data-volume="0.34"></audio>
-      <audio id="sfx-click-gen" src="assets/sfx/synth/ui-click.wav" data-start="15.00" data-duration="0.04" data-track-index="11" data-volume="0.34"></audio>
+      <!-- damp, lean whooshes on the scene cuts -->
+      <audio id="wh-1" src="assets/sfx/synth/whoosh-soft.wav" data-start="4.00" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.60" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-3" src="assets/sfx/synth/whoosh-soft.wav" data-start="11.20" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-4" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.80" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-5" src="assets/sfx/synth/whoosh-big.wav" data-start="16.00" data-duration="0.34" data-track-index="12" data-volume="0.34"></audio>
+      <audio id="wh-6" src="assets/sfx/synth/whoosh-soft.wav" data-start="20.80" data-duration="0.22" data-track-index="12" data-volume="0.30"></audio>
 
-      <!-- damp, lean whooshes: one per scene change + the editor open/close -->
-      <audio id="wh-dash" src="assets/sfx/synth/whoosh-soft.wav" data-start="1.55" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-t1" src="assets/sfx/synth/whoosh-soft.wav" data-start="4.00" data-duration="0.22" data-track-index="12" data-volume="0.32"></audio>
-      <audio id="wh-s2" src="assets/sfx/synth/whoosh-soft.wav" data-start="5.50" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-modal-in" src="assets/sfx/synth/whoosh-soft.wav" data-start="9.00" data-duration="0.22" data-track-index="12" data-volume="0.28"></audio>
-      <audio id="wh-modal-out" src="assets/sfx/synth/whoosh-soft.wav" data-start="11.00" data-duration="0.22" data-track-index="12" data-volume="0.28"></audio>
-      <audio id="wh-t2" src="assets/sfx/synth/whoosh-soft.wav" data-start="12.00" data-duration="0.22" data-track-index="12" data-volume="0.32"></audio>
-      <audio id="wh-s3" src="assets/sfx/synth/whoosh-soft.wav" data-start="13.50" data-duration="0.22" data-track-index="12" data-volume="0.34"></audio>
-      <audio id="wh-s4" src="assets/sfx/synth/whoosh-big.wav" data-start="17.00" data-duration="0.34" data-track-index="12" data-volume="0.40"></audio>
-      <audio id="wh-s5" src="assets/sfx/synth/whoosh-soft.wav" data-start="22.00" data-duration="0.22" data-track-index="12" data-volume="0.26"></audio>
+      <!-- a dry marker on every zoom cut, in and out -->
+      <audio id="cut-1" src="assets/sfx/synth/cut.wav" data-start="1.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-2" src="assets/sfx/synth/cut.wav" data-start="2.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-3" src="assets/sfx/synth/cut.wav" data-start="7.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-4" src="assets/sfx/synth/cut.wav" data-start="8.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-5" src="assets/sfx/synth/cut.wav" data-start="9.20" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-6" src="assets/sfx/synth/cut.wav" data-start="10.00" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-7" src="assets/sfx/synth/cut.wav" data-start="10.40" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-8" src="assets/sfx/synth/cut.wav" data-start="13.60" data-duration="0.09" data-track-index="14" data-volume="0.30"></audio>
+      <audio id="cut-9" src="assets/sfx/synth/cut.wav" data-start="14.80" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
+      <audio id="cut-10" src="assets/sfx/synth/cut.wav" data-start="18.00" data-duration="0.09" data-track-index="14" data-volume="0.32"></audio>
+      <audio id="cut-11" src="assets/sfx/synth/cut.wav" data-start="19.60" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
 
-      <!-- a soft tick per cascading element, on the beat -->
-      <audio id="tk-mod1" src="assets/sfx/synth/ui-tick.wav" data-start="2.25" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-mod2" src="assets/sfx/synth/ui-tick.wav" data-start="2.50" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-mod3" src="assets/sfx/synth/ui-tick.wav" data-start="2.75" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-day1" src="assets/sfx/synth/ui-tick.wav" data-start="6.00" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-day2" src="assets/sfx/synth/ui-tick.wav" data-start="6.50" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-day3" src="assets/sfx/synth/ui-tick.wav" data-start="7.00" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-day4" src="assets/sfx/synth/ui-tick.wav" data-start="7.50" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-day5" src="assets/sfx/synth/ui-tick.wav" data-start="8.00" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-saved" src="assets/sfx/synth/ui-tick.wav" data-start="11.05" data-duration="0.055" data-track-index="13" data-volume="0.22"></audio>
-      <audio id="tk-f1" src="assets/sfx/synth/ui-tick.wav" data-start="13.75" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-f2" src="assets/sfx/synth/ui-tick.wav" data-start="14.00" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-f3" src="assets/sfx/synth/ui-tick.wav" data-start="14.25" data-duration="0.055" data-track-index="13" data-volume="0.15"></audio>
-      <audio id="tk-t1" src="assets/sfx/synth/ui-tick.wav" data-start="17.50" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-t2" src="assets/sfx/synth/ui-tick.wav" data-start="18.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-t3" src="assets/sfx/synth/ui-tick.wav" data-start="18.50" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
-      <audio id="tk-t4" src="assets/sfx/synth/ui-tick.wav" data-start="19.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <!-- a soft tick per cascading element -->
+      <audio id="tk-1" src="assets/sfx/synth/ui-tick.wav" data-start="2.50" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-2" src="assets/sfx/synth/ui-tick.wav" data-start="2.70" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-3" src="assets/sfx/synth/ui-tick.wav" data-start="2.90" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-4" src="assets/sfx/synth/ui-tick.wav" data-start="5.60" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-5" src="assets/sfx/synth/ui-tick.wav" data-start="5.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-6" src="assets/sfx/synth/ui-tick.wav" data-start="6.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-7" src="assets/sfx/synth/ui-tick.wav" data-start="6.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-8" src="assets/sfx/synth/ui-tick.wav" data-start="6.40" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-9" src="assets/sfx/synth/ui-tick.wav" data-start="10.45" data-duration="0.055" data-track-index="13" data-volume="0.24"></audio>
+      <audio id="tk-10" src="assets/sfx/synth/ui-tick.wav" data-start="12.80" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-11" src="assets/sfx/synth/ui-tick.wav" data-start="13.00" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-12" src="assets/sfx/synth/ui-tick.wav" data-start="13.20" data-duration="0.055" data-track-index="13" data-volume="0.16"></audio>
+      <audio id="tk-13" src="assets/sfx/synth/ui-tick.wav" data-start="16.00" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-14" src="assets/sfx/synth/ui-tick.wav" data-start="16.20" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-15" src="assets/sfx/synth/ui-tick.wav" data-start="16.40" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
+      <audio id="tk-16" src="assets/sfx/synth/ui-tick.wav" data-start="16.60" data-duration="0.055" data-track-index="13" data-volume="0.18"></audio>
 
-      <!-- a dry marker on each jump cut, in and out -->
-      <audio id="cut-a-in" src="assets/sfx/synth/cut.wav" data-start="8.50" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-a-out" src="assets/sfx/synth/cut.wav" data-start="9.00" data-duration="0.09" data-track-index="14" data-volume="0.22"></audio>
-      <audio id="cut-b-in" src="assets/sfx/synth/cut.wav" data-start="15.00" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-b-out" src="assets/sfx/synth/cut.wav" data-start="15.50" data-duration="0.09" data-track-index="14" data-volume="0.22"></audio>
-      <audio id="cut-c-in" src="assets/sfx/synth/cut.wav" data-start="20.00" data-duration="0.09" data-track-index="14" data-volume="0.26"></audio>
-      <audio id="cut-c-out" src="assets/sfx/synth/cut.wav" data-start="20.50" data-duration="0.09" data-track-index="14" data-volume="0.22"></audio>
-
-      <!-- typing texture, thinned -->
-      <audio id="key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="14.32" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
-      <audio id="key-2" src="assets/sfx/keyboard/keypress-009.wav" data-start="14.42" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
-      <audio id="key-3" src="assets/sfx/keyboard/keypress-014.wav" data-start="14.52" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
-      <audio id="key-4" src="assets/sfx/keyboard/keypress-019.wav" data-start="14.62" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
-      <audio id="key-5" src="assets/sfx/keyboard/keypress-023.wav" data-start="14.72" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
-      <audio id="key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.82" data-duration="0.09" data-track-index="15" data-volume="0.13"></audio>
+      <!-- typing texture -->
+      <audio id="key-1" src="assets/sfx/keyboard/keypress-004.wav" data-start="13.66" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-2" src="assets/sfx/keyboard/keypress-009.wav" data-start="13.75" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-3" src="assets/sfx/keyboard/keypress-014.wav" data-start="13.84" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-4" src="assets/sfx/keyboard/keypress-019.wav" data-start="13.93" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-5" src="assets/sfx/keyboard/keypress-023.wav" data-start="14.02" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
+      <audio id="key-6" src="assets/sfx/keyboard/keypress-028.wav" data-start="14.11" data-duration="0.08" data-track-index="15" data-volume="0.14"></audio>
 
       <!-- the strike-through payoff, and the wordmark -->
-      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="20.00" data-duration="1.10" data-track-index="16" data-volume="0.32"></audio>
-      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="20.00" data-duration="0.85" data-track-index="17" data-volume="0.26"></audio>
-      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="23.00" data-duration="1.50" data-track-index="18" data-volume="0.28"></audio>
+      <audio id="sfx-impact" src="assets/sfx/synth/impact.wav" data-start="18.00" data-duration="1.10" data-track-index="16" data-volume="0.30"></audio>
+      <audio id="sfx-boom" src="assets/sfx/synth/sub-boom.wav" data-start="18.00" data-duration="0.85" data-track-index="17" data-volume="0.24"></audio>
+      <audio id="sfx-bell" src="assets/sfx/synth/bell.wav" data-start="21.20" data-duration="1.40" data-track-index="18" data-volume="0.30"></audio>
     </div>
 
     <script>
       window.__timelines = window.__timelines || {};
 
-      /* One motion vocabulary for the whole film. Everything decelerates on
-       * the app's own curve (--ease-fluid ≈ power4.out); nothing bounces or
-       * idles. Jump cuts are the only hard moves, and they are instant. */
+      /* FAST CUT. There are no crossfades anywhere — the framework's clip
+       * window does every scene change, and framing changes are zero-duration
+       * transform sets on a .zoom wrapper, i.e. real punch-in / punch-out
+       * jump cuts. Every cut lands on the 150 BPM grid (0.40s beat), and
+       * every zoom level holds at least 0.8s so it reads as a shot, not a
+       * glitch. Only cascading elements animate, and only for ~0.24s. */
       var EASE = "power4.out";
-      var XFADE = 0.3;
-      var D_PANEL = 0.45;
-      var D_CARD = 0.36;
-      var D_CAP = 0.4;
-      var Y_CARD = 18;
-      var Y_CAP = 16;
-
       var root = document.getElementById("root");
       var tl = gsap.timeline({ paused: true });
 
@@ -1217,113 +1215,99 @@
         tl.fromTo(target, { y: dist, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: EASE }, at);
       }
       function press(target, at) {
-        tl.to(target, { scale: 0.965, duration: 0.09, ease: "power2.out" }, at);
-        tl.to(target, { scale: 1, duration: 0.2, ease: EASE }, at + 0.09);
+        tl.to(target, { scale: 0.96, duration: 0.07, ease: "power2.out" }, at);
+        tl.to(target, { scale: 1, duration: 0.16, ease: EASE }, at + 0.07);
       }
-      function sceneFade(id, start, end, fadeIn) {
-        tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: fadeIn, ease: "none" }, start);
-        if (end !== null) tl.to(id, { opacity: 0, duration: XFADE, ease: "none" }, end);
-      }
-      /* A jump cut: zero-duration transform sets, so the frame changes
-       * between one frame and the next. `px,py` is the point to centre. */
-      function jumpTo(target, at, s, px, py) {
+      /* A jump cut. transform-origin is 0 0, so a point p lands at x + s·p. */
+      function cutIn(target, at, s, px, py) {
         tl.set(target, { scale: s, x: 960 - s * px, y: 540 - s * py }, at);
       }
-      function jumpBack(target, at) {
+      function cutOut(target, at) {
         tl.set(target, { scale: 1, x: 0, y: 0 }, at);
       }
+      function show(target, at) {
+        tl.set(target, { opacity: 1 }, at);
+      }
+      function hide(target, at) {
+        tl.set(target, { opacity: 0 }, at);
+      }
 
-      sceneFade("#s1-inner", 0.0, 4.0, 0.3);
-      sceneFade("#t1-inner", 4.0, 5.5, 0.28);
-      sceneFade("#s2-inner", 5.5, 12.0, XFADE);
-      sceneFade("#t2-inner", 12.0, 13.5, 0.28);
-      sceneFade("#s3-inner", 13.5, 17.0, XFADE);
-      sceneFade("#s4-inner", 17.0, 22.0, XFADE);
-      sceneFade("#s5-inner", 22.0, null, XFADE);
-
-      /* ---- background: a slow drift across the paper tones, cooling
-       * into the break and warming back for the lockup ---------------- */
+      /* ---- background: drifts warm, cools into the drop, warms back --- */
       tl.fromTo("#stage-bg", { backgroundColor: "#fcfaf5" }, { backgroundColor: "#faf7ef", duration: 2.0, ease: "none" }, 4.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { backgroundColor: "#f6f2e8", duration: 4.0, ease: "none" }, 8.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { backgroundColor: "#eaeff4", duration: 1.6, ease: "none" }, 15.4);
-      tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 18.0);
-      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { backgroundColor: "#fcfaf5", duration: 1.6, ease: "none" }, 21.6);
+      tl.fromTo("#stage-bg", { backgroundColor: "#faf7ef" }, { backgroundColor: "#f6f2e8", duration: 3.0, ease: "none" }, 9.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#f6f2e8" }, { backgroundColor: "#eaeff4", duration: 0.8, ease: "none" }, 15.2);
+      tl.fromTo("#stage-bg", { backgroundColor: "#eaeff4" }, { backgroundColor: "#e6edf3", duration: 3.0, ease: "none" }, 16.0);
+      tl.fromTo("#stage-bg", { backgroundColor: "#e6edf3" }, { backgroundColor: "#fcfaf5", duration: 1.0, ease: "none" }, 20.0);
 
-      /* ============ Scene 1 — sign in, then the dashboard ============ */
-      rise("#s1-login", 0.2, 22, 0.5);
-      tl.set("#s1-cursor", { x: 1480, y: 1040 }, 0.65);
-      tl.fromTo("#s1-cursor", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "none" }, 0.7);
-      tl.to("#s1-cursor", { x: 944, y: 579, duration: 0.6, ease: EASE }, 0.85);
-      press("#s1-google", 1.5); // beat
-      tl.to("#s1-cursor", { opacity: 0, duration: 0.18, ease: "none" }, 1.58);
+      /* ======= S1 · 0.00–4.00 — sign in, then the dashboard ========== */
+      // SHOT 1 (0.00) wide: the login card
+      rise("#s1-login", 0.15, 22, 0.4);
+      tl.set("#s1-cursor", { x: 1480, y: 1040 }, 0.45);
+      tl.fromTo("#s1-cursor", { opacity: 0 }, { opacity: 1, duration: 0.14, ease: "none" }, 0.5);
+      tl.to("#s1-cursor", { x: 944, y: 590, duration: 0.72, ease: EASE }, 0.62);
+      press("#s1-google", 1.6);
 
-      tl.to("#s1-login", { scale: 0.94, opacity: 0, duration: 0.3, ease: "power2.in" }, 1.55);
-      tl.fromTo("#s1-dash", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "none" }, 1.62);
-      rise("#s1-greet", 1.75, 24, D_PANEL);
-      rise("#s1-sub", 1.95, Y_CAP, D_CAP);
+      // SHOT 2 (1.60) PUNCH IN on the button being pressed — holds 0.8s
+      cutIn("#s1-zoom", 1.6, 1.9, 960, 590);
 
-      // beat-grid: the three real module cards, an eighth apart
-      rise("#mod-settings", 2.25, 26, D_CARD);
-      rise("#mod-mail", 2.5, 26, D_CARD);
-      rise("#mod-time", 2.75, 26, D_CARD);
+      // SHOT 3 (2.40) PUNCH OUT — we are already on the dashboard
+      cutOut("#s1-zoom", 2.4);
+      hide("#s1-login", 2.4);
+      hide("#s1-cursor", 2.4);
+      show("#s1-dash", 2.4);
+      rise("#mod-settings", 2.5, 20, 0.24);
+      rise("#mod-mail", 2.7, 20, 0.24);
+      rise("#mod-time", 2.9, 20, 0.24);
 
-      /* ===================== Text beat 1 ============================= */
-      rise("#t1-line", 4.15, 26, 0.5);
-      tl.fromTo("#t1-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: EASE }, 4.35);
+      /* ======= T1 · 4.00–5.60 — text ================================= */
+      rise("#t1-line", 4.05, 24, 0.36);
+      tl.fromTo("#t1-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, 4.2);
 
-      /* ================== Scene 2 — Time Tracker ==================== */
-      rise("#s2-head", 5.6, 20, D_PANEL);
-
-      // beat-grid: one day card per beat, 6.00 → 8.00
-      var DAY_BEATS = [6.0, 6.5, 7.0, 7.5, 8.0];
+      /* ======= S2 · 5.60–11.20 — Time Tracker ======================== */
+      // SHOT 4 (5.60) wide: the week fills in, one card per 16th
+      var DAY_BEATS = [5.6, 5.8, 6.0, 6.2, 6.4];
       tl.set("#bar-4", { scaleX: 0 }, 0); // Thursday has nothing logged yet
       for (var d = 0; d < DAY_BEATS.length; d++) {
-        rise("#day-" + (d + 1), DAY_BEATS[d], Y_CARD, D_CARD);
+        rise("#day-" + (d + 1), DAY_BEATS[d], 16, 0.24);
         if (d === 3) continue;
-        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, DAY_BEATS[d] + 0.08);
+        tl.fromTo("#bar-" + (d + 1), { scaleX: 0 }, { scaleX: 1, duration: 0.34, ease: EASE }, DAY_BEATS[d] + 0.06);
       }
-      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: EASE }, 6.45);
+      tl.fromTo("#bar-1o", { scaleX: 0 }, { scaleX: 1, duration: 0.24, ease: EASE }, 5.95);
 
-      // the cursor opens Thursday
-      tl.set("#s2-cursor", { x: 1560, y: 1040 }, 7.55);
-      tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "none" }, 7.6);
-      tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.6, ease: EASE }, 7.75);
-      press("#day-4", 8.5); // beat
+      tl.set("#s2-cursor", { x: 1560, y: 1040 }, 6.9);
+      tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, 6.95);
+      tl.to("#s2-cursor", { x: 1270, y: 533, duration: 0.5, ease: EASE }, 7.05);
+      press("#day-4", 7.56);
 
-      /* JUMP CUT A — punch onto the Thursday card as it is clicked,
-       * then cut straight back out as the editor opens. */
-      tl.set("#s2-cursor", { opacity: 0 }, 8.52);
-      jumpTo("#s2-zoom", 8.5, 1.8, 1287, 505);
-      jumpBack("#s2-zoom", 9.0);
+      // SHOT 5 (7.60) PUNCH IN on Thursday as it is clicked — holds 0.8s
+      cutIn("#s2-zoom", 7.6, 1.9, 1287, 505);
 
-      // the day editor
-      tl.to("#s2-dim", { opacity: 0.2, duration: 0.28, ease: "power2.out" }, 8.98);
-      tl.fromTo(
-        "#s2-modal",
-        { y: 30, scale: 0.975, opacity: 0 },
-        { y: 0, scale: 1, opacity: 1, duration: 0.4, ease: EASE },
-        9.0
-      );
-      tl.set("#s2-cursor", { x: 1112, y: 417 }, 9.05);
-      tl.fromTo("#s2-cursor", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "none" }, 9.1);
+      // SHOT 6 (8.40) PUNCH OUT straight into the open day editor
+      cutOut("#s2-zoom", 8.4);
+      hide("#s2-cursor", 8.4);
+      tl.set("#s2-dim", { opacity: 0.2 }, 8.4); // scrim, not a blackout
+      show("#s2-modal", 8.4);
 
-      // pick Vacation
-      tl.fromTo("#chip-vac-on", { opacity: 0 }, { opacity: 1, duration: 0.24, ease: EASE }, 9.5);
-      tl.fromTo("#s2-helper", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: EASE }, 9.6);
-      tl.to("#s2-cursor", { x: 1180, y: 765, duration: 0.4, ease: EASE }, 9.8);
+      // SHOT 7 (9.20) PUNCH IN on the Day type chips — Vacation is picked
+      cutIn("#s2-zoom", 9.2, 1.75, 1127, 424);
+      show("#chip-vac-on", 9.2);
+      show("#s2-helper", 9.28);
 
-      // save
-      press("#s2-save", 10.5); // beat
-      tl.to("#s2-cursor", { opacity: 0, duration: 0.2, ease: "none" }, 10.7);
+      // SHOT 8 (10.00) PUNCH OUT to the editor, and save
+      cutOut("#s2-zoom", 10.0);
+      tl.set("#s2-cursor", { x: 1180, y: 765 }, 9.96);
+      show("#s2-cursor", 9.98);
+      press("#s2-save", 10.0);
 
-      // the editor closes and the card comes back as Vacation
-      tl.to("#s2-modal", { y: 20, scale: 0.985, opacity: 0, duration: 0.28, ease: "power2.in" }, 11.0);
-      tl.to("#s2-dim", { opacity: 0, duration: 0.28, ease: "power2.in" }, 11.0);
-      tl.to("#thu-before", { opacity: 0, duration: 0.22, ease: "none" }, 11.03);
-      tl.to("#thu-pct-before", { opacity: 0, duration: 0.22, ease: "none" }, 11.03);
-      tl.fromTo("#thu-after", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: EASE }, 11.08);
-      tl.fromTo("#thu-pct-after", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: EASE }, 11.08);
-      tl.to("#bar-4", { scaleX: 1, duration: 0.5, ease: EASE }, 11.08);
+      // SHOT 9 (10.40) CUT back to the week — Thursday is now Vacation
+      hide("#s2-modal", 10.4);
+      hide("#s2-dim", 10.4);
+      hide("#s2-cursor", 10.4);
+      hide("#thu-before", 10.4);
+      hide("#thu-pct-before", 10.4);
+      show("#thu-after", 10.4);
+      show("#thu-pct-after", 10.4);
+      tl.to("#bar-4", { scaleX: 1, duration: 0.3, ease: EASE }, 10.42);
 
       var bankEl = document.getElementById("tt-bank");
       var bankState = { m: 245 }; // +4h 05m
@@ -1331,7 +1315,7 @@
         bankState,
         {
           m: 725, // +12h 05m — a vacation day books as overtime
-          duration: 0.6,
+          duration: 0.45,
           ease: "power2.out",
           onUpdate: function () {
             var m = Math.round(bankState.m);
@@ -1340,102 +1324,79 @@
             bankEl.textContent = "+" + h + "h " + (mm < 10 ? "0" : "") + mm + "m";
           }
         },
-        11.1
+        10.42
       );
 
-      /* ===================== Text beat 2 ============================= */
-      rise("#t2-line", 12.15, 26, 0.5);
-      tl.fromTo("#t2-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: EASE }, 12.35);
+      /* ======= T2 · 11.20–12.80 — text =============================== */
+      rise("#t2-line", 11.25, 24, 0.36);
+      tl.fromTo("#t2-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: EASE }, 11.4);
 
-      /* ================= Scene 3 — Mail Composer ==================== */
-      rise("#s3-form", 13.6, 22, D_PANEL);
+      /* ======= S3 · 12.80–16.00 — Mail Composer ====================== */
+      // SHOT 10 (12.80) wide: the form fills in
+      rise("#s3-f1", 12.8, 12, 0.22);
+      rise("#s3-f2", 13.0, 12, 0.22);
+      rise("#s3-f3", 13.2, 12, 0.22);
+      rise("#s3-f4", 13.3, 12, 0.22);
 
-      // beat-grid: 13.75 / 14.00 / 14.25
-      rise("#s3-f1", 13.75, 14, 0.26);
-      rise("#s3-f2", 14.0, 14, 0.26);
-      rise("#s3-f3", 14.25, 14, 0.26);
-      rise("#s3-f4", 14.2, 14, 0.26);
+      // SHOT 11 (13.60) PUNCH IN on the brief and the button — holds 1.2s
+      cutIn("#s3-zoom", 13.6, 1.6, 520, 800);
+      hide("#s3-cursor", 0);
 
-      // typed brief — the character count is interpolated from timeline time,
-      // so every seek resolves to the same string
       var BRIEF = "Two-day operator training, on site.";
       var briefEl = document.getElementById("s3-brief-text");
       var typeState = { n: 0 };
-      tl.set("#s3-caret", { opacity: 1 }, 14.28);
+      show("#s3-caret", 13.62);
       tl.to(
         typeState,
         {
           n: BRIEF.length,
-          duration: 0.62,
+          duration: 0.5,
           ease: "none",
           onUpdate: function () {
             briefEl.textContent = BRIEF.slice(0, Math.round(typeState.n));
           }
         },
-        14.3
+        13.65
       );
-      tl.to("#s3-caret", { opacity: 0, duration: 0.12, ease: "none" }, 14.94);
-
-      tl.set("#s3-cursor", { x: 1500, y: 1040 }, 14.35);
-      tl.fromTo("#s3-cursor", { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "none" }, 14.4);
-      tl.to("#s3-cursor", { x: 269, y: 811, duration: 0.5, ease: EASE }, 14.48);
-      press("#s3-cta", 15.0); // beat
+      hide("#s3-caret", 14.2);
+      press("#s3-cta", 14.4);
       tl.call(
         function () {
           document.getElementById("s3-cta").textContent = "Generating…";
         },
         [],
-        15.04
+        14.44
       );
 
-      /* JUMP CUT B — punch onto the button as it is pressed, cut back out
-       * as the draft lands. */
-      tl.set("#s3-cursor", { opacity: 0 }, 15.02);
-      jumpTo("#s3-zoom", 15.0, 1.5, 430, 780);
-      jumpBack("#s3-zoom", 15.5);
+      // SHOT 12 (14.80) PUNCH OUT — the draft is already there
+      cutOut("#s3-zoom", 14.8);
+      hide("#s3-preview-empty", 14.8);
+      tl.set("#s3-preview-inner", { x: 0, opacity: 1 }, 14.8);
 
-      tl.to("#s3-preview-empty", { opacity: 0, duration: 0.26, ease: "none" }, 15.5);
-      tl.fromTo("#s3-preview-inner", { x: 44, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: EASE }, 15.5);
+      /* ======= S4 · 16.00–20.80 — Mail Tracking =====================
+       * 16.00 is the drop in the score. */
+      // SHOT 13 (16.00) wide: the stat row, one tile per 16th
+      rise("#tile-sent", 16.0, 16, 0.24);
+      rise("#tile-recipients", 16.2, 16, 0.24);
+      rise("#tile-real", 16.4, 16, 0.24);
+      rise("#tile-scanner", 16.6, 16, 0.24);
 
-      /* ================= Scene 4 — Mail Tracking ====================
-       * 17.00 is the drop in the score — the panel arrives with it. */
-      tl.fromTo(
-        "#s4-panel",
-        { y: 30, scale: 0.985, opacity: 0 },
-        { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: EASE },
-        17.0
-      );
+      // SHOT 14 (18.00) PUNCH IN on the Real / Scanner pair — holds 1.6s
+      cutIn("#s4-zoom", 18.0, 1.6, 1342, 502);
+      tl.set("#tile-scanner-content", { opacity: 0.34 }, 18.0);
+      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.26, ease: EASE }, 18.0);
+      show("#tile-real-ring", 18.0);
 
-      // beat-grid: 17.50 / 18.00 / 18.50 / 19.00, then the set holds
-      rise("#tile-sent", 17.5, Y_CARD, D_CARD);
-      rise("#tile-recipients", 18.0, Y_CARD, D_CARD);
-      rise("#tile-real", 18.5, Y_CARD, D_CARD);
-      rise("#tile-scanner", 19.0, Y_CARD, D_CARD);
+      // SHOT 15 (19.60) PUNCH OUT to the whole row
+      cutOut("#s4-zoom", 19.6);
+      rise("#s4-cap", 19.65, 14, 0.28);
 
-      /* JUMP CUT C — punch onto the Real / Scanner pair for the strike,
-       * cut back out to show the whole row again. */
-      jumpTo("#s4-zoom", 20.0, 1.55, 1342, 502);
-      jumpBack("#s4-zoom", 20.5);
+      /* ======= S5 · 20.80–23.20 — lockup ============================= */
+      tl.fromTo("#lk-mark", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: EASE }, 20.8);
+      rise("#lk-word", 21.2, 18, 0.3);
+      rise("#lk-url", 21.8, 12, 0.26);
 
-      tl.to("#tile-scanner-content", { opacity: 0.34, duration: 0.32, ease: "power2.out" }, 20.0);
-      tl.fromTo("#tile-scanner-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.38, ease: EASE }, 20.0);
-      tl.fromTo("#tile-real-ring", { opacity: 0 }, { opacity: 1, duration: 0.38, ease: EASE }, 20.0);
-      rise("#s4-cap", 20.6, Y_CAP, D_CAP);
-
-      /* ===================== Scene 5 — lockup ======================= */
-      tl.fromTo("#lk-mark", { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.46, ease: EASE }, 22.5);
-      rise("#lk-word", 23.0, 22, 0.44);
-      rise("#lk-url", 23.35, 14, 0.36);
-
-      /* ---- music: sits under the narration, swells in the gaps ------ */
-      tl.fromTo("#bgm", { volume: 0.22 }, { volume: 0.34, duration: 0.5, ease: "none" }, 3.3);
-      tl.fromTo("#bgm", { volume: 0.34 }, { volume: 0.19, duration: 0.5, ease: "none" }, 6.6);
-      tl.fromTo("#bgm", { volume: 0.19 }, { volume: 0.34, duration: 0.4, ease: "none" }, 11.95);
-      tl.fromTo("#bgm", { volume: 0.34 }, { volume: 0.19, duration: 0.4, ease: "none" }, 13.5);
-      tl.fromTo("#bgm", { volume: 0.19 }, { volume: 0.36, duration: 0.5, ease: "none" }, 21.0);
-      tl.fromTo("#bgm", { volume: 0.36 }, { volume: 0.24, duration: 0.4, ease: "none" }, 22.5);
-
-      /* ---- audio-reactive accent glows ----------------------------- */
+      /* ---- audio-reactive accent washes ---------------------------- */
       (function () {
         var AR = window.AUDIO_DATA;
         if (!AR || !AR.frames || !AR.frames.length) return;
