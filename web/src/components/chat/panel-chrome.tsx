@@ -2,43 +2,62 @@
 
 import { AnimatePresence, m } from "framer-motion";
 import { useEffect, useRef } from "react";
-import { TAGGED_KINDS, initialsFromEmail, shortNameFromEmail, type ChatPresenceUser } from "@/lib/chat";
-import { ChatBubbleIcon, LightbulbIcon, PencilSquareIcon, StarIcon } from "./icons";
+import {
+  COMPOSABLE_KINDS,
+  initialsFromEmail,
+  shortNameFromEmail,
+  type ChatPresenceUser,
+} from "@/lib/chat";
+import { CertificateIcon, ChatBubbleIcon, LightbulbIcon, StarIcon } from "./icons";
 import { KIND_META, type FilterKey, type KindMeta } from "./types";
 import type { MessageKind } from "@/lib/chat";
 
 export function KindToggleRow({
   pendingKind,
   setPendingKind,
+  onOpenCertificate,
 }: {
   pendingKind: MessageKind;
   setPendingKind: (k: MessageKind) => void;
+  onOpenCertificate: () => void;
 }) {
   /*
    * Segmented mode picker: shows all 4 send modes (the default "Message" plus
-   * the three taggable kinds). Always-visible "Message" button so users can
+   * the three composable kinds). Always-visible "Message" button so users can
    * see which mode they're in at a glance and tap to switch back.
+   *
+   * "Certificate" is the odd one out: it is not a composer mode at all but an
+   * action that opens the structured request form, because a certificate
+   * request is a set of fields, not free text. It therefore never shows as
+   * `active` and never becomes `pendingKind`.
    */
-  const items: { id: MessageKind; label: string; icon: typeof ChatBubbleIcon; meta?: KindMeta }[] = [
+  const items: {
+    id: MessageKind;
+    label: string;
+    icon: typeof ChatBubbleIcon;
+    meta?: KindMeta;
+    opensForm?: boolean;
+  }[] = [
     { id: "message", label: "Message", icon: ChatBubbleIcon },
-    ...TAGGED_KINDS.map((k) => ({
+    ...COMPOSABLE_KINDS.map((k) => ({
       id: k,
       label: KIND_META[k].shortLabel,
       icon: KIND_META[k].Icon,
       meta: KIND_META[k],
+      opensForm: k === "certificate_request",
     })),
   ];
   return (
     <div className="grid grid-cols-4 gap-1 rounded-xl bg-glass/[0.04] p-1 ring-1 ring-inset ring-glass/5">
       {items.map((item) => {
-        const active = pendingKind === item.id;
+        const active = !item.opensForm && pendingKind === item.id;
         const Icon = item.icon;
         return (
           <button
             key={item.id}
             type="button"
-            aria-pressed={active}
-            onClick={() => setPendingKind(item.id)}
+            {...(item.opensForm ? { "aria-haspopup": "dialog" as const } : { "aria-pressed": active })}
+            onClick={() => (item.opensForm ? onOpenCertificate() : setPendingKind(item.id))}
             className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[10.5px] font-medium transition ${
               active
                 ? item.meta
@@ -75,10 +94,10 @@ export function FilterStrip({
       icon: LightbulbIcon,
     },
     {
-      id: "change_request",
-      label: "Changes",
-      count: counts.change_request,
-      icon: PencilSquareIcon,
+      id: "certificate_request",
+      label: "Certificates",
+      count: counts.certificate_request,
+      icon: CertificateIcon,
     },
     { id: "best_practice", label: "Practices", count: counts.best_practice, icon: StarIcon },
   ];

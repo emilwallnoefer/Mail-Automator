@@ -18,11 +18,13 @@ import {
   fetchVotesForMessages,
   markMessageDone,
   sendChatMessage,
+  submitCertificateRequest,
   uploadChatAttachment,
   type ChatMessageRow,
   type ChatPresenceUser,
   type MessageKind,
 } from "@/lib/chat";
+import type { CertificateRequestInput } from "@/lib/certificate-request";
 import { playUiSound } from "@/lib/ui-sounds";
 import {
   ERROR_AUTO_DISMISS_MS,
@@ -68,6 +70,11 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
   const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
   // Presence overflow popover open/closed.
   const [presenceOpen, setPresenceOpen] = useState(false);
+  // Certificate-request form: a modal rather than a composer mode, because the
+  // request is a set of fields and is submitted through its own API route.
+  const [certificateOpen, setCertificateOpen] = useState(false);
+  const [certificateSending, setCertificateSending] = useState(false);
+  const [certificateSent, setCertificateSent] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -160,13 +167,16 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") {
         if (lightbox) setLightbox(null);
-        else if (editingId) setEditingId(null);
+        else if (certificateOpen) {
+          // Don't discard a half-filled form mid-submit.
+          if (!certificateSending) setCertificateOpen(false);
+        } else if (editingId) setEditingId(null);
         else setOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, editingId, lightbox]);
+  }, [open, editingId, lightbox, certificateOpen, certificateSending]);
 
   // Auto-dismiss errors after a few seconds.
   useEffect(() => {
@@ -243,14 +253,15 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     const counts: Record<FilterKey, number> = {
       all: messages.length,
       feature_request: 0,
-      change_request: 0,
+      certificate_request: 0,
       best_practice: 0,
     };
     for (const m of messages) {
       if (m.kind === "message" || m.done_at) continue;
       if (m.kind === "feature_request") counts.feature_request += 1;
-      else if (m.kind === "change_request") counts.change_request += 1;
+      else if (m.kind === "certificate_request") counts.certificate_request += 1;
       else if (m.kind === "best_practice") counts.best_practice += 1;
+      // `change_request` is retired and has no tab — legacy rows count under "All" only.
     }
     return counts;
   }, [messages]);
@@ -316,6 +327,38 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
       }
     })();
   }, [draft, pendingKind, currentUserId, currentUserEmail, resetTyping]);
+
+  /*
+   * Certificate requests are the one flow that is NOT optimistic. The server
+   * renders the summary body and mails the admins, so there is nothing
+   * meaningful to show until it answers — and a row that appeared locally and
+   * then vanished on a mail/DB failure would leave the sender unsure whether
+   * the admins were told. The modal keeps its spinner until the row comes back.
+   */
+  const handleCertificateSubmit = useCallback((input: CertificateRequestInput) => {
+    setCertificateSending(true);
+    setError(null);
+    void (async () => {
+      try {
+        const saved = await submitCertificateRequest(input);
+        setMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]));
+        setCertificateOpen(false);
+        setCertificateSent(true);
+        playUiSound("mailSend");
+      } catch (err) {
+        setError((err as Error).message || "Could not send the certificate request.");
+      } finally {
+        setCertificateSending(false);
+      }
+    })();
+  }, []);
+
+  // Clear the "sent" confirmation after it has been read.
+  useEffect(() => {
+    if (!certificateSent) return;
+    const t = window.setTimeout(() => setCertificateSent(false), 5000);
+    return () => window.clearTimeout(t);
+  }, [certificateSent]);
 
   const uploadAndSendAttachment = useCallback(
     async (file: File) => {
@@ -518,6 +561,13 @@ export function useChat({ bottomOffsetRem = 1, isAdmin = false }: ChatWidgetProp
     fileInputRef,
     handleSend,
     handleAttachmentPick,
+    // certificate request modal
+    currentUserEmail,
+    certificateOpen,
+    setCertificateOpen,
+    certificateSending,
+    certificateSent,
+    handleCertificateSubmit,
     // filter
     filter,
     setFilter,

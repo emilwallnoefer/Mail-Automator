@@ -2,6 +2,7 @@
 
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import type { CertificateRequestInput } from "@/lib/certificate-request";
 
 /**
  * Team Chat client helpers.
@@ -32,26 +33,54 @@ export const CHAT_PAGE_SIZE = 50;
  *  bucket itself does not impose a limit. */
 export const CHAT_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
-export type MessageKind = "message" | "feature_request" | "change_request" | "best_practice";
+/**
+ * `change_request` is **legacy**: the composer slot it used to occupy is now
+ * "Certificate", and no new row can be created with that kind. It stays in the
+ * union (and in the DB check constraint) so the change requests already in the
+ * history keep rendering their badge instead of silently losing it.
+ */
+export type MessageKind =
+  | "message"
+  | "feature_request"
+  | "change_request"
+  | "best_practice"
+  | "certificate_request";
 export const MESSAGE_KINDS: MessageKind[] = [
   "message",
   "feature_request",
   "change_request",
   "best_practice",
+  "certificate_request",
 ];
 export type TaggedMessageKind = Exclude<MessageKind, "message">;
+/** Every non-plain kind, including the retired `change_request`. */
 export const TAGGED_KINDS: TaggedMessageKind[] = [
   "feature_request",
   "change_request",
   "best_practice",
+  "certificate_request",
+];
+/** The kinds the composer can still produce — drives the mode picker and the
+ *  filter strip. Order is the order they appear in the UI. */
+export const COMPOSABLE_KINDS: TaggedMessageKind[] = [
+  "feature_request",
+  "certificate_request",
+  "best_practice",
 ];
 export const VOTABLE_KINDS: TaggedMessageKind[] = ["feature_request", "change_request"];
+/** Admins can also resolve a certificate request once the certificates are
+ *  issued, which drops it out of the "Certificate" filter. */
+export const MARKABLE_KINDS: TaggedMessageKind[] = [
+  "feature_request",
+  "change_request",
+  "certificate_request",
+];
 
 export function isVotableKind(kind: MessageKind): boolean {
   return (VOTABLE_KINDS as readonly MessageKind[]).includes(kind);
 }
 export function isMarkableKind(kind: MessageKind): boolean {
-  return (VOTABLE_KINDS as readonly MessageKind[]).includes(kind);
+  return (MARKABLE_KINDS as readonly MessageKind[]).includes(kind);
 }
 
 export function messageKindLabel(kind: MessageKind): string {
@@ -62,6 +91,8 @@ export function messageKindLabel(kind: MessageKind): string {
       return "Change request";
     case "best_practice":
       return "Best practice";
+    case "certificate_request":
+      return "Certificate request";
     default:
       return "Message";
   }
@@ -291,6 +322,32 @@ export async function markMessageDone(messageId: string, done: boolean): Promise
     | { error: string };
   if (!response.ok || !("ok" in payload)) {
     throw new Error(("error" in payload && payload.error) || "Failed to mark message");
+  }
+  return payload.message;
+}
+
+/**
+ * Submit a certificate request. Unlike a normal message this does not insert
+ * from the browser: the route stamps the trainer from the session, formats the
+ * summary, writes the `certificate_request` row and mails the admins, so the
+ * chat body and the notification can never disagree. The saved row comes back
+ * so the sender sees it immediately instead of waiting for the Realtime echo.
+ */
+export async function submitCertificateRequest(
+  input: CertificateRequestInput,
+): Promise<ChatMessageRow> {
+  const response = await fetch("/api/chat/certificate-request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = (await response.json().catch(() => ({}))) as
+    | { ok: true; message: ChatMessageRow; notified: boolean }
+    | { error: string };
+  if (!response.ok || !("ok" in payload)) {
+    throw new Error(
+      ("error" in payload && payload.error) || "Failed to send the certificate request.",
+    );
   }
   return payload.message;
 }

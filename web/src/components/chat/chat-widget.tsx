@@ -19,6 +19,7 @@ import {
   SpinnerIcon,
   XMarkIcon,
 } from "./icons";
+import { CertificateRequestModal } from "./certificate-request-modal";
 import { MessageRow } from "./message-row";
 import {
   DaySeparator,
@@ -68,6 +69,12 @@ export function ChatWidget(props: ChatWidgetProps) {
     fileInputRef,
     handleSend,
     handleAttachmentPick,
+    currentUserEmail,
+    certificateOpen,
+    setCertificateOpen,
+    certificateSending,
+    certificateSent,
+    handleCertificateSubmit,
     filter,
     setFilter,
     filterCounts,
@@ -85,8 +92,9 @@ export function ChatWidget(props: ChatWidgetProps) {
 
   const panelRef = useRef<HTMLElement>(null);
   // Trap focus in the panel while it's open; suspend it when the image
-  // lightbox (a separate dialog layered on top) takes over.
-  useFocusTrap(panelRef, open && !lightbox);
+  // lightbox or the certificate form (separate dialogs layered on top) takes
+  // over, so the two traps don't fight over focus.
+  useFocusTrap(panelRef, open && !lightbox && !certificateOpen);
 
   return (
     <>
@@ -324,6 +332,14 @@ export function ChatWidget(props: ChatWidgetProps) {
                 </AnimatePresence>
 
                 <AnimatePresence>
+                  {certificateSent ? (
+                    <Toast key="certificate-toast" tone="positive" className="mx-3 mb-2">
+                      Certificate request sent to the admins
+                    </Toast>
+                  ) : null}
+                </AnimatePresence>
+
+                <AnimatePresence>
                   {error ? (
                     <m.div
                       key="error-banner"
@@ -347,7 +363,11 @@ export function ChatWidget(props: ChatWidgetProps) {
                 </AnimatePresence>
 
                 <div className="border-t border-glass/10 bg-overlay/70 px-3 py-3">
-                  <KindToggleRow pendingKind={pendingKind} setPendingKind={setPendingKind} />
+                  <KindToggleRow
+                    pendingKind={pendingKind}
+                    setPendingKind={setPendingKind}
+                    onOpenCertificate={() => setCertificateOpen(true)}
+                  />
                   <div className="mt-2 flex items-end gap-2 rounded-2xl border border-glass/12 bg-glass/5 px-2 py-1.5 focus-within:border-accent/50 focus-within:bg-glass/[0.07]">
                     <button
                       type="button"
@@ -398,6 +418,22 @@ export function ChatWidget(props: ChatWidgetProps) {
                 </div>
               </div>
             </m.aside>
+
+            {/* Certificate-request form — layered above the panel, below the
+                lightbox. */}
+            <AnimatePresence>
+              {certificateOpen ? (
+                <CertificateRequestModal
+                  key="certificate-modal"
+                  currentUserEmail={currentUserEmail}
+                  submitting={certificateSending}
+                  onSubmit={handleCertificateSubmit}
+                  onClose={() => {
+                    if (!certificateSending) setCertificateOpen(false);
+                  }}
+                />
+              ) : null}
+            </AnimatePresence>
 
             {/* Image lightbox overlay (rendered last so it sits on top of the
                 panel and the backdrop). */}
