@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { isVotableKind, type ChatMessageRow, type MessageKind } from "@/lib/chat";
-import { LightbulbIcon, PencilSquareIcon, StarIcon } from "./icons";
+import { CertificateIcon, LightbulbIcon, PencilSquareIcon, StarIcon } from "./icons";
 
 export const TYPING_TIMEOUT_MS = 3500;
 export const TYPING_BROADCAST_MIN_INTERVAL_MS = 1500;
@@ -19,7 +19,9 @@ export type ChatWidgetProps = {
 };
 
 export type SendState = "idle" | "sending";
-export type FilterKey = "all" | "feature_request" | "change_request" | "best_practice";
+/** Mirrors `COMPOSABLE_KINDS` — `change_request` is retired and no longer gets
+ *  its own tab; legacy rows still show up under "All". */
+export type FilterKey = "all" | "feature_request" | "certificate_request" | "best_practice";
 
 /** Ids of the messages that can carry votes, deduped — used to scope vote
  *  fetches to the currently loaded window instead of the whole table. */
@@ -65,6 +67,18 @@ export const KIND_META: Record<Exclude<MessageKind, "message">, KindMeta> = {
     badgeBg: "bg-amber-400/15",
     badgeText: "text-warn",
   },
+  certificate_request: {
+    shortLabel: "Certificate",
+    shortDescription: "Request training certificates for a customer",
+    Icon: CertificateIcon,
+    activeBorder: "border-sky-300/60",
+    activeBg: "bg-sky-400/20",
+    activeText: "text-sky-100",
+    badgeBorder: "border-sky-300/40",
+    badgeBg: "bg-sky-400/15",
+    badgeText: "text-sky-200",
+  },
+  // Retired — kept so change requests already in the history keep their badge.
   change_request: {
     shortLabel: "Change",
     shortDescription: "Request a change to an existing feature",

@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-08-07",
+    date: "Aug 7, 2026",
+    title: "Request certificates from Team Chat",
+    highlights: [
+      "“Changes” in Team Chat is now “Certificate”.",
+      "Opens a short form: customer account, participants, training date, Intro/AIIM, and location.",
+      "The trainer is filled in from whoever sends it.",
+      "Admins get an email with a copy-ready summary; the request also lands in chat.",
+    ],
+  },
+  {
     version: "2026-07-30",
     date: "Jul 30, 2026",
     title: "AI brief mails greet you once",
