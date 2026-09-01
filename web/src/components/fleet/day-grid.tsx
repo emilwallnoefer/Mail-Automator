@@ -6,12 +6,14 @@ import {
   daysBetween,
   formatDay,
   formatWeekday,
+  holderRgb,
   isWeekend,
   isoWeekNumber,
   isBlocking,
   parseDateKey,
   weekdayIndex,
 } from "@/lib/fleet-rules";
+import { AssetIcon } from "./asset-icon";
 import type { FleetAsset, FleetReservation } from "./types";
 
 /**
@@ -211,8 +213,11 @@ export function DayGrid({
                 scope="row"
                 className="sticky left-0 z-[1] border-t border-glass/[0.07] bg-surface/95 px-3 py-2 backdrop-blur"
               >
-                <span className="block truncate text-xs font-medium text-ink">{asset.name}</span>
-                <span className="block truncate text-[11px] font-normal text-ink-5">
+                <span className="flex items-center gap-1.5">
+                  <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
+                  <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
+                </span>
+                <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
                   {asset.current_location ?? "Location unknown"}
                 </span>
               </th>
@@ -262,6 +267,16 @@ export function DayGrid({
                         weekend: isWeekend(day),
                         isToday: day === today,
                       })}
+                      style={
+                        reservation && !selected
+                          ? cellStyle({
+                              holder: reservation.holder_name,
+                              isHistory: state.isHistory,
+                              unclaimed: reservation.unclaimed,
+                              overdue,
+                            })
+                          : undefined
+                      }
                     >
                       {reservation && state.isRunStart ? (
                         <span className="pointer-events-none absolute left-0.5 z-[1] whitespace-nowrap text-[10px] font-medium">
@@ -284,6 +299,34 @@ export function DayGrid({
   );
 }
 
+/**
+ * The colour of a booked cell: the hue is the person, the weight is the state.
+ *
+ * Keeping those on separate channels is the point — a month of finished
+ * bookings should read as the same people, faded, rather than as a different
+ * category of thing. Unclaimed bookings get a hatch on top of the hue, so
+ * "nobody is accountable for this" survives being the same colour as its owner.
+ */
+function cellStyle(args: {
+  holder: string;
+  isHistory: boolean;
+  unclaimed: boolean;
+  overdue: boolean;
+}): React.CSSProperties {
+  const { holder, isHistory, unclaimed, overdue } = args;
+  const rgb = holderRgb(holder);
+  const alpha = isHistory ? 0.2 : overdue ? 0.75 : 0.55;
+  const style: React.CSSProperties = {
+    backgroundColor: `rgb(${rgb} / ${alpha})`,
+    color: isHistory ? `rgb(${rgb} / 0.95)` : "rgb(15 23 42)",
+  };
+  if (unclaimed) {
+    style.backgroundImage =
+      `repeating-linear-gradient(45deg, transparent, transparent 3px, rgb(255 255 255 / 0.22) 3px, rgb(255 255 255 / 0.22) 5px)`;
+  }
+  return style;
+}
+
 function cellClass(args: {
   state: CellState;
   selected: boolean;
@@ -294,27 +337,23 @@ function cellClass(args: {
   weekend: boolean;
   isToday: boolean;
 }): string {
-  const { state, selected, overdue, mine, unclaimed, isHistory, weekend, isToday } = args;
+  const { state, selected, overdue, mine, isToday, weekend } = args;
   // `relative` so a run's name label can overflow its own day cell.
   const base =
     "relative flex h-8 w-full items-center justify-center overflow-visible rounded-[3px] text-ink transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80";
   const todayRing = isToday ? " ring-1 ring-inset ring-accent/50" : "";
 
   if (selected) return `${base}${todayRing} bg-accent/85 text-slate-900`;
-  // Finished bookings are context, not state: muted, so a month of history never
-  // competes with the live rows above it.
-  if (isHistory) {
-    return `${base}${todayRing} bg-glass/[0.09] text-ink-4/80 hover:bg-glass/[0.16]`;
-  }
-  if (overdue) return `${base}${todayRing} bg-rose-500/35 text-danger hover:bg-rose-500/45`;
+  // A booked cell's colour identifies the PERSON and comes from cellStyle();
+  // the class only carries the shell, the hover lift and the state outlines, so
+  // hue answers "whose is it" and outline answers "what state is it in".
   if (state.reservation) {
-    if (mine) return `${base}${todayRing} bg-accent-deep/50 text-accent-soft hover:bg-accent-deep/65`;
-    // Held by a name from the sheet with no account behind it: hatched, so it
-    // reads as "someone has this, but nobody is accountable for it yet".
-    if (unclaimed) {
-      return `${base}${todayRing} bg-amber-400/15 text-warn hover:bg-amber-400/25 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(251,191,36,0.16)_3px,rgba(251,191,36,0.16)_6px)]`;
-    }
-    return `${base}${todayRing} bg-glass/20 text-ink-3 hover:bg-glass/28`;
+    const ring = overdue
+      ? " outline outline-2 -outline-offset-2 outline-rose-400/90"
+      : mine
+        ? " outline outline-1 -outline-offset-1 outline-glass/60"
+        : "";
+    return `${base}${todayRing}${ring} font-medium hover:brightness-125`;
   }
   if (state.inPast) return `${base}${todayRing} cursor-default bg-transparent opacity-25`;
   if (state.beyondHorizon) {

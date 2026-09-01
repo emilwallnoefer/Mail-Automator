@@ -11,7 +11,10 @@ import {
   formatDayLong,
   formatSpan,
   formatWeekday,
+  holderColorIndex,
+  HOLDER_COLORS,
   holderLabelMatchesPerson,
+  holderRgb,
   isBookable,
   isWeekend,
   isoWeekNumber,
@@ -526,5 +529,48 @@ describe("what belongs in the booking calendar", () => {
   it("excludes pooled units nobody could take", () => {
     expect(isBookable({ pooled: true, status: "in_repair" })).toBe(false);
     expect(isBookable({ pooled: true, status: "retired" })).toBe(false);
+  });
+});
+
+
+describe("holder colours", () => {
+  it("is stable for the same person across calls", () => {
+    const a = holderColorIndex("Inga Khchoyan");
+    const b = holderColorIndex("Inga Khchoyan");
+    expect(a).toBe(b);
+    expect(holderRgb("Inga Khchoyan")).toBe(holderRgb("Inga Khchoyan"));
+  });
+
+  it("ignores case, spacing and punctuation, so one person gets one colour", () => {
+    // The sheet writes the same person several ways; they must not end up with
+    // different colours in the calendar and the legend.
+    expect(holderColorIndex("Emil Wallnofer")).toBe(holderColorIndex("  emil   wallnofer "));
+    expect(holderColorIndex("François Theil")).toBe(holderColorIndex("Francois Theil"));
+  });
+
+  it("always lands inside the palette", () => {
+    const names = [
+      "Charles Rey", "Camilla Grosso", "François Theil", "Tiago Leconte Pais",
+      "Emil Wallnofer", "Inga Khchoyan", "Lucas Senault", "Paul Samuel",
+      "Fabio Fata", "Matteo Saglia", "Philipp Jaegle", "Igor Stapper",
+      "USA", "Total Energies", "", "   ",
+    ];
+    for (const n of names) {
+      const i = holderColorIndex(n);
+      expect(i).toBeGreaterThanOrEqual(0);
+      expect(i).toBeLessThan(HOLDER_COLORS.length);
+      expect(holderRgb(n)).toMatch(/^\d+ \d+ \d+$/);
+    }
+  });
+
+  it("spreads the real roster across most of the palette", () => {
+    // A hash that collapsed everyone onto two colours would defeat the point.
+    const roster = [
+      "Charles Rey", "Camilla Grosso", "François Theil", "Tiago Leconte Pais",
+      "Emil Wallnofer", "Inga Khchoyan", "Lucas Senault", "Paul Samuel",
+      "Fabio Fata", "Matteo Saglia", "Philipp Jaegle", "Igor Stapper",
+    ];
+    const used = new Set(roster.map(holderColorIndex));
+    expect(used.size).toBeGreaterThanOrEqual(8);
   });
 });

@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, Input, Notice } from "@/components/ui";
-import { addDays, formatDayLong, formatSpan, isBookable, spanLength, toDateKey } from "@/lib/fleet-rules";
+import {
+  addDays,
+  formatDayLong,
+  formatSpan,
+  holderRgb,
+  isBookable,
+  spanLength,
+  toDateKey,
+} from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
+import { AssetIcon } from "./asset-icon";
 import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
 import { DayGrid, type DaySelection } from "./day-grid";
 import {
@@ -127,6 +136,21 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const claimableByMe = useMemo(() => unclaimedHolders.filter((h) => h.mine), [unclaimedHolders]);
 
   const selectedAsset = selection ? (assets.find((a) => a.id === selection.assetId) ?? null) : null;
+
+  // Legend entries: only the people with something in the rendered window, so a
+  // 178-booking year does not print every name under every screen.
+  const visibleHolders = useMemo(() => {
+    const windowEnd = addDays(windowStart, WINDOW_DAYS - 1);
+    const bookable = new Set(assets.filter(isBookable).map((a) => a.id));
+    const names = new Set<string>();
+    for (const r of reservations) {
+      if (!bookable.has(r.asset_id)) continue;
+      if (r.status === "cancelled" || r.status === "waitlisted") continue;
+      if (r.end_date < windowStart || r.start_date > windowEnd) continue;
+      names.add(r.holder_name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [reservations, assets, windowStart]);
 
   async function post(body: Record<string, unknown>): Promise<boolean> {
     if (board?.demo) {
@@ -391,19 +415,50 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             </p>
           ) : null}
 
+          {/* Who is who. Colour identifies the PERSON; every state cue below is an
+              outline or a texture instead of a hue, so the two never compete. */}
+          {visibleHolders.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-glass/10 bg-glass/[0.03] px-3 py-2 text-[11px] text-ink-3">
+              {visibleHolders.map((h) => (
+                <span key={h} className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-3 w-3 rounded-[3px]"
+                    style={{ backgroundColor: `rgb(${holderRgb(h)} / 0.6)` }}
+                    aria-hidden
+                  />
+                  {h}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-5">
             <LegendSwatch className="bg-glass/[0.07]" label="Free — click to book" />
-            <LegendSwatch className="bg-accent-deep/45" label="Yours" />
-            <LegendSwatch className="bg-glass/20" label="Someone else" />
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-3 w-5 rounded bg-glass/25 outline outline-1 -outline-offset-1 outline-glass/60"
+                aria-hidden
+              />
+              Yours
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-3 w-5 rounded bg-glass/25 outline outline-2 -outline-offset-2 outline-rose-400/90"
+                aria-hidden
+              />
+              Overdue
+            </span>
             <LegendSwatch
-              className="bg-amber-400/15 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(251,191,36,0.3)_3px,rgba(251,191,36,0.3)_6px)]"
-              label="From the sheet, unclaimed"
+              className="bg-glass/20 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.22)_3px,rgba(255,255,255,0.22)_5px)]"
+              label="Unclaimed"
             />
-            <LegendSwatch className="bg-rose-500/30" label="Overdue" />
-            <LegendSwatch className="bg-glass/[0.09]" label="Past booking" />
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-5 rounded bg-glass/[0.09]" aria-hidden />
+              Past (same colour, faded)
+            </span>
             <LegendSwatch
               className="bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.08)_3px,rgba(255,255,255,0.08)_6px)]"
-              label="Beyond your booking horizon"
+              label="Beyond your horizon"
             />
           </div>
 
@@ -582,7 +637,8 @@ function MaterialList({
 
       {grouped.map(([category, list]) => (
         <section key={category} className="space-y-1.5">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
+          <h3 className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
+            <AssetIcon category={category} className="h-3.5 w-3.5 shrink-0" />
             {CATEGORY_LABEL[category]} ({list.length})
           </h3>
           <ul className="space-y-1.5">
@@ -594,6 +650,7 @@ function MaterialList({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
+                      <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
                       <span className="text-xs font-medium text-ink">{asset.name}</span>
                       <Badge tone={statusTone(asset.status)}>{STATUS_LABEL[asset.status]}</Badge>
                       {asset.location_stale ? <Badge tone="warn">Unconfirmed</Badge> : null}
@@ -734,6 +791,9 @@ function MyMaterial({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5">
+                    {asset ? (
+                      <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
+                    ) : null}
                     <span className="text-xs font-medium text-ink">{asset?.name ?? "Material"}</span>
                     {reservation.imported ? (
                       <Badge tone="neutral" title="Carried over from the fleet sheet — does not affect your score">
@@ -1104,6 +1164,7 @@ function AssignedMaterial({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
+                      <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
                       <span className="text-xs font-medium text-ink">{asset.name}</span>
                       <Badge tone={statusTone(asset.status)}>{STATUS_LABEL[asset.status]}</Badge>
                       {asset.location_stale ? <Badge tone="warn">Unconfirmed</Badge> : null}

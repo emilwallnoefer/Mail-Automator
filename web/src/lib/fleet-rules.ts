@@ -527,3 +527,60 @@ export function holderLabelMatchesPerson(
 
   return candidates.has(target);
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Holder colours                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Palette for colouring the calendar by person.
+ *
+ * Twelve hues spread around the wheel, chosen to stay distinguishable against
+ * the dark surface at the low alphas the grid uses. Stored as space-separated
+ * RGB channels so a cell can vary only the alpha — a live booking, a finished
+ * one and an unclaimed one are the same hue at different weights, which keeps
+ * "who" and "what state" on separate visual channels.
+ */
+export const HOLDER_COLORS: ReadonlyArray<{ name: string; rgb: string }> = [
+  { name: "sky", rgb: "56 189 248" },
+  { name: "amber", rgb: "251 191 36" },
+  { name: "emerald", rgb: "52 211 153" },
+  { name: "violet", rgb: "167 139 250" },
+  { name: "rose", rgb: "251 113 133" },
+  { name: "teal", rgb: "45 212 191" },
+  { name: "orange", rgb: "251 146 60" },
+  { name: "fuchsia", rgb: "232 121 249" },
+  { name: "lime", rgb: "163 230 53" },
+  { name: "indigo", rgb: "129 140 248" },
+  { name: "cyan", rgb: "34 211 238" },
+  { name: "pink", rgb: "244 114 182" },
+];
+
+/**
+ * Stable colour index for a holder.
+ *
+ * Deterministic and derived only from the name, so a person keeps the same
+ * colour across reloads, across the calendar and the legend, and regardless of
+ * who else happens to be on screen — an index into a sorted list of the current
+ * window's holders would reshuffle every time someone books something.
+ *
+ * FNV-1a over the normalised label: same person, one colour, whether the sheet
+ * wrote "Emil" or "Emil Wallnofer".
+ */
+export function holderColorIndex(label: string): number {
+  const key = normalizeHolderLabel(label);
+  if (!key) return 0;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < key.length; i += 1) {
+    hash ^= key.charCodeAt(i);
+    // FNV prime, via shifts so this stays in 32-bit integer arithmetic.
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash % HOLDER_COLORS.length;
+}
+
+/** The RGB channels for a holder, ready to drop into `rgb(... / alpha)`. */
+export function holderRgb(label: string): string {
+  return HOLDER_COLORS[holderColorIndex(label)].rgb;
+}
