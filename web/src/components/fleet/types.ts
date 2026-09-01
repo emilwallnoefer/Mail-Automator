@@ -1,4 +1,4 @@
-import type { ReliabilityScore, ReservationStatus } from "@/lib/fleet-rules";
+import type { ReliabilityScore, ReservationSource, ReservationStatus } from "@/lib/fleet-rules";
 
 /** Wire types for `/api/fleet`. Mirrors `src/lib/fleet-queries.ts`. */
 
@@ -28,7 +28,10 @@ export type FleetAsset = {
 export type FleetReservation = {
   id: string;
   asset_id: string;
-  user_id: string;
+  /** Null while the booking is filed under a name with no account behind it. */
+  user_id: string | null;
+  holder_label: string | null;
+  source: ReservationSource;
   start_date: string;
   end_date: string;
   status: ReservationStatus;
@@ -43,6 +46,10 @@ export type FleetReservation = {
   due_date: string;
   days_overdue: number;
   queue_position: number | null;
+  /** No account behind this booking yet. */
+  unclaimed: boolean;
+  /** Carried over from the spreadsheet: provisional, and excluded from scoring. */
+  imported: boolean;
 };
 
 export type FleetBoardResponse = {
@@ -53,6 +60,10 @@ export type FleetBoardResponse = {
   reservations: FleetReservation[];
   me: ReliabilityScore & { user_id: string };
   standings: Array<{ user_id: string; name: string; score: ReliabilityScore }>;
+  /** Holder names with live bookings and no account behind them. */
+  unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
+  /** Whether return reminders are currently being sent at all. */
+  reminders_enabled: boolean;
   is_admin: boolean;
   /**
    * Set only when the fleet tables are missing and the app is not in production:

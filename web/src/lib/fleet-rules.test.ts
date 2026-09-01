@@ -11,10 +11,12 @@ import {
   formatDayLong,
   formatSpan,
   formatWeekday,
+  holderLabelMatchesPerson,
   isWeekend,
   isoWeekNumber,
   lateDays,
   mondayOf,
+  normalizeHolderLabel,
   orderQueue,
   PROVISIONAL_SCORE,
   reminderFor,
@@ -32,6 +34,8 @@ function span(partial: Partial<ReservationSpan> & { start_date: string; end_date
     user_id: partial.user_id ?? "u1",
     status: partial.status ?? "reserved",
     returned_on: partial.returned_on ?? null,
+    holder_label: partial.holder_label ?? null,
+    source: partial.source,
     start_date: partial.start_date,
     end_date: partial.end_date,
   };
@@ -393,5 +397,112 @@ describe("reminder schedule", () => {
     expect(reminderFor(oneDay, "2026-08-29")).toBe("due_soon");
     expect(reminderFor(oneDay, "2026-08-30")).toBe("due_today");
     expect(reminderFor(oneDay, "2026-08-31")).toBe("overdue");
+  });
+});
+
+
+describe("imported bookings are excluded from scoring", () => {
+  const today = "2026-09-01";
+
+  it("does not penalise a long-overdue sheet import", () => {
+    // Exactly the shape the sheet importer writes: out, past due, provisional.
+    const imported = span({
+      id: "imported",
+      start_date: "2026-06-01",
+      end_date: "2026-06-08",
+      status: "picked_up",
+      source: "sheet_import",
+    });
+    const r = computeReliability([imported], today);
+    expect(r.score).toBe(PROVISIONAL_SCORE);
+    expect(r.overdue).toBe(0);
+    expect(r.summary).toBe("No return history yet");
+  });
+
+  it("still scores the person's own app bookings alongside imported ones", () => {
+    const spans = [
+      span({ id: "imported", start_date: "2026-06-01", end_date: "2026-06-08", status: "picked_up", source: "sheet_import" }),
+      span({
+        id: "real",
+        start_date: "2026-07-01",
+        end_date: "2026-07-03",
+        status: "returned",
+        returned_on: "2026-07-05",
+        source: "app",
+      }),
+    ];
+    const r = computeReliability(spans, today);
+    // Only the real one counts: 2 days late => 100 - (4 + 2*2) = 92.
+    expect(r.score).toBe(92);
+    expect(r.completed).toBe(1);
+    expect(r.overdue).toBe(0);
+  });
+
+  it("treats a span with no source as an app booking", () => {
+    const r = computeReliability(
+      [span({ start_date: "2026-06-01", end_date: "2026-06-08", status: "picked_up" })],
+      today,
+    );
+    expect(r.overdue).toBe(1);
+    expect(r.score).toBeLessThan(PROVISIONAL_SCORE);
+  });
+
+  it("blocks the calendar even though it does not score", () => {
+    // An imported booking must still stop someone else booking the same days.
+    const imported = span({
+      id: "imported",
+      start_date: "2026-09-10",
+      end_date: "2026-09-12",
+      status: "picked_up",
+      source: "sheet_import",
+    });
+    const result = checkReservation({
+      startDate: "2026-09-11",
+      endDate: "2026-09-11",
+      today,
+      horizonDays: 56,
+      existing: [imported],
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("holder label matching", () => {
+  it("normalises case, accents, punctuation and spacing", () => {
+    expect(normalizeHolderLabel("  Charles  ")).toBe("charles");
+    expect(normalizeHolderLabel("Wataru.")).toBe("wataru");
+    expect(normalizeHolderLabel("Fran\u00e7ois")).toBe("francois");
+    expect(normalizeHolderLabel("Office   Paudex")).toBe("office paudex");
+  });
+
+  it("matches a first name, a full name and an email local part", () => {
+    const person = { name: "Charles Rey", email: "charles.rey@flyability.com" };
+    expect(holderLabelMatchesPerson("Charles", person)).toBe(true);
+    expect(holderLabelMatchesPerson("charles rey", person)).toBe(true);
+    expect(holderLabelMatchesPerson("Charles.Rey", person)).toBe(true);
+  });
+
+  it("falls back to the email when there is no display name", () => {
+    const person = { name: null, email: "wataru@flyability.com" };
+    expect(holderLabelMatchesPerson("Wataru", person)).toBe(true);
+  });
+
+  it("refuses group labels and other people's names", () => {
+    const person = { name: "Charles Rey", email: "charles.rey@flyability.com" };
+    expect(holderLabelMatchesPerson("APAC team", person)).toBe(false);
+    expect(holderLabelMatchesPerson("FPS", person)).toBe(false);
+    expect(holderLabelMatchesPerson("US Office", person)).toBe(false);
+    expect(holderLabelMatchesPerson("Philipp", person)).toBe(false);
+    expect(holderLabelMatchesPerson("Rey", person)).toBe(false);
+  });
+
+  it("does not match on a very short first name, which would be too loose", () => {
+    expect(holderLabelMatchesPerson("Jo", { name: "Jo Smith", email: "jo@x.com" })).toBe(false);
+  });
+
+  it("refuses an empty or punctuation-only label", () => {
+    const person = { name: "Charles Rey", email: "charles@x.com" };
+    expect(holderLabelMatchesPerson("", person)).toBe(false);
+    expect(holderLabelMatchesPerson("  -- ", person)).toBe(false);
   });
 });

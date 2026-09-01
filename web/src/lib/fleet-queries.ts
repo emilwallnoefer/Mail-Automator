@@ -5,9 +5,12 @@ import {
   computeReliability,
   daysOverdue,
   dueDateOf,
+  holderLabelMatchesPerson,
   isBlocking,
+  normalizeHolderLabel,
   orderQueue,
   type ReliabilityScore,
+  type ReservationSource,
   type ReservationSpan,
   type ReservationStatus,
 } from "@/lib/fleet-rules";
@@ -58,7 +61,10 @@ export type FleetAssetRow = {
 export type FleetReservationRow = {
   id: string;
   asset_id: string;
-  user_id: string;
+  /** Null while the booking is filed under a name nobody has claimed. */
+  user_id: string | null;
+  holder_label: string | null;
+  source: ReservationSource;
   start_date: string;
   end_date: string;
   status: ReservationStatus;
@@ -78,6 +84,10 @@ export type FleetReservationView = FleetReservationRow & {
   days_overdue: number;
   /** Position in the waitlist for this span, 1-based. Null unless waitlisted. */
   queue_position: number | null;
+  /** No account behind this booking yet — it is filed under a name. */
+  unclaimed: boolean;
+  /** Carried over from the spreadsheet: provisional, and excluded from scoring. */
+  imported: boolean;
 };
 
 export type FleetAssetView = FleetAssetRow & {
@@ -100,6 +110,13 @@ export type FleetBoard = {
   me: ReliabilityScore & { user_id: string };
   /** Everyone's standing, for the leaderboard. Admins see all; others see it too — visibility is the incentive. */
   standings: Array<{ user_id: string; name: string; score: ReliabilityScore }>;
+  /**
+   * Holder names with live bookings and no account behind them, so the UI can
+   * chase them. `mine` is the subset the viewer is allowed to claim themselves.
+   */
+  unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
+  /** Whether return reminders are currently being sent at all. */
+  reminders_enabled: boolean;
 };
 
 /**
@@ -127,6 +144,8 @@ function toSpan(row: FleetReservationRow): ReservationSpan {
     end_date: row.end_date,
     status: row.status,
     returned_on: row.returned_on,
+    holder_label: row.holder_label,
+    source: row.source,
   };
 }
 
@@ -158,7 +177,15 @@ export function displayNameFor(user: {
  */
 export async function fetchFleetBoard(
   admin: AnySupabase,
-  args: { viewerId: string; windowStart?: string; windowDays?: number; now?: Date },
+  args: {
+    viewerId: string;
+    /** Used to decide which unclaimed holder names the viewer may claim. */
+    viewerName?: string | null;
+    viewerEmail?: string | null;
+    windowStart?: string;
+    windowDays?: number;
+    now?: Date;
+  },
 ): Promise<FleetBoard> {
   const now = args.now ?? new Date();
   const today = todayInZurich(now);
@@ -167,7 +194,7 @@ export async function fetchFleetBoard(
   const windowStart = args.windowStart ?? today;
   const windowDays = args.windowDays ?? DEFAULT_WINDOW_DAYS;
 
-  const [assetsResult, reservationsResult] = await Promise.all([
+  const [assetsResult, reservationsResult, remindersEnabled] = await Promise.all([
     admin
       .from("fleet_assets")
       .select(
@@ -179,9 +206,10 @@ export async function fetchFleetBoard(
     admin
       .from("fleet_reservations")
       .select(
-        "id, asset_id, user_id, start_date, end_date, status, purpose, destination, picked_up_at, returned_at, returned_on, created_at",
+        "id, asset_id, user_id, holder_label, source, start_date, end_date, status, purpose, destination, picked_up_at, returned_at, returned_on, created_at",
       )
       .order("start_date", { ascending: true }),
+    fetchRemindersEnabled(admin),
   ]);
 
   if (assetsResult.error) throw new Error(`fleet_assets read failed: ${assetsResult.error.message}`);
@@ -194,7 +222,7 @@ export async function fetchFleetBoard(
 
   // Resolve the names behind every user id we are about to render, in one call.
   const userIds = new Set<string>([args.viewerId]);
-  for (const row of reservations) userIds.add(row.user_id);
+  for (const row of reservations) if (row.user_id) userIds.add(row.user_id);
   for (const asset of assets) if (asset.current_holder_user_id) userIds.add(asset.current_holder_user_id);
   const names = await fetchUserNames(admin, [...userIds]);
 
@@ -204,6 +232,8 @@ export async function fetchFleetBoard(
   const scoreByUser = new Map<string, ReliabilityScore>();
   const spansByUser = new Map<string, ReservationSpan[]>();
   for (const row of reservations) {
+    // Unclaimed bookings belong to nobody yet, so they feed no one's score.
+    if (!row.user_id) continue;
     const list = spansByUser.get(row.user_id) ?? [];
     list.push(toSpan(row));
     spansByUser.set(row.user_id, list);
@@ -225,8 +255,8 @@ export async function fetchFleetBoard(
     const ordered = orderQueue(
       group.map((row) => ({
         reservation_id: row.id,
-        user_id: row.user_id,
-        score: scoreByUser.get(row.user_id)?.score ?? 0,
+        user_id: row.user_id ?? "",
+        score: row.user_id ? (scoreByUser.get(row.user_id)?.score ?? 0) : 0,
         requested_at: row.created_at,
       })),
     );
@@ -237,11 +267,15 @@ export async function fetchFleetBoard(
     const span = toSpan(row);
     return {
       ...row,
-      holder_name: names.get(row.user_id) ?? "Unknown",
+      holder_name: row.user_id
+        ? (names.get(row.user_id) ?? "Unknown")
+        : (row.holder_label ?? "Unassigned"),
       is_mine: row.user_id === args.viewerId,
       due_date: dueDateOf(span),
       days_overdue: daysOverdue(span, today),
       queue_position: queuePosition.get(row.id) ?? null,
+      unclaimed: row.user_id === null,
+      imported: row.source === "sheet_import",
     };
   });
 
@@ -276,6 +310,30 @@ export async function fetchFleetBoard(
 
   const mine = scoreByUser.get(args.viewerId) ?? computeReliability([], today);
 
+  // Names with live bookings and no account behind them. `mine` marks the ones
+  // this viewer is allowed to claim without an admin — see
+  // `holderLabelMatchesPerson`, which is deliberately strict about it.
+  const unclaimedCounts = new Map<string, { label: string; count: number }>();
+  for (const row of reservations) {
+    if (row.user_id) continue;
+    if (!isBlocking(row.status)) continue;
+    const label = row.holder_label?.trim();
+    if (!label) continue;
+    const key = normalizeHolderLabel(label);
+    const entry = unclaimedCounts.get(key) ?? { label, count: 0 };
+    entry.count += 1;
+    unclaimedCounts.set(key, entry);
+  }
+  const viewer = { name: args.viewerName ?? null, email: args.viewerEmail ?? null };
+  const unclaimedHolders = [...unclaimedCounts.values()]
+    .map((entry) => ({
+      label: entry.label,
+      count: entry.count,
+      mine: holderLabelMatchesPerson(entry.label, viewer),
+    }))
+    // The viewer's own names first, then the biggest piles of unaccounted material.
+    .sort((a, b) => Number(b.mine) - Number(a.mine) || b.count - a.count || a.label.localeCompare(b.label));
+
   return {
     today,
     window_start: windowStart,
@@ -284,7 +342,24 @@ export async function fetchFleetBoard(
     reservations: reservationViews,
     me: { ...mine, user_id: args.viewerId },
     standings,
+    unclaimed_holders: unclaimedHolders,
+    reminders_enabled: remindersEnabled,
   };
+}
+
+/**
+ * Whether return reminders are switched on. Defaults to FALSE when the settings
+ * row is missing or unreadable: the safe direction for something that mails
+ * people is silence.
+ */
+export async function fetchRemindersEnabled(admin: AnySupabase): Promise<boolean> {
+  const { data, error } = await admin
+    .from("fleet_settings")
+    .select("reminders_enabled")
+    .eq("id", true)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.reminders_enabled === true;
 }
 
 /** Resolves auth user ids to display names. Missing users degrade to "Unknown". */
@@ -315,7 +390,7 @@ export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise
 export async function fetchUserSpans(admin: AnySupabase, userId: string): Promise<ReservationSpan[]> {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_date, end_date, status, returned_on")
+    .select("id, asset_id, user_id, holder_label, source, start_date, end_date, status, returned_on")
     .eq("user_id", userId);
   if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
   return ((data ?? []) as FleetReservationRow[]).map(toSpan);
@@ -325,7 +400,7 @@ export async function fetchUserSpans(admin: AnySupabase, userId: string): Promis
 export async function fetchAssetSpans(admin: AnySupabase, assetId: string): Promise<ReservationSpan[]> {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_date, end_date, status, returned_on")
+    .select("id, asset_id, user_id, holder_label, source, start_date, end_date, status, returned_on")
     .eq("asset_id", assetId);
   if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
   return ((data ?? []) as FleetReservationRow[]).map(toSpan);

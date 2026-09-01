@@ -214,8 +214,8 @@ export function DayGrid({
                       title={
                         reservation
                           ? `${asset.name} · ${formatDay(day)} · ${reservation.holder_name}${
-                              reservation.destination ? ` · ${reservation.destination}` : ""
-                            }`
+                              reservation.unclaimed ? " (from the sheet — not claimed yet)" : ""
+                            }${reservation.destination ? ` · ${reservation.destination}` : ""}`
                           : `${asset.name} · ${formatDay(day)}`
                       }
                       aria-label={
@@ -231,6 +231,7 @@ export function DayGrid({
                         selected,
                         overdue,
                         mine: reservation?.is_mine ?? false,
+                        unclaimed: reservation?.unclaimed ?? false,
                         weekend: isWeekend(day),
                         isToday: day === today,
                       })}
@@ -261,10 +262,11 @@ function cellClass(args: {
   selected: boolean;
   overdue: boolean;
   mine: boolean;
+  unclaimed: boolean;
   weekend: boolean;
   isToday: boolean;
 }): string {
-  const { state, selected, overdue, mine, weekend, isToday } = args;
+  const { state, selected, overdue, mine, unclaimed, weekend, isToday } = args;
   // `relative` so a run's name label can overflow its own day cell.
   const base =
     "relative flex h-8 w-full items-center justify-center overflow-visible rounded-[3px] text-ink transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80";
@@ -273,9 +275,13 @@ function cellClass(args: {
   if (selected) return `${base}${todayRing} bg-accent/85 text-slate-900`;
   if (overdue) return `${base}${todayRing} bg-rose-500/35 text-danger hover:bg-rose-500/45`;
   if (state.reservation) {
-    return mine
-      ? `${base}${todayRing} bg-accent-deep/50 text-accent-soft hover:bg-accent-deep/65`
-      : `${base}${todayRing} bg-glass/20 text-ink-3 hover:bg-glass/28`;
+    if (mine) return `${base}${todayRing} bg-accent-deep/50 text-accent-soft hover:bg-accent-deep/65`;
+    // Held by a name from the sheet with no account behind it: hatched, so it
+    // reads as "someone has this, but nobody is accountable for it yet".
+    if (unclaimed) {
+      return `${base}${todayRing} bg-amber-400/15 text-warn hover:bg-amber-400/25 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(251,191,36,0.16)_3px,rgba(251,191,36,0.16)_6px)]`;
+    }
+    return `${base}${todayRing} bg-glass/20 text-ink-3 hover:bg-glass/28`;
   }
   if (state.inPast) return `${base}${todayRing} cursor-default bg-transparent opacity-25`;
   if (state.beyondHorizon) {

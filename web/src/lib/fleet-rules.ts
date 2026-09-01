@@ -147,10 +147,14 @@ export type ReservationStatus =
   | "returned"
   | "cancelled";
 
+/** Where a reservation came from. Imported rows are provisional — see `computeReliability`. */
+export type ReservationSource = "app" | "sheet_import";
+
 export type ReservationSpan = {
   id: string;
   asset_id: string;
-  user_id: string;
+  /** Null while the booking is filed under a name nobody has claimed yet. */
+  user_id: string | null;
   /** First booked day, `YYYY-MM-DD`. */
   start_date: string;
   /** Last booked day, inclusive — a one-day booking has start === end. */
@@ -158,6 +162,10 @@ export type ReservationSpan = {
   status: ReservationStatus;
   /** `YYYY-MM-DD` the material actually came back, set on check-in. */
   returned_on?: string | null;
+  /** Free-text holder, used when `user_id` is null. */
+  holder_label?: string | null;
+  /** Defaults to "app" when absent, so existing callers are unaffected. */
+  source?: ReservationSource;
 };
 
 /** Half-open comparison on inclusive day spans. */
@@ -234,7 +242,7 @@ export function checkReservation(args: {
   const candidate: ReservationSpan = {
     id: "candidate",
     asset_id: "",
-    user_id: "",
+    user_id: null,
     start_date: startDate,
     end_date: endDate,
     status: "reserved",
@@ -319,6 +327,12 @@ function overduePenalty(d: number): number {
  *   − overduePenalty(days)    per item currently out past its due date
  *
  * Someone with no completed reservations and nothing overdue is `PROVISIONAL_SCORE`.
+ *
+ * Rows with `source: "sheet_import"` are skipped entirely. They were written by
+ * a migration from the old spreadsheet, with a guessed due date and a holder
+ * who never agreed to it — penalising someone for one would make the score
+ * arbitrary on its very first day, which is how you teach people to distrust it.
+ * Imported rows still hold the asset on the calendar; they just judge nobody.
  */
 export function computeReliability(spans: ReservationSpan[], today: string): ReliabilityScore {
   let onTime = 0;
@@ -329,6 +343,7 @@ export function computeReliability(spans: ReservationSpan[], today: string): Rel
 
   for (const span of spans) {
     if (span.status === "cancelled") continue;
+    if (span.source === "sheet_import") continue;
 
     if (span.status === "returned") {
       const d = lateDays(span);
@@ -438,4 +453,62 @@ export function reminderFor(span: ReservationSpan, today: string): ReminderKind 
   if (delta < 0) return null;
   if (delta <= 7) return "overdue";
   return delta % 3 === 0 ? "overdue" : null;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Holder claims                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Normalises a holder label or a person's name for comparison: lower-cased,
+ * accent-folded, punctuation dropped, whitespace collapsed. So "Wataru",
+ * "wataru " and "Wataru." are one key, and the alias table stays
+ * case-insensitive without needing the citext extension.
+ */
+export function normalizeHolderLabel(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Whether `label` plausibly refers to the person identified by `name` / `email`.
+ *
+ * This gates self-service claiming, so it is deliberately strict: an exact
+ * normalised match against the full name, the first name, or the email local
+ * part. It will NOT match "APAC team", "FPS" or "US Office" to an individual —
+ * those are group labels, and an admin has to assign them on purpose.
+ *
+ * A false positive hands one person another person's booking history and the
+ * asset that goes with it, so when in doubt this returns false and the UI falls
+ * back to asking an admin.
+ */
+export function holderLabelMatchesPerson(
+  label: string,
+  person: { name?: string | null; email?: string | null },
+): boolean {
+  const target = normalizeHolderLabel(label);
+  if (!target) return false;
+
+  const candidates = new Set<string>();
+
+  // Anything shorter than three characters is too weak to identify a person on
+  // its own ("Jo", "Al", an initial), so it never becomes a match candidate.
+  const MIN_CANDIDATE = 3;
+  const addNameForms = (raw: string) => {
+    const normalized = normalizeHolderLabel(raw);
+    if (normalized.length >= MIN_CANDIDATE) candidates.add(normalized);
+    const first = normalized.split(" ")[0];
+    if (first && first.length >= MIN_CANDIDATE) candidates.add(first);
+  };
+
+  if (person.name) addNameForms(person.name);
+  if (person.email) addNameForms(person.email.split("@")[0] ?? "");
+
+  return candidates.has(target);
 }

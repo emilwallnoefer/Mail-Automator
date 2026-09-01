@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { guardAdmin } from "@/lib/admin-guard";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import { isResendConfigured, sendEmailViaResend } from "@/lib/email/resend";
-import { displayNameFor, todayInZurich } from "@/lib/fleet-queries";
+import { displayNameFor, fetchRemindersEnabled, todayInZurich } from "@/lib/fleet-queries";
 import {
   computeReliability,
   dueDateOf,
@@ -13,6 +13,7 @@ import {
   formatSpan,
   reminderFor,
   type ReminderKind,
+  type ReservationSource,
   type ReservationSpan,
   type ReservationStatus,
 } from "@/lib/fleet-rules";
@@ -44,12 +45,26 @@ export const dynamic = "force-dynamic";
 type LiveReservation = {
   id: string;
   asset_id: string;
-  user_id: string;
+  /** Null while the booking is filed under a name with no account behind it. */
+  user_id: string | null;
   start_date: string;
   end_date: string;
   status: ReservationStatus;
   destination: string | null;
   returned_on: string | null;
+  holder_label: string | null;
+};
+
+/** The narrower row shape used to recompute each recipient's reliability. */
+type ScoringReservation = {
+  id: string;
+  asset_id: string;
+  user_id: string | null;
+  start_date: string;
+  end_date: string;
+  status: ReservationStatus;
+  returned_on: string | null;
+  source: ReservationSource;
 };
 
 type Outcome = {
@@ -57,7 +72,7 @@ type Outcome = {
   asset: string;
   email: string;
   kind: ReminderKind;
-  status: "sent" | "failed" | "already_sent" | "skipped_dry_run" | "no_email";
+  status: "sent" | "failed" | "already_sent" | "skipped_dry_run" | "no_email" | "unclaimed";
   error?: string;
 };
 
@@ -209,10 +224,26 @@ export async function GET(request: Request) {
   const today = todayInZurich();
   const admin = createAdminClient();
 
+  // Global hold. Reminders ship switched OFF: the bookings carried over from the
+  // spreadsheet have guessed due dates, and mailing people about those on day
+  // one teaches everyone to ignore the reminder before it ever carries a real
+  // one. An admin turns it on from the Fleet panel once the data is trusted.
+  // `?preview=` still renders, so the mail can be reviewed while paused.
+  const remindersEnabled = await fetchRemindersEnabled(admin);
+  const previewOnly = url.searchParams.get("preview");
+  if (!remindersEnabled && previewOnly !== "html" && previewOnly !== "text") {
+    return NextResponse.json({
+      ok: true,
+      skipped: "reminders_disabled",
+      today,
+      hint: "Turn reminders on in the Fleet panel (admin), or POST /api/fleet {action:'set_reminders',enabled:true}.",
+    });
+  }
+
   // Only bookings that can still be late. `returned` and `cancelled` are done.
   const { data: liveRows, error: liveError } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_date, end_date, status, destination, returned_on")
+    .select("id, asset_id, user_id, holder_label, start_date, end_date, status, destination, returned_on")
     .in("status", ["reserved", "picked_up"]);
   if (liveError) {
     console.error("fleet reminder: reservations read failed", liveError.message);
@@ -231,6 +262,7 @@ export async function GET(request: Request) {
         end_date: row.end_date,
         status: row.status,
         returned_on: row.returned_on,
+        holder_label: row.holder_label,
       };
       return { row, span, kind: reminderFor(span, today) };
     })
@@ -273,8 +305,9 @@ export async function GET(request: Request) {
   const allSpansByUser = new Map<string, ReservationSpan[]>();
   const { data: allRows } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_date, end_date, status, returned_on");
-  for (const row of (allRows ?? []) as LiveReservation[]) {
+    .select("id, asset_id, user_id, start_date, end_date, status, returned_on, source");
+  for (const row of (allRows ?? []) as ScoringReservation[]) {
+    if (!row.user_id) continue;
     const list = allSpansByUser.get(row.user_id) ?? [];
     list.push({
       id: row.id,
@@ -284,17 +317,27 @@ export async function GET(request: Request) {
       end_date: row.end_date,
       status: row.status,
       returned_on: row.returned_on,
+      source: row.source,
     });
     allSpansByUser.set(row.user_id, list);
   }
 
   const dashboardUrl = `${appBaseUrl(request)}/dashboard?module=fleet`;
 
+  /** Display name for a reservation's holder, account-backed or not. */
+  function holderNameOf(row: LiveReservation): string {
+    if (row.user_id) return users.get(row.user_id)?.name ?? "there";
+    return row.holder_label ?? "there";
+  }
+
   function composeFor(entry: (typeof due)[number], recipientName: string) {
     const asset = assets.get(entry.row.asset_id);
     const assetName = asset?.name ?? "Fleet material";
     const assetLabel = asset?.model ? `${assetName} (${asset.model})` : assetName;
-    const score = computeReliability(allSpansByUser.get(entry.row.user_id) ?? [], today).score;
+    const score = computeReliability(
+      entry.row.user_id ? (allSpansByUser.get(entry.row.user_id) ?? []) : [],
+      today,
+    ).score;
     return buildEmail({
       name: recipientName,
       assetName,
@@ -313,7 +356,7 @@ export async function GET(request: Request) {
   if (isPreview) {
     const sample = due[0];
     const built = sample
-      ? composeFor(sample, users.get(sample.row.user_id)?.name ?? "there")
+      ? composeFor(sample, holderNameOf(sample.row))
       : buildEmail({
           name: "Sample",
           assetName: "E3-SVA-330",
@@ -362,8 +405,23 @@ export async function GET(request: Request) {
   const outcomes: Outcome[] = [];
 
   for (const entry of due) {
-    const recipient = users.get(entry.row.user_id);
     const assetName = assets.get(entry.row.asset_id)?.name ?? "Fleet material";
+
+    // A booking still filed under a name has nobody to mail. It stays visible on
+    // the calendar and in the admin's unclaimed list; chasing it is a person
+    // problem, not an email one.
+    if (!entry.row.user_id) {
+      outcomes.push({
+        reservation_id: entry.row.id,
+        asset: assetName,
+        email: "",
+        kind: entry.kind,
+        status: "unclaimed",
+      });
+      continue;
+    }
+
+    const recipient = users.get(entry.row.user_id);
 
     if (!recipient?.email) {
       outcomes.push({

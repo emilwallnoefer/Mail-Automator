@@ -90,7 +90,8 @@ export function buildDemoBoard(args: {
   const raw: Array<{
     id: string;
     asset: number;
-    user: string;
+    /** Null for a booking that is still filed under a name only. */
+    user: string | null;
     name: string;
     start: string;
     end: string;
@@ -98,6 +99,8 @@ export function buildDemoBoard(args: {
     destination: string | null;
     /** Days after the due date the item actually came back. */
     returnedLate?: number;
+    /** Provisional row from the spreadsheet import. */
+    imported?: boolean;
   }> = [
     { id: "demo-res-1", asset: 0, user: PEOPLE[0].id, name: PEOPLE[0].name, start: addDays(today, -9), end: addDays(today, -4), status: "picked_up", destination: "Refinery Antwerp" },
     { id: "demo-res-2", asset: 1, user: viewerId, name: viewerName, start: addDays(today, -1), end: addDays(today, 2), status: "picked_up", destination: "Basel site visit" },
@@ -109,6 +112,9 @@ export function buildDemoBoard(args: {
     { id: "demo-res-7", asset: 1, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addDays(today, 14), end: addDays(today, 16), status: "waitlisted", destination: "Lyon demo" },
     { id: "demo-res-8", asset: 3, user: viewerId, name: viewerName, start: addDays(today, -40), end: addDays(today, -38), status: "returned", destination: "Lyon" },
     { id: "demo-res-9", asset: 4, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addDays(today, -30), end: addDays(today, -27), status: "returned", destination: "Milan", returnedLate: 6 },
+    // Carried over from the sheet: filed under a name, no account behind it.
+    { id: "demo-res-10", asset: 2, user: null, name: "Philipp", start: addDays(today, -2), end: addDays(today, 28), status: "picked_up", destination: "US Office", imported: true },
+    { id: "demo-res-11", asset: 8, user: null, name: "APAC team", start: addDays(today, -2), end: addDays(today, 28), status: "picked_up", destination: "Bordeaux", imported: true },
   ];
 
   const spansByUser = new Map<string, ReservationSpan[]>();
@@ -118,19 +124,25 @@ export function buildDemoBoard(args: {
       id: row.id,
       asset_id: assetId(row.asset),
       user_id: row.user,
+      holder_label: row.user ? null : row.name,
+      source: row.imported ? ("sheet_import" as const) : ("app" as const),
       start_date: row.start,
       end_date: row.end,
       status: row.status,
       returned_on: row.status === "returned" ? addDays(due, row.returnedLate ?? 0) : null,
     };
-    const list = spansByUser.get(row.user) ?? [];
-    list.push(span);
-    spansByUser.set(row.user, list);
+    if (row.user) {
+      const list = spansByUser.get(row.user) ?? [];
+      list.push(span);
+      spansByUser.set(row.user, list);
+    }
 
     return {
       id: row.id,
       asset_id: span.asset_id,
       user_id: row.user,
+      holder_label: row.user ? null : row.name,
+      source: row.imported ? ("sheet_import" as const) : ("app" as const),
       start_date: row.start,
       end_date: row.end,
       status: row.status,
@@ -145,6 +157,8 @@ export function buildDemoBoard(args: {
       due_date: due,
       days_overdue: daysOverdue(span, today),
       queue_position: row.status === "waitlisted" ? 1 : null,
+      unclaimed: row.user === null,
+      imported: row.imported === true,
     };
   });
 
@@ -165,5 +179,10 @@ export function buildDemoBoard(args: {
     reservations,
     me: { ...computeReliability(spansByUser.get(viewerId) ?? [], today), user_id: viewerId },
     standings,
+    unclaimed_holders: [
+      { label: "Philipp", count: 1, mine: false },
+      { label: "APAC team", count: 1, mine: false },
+    ],
+    reminders_enabled: false,
   };
 }

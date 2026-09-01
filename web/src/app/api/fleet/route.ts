@@ -6,13 +6,21 @@ import { isAdminEmail } from "@/lib/admin";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import {
   DEFAULT_WINDOW_DAYS,
+  displayNameFor,
   fetchAssetSpans,
   fetchFleetBoard,
   fetchReliability,
   recordAssetEvent,
   todayInZurich,
 } from "@/lib/fleet-queries";
-import { checkReservation, isBlocking, parseDateKey, toDateKey } from "@/lib/fleet-rules";
+import {
+  checkReservation,
+  holderLabelMatchesPerson,
+  isBlocking,
+  normalizeHolderLabel,
+  parseDateKey,
+  toDateKey,
+} from "@/lib/fleet-rules";
 import { buildDemoBoard } from "@/lib/fleet-demo";
 
 export const runtime = "nodejs";
@@ -76,6 +84,19 @@ const confirmSchema = z.object({
   asset_id: z.string().uuid(),
 });
 
+const claimHolderSchema = z.object({
+  action: z.literal("claim_holder"),
+  /** The free-text holder name to take ownership of. */
+  label: z.string().trim().min(1).max(160),
+  /** Admin only: assign the name to somebody else instead of yourself. */
+  user_id: z.string().uuid().optional(),
+});
+
+const setRemindersSchema = z.object({
+  action: z.literal("set_reminders"),
+  enabled: z.boolean(),
+});
+
 const setStatusSchema = z.object({
   action: z.literal("set_status"),
   asset_id: z.string().uuid(),
@@ -91,9 +112,11 @@ const postSchema = z.discriminatedUnion("action", [
   moveSchema,
   confirmSchema,
   setStatusSchema,
+  claimHolderSchema,
+  setRemindersSchema,
 ]);
 
-type Viewer = { id: string; email: string | null; isAdmin: boolean };
+type Viewer = { id: string; email: string | null; name: string; isAdmin: boolean };
 
 async function resolveViewer(): Promise<Viewer | null> {
   const supabase = await createClient();
@@ -101,7 +124,15 @@ async function resolveViewer(): Promise<Viewer | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  return { id: user.id, email: user.email ?? null, isAdmin: isAdminEmail(user.email ?? null) };
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    name: displayNameFor({
+      email: user.email,
+      user_metadata: (user.user_metadata ?? null) as Record<string, unknown> | null,
+    }),
+    isAdmin: isAdminEmail(user.email ?? null),
+  };
 }
 
 export async function GET(request: Request) {
@@ -127,6 +158,8 @@ export async function GET(request: Request) {
   try {
     const board = await fetchFleetBoard(createAdminClient(), {
       viewerId: viewer.id,
+      viewerName: viewer.name,
+      viewerEmail: viewer.email,
       windowStart,
       windowDays,
     });
@@ -218,6 +251,10 @@ export async function POST(request: Request) {
         return await handleConfirmLocation(admin, viewer, payload);
       case "set_status":
         return await handleSetStatus(admin, viewer, payload);
+      case "claim_holder":
+        return await handleClaimHolder(admin, viewer, payload);
+      case "set_reminders":
+        return await handleSetReminders(admin, viewer, payload);
     }
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
@@ -633,4 +670,125 @@ async function handleSetStatus(admin: Admin, viewer: Viewer, payload: z.infer<ty
   });
 
   return NextResponse.json({ ok: true });
+}
+
+
+/**
+ * Takes ownership of every live booking filed under a free-text holder name.
+ *
+ * This is how the spreadsheet import resolves itself: the material was recorded
+ * as "out with Wataru" before Wataru had an account, and when he signs in he
+ * claims the name and those bookings become his — check-in, reminders and all.
+ *
+ * Authorisation is the whole story here, because claiming a name hands you
+ * somebody's material and their booking history:
+ *
+ *   - an admin may map any label to any account;
+ *   - anyone else may only claim a label that matches THEIR OWN name or email
+ *     local part, per `holderLabelMatchesPerson`, which refuses group labels
+ *     ("APAC team", "FPS") outright.
+ */
+async function handleClaimHolder(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof claimHolderSchema>,
+) {
+  const label = payload.label.trim();
+  const normalized = normalizeHolderLabel(label);
+  if (!normalized) {
+    return NextResponse.json({ error: "That name is empty." }, { status: 400 });
+  }
+
+  const targetUserId = payload.user_id ?? viewer.id;
+
+  if (targetUserId !== viewer.id && !viewer.isAdmin) {
+    return NextResponse.json({ error: "Only admins can assign a name to someone else." }, { status: 403 });
+  }
+  if (!viewer.isAdmin && !holderLabelMatchesPerson(label, { name: viewer.name, email: viewer.email })) {
+    return NextResponse.json(
+      {
+        error: `"${label}" does not match your name, so an admin has to assign it. This is deliberate — claiming a name takes over that person's material.`,
+      },
+      { status: 403 },
+    );
+  }
+
+  // Match on the normalised label so "Wataru", "wataru" and "Wataru." are one
+  // name. Done in JS rather than SQL because normalisation (accent folding,
+  // punctuation) lives in fleet-rules and must not be reimplemented in Postgres.
+  const { data: candidates, error: readError } = await admin
+    .from("fleet_reservations")
+    .select("id, holder_label, asset_id")
+    .is("user_id", null);
+  if (readError) throw new Error(readError.message);
+
+  const matching = (candidates ?? []).filter(
+    (row) => row.holder_label && normalizeHolderLabel(row.holder_label) === normalized,
+  );
+
+  if (matching.length > 0) {
+    const { error: updateError } = await admin
+      .from("fleet_reservations")
+      .update({ user_id: targetUserId })
+      .in(
+        "id",
+        matching.map((row) => row.id),
+      );
+    if (updateError) throw new Error(updateError.message);
+
+    // The asset's own holder pointer should follow the booking.
+    for (const row of matching) {
+      await admin
+        .from("fleet_assets")
+        .update({ current_holder_user_id: targetUserId })
+        .eq("id", row.asset_id)
+        .eq("status", "out");
+      await recordAssetEvent(admin, {
+        asset_id: row.asset_id,
+        reservation_id: row.id,
+        kind: "note",
+        actor_user_id: viewer.id,
+        note: `Holder "${label}" claimed`,
+      });
+    }
+  }
+
+  // Remember the mapping so a later import of the same name resolves directly.
+  const { error: aliasError } = await admin
+    .from("fleet_holder_aliases")
+    .upsert(
+      { label: normalized, user_id: targetUserId, claimed_by: viewer.id, claimed_at: new Date().toISOString() },
+      { onConflict: "label" },
+    );
+  if (aliasError) throw new Error(aliasError.message);
+
+  return NextResponse.json({
+    ok: true,
+    claimed: matching.length,
+    message:
+      matching.length > 0
+        ? `${matching.length} booking${matching.length === 1 ? "" : "s"} filed under "${label}" ${
+            matching.length === 1 ? "is" : "are"
+          } now yours.`
+        : `"${label}" is linked, but there was nothing open under that name.`,
+  });
+}
+
+/** Global on/off for return reminders. Admin only — it decides whether the app mails people. */
+async function handleSetReminders(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof setRemindersSchema>,
+) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json({ error: "Only admins can change the reminder setting." }, { status: 403 });
+  }
+  const { error } = await admin
+    .from("fleet_settings")
+    .upsert({ id: true, reminders_enabled: payload.enabled }, { onConflict: "id" });
+  if (error) throw new Error(error.message);
+  return NextResponse.json({
+    ok: true,
+    message: payload.enabled ? "Return reminders are now on." : "Return reminders are paused.",
+  });
 }

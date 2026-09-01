@@ -33,7 +33,7 @@ const WINDOW_DAYS = 28;
 /** How far the ← / → buttons jump. */
 const WINDOW_STEP_DAYS = 14;
 
-type Tab = "calendar" | "material" | "mine" | "standings";
+type Tab = "calendar" | "material" | "mine" | "unclaimed" | "standings";
 
 export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardResponse | null }) {
   const [board, setBoard] = useState<FleetBoardResponse | null>(initialBoard);
@@ -112,6 +112,10 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   );
 
   const staleCount = useMemo(() => assets.filter((a) => a.location_stale).length, [assets]);
+
+  const unclaimedHolders = useMemo(() => board?.unclaimed_holders ?? [], [board]);
+  /** Names the viewer is allowed to claim for themselves, without an admin. */
+  const claimableByMe = useMemo(() => unclaimedHolders.filter((h) => h.mine), [unclaimedHolders]);
 
   const selectedAsset = selection ? (assets.find((a) => a.id === selection.assetId) ?? null) : null;
 
@@ -216,6 +220,53 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         </Notice>
       ) : null}
 
+      {claimableByMe.length > 0 ? (
+        <Notice tone="warn">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {claimableByMe.map((h) => `"${h.label}"`).join(", ")} —{" "}
+              {claimableByMe.reduce((n, h) => n + h.count, 0)} item
+              {claimableByMe.reduce((n, h) => n + h.count, 0) === 1 ? " is" : "s are"} recorded under that name
+              from the old sheet. Is that you?
+            </span>
+            <span className="flex gap-1.5">
+              {claimableByMe.map((h) => (
+                <Button
+                  key={h.label}
+                  size="xs"
+                  variant="accent"
+                  disabled={busy}
+                  onClick={() => void post({ action: "claim_holder", label: h.label })}
+                >
+                  Yes, {h.label} is me
+                </Button>
+              ))}
+            </span>
+          </div>
+        </Notice>
+      ) : null}
+
+      {board && !board.reminders_enabled ? (
+        <Notice tone="neutral">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Return reminders are <span className="font-medium">paused</span>. Nothing is emailed while the
+              imported bookings are still being sorted out.
+            </span>
+            {board.is_admin ? (
+              <Button
+                size="xs"
+                variant="glass"
+                disabled={busy}
+                onClick={() => void post({ action: "set_reminders", enabled: true })}
+              >
+                Turn reminders on
+              </Button>
+            ) : null}
+          </div>
+        </Notice>
+      ) : null}
+
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {notice ? <Notice tone={notice.tone}>{notice.text}</Notice> : null}
 
@@ -225,6 +276,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             ["calendar", "Calendar"],
             ["material", "Material"],
             ["mine", `My material${myReservations.length ? ` (${myReservations.length})` : ""}`],
+            ["unclaimed", `Unclaimed${unclaimedHolders.length ? ` (${unclaimedHolders.length})` : ""}`],
             ["standings", "Standings"],
           ] as Array<[Tab, string]>
         ).map(([key, label]) => (
@@ -307,6 +359,10 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             <LegendSwatch className="bg-glass/[0.07]" label="Free — click to book" />
             <LegendSwatch className="bg-accent-deep/45" label="Yours" />
             <LegendSwatch className="bg-glass/20" label="Someone else" />
+            <LegendSwatch
+              className="bg-amber-400/15 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(251,191,36,0.3)_3px,rgba(251,191,36,0.3)_6px)]"
+              label="From the sheet, unclaimed"
+            />
             <LegendSwatch className="bg-rose-500/30" label="Overdue" />
             <LegendSwatch
               className="bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.08)_3px,rgba(255,255,255,0.08)_6px)]"
@@ -386,6 +442,17 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
           }
           onCancel={(id) => void post({ action: "cancel", reservation_id: id })}
           score={board?.me ?? null}
+        />
+      ) : null}
+
+      {tab === "unclaimed" ? (
+        <UnclaimedHolders
+          holders={unclaimedHolders}
+          reservations={reservations}
+          assets={assets}
+          isAdmin={board?.is_admin ?? false}
+          busy={busy}
+          onClaim={(label) => void post({ action: "claim_holder", label })}
         />
       ) : null}
 
@@ -617,6 +684,11 @@ function MyMaterial({
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs font-medium text-ink">{asset?.name ?? "Material"}</span>
+                    {reservation.imported ? (
+                      <Badge tone="neutral" title="Carried over from the fleet sheet — does not affect your score">
+                        From sheet
+                      </Badge>
+                    ) : null}
                     <Badge tone={overdue ? "danger" : reservation.status === "picked_up" ? "accent" : "neutral"}>
                       {overdue
                         ? `${reservation.days_overdue}d overdue`
@@ -796,6 +868,95 @@ function ReservationDetail({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Material the old sheet says is out, filed under a name rather than an account.
+ *
+ * These are the units nobody is currently accountable for: they hold a slot on
+ * the calendar, but until someone claims the name there is no address to remind
+ * and no score to affect. Closing this list is the migration's last mile.
+ */
+function UnclaimedHolders({
+  holders,
+  reservations,
+  assets,
+  isAdmin,
+  busy,
+  onClaim,
+}: {
+  holders: Array<{ label: string; count: number; mine: boolean }>;
+  reservations: FleetReservation[];
+  assets: FleetAsset[];
+  isAdmin: boolean;
+  busy: boolean;
+  onClaim: (label: string) => void;
+}) {
+  if (holders.length === 0) {
+    return (
+      <p className="text-xs text-ink-4">
+        Every booking belongs to an account. Nothing left to claim.
+      </p>
+    );
+  }
+
+  const itemsFor = (label: string) =>
+    reservations
+      .filter((r) => r.unclaimed && r.holder_label === label)
+      .map((r) => assets.find((a) => a.id === r.asset_id)?.name ?? "Material");
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs leading-relaxed text-ink-4">
+        Carried over from the fleet sheet, which recorded a name rather than an account. Claiming a name makes those
+        bookings yours — you can then check the material back in, and it starts counting toward your reliability.
+        Until then nothing is emailed and no score moves.
+      </p>
+      <ul className="space-y-1.5">
+        {holders.map((holder) => {
+          const items = itemsFor(holder.label);
+          return (
+            <li
+              key={holder.label}
+              className={`rounded-lg border px-3 py-2.5 ${
+                holder.mine ? "border-accent/40 bg-accent-deep/12" : "border-glass/10 bg-glass/[0.04]"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-medium text-ink">{holder.label}</span>
+                    <Badge tone="neutral">
+                      {holder.count} item{holder.count === 1 ? "" : "s"}
+                    </Badge>
+                    {holder.mine ? <Badge tone="accent">Looks like you</Badge> : null}
+                  </div>
+                  {items.length > 0 ? (
+                    <p className="mt-1 truncate text-[11px] text-ink-5">{items.join(", ")}</p>
+                  ) : null}
+                </div>
+                {holder.mine || isAdmin ? (
+                  <Button size="xs" variant="glass" disabled={busy} onClick={() => onClaim(holder.label)}>
+                    {holder.mine ? "This is me" : "Assign to me"}
+                  </Button>
+                ) : (
+                  <span className="text-[11px] text-ink-5">Admin assigns</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {!isAdmin ? (
+        <p className="text-[11px] text-ink-5">
+          Only names matching your own can be self-claimed. Group labels like &ldquo;APAC team&rdquo; need an admin.
+        </p>
+      ) : null}
     </div>
   );
 }
