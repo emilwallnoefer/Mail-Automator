@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, Input, Notice } from "@/components/ui";
-import { addDays, formatDayLong, formatSpan, spanLength, toDateKey } from "@/lib/fleet-rules";
+import { addDays, formatDayLong, formatSpan, isBookable, spanLength, toDateKey } from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
 import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
 import { DayGrid, type DaySelection } from "./day-grid";
@@ -33,7 +33,7 @@ const WINDOW_DAYS = 28;
 /** How far the ← / → buttons jump. */
 const WINDOW_STEP_DAYS = 14;
 
-type Tab = "calendar" | "material" | "mine" | "unclaimed" | "standings";
+type Tab = "calendar" | "assigned" | "material" | "mine" | "unclaimed" | "standings";
 
 export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardResponse | null }) {
   const [board, setBoard] = useState<FleetBoardResponse | null>(initialBoard);
@@ -97,6 +97,13 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         .some((field) => String(field).toLowerCase().includes(needle));
     });
   }, [assets, categoryFilter, search]);
+
+  // The calendar is for material you can actually take: the shared pool, minus
+  // anything retired or in repair. Units assigned to a person, region or
+  // customer are fixed — a row of unbookable cells for each of them buried the
+  // handful that are genuinely free, which is the question this screen answers.
+  const bookableAssets = useMemo(() => visibleAssets.filter(isBookable), [visibleAssets]);
+  const assignedAssets = useMemo(() => assets.filter((asset) => !asset.pooled), [assets]);
 
   const myReservations = useMemo(
     () =>
@@ -273,7 +280,8 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
       <nav className="flex flex-wrap gap-1.5" role="tablist" aria-label="Fleet sections">
         {(
           [
-            ["calendar", "Calendar"],
+            ["calendar", `Calendar${bookableAssets.length ? ` (${bookableAssets.length})` : ""}`],
+            ["assigned", `Assigned${assignedAssets.length ? ` (${assignedAssets.length})` : ""}`],
             ["material", "Material"],
             ["mine", `My material${myReservations.length ? ` (${myReservations.length})` : ""}`],
             ["unclaimed", `Unclaimed${unclaimedHolders.length ? ` (${unclaimedHolders.length})` : ""}`],
@@ -344,7 +352,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
           </div>
 
           <DayGrid
-            assets={visibleAssets}
+            assets={bookableAssets}
             reservations={reservations}
             windowStart={windowStart}
             windowDays={WINDOW_DAYS}
@@ -354,6 +362,21 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             onSelect={setSelection}
             onOpenReservation={setDetail}
           />
+
+          {assignedAssets.length > 0 ? (
+            <p className="text-[11px] text-ink-5">
+              Showing the {bookableAssets.length} unit{bookableAssets.length === 1 ? "" : "s"} in the shared pool.{" "}
+              {assignedAssets.length} assigned unit{assignedAssets.length === 1 ? " is" : "s are"} in the{" "}
+              <button
+                type="button"
+                className="underline decoration-dotted underline-offset-2 hover:text-ink-3"
+                onClick={() => setTab("assigned")}
+              >
+                Assigned
+              </button>{" "}
+              tab.
+            </p>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-5">
             <LegendSwatch className="bg-glass/[0.07]" label="Free — click to book" />
@@ -442,6 +465,20 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
           }
           onCancel={(id) => void post({ action: "cancel", reservation_id: id })}
           score={board?.me ?? null}
+        />
+      ) : null}
+
+      {tab === "assigned" ? (
+        <AssignedMaterial
+          assets={assignedAssets}
+          reservations={reservations}
+          isAdmin={board?.is_admin ?? false}
+          busy={busy}
+          onReturnToPool={(assetId, location) =>
+            void post({ action: "return_to_pool", asset_id: assetId, location: location || undefined })
+          }
+          onClaim={(label) => void post({ action: "claim_holder", label })}
+          unclaimedHolders={unclaimedHolders}
         />
       ) : null}
 
@@ -957,6 +994,172 @@ function UnclaimedHolders({
           Only names matching your own can be self-claimed. Group labels like &ldquo;APAC team&rdquo; need an admin.
         </p>
       ) : null}
+    </div>
+  );
+}
+
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Material that is not part of the shared pool: it lives with a person, a
+ * region or a customer, and is not up for booking.
+ *
+ * Kept out of the calendar entirely — 22 rows of permanently-unbookable cells
+ * made it hard to see the 16 units that are actually free. Here they are a
+ * plain list answering the only questions worth asking about them: who has it,
+ * where is it, and is that still true.
+ */
+function AssignedMaterial({
+  assets,
+  reservations,
+  isAdmin,
+  busy,
+  onReturnToPool,
+  onClaim,
+  unclaimedHolders,
+}: {
+  assets: FleetAsset[];
+  reservations: FleetReservation[];
+  isAdmin: boolean;
+  busy: boolean;
+  onReturnToPool: (assetId: string, location: string) => void;
+  onClaim: (label: string) => void;
+  unclaimedHolders: Array<{ label: string; count: number; mine: boolean }>;
+}) {
+  const [returningId, setReturningId] = useState<string | null>(null);
+  const [returnTo, setReturnTo] = useState("");
+
+  const claimableLabels = useMemo(
+    () => new Set(unclaimedHolders.filter((h) => h.mine).map((h) => h.label)),
+    [unclaimedHolders],
+  );
+
+  // Holder first, so everything with one person lands together.
+  const grouped = useMemo(() => {
+    const map = new Map<string, FleetAsset[]>();
+    for (const asset of assets) {
+      const key = asset.holder_name?.trim() || "Holder unknown";
+      const list = map.get(key) ?? [];
+      list.push(asset);
+      map.set(key, list);
+    }
+    return [...map.entries()].sort((a, b) => {
+      // "Holder unknown" last: it is a chase list, not an assignment.
+      if (a[0] === "Holder unknown") return 1;
+      if (b[0] === "Holder unknown") return -1;
+      return b[1].length - a[1].length || a[0].localeCompare(b[0]);
+    });
+  }, [assets]);
+
+  if (assets.length === 0) {
+    return <p className="text-xs text-ink-4">Nothing is assigned — the whole fleet is bookable.</p>;
+  }
+
+  const unknownCount = assets.filter((a) => !a.holder_name?.trim()).length;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs leading-relaxed text-ink-4">
+        Fixed assignments — with a person, a region or a customer. These are not in the booking calendar because
+        nobody can book them. Returning one to the pool makes it bookable again.
+      </p>
+
+      {unknownCount > 0 ? (
+        <Notice tone="warn">
+          {unknownCount} assigned unit{unknownCount === 1 ? "" : "s"} {unknownCount === 1 ? "has" : "have"} no
+          holder recorded. Those are the ones worth chasing — the sheet only had a region.
+        </Notice>
+      ) : null}
+
+      {grouped.map(([holder, list]) => (
+        <section key={holder} className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
+              {holder} ({list.length})
+            </h3>
+            {claimableLabels.has(holder) ? (
+              <Button size="xs" variant="accent" disabled={busy} onClick={() => onClaim(holder)}>
+                This is me
+              </Button>
+            ) : null}
+          </div>
+          <ul className="space-y-1.5">
+            {list.map((asset) => (
+              <li key={asset.id} className="rounded-lg border border-glass/10 bg-glass/[0.04] px-3 py-2.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs font-medium text-ink">{asset.name}</span>
+                      <Badge tone={statusTone(asset.status)}>{STATUS_LABEL[asset.status]}</Badge>
+                      {asset.location_stale ? <Badge tone="warn">Unconfirmed</Badge> : null}
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-ink-5">
+                      {asset.serial_number ? `${asset.serial_number} · ` : ""}
+                      {asset.model ?? "—"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-ink-4">
+                      <span className="text-ink-3">{asset.current_location ?? "Location unknown"}</span>
+                      {asset.location_age_days != null
+                        ? ` · confirmed ${asset.location_age_days}d ago`
+                        : " · never confirmed"}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button
+                      size="xs"
+                      variant="glass-quiet"
+                      disabled={busy}
+                      onClick={() => {
+                        setReturningId(returningId === asset.id ? null : asset.id);
+                        setReturnTo(asset.home_location ?? "");
+                      }}
+                      title="Make this bookable again"
+                    >
+                      Return to pool
+                    </Button>
+                  </div>
+                </div>
+
+                {returningId === asset.id ? (
+                  <div className="mt-2 flex gap-1.5">
+                    <Input
+                      value={returnTo}
+                      onChange={(event) => setReturnTo(event.target.value)}
+                      placeholder="Where is it now?"
+                      className="text-xs"
+                      aria-label={`Location for ${asset.name}`}
+                    />
+                    <Button
+                      size="xs"
+                      variant="accent"
+                      disabled={busy}
+                      onClick={() => {
+                        onReturnToPool(asset.id, returnTo.trim());
+                        setReturningId(null);
+                      }}
+                    >
+                      Back in pool
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      {!isAdmin ? null : (
+        <p className="text-[11px] text-ink-5">
+          Admin: assign a pooled unit with <code>POST /api/fleet {"{"}action:&quot;assign&quot;{"}"}</code>.
+        </p>
+      )}
+
+      <p className="text-[11px] text-ink-5">
+        Reservations recorded against these units: {reservations.filter((r) => !r.is_mine && r.unclaimed).length}{" "}
+        unclaimed.
+      </p>
     </div>
   );
 }

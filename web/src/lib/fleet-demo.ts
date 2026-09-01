@@ -79,6 +79,8 @@ export function buildDemoBoard(args: {
         : new Date(Date.parse(`${today}T00:00:00Z`) - asset.confirmedDaysAgo * 86_400_000).toISOString(),
     notes: null,
     active: true,
+    // Mirrors the backfill: anything already out is an assignment, not pool stock.
+    pooled: asset.status !== "out",
     holder_name: asset.status === "out" ? "On mission" : null,
     location_age_days: asset.confirmedDaysAgo,
     location_stale: asset.confirmedDaysAgo == null || asset.confirmedDaysAgo > 42,

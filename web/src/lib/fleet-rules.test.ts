@@ -12,6 +12,7 @@ import {
   formatSpan,
   formatWeekday,
   holderLabelMatchesPerson,
+  isBookable,
   isWeekend,
   isoWeekNumber,
   lateDays,
@@ -504,5 +505,26 @@ describe("holder label matching", () => {
     const person = { name: "Charles Rey", email: "charles@x.com" };
     expect(holderLabelMatchesPerson("", person)).toBe(false);
     expect(holderLabelMatchesPerson("  -- ", person)).toBe(false);
+  });
+});
+
+
+describe("what belongs in the booking calendar", () => {
+  it("includes a pooled unit that is free or merely booked", () => {
+    expect(isBookable({ pooled: true, status: "available" })).toBe(true);
+    expect(isBookable({ pooled: true, status: "reserved" })).toBe(true);
+    // Out on a booking is still pool stock — the calendar is how you see when
+    // it comes back.
+    expect(isBookable({ pooled: true, status: "out" })).toBe(true);
+  });
+
+  it("excludes an assigned unit whatever its status", () => {
+    expect(isBookable({ pooled: false, status: "available" })).toBe(false);
+    expect(isBookable({ pooled: false, status: "out" })).toBe(false);
+  });
+
+  it("excludes pooled units nobody could take", () => {
+    expect(isBookable({ pooled: true, status: "in_repair" })).toBe(false);
+    expect(isBookable({ pooled: true, status: "retired" })).toBe(false);
   });
 });

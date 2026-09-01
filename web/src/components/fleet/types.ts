@@ -20,6 +20,8 @@ export type FleetAsset = {
   location_confirmed_at: string | null;
   notes: string | null;
   active: boolean;
+  /** True when the unit is part of the shared bookable pool (and so, the calendar). */
+  pooled: boolean;
   holder_name: string | null;
   location_age_days: number | null;
   location_stale: boolean;

@@ -7,6 +7,7 @@ import {
   dueDateOf,
   holderLabelMatchesPerson,
   isBlocking,
+  isBookable,
   normalizeHolderLabel,
   orderQueue,
   type ReliabilityScore,
@@ -56,6 +57,8 @@ export type FleetAssetRow = {
   location_confirmed_at: string | null;
   notes: string | null;
   active: boolean;
+  /** True when the unit is part of the shared bookable pool (and so, the calendar). */
+  pooled: boolean;
 };
 
 export type FleetReservationRow = {
@@ -198,7 +201,7 @@ export async function fetchFleetBoard(
     admin
       .from("fleet_assets")
       .select(
-        "id, serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_user_id, current_holder_label, location_confirmed_at, notes, active",
+        "id, serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_user_id, current_holder_label, location_confirmed_at, notes, active, pooled",
       )
       .eq("active", true)
       .order("category", { ascending: true })
@@ -428,4 +431,4 @@ export async function recordAssetEvent(
   if (error) console.error("fleet_asset_events insert failed", error.message);
 }
 
-export { isBlocking };
+export { isBlocking, isBookable };

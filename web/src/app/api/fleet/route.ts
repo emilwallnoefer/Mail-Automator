@@ -14,6 +14,7 @@ import {
   todayInZurich,
 } from "@/lib/fleet-queries";
 import {
+  addDays,
   checkReservation,
   holderLabelMatchesPerson,
   isBlocking,
@@ -92,6 +93,22 @@ const claimHolderSchema = z.object({
   user_id: z.string().uuid().optional(),
 });
 
+const assignSchema = z.object({
+  action: z.literal("assign"),
+  asset_id: z.string().uuid(),
+  /** Who it goes to. A free-text name is fine — they may not have an account. */
+  holder_label: z.string().trim().min(1).max(160),
+  location: z.string().trim().max(160).optional(),
+  note: z.string().trim().max(280).optional(),
+});
+
+const returnToPoolSchema = z.object({
+  action: z.literal("return_to_pool"),
+  asset_id: z.string().uuid(),
+  location: z.string().trim().max(160).optional(),
+  note: z.string().trim().max(280).optional(),
+});
+
 const setRemindersSchema = z.object({
   action: z.literal("set_reminders"),
   enabled: z.boolean(),
@@ -114,6 +131,8 @@ const postSchema = z.discriminatedUnion("action", [
   setStatusSchema,
   claimHolderSchema,
   setRemindersSchema,
+  assignSchema,
+  returnToPoolSchema,
 ]);
 
 type Viewer = { id: string; email: string | null; name: string; isAdmin: boolean };
@@ -255,6 +274,10 @@ export async function POST(request: Request) {
         return await handleClaimHolder(admin, viewer, payload);
       case "set_reminders":
         return await handleSetReminders(admin, viewer, payload);
+      case "assign":
+        return await handleAssign(admin, viewer, payload);
+      case "return_to_pool":
+        return await handleReturnToPool(admin, viewer, payload);
     }
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
@@ -791,4 +814,144 @@ async function handleSetReminders(
     ok: true,
     message: payload.enabled ? "Return reminders are now on." : "Return reminders are paused.",
   });
+}
+
+
+/**
+ * Takes a unit out of the shared pool and assigns it to someone.
+ *
+ * Used for the units that are not really shared — a regional demo drone, a
+ * customer loan, a unit that lives with one person. It leaves the calendar
+ * (nobody can book it) and moves to the Assigned tab.
+ *
+ * The holder is free text on purpose: the person may have no account, which is
+ * exactly the situation the sheet was in. It is recorded as an open booking so
+ * the unit still has a check-in path and can be claimed later.
+ */
+async function handleAssign(admin: Admin, viewer: Viewer, payload: z.infer<typeof assignSchema>) {
+  const { data: asset, error: readError } = await admin
+    .from("fleet_assets")
+    .select("id, name, status, current_location, pooled")
+    .eq("id", payload.asset_id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!asset) return NextResponse.json({ error: "Asset not found." }, { status: 404 });
+
+  const location = payload.location ?? asset.current_location ?? null;
+
+  // Anyone else's live booking has to go: the unit is leaving the pool, and
+  // leaving a reservation pointing at it would strand that person on a date
+  // they can no longer use.
+  const { data: live } = await admin
+    .from("fleet_reservations")
+    .select("id, user_id")
+    .eq("asset_id", payload.asset_id)
+    .in("status", ["reserved", "picked_up"]);
+
+  const foreign = (live ?? []).filter((row) => row.user_id !== viewer.id);
+  if (foreign.length > 0 && !viewer.isAdmin) {
+    return NextResponse.json(
+      { error: `${asset.name} is booked by someone else. An admin can reassign it.` },
+      { status: 409 },
+    );
+  }
+  if ((live ?? []).length > 0) {
+    await admin
+      .from("fleet_reservations")
+      .update({ status: "cancelled" })
+      .in("id", (live ?? []).map((row) => row.id));
+  }
+
+  const today = todayInZurich();
+  const { error: insertError } = await admin.from("fleet_reservations").insert({
+    asset_id: payload.asset_id,
+    user_id: null,
+    holder_label: payload.holder_label,
+    start_date: today,
+    end_date: addDays(today, 30),
+    status: "picked_up",
+    destination: location,
+    source: "sheet_import",
+    picked_up_at: new Date().toISOString(),
+  });
+  if (insertError) throw new Error(insertError.message);
+
+  const { error: assetError } = await admin
+    .from("fleet_assets")
+    .update({
+      pooled: false,
+      status: "out",
+      current_holder_user_id: null,
+      current_holder_label: payload.holder_label,
+      current_location: location,
+      location_confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", payload.asset_id);
+  if (assetError) throw new Error(assetError.message);
+
+  await recordAssetEvent(admin, {
+    asset_id: payload.asset_id,
+    kind: "checked_out",
+    actor_user_id: viewer.id,
+    from_location: asset.current_location,
+    to_location: location,
+    note: `Assigned to ${payload.holder_label}${payload.note ? ` — ${payload.note}` : ""}`,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    message: `${asset.name} is now assigned to ${payload.holder_label}.`,
+  });
+}
+
+/**
+ * Puts an assigned unit back into the shared pool: it becomes bookable and
+ * reappears in the calendar. Closes whatever open booking was holding it.
+ */
+async function handleReturnToPool(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof returnToPoolSchema>,
+) {
+  const { data: asset, error: readError } = await admin
+    .from("fleet_assets")
+    .select("id, name, current_location, home_location")
+    .eq("id", payload.asset_id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!asset) return NextResponse.json({ error: "Asset not found." }, { status: 404 });
+
+  const today = todayInZurich();
+  const landingSpot = payload.location ?? asset.home_location ?? asset.current_location ?? null;
+
+  const { error: closeError } = await admin
+    .from("fleet_reservations")
+    .update({ status: "returned", returned_at: new Date().toISOString(), returned_on: today })
+    .eq("asset_id", payload.asset_id)
+    .in("status", ["reserved", "picked_up"]);
+  if (closeError) throw new Error(closeError.message);
+
+  const { error: assetError } = await admin
+    .from("fleet_assets")
+    .update({
+      pooled: true,
+      status: "available",
+      current_holder_user_id: null,
+      current_holder_label: null,
+      current_location: landingSpot,
+      location_confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", payload.asset_id);
+  if (assetError) throw new Error(assetError.message);
+
+  await recordAssetEvent(admin, {
+    asset_id: payload.asset_id,
+    kind: "checked_in",
+    actor_user_id: viewer.id,
+    from_location: asset.current_location,
+    to_location: landingSpot,
+    note: `Returned to the bookable pool${payload.note ? ` — ${payload.note}` : ""}`,
+  });
+
+  return NextResponse.json({ ok: true, message: `${asset.name} is back in the pool and bookable.` });
 }

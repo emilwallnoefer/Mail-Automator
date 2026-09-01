@@ -173,6 +173,21 @@ export function spansOverlap(a: ReservationSpan, b: ReservationSpan): boolean {
   return a.start_date <= b.end_date && b.start_date <= a.end_date;
 }
 
+/**
+ * Whether an asset belongs in the booking calendar.
+ *
+ * Two conditions, both about "could someone actually take this":
+ *   - it is in the shared POOL, rather than assigned to a person, region or
+ *     customer (an assignment is fixed; booking it is not a thing you can do);
+ *   - it is not retired or in repair.
+ *
+ * Lives here rather than in the query layer so the server filter and the client
+ * filter cannot drift apart.
+ */
+export function isBookable(asset: { pooled: boolean; status: string }): boolean {
+  return asset.pooled && asset.status !== "retired" && asset.status !== "in_repair";
+}
+
 /** A span is "holding" the asset when it is booked or physically out. */
 export function isBlocking(status: ReservationStatus): boolean {
   return status === "reserved" || status === "picked_up";
