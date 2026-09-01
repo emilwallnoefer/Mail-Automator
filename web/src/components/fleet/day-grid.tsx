@@ -44,6 +44,8 @@ type DayGridProps = {
 
 type CellState = {
   reservation: FleetReservation | null;
+  /** True when `reservation` is a completed booking rather than a live one. */
+  isHistory: boolean;
   /** First cell of a visible run, so one label is drawn per booking. */
   isRunStart: boolean;
   bookable: boolean;
@@ -64,19 +66,31 @@ export function DayGrid({
 }: DayGridProps) {
   const days = useMemo(() => dayRange(windowStart, windowDays), [windowStart, windowDays]);
 
-  // Index blocking reservations by asset+day once, rather than scanning the
-  // list for every one of the (assets × days) cells.
-  const byAssetDay = useMemo(() => {
-    const map = new Map<string, FleetReservation>();
+  // Index reservations by asset+day once, rather than scanning the list for
+  // every one of the (assets × days) cells.
+  //
+  // Two maps, because a completed booking still belongs on the calendar: "who
+  // had this in March" is a question the board should answer, and without it
+  // scrolling into the past shows an empty grid however much history exists.
+  // Live bookings win a shared day — a returned booking no longer holds the
+  // asset, so it must never hide the one that does.
+  const { live: byAssetDay, history: historyByAssetDay } = useMemo(() => {
+    const live = new Map<string, FleetReservation>();
+    const history = new Map<string, FleetReservation>();
     for (const reservation of reservations) {
-      if (!isBlocking(reservation.status)) continue;
+      const target = isBlocking(reservation.status)
+        ? live
+        : reservation.status === "returned"
+          ? history
+          : null;
+      if (!target) continue; // cancelled and waitlisted hold nothing
       const length = daysBetween(reservation.start_date, reservation.end_date);
       for (let i = 0; i <= length; i += 1) {
         const d = new Date(parseDateKey(reservation.start_date).getTime() + i * 86_400_000);
-        map.set(`${reservation.asset_id}|${d.toISOString().slice(0, 10)}`, reservation);
+        target.set(`${reservation.asset_id}|${d.toISOString().slice(0, 10)}`, reservation);
       }
     }
-    return map;
+    return { live, history };
   }, [reservations]);
 
   // Week rules: where a Monday falls inside the window, so the eye can group
@@ -97,7 +111,10 @@ export function DayGrid({
   }, [days]);
 
   function stateFor(asset: FleetAsset, day: string, index: number): CellState {
-    const reservation = byAssetDay.get(`${asset.id}|${day}`) ?? null;
+    const key = `${asset.id}|${day}`;
+    const liveReservation = byAssetDay.get(key) ?? null;
+    const reservation = liveReservation ?? historyByAssetDay.get(key) ?? null;
+    const isHistory = liveReservation === null && reservation !== null;
     const inPast = day < today;
     const beyondHorizon = daysBetween(today, day) > horizonDays;
     const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
@@ -105,15 +122,20 @@ export function DayGrid({
       reservation,
       // Label the booking's own first day, or the window's left edge when the
       // booking started before the visible range.
+      isHistory,
       isRunStart: reservation ? reservation.start_date === day || index === 0 : false,
-      bookable: !reservation && !inPast && !beyondHorizon && assetBookable,
+      // A finished booking does not hold the asset, so a future day carrying one
+      // is still bookable. In practice history sits in the past anyway.
+      bookable: !liveReservation && !inPast && !beyondHorizon && assetBookable,
       beyondHorizon,
       inPast,
     };
   }
 
   function handleCellClick(asset: FleetAsset, day: string, state: CellState) {
-    if (state.reservation) {
+    // A past booking is still worth opening — it answers "who had this, and
+    // when did it come back" — but it must not block booking a free future day.
+    if (state.reservation && (!state.isHistory || !state.bookable)) {
       onOpenReservation(state.reservation);
       return;
     }
@@ -214,13 +236,17 @@ export function DayGrid({
                       title={
                         reservation
                           ? `${asset.name} · ${formatDay(day)} · ${reservation.holder_name}${
-                              reservation.unclaimed ? " (from the sheet — not claimed yet)" : ""
-                            }${reservation.destination ? ` · ${reservation.destination}` : ""}`
+                              state.isHistory ? " (returned)" : ""
+                            }${reservation.unclaimed ? " (from the sheet — not claimed yet)" : ""}${
+                              reservation.destination ? ` · ${reservation.destination}` : ""
+                            }`
                           : `${asset.name} · ${formatDay(day)}`
                       }
                       aria-label={
                         reservation
-                          ? `${asset.name}, ${formatDay(day)}: booked by ${reservation.holder_name}`
+                          ? `${asset.name}, ${formatDay(day)}: ${
+                              state.isHistory ? "was with" : "booked by"
+                            } ${reservation.holder_name}`
                           : `${asset.name}, ${formatDay(day)}: ${
                               state.bookable ? "free, click to book" : "not bookable"
                             }`
@@ -232,6 +258,7 @@ export function DayGrid({
                         overdue,
                         mine: reservation?.is_mine ?? false,
                         unclaimed: reservation?.unclaimed ?? false,
+                        isHistory: state.isHistory,
                         weekend: isWeekend(day),
                         isToday: day === today,
                       })}
@@ -263,16 +290,22 @@ function cellClass(args: {
   overdue: boolean;
   mine: boolean;
   unclaimed: boolean;
+  isHistory: boolean;
   weekend: boolean;
   isToday: boolean;
 }): string {
-  const { state, selected, overdue, mine, unclaimed, weekend, isToday } = args;
+  const { state, selected, overdue, mine, unclaimed, isHistory, weekend, isToday } = args;
   // `relative` so a run's name label can overflow its own day cell.
   const base =
     "relative flex h-8 w-full items-center justify-center overflow-visible rounded-[3px] text-ink transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80";
   const todayRing = isToday ? " ring-1 ring-inset ring-accent/50" : "";
 
   if (selected) return `${base}${todayRing} bg-accent/85 text-slate-900`;
+  // Finished bookings are context, not state: muted, so a month of history never
+  // competes with the live rows above it.
+  if (isHistory) {
+    return `${base}${todayRing} bg-glass/[0.09] text-ink-4/80 hover:bg-glass/[0.16]`;
+  }
   if (overdue) return `${base}${todayRing} bg-rose-500/35 text-danger hover:bg-rose-500/45`;
   if (state.reservation) {
     if (mine) return `${base}${todayRing} bg-accent-deep/50 text-accent-soft hover:bg-accent-deep/65`;

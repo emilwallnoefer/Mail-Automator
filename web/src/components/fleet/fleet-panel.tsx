@@ -326,6 +326,17 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
               >
                 Later →
               </Button>
+              {/* Stepping 14 days at a time makes older history unreachable in
+                  practice — a year back is 26 clicks. Jump straight there. */}
+              <input
+                type="date"
+                value={windowStart}
+                onChange={(event) => {
+                  if (event.target.value) setWindowStart(event.target.value);
+                }}
+                aria-label="Jump to date"
+                className="rounded-lg border border-glass/15 bg-glass/8 px-2 py-1.5 text-xs text-ink [color-scheme:dark]"
+              />
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <select
@@ -387,6 +398,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
               label="From the sheet, unclaimed"
             />
             <LegendSwatch className="bg-rose-500/30" label="Overdue" />
+            <LegendSwatch className="bg-glass/[0.09]" label="Past booking" />
             <LegendSwatch
               className="bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.08)_3px,rgba(255,255,255,0.08)_6px)]"
               label="Beyond your booking horizon"
