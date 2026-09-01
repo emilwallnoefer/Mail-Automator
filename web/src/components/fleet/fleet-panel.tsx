@@ -8,6 +8,8 @@ import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
 import { DayGrid, type DaySelection } from "./day-grid";
 import {
   CATEGORY_LABEL,
+  CATEGORY_ORDER,
+  categoryRank,
   STATUS_LABEL,
   type FleetAsset,
   type FleetAssetCategory,
@@ -346,9 +348,9 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
                 aria-label="Filter by category"
               >
                 <option value="all">All material</option>
-                {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
+                {CATEGORY_ORDER.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {CATEGORY_LABEL[value]}
                   </option>
                 ))}
               </select>
@@ -565,7 +567,7 @@ function MaterialList({
       list.push(asset);
       map.set(asset.category, list);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort((a, b) => categoryRank(a[0]) - categoryRank(b[0]));
   }, [assets]);
 
   return (

@@ -2,7 +2,18 @@ import type { ReliabilityScore, ReservationSource, ReservationStatus } from "@/l
 
 /** Wire types for `/api/fleet`. Mirrors `src/lib/fleet-queries.ts`. */
 
-export type FleetAssetCategory = "drone" | "range_extender" | "gcs" | "accessory" | "other";
+export type FleetAssetCategory =
+  | "drone"
+  | "lidar"
+  | "rad_payload"
+  | "ut_payload"
+  | "lel_payload"
+  | "dummy_drone"
+  | "tether"
+  | "range_extender"
+  | "gcs"
+  | "accessory"
+  | "other";
 export type FleetAssetStatus = "available" | "reserved" | "out" | "in_repair" | "retired";
 
 export type FleetAsset = {
@@ -75,12 +86,43 @@ export type FleetBoardResponse = {
 };
 
 export const CATEGORY_LABEL: Record<FleetAssetCategory, string> = {
-  drone: "Drones",
+  drone: "Drone fleet",
+  lidar: "LiDAR Rev 7",
+  rad_payload: "RAD payloads",
+  ut_payload: "UT payloads",
+  lel_payload: "LEL payloads",
+  dummy_drone: "Dummy drones",
+  tether: "Tethers",
   range_extender: "Range extenders",
   gcs: "Ground stations",
   accessory: "Accessories",
   other: "Other",
 };
+
+/**
+ * Display order for category groups — the order the fleet sheet uses, which is
+ * how people already think about the kit. Alphabetical would put "Dummy drones"
+ * above the actual drone fleet.
+ */
+export const CATEGORY_ORDER: FleetAssetCategory[] = [
+  "drone",
+  "lidar",
+  "rad_payload",
+  "ut_payload",
+  "lel_payload",
+  "dummy_drone",
+  "tether",
+  "range_extender",
+  "gcs",
+  "accessory",
+  "other",
+];
+
+/** Sort key for a category, for grouping lists and the calendar. */
+export function categoryRank(category: FleetAssetCategory): number {
+  const index = CATEGORY_ORDER.indexOf(category);
+  return index === -1 ? CATEGORY_ORDER.length : index;
+}
 
 export const STATUS_LABEL: Record<FleetAssetStatus, string> = {
   available: "Available",

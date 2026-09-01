@@ -39,7 +39,37 @@ export function todayInZurich(now: Date = new Date()): string {
   }).format(now);
 }
 
-export type FleetAssetCategory = "drone" | "range_extender" | "gcs" | "accessory" | "other";
+export type FleetAssetCategory =
+  | "drone"
+  | "lidar"
+  | "rad_payload"
+  | "ut_payload"
+  | "lel_payload"
+  | "dummy_drone"
+  | "tether"
+  | "range_extender"
+  | "gcs"
+  | "accessory"
+  | "other";
+
+/**
+ * Category order used for every asset listing — the fleet sheet's own order.
+ * Postgres would sort these alphabetically, which puts dummy drones above the
+ * real drone fleet, so the ordering is applied here instead.
+ */
+const CATEGORY_RANK: Record<FleetAssetCategory, number> = {
+  drone: 0,
+  lidar: 1,
+  rad_payload: 2,
+  ut_payload: 3,
+  lel_payload: 4,
+  dummy_drone: 5,
+  tether: 6,
+  range_extender: 7,
+  gcs: 8,
+  accessory: 9,
+  other: 10,
+};
 export type FleetAssetStatus = "available" | "reserved" | "out" | "in_repair" | "retired";
 
 export type FleetAssetRow = {
@@ -204,7 +234,6 @@ export async function fetchFleetBoard(
         "id, serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_user_id, current_holder_label, location_confirmed_at, notes, active, pooled",
       )
       .eq("active", true)
-      .order("category", { ascending: true })
       .order("name", { ascending: true }),
     admin
       .from("fleet_reservations")
@@ -220,7 +249,11 @@ export async function fetchFleetBoard(
     throw new Error(`fleet_reservations read failed: ${reservationsResult.error.message}`);
   }
 
-  const assets = (assetsResult.data ?? []) as FleetAssetRow[];
+  const assets = ((assetsResult.data ?? []) as FleetAssetRow[]).sort(
+    (a, b) =>
+      (CATEGORY_RANK[a.category] ?? 99) - (CATEGORY_RANK[b.category] ?? 99) ||
+      a.name.localeCompare(b.name, undefined, { numeric: true }),
+  );
   const reservations = (reservationsResult.data ?? []) as FleetReservationRow[];
 
   // Resolve the names behind every user id we are about to render, in one call.
