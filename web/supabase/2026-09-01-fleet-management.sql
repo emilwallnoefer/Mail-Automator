@@ -296,7 +296,12 @@ values
   ('REX-0447',            'REx 0447',   'range_extender', 'RangeX', 'Sales', 'out',       'Office Paudex', 'Office Paudex', 'Fabio',              null),
   ('CVO-0546',            'GCS 0546',   'gcs',   'GCS',     'Sales',    'out',       'Office Paudex',  'Bordeaux',       'François (expertise)',  'Paired with REx 0334'),
   ('CVO-0482',            'GCS 0482',   'gcs',   'GCS',     'Sales',    'available', 'Office Paudex',  'Office Paudex',  null,                    'Paired with REx 0425')
-on conflict (serial_number) do nothing;
+-- The index above is PARTIAL (`where serial_number is not null`), and Postgres
+-- only infers a partial index as an ON CONFLICT arbiter when the clause repeats
+-- the index predicate — without the WHERE it fails with 42P10, "no unique or
+-- exclusion constraint matching the ON CONFLICT specification". Every row in
+-- this VALUES list has a serial, so the predicate always holds.
+on conflict (serial_number) where serial_number is not null do nothing;
 
 -- Shared accessories have no serial in the sheet, so they cannot ride the
 -- ON CONFLICT above; guard them on name instead.
