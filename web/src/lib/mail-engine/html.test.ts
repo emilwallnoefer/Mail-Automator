@@ -33,6 +33,17 @@ describe("markdownToHtml", () => {
     expect(html).toContain('<a href="https://example.com">link</a>');
   });
 
+  it("renders a link fully wrapped in bold (resource-list style: **[label](url)**)", () => {
+    // Every generated resource line looks like `➡️ **[label](url)**` (see
+    // buildTrainingMaterialsBlock and friends in mail-engine/links.ts). Bold
+    // must not swallow the link markdown as literal text.
+    const html = markdownToHtml("➡️ **[Introductory Training](https://docs.google.com/presentation/d/abc/edit)**");
+    expect(html).toContain(
+      '<span style="font-weight:600;color:#222;"><a href="https://docs.google.com/presentation/d/abc/edit">Introductory Training</a></span>',
+    );
+    expect(html).not.toContain("[Introductory Training]");
+  });
+
   it("collapses duplicate horizontal rules", () => {
     const html = markdownToHtml("a\n\n---\n\n---\n\nb");
     expect(html.match(/border-top:2px solid #ddd/g)?.length).toBe(1);

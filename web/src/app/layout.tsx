@@ -97,8 +97,20 @@ export default async function RootLayout({
   return (
     <html {...htmlProps} suppressHydrationWarning>
       <head>
+        {/*
+          suppressHydrationWarning: after parsing, browsers blank out the `nonce`
+          *content attribute* (keeping the value only on the internal slot) so a
+          CSS attribute selector cannot exfiltrate it. React's hydration check
+          reads the blanked attribute, sees "" against the SSR'd value, and logs
+          a mismatch it explicitly says it "won't patch up". Dev-only noise; the
+          script still runs with the correct nonce.
+        */}
         {nonce ? (
-          <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+          <script
+            nonce={nonce}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
+          />
         ) : null}
       </head>
       <body
