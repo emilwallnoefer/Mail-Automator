@@ -53,8 +53,8 @@ export function ReliabilityCard({ score }: { score: ReliabilityScore }) {
 
       <p className="mt-3 text-xs leading-relaxed text-ink-4">{score.summary}</p>
       <p className="mt-2 text-xs leading-relaxed text-ink-4">
-        You can book up to <span className="font-semibold text-ink-2">{score.horizonWeeks} weeks</span> ahead, and
-        you sit above anyone with a lower score when a week is contested.
+        You can book up to <span className="font-semibold text-ink-2">{score.horizonDays} days</span> ahead, and you
+        sit above anyone with a lower score when a day is contested.
       </p>
       {score.overdue > 0 ? (
         <p className="mt-2 text-xs leading-relaxed text-warn">

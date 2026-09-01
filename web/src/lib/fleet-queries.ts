@@ -6,7 +6,6 @@ import {
   daysOverdue,
   dueDateOf,
   isBlocking,
-  mondayOf,
   orderQueue,
   type ReliabilityScore,
   type ReservationSpan,
@@ -60,8 +59,8 @@ export type FleetReservationRow = {
   id: string;
   asset_id: string;
   user_id: string;
-  start_week: string;
-  end_week: string;
+  start_date: string;
+  end_date: string;
   status: ReservationStatus;
   purpose: string | null;
   destination: string | null;
@@ -91,9 +90,10 @@ export type FleetAssetView = FleetAssetRow & {
 
 export type FleetBoard = {
   today: string;
-  /** Monday of the first rendered week. */
+  /** First day rendered by the calendar. */
   window_start: string;
-  window_weeks: number;
+  /** How many days the calendar renders. */
+  window_days: number;
   assets: FleetAssetView[];
   reservations: FleetReservationView[];
   /** The signed-in user's own standing. */
@@ -109,8 +109,11 @@ export type FleetBoard = {
  */
 export const STALE_LOCATION_DAYS = 42;
 
-/** How many weeks the calendar renders at once. */
-export const DEFAULT_WINDOW_WEEKS = 8;
+/**
+ * How many days the calendar renders at once. Four weeks: wide enough to plan a
+ * month of missions, narrow enough that a day column stays clickable on a laptop.
+ */
+export const DEFAULT_WINDOW_DAYS = 28;
 
 /** The service-role client, typed the way the other query modules type it. */
 type AnySupabase = SupabaseClient;
@@ -120,8 +123,8 @@ function toSpan(row: FleetReservationRow): ReservationSpan {
     id: row.id,
     asset_id: row.asset_id,
     user_id: row.user_id,
-    start_week: row.start_week,
-    end_week: row.end_week,
+    start_date: row.start_date,
+    end_date: row.end_date,
     status: row.status,
     returned_on: row.returned_on,
   };
@@ -155,12 +158,14 @@ export function displayNameFor(user: {
  */
 export async function fetchFleetBoard(
   admin: AnySupabase,
-  args: { viewerId: string; windowStart?: string; windowWeeks?: number; now?: Date },
+  args: { viewerId: string; windowStart?: string; windowDays?: number; now?: Date },
 ): Promise<FleetBoard> {
   const now = args.now ?? new Date();
   const today = todayInZurich(now);
-  const windowStart = args.windowStart ?? mondayOf(new Date(`${today}T00:00:00Z`));
-  const windowWeeks = args.windowWeeks ?? DEFAULT_WINDOW_WEEKS;
+  // Default the calendar to start today, not at a week boundary: the question
+  // people open this to answer is "what can I take now".
+  const windowStart = args.windowStart ?? today;
+  const windowDays = args.windowDays ?? DEFAULT_WINDOW_DAYS;
 
   const [assetsResult, reservationsResult] = await Promise.all([
     admin
@@ -174,9 +179,9 @@ export async function fetchFleetBoard(
     admin
       .from("fleet_reservations")
       .select(
-        "id, asset_id, user_id, start_week, end_week, status, purpose, destination, picked_up_at, returned_at, returned_on, created_at",
+        "id, asset_id, user_id, start_date, end_date, status, purpose, destination, picked_up_at, returned_at, returned_on, created_at",
       )
-      .order("start_week", { ascending: true }),
+      .order("start_date", { ascending: true }),
   ]);
 
   if (assetsResult.error) throw new Error(`fleet_assets read failed: ${assetsResult.error.message}`);
@@ -193,8 +198,8 @@ export async function fetchFleetBoard(
   for (const asset of assets) if (asset.current_holder_user_id) userIds.add(asset.current_holder_user_id);
   const names = await fetchUserNames(admin, [...userIds]);
 
-  // Waitlist positions, computed per (asset, start_week) group so a contested
-  // week shows everyone where they stand. Ordering is score-first: the whole
+  // Waitlist positions, computed per (asset, start_date) group so a contested
+  // span shows everyone where they stand. Ordering is score-first: the whole
   // point of the score is that it decides who gets the material.
   const scoreByUser = new Map<string, ReliabilityScore>();
   const spansByUser = new Map<string, ReservationSpan[]>();
@@ -211,7 +216,7 @@ export async function fetchFleetBoard(
   const waitGroups = new Map<string, FleetReservationRow[]>();
   for (const row of reservations) {
     if (row.status !== "waitlisted") continue;
-    const key = `${row.asset_id}|${row.start_week}`;
+    const key = `${row.asset_id}|${row.start_date}`;
     const group = waitGroups.get(key) ?? [];
     group.push(row);
     waitGroups.set(key, group);
@@ -274,7 +279,7 @@ export async function fetchFleetBoard(
   return {
     today,
     window_start: windowStart,
-    window_weeks: windowWeeks,
+    window_days: windowDays,
     assets: assetViews,
     reservations: reservationViews,
     me: { ...mine, user_id: args.viewerId },
@@ -310,7 +315,7 @@ export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise
 export async function fetchUserSpans(admin: AnySupabase, userId: string): Promise<ReservationSpan[]> {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_week, end_week, status, returned_on")
+    .select("id, asset_id, user_id, start_date, end_date, status, returned_on")
     .eq("user_id", userId);
   if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
   return ((data ?? []) as FleetReservationRow[]).map(toSpan);
@@ -320,7 +325,7 @@ export async function fetchUserSpans(admin: AnySupabase, userId: string): Promis
 export async function fetchAssetSpans(admin: AnySupabase, assetId: string): Promise<ReservationSpan[]> {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_week, end_week, status, returned_on")
+    .select("id, asset_id, user_id, start_date, end_date, status, returned_on")
     .eq("asset_id", assetId);
   if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
   return ((data ?? []) as FleetReservationRow[]).map(toSpan);

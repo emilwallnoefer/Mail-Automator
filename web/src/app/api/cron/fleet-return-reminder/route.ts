@@ -9,7 +9,8 @@ import {
   computeReliability,
   dueDateOf,
   daysOverdue,
-  formatWeekLabel,
+  formatDayLong,
+  formatSpan,
   reminderFor,
   type ReminderKind,
   type ReservationSpan,
@@ -40,14 +41,12 @@ export const dynamic = "force-dynamic";
  * `?send_test=<email>`, `?force=1`.
  */
 
-const TIMEZONE = "Europe/Zurich";
-
 type LiveReservation = {
   id: string;
   asset_id: string;
   user_id: string;
-  start_week: string;
-  end_week: string;
+  start_date: string;
+  end_date: string;
   status: ReservationStatus;
   destination: string | null;
   returned_on: string | null;
@@ -93,14 +92,10 @@ function appBaseUrl(request: Request): string {
   return new URL(request.url).origin.replace(/\/+$/, "");
 }
 
+/** "Th 4 Sep". Uses the module's fixed name table so the label cannot shift with the runtime's ICU data. */
 function formatDateLabel(date: string): string {
   try {
-    return new Intl.DateTimeFormat("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      timeZone: TIMEZONE,
-    }).format(new Date(`${date}T12:00:00Z`));
+    return formatDayLong(date);
   } catch {
     return date;
   }
@@ -121,12 +116,12 @@ function buildEmail(params: {
   kind: ReminderKind;
   dueDate: string;
   daysLate: number;
-  weekLabel: string;
+  spanLabel: string;
   destination: string | null;
   score: number;
   dashboardUrl: string;
 }) {
-  const { name, assetName, assetLabel, kind, dueDate, daysLate, weekLabel, destination, score, dashboardUrl } =
+  const { name, assetName, assetLabel, kind, dueDate, daysLate, spanLabel, destination, score, dashboardUrl } =
     params;
 
   const due = formatDateLabel(dueDate);
@@ -139,14 +134,14 @@ function buildEmail(params: {
 
   const opener =
     kind === "due_soon"
-      ? `${assetLabel} is booked to you for ${weekLabel} and is due back ${due}.`
+      ? `${assetLabel} is booked to you for ${spanLabel} and is due back ${due}.`
       : kind === "due_today"
         ? `${assetLabel} is due back today (${due}).`
         : `${assetLabel} was due back on ${due} — that is ${daysLate} day${daysLate === 1 ? "" : "s"} ago.`;
 
   const consequence =
     kind === "overdue"
-      ? `While it is out past its due date it counts against your reliability score, which is currently ${score}. The score sets how far ahead you can book and who wins a contested week, so this is worth clearing today.`
+      ? `While it is out past its due date it counts against your reliability score, which is currently ${score}. The score sets how far ahead you can book and who wins a contested day, so this is worth clearing today.`
       : `Checking it in on time keeps your reliability score (currently ${score}) up, which is what decides how far ahead you can book.`;
 
   const whereLine = destination ? `Last known location: ${destination}.` : null;
@@ -217,7 +212,7 @@ export async function GET(request: Request) {
   // Only bookings that can still be late. `returned` and `cancelled` are done.
   const { data: liveRows, error: liveError } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_week, end_week, status, destination, returned_on")
+    .select("id, asset_id, user_id, start_date, end_date, status, destination, returned_on")
     .in("status", ["reserved", "picked_up"]);
   if (liveError) {
     console.error("fleet reminder: reservations read failed", liveError.message);
@@ -232,8 +227,8 @@ export async function GET(request: Request) {
         id: row.id,
         asset_id: row.asset_id,
         user_id: row.user_id,
-        start_week: row.start_week,
-        end_week: row.end_week,
+        start_date: row.start_date,
+        end_date: row.end_date,
         status: row.status,
         returned_on: row.returned_on,
       };
@@ -278,15 +273,15 @@ export async function GET(request: Request) {
   const allSpansByUser = new Map<string, ReservationSpan[]>();
   const { data: allRows } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_week, end_week, status, returned_on");
+    .select("id, asset_id, user_id, start_date, end_date, status, returned_on");
   for (const row of (allRows ?? []) as LiveReservation[]) {
     const list = allSpansByUser.get(row.user_id) ?? [];
     list.push({
       id: row.id,
       asset_id: row.asset_id,
       user_id: row.user_id,
-      start_week: row.start_week,
-      end_week: row.end_week,
+      start_date: row.start_date,
+      end_date: row.end_date,
       status: row.status,
       returned_on: row.returned_on,
     });
@@ -307,7 +302,7 @@ export async function GET(request: Request) {
       kind: entry.kind,
       dueDate: dueDateOf(entry.span),
       daysLate: daysOverdue(entry.span, today),
-      weekLabel: formatWeekLabel(entry.row.start_week),
+      spanLabel: formatSpan(entry.row.start_date, entry.row.end_date),
       destination: entry.row.destination ?? asset?.location ?? null,
       score,
       dashboardUrl,
@@ -326,7 +321,7 @@ export async function GET(request: Request) {
           kind: "overdue",
           dueDate: today,
           daysLate: 4,
-          weekLabel: formatWeekLabel(today),
+          spanLabel: formatSpan(today, today),
           destination: "Office Paudex",
           score: 62,
           dashboardUrl,
@@ -351,7 +346,7 @@ export async function GET(request: Request) {
           kind: "overdue",
           dueDate: today,
           daysLate: 4,
-          weekLabel: formatWeekLabel(today),
+          spanLabel: formatSpan(today, today),
           destination: "Office Paudex",
           score: 62,
           dashboardUrl,

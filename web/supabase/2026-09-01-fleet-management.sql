@@ -1,13 +1,13 @@
--- Fleet module: material tracking + week-based reservations + reliability score.
+-- Fleet module: material tracking + day-level reservations + reliability score.
 --
 -- Replaces the shared "Fleet management" Google Sheet, which nobody kept
--- current: it tracked assignments per calendar day in a merged-cell grid, held
--- the location in free text ("US office", "Perdu par Johan Donzé"), and had no
--- way to tell anyone their material was overdue.
+-- current: bookings lived in a merged-cell grid, the location was free text
+-- ("US office", "Perdu par Johan Donzé") that went stale invisibly, and nothing
+-- ever told anyone their material was overdue.
 --
 -- Three tables:
 --   fleet_assets        — one row per physical item, carrying its CURRENT location.
---   fleet_reservations  — a booking over a run of ISO weeks (Monday keys).
+--   fleet_reservations  — a booking over an inclusive run of calendar days.
 --   fleet_asset_events  — append-only movement/audit trail for an asset.
 --
 -- The reliability score is NOT stored: it is derived from fleet_reservations by
@@ -71,10 +71,12 @@ create table if not exists public.fleet_reservations (
   id uuid primary key default gen_random_uuid(),
   asset_id uuid not null references public.fleet_assets (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
-  -- Both are MONDAY dates; end_week is inclusive, so a one-week booking has
-  -- start_week = end_week. The app derives the due date as end_week + 6 days.
-  start_week date not null,
-  end_week date not null,
+  -- Inclusive calendar days: a one-day booking has start_date = end_date, and
+  -- end_date IS the due date. Bookings are per-day rather than per-week because
+  -- most missions are two or three days, and rounding those up to a whole week
+  -- made the old sheet look fully booked while half the fleet sat on a shelf.
+  start_date date not null,
+  end_date date not null,
   -- 'reserved' | 'waitlisted' | 'picked_up' | 'returned' | 'cancelled'
   status text not null default 'reserved',
   purpose text,
@@ -90,25 +92,29 @@ create table if not exists public.fleet_reservations (
   updated_at timestamptz not null default now(),
   constraint fleet_reservations_status_check
     check (status in ('reserved', 'waitlisted', 'picked_up', 'returned', 'cancelled')),
-  constraint fleet_reservations_week_order check (end_week >= start_week),
-  -- Weeks must be Mondays. ISO dow: Monday = 1.
-  constraint fleet_reservations_start_monday check (extract(isodow from start_week) = 1),
-  constraint fleet_reservations_end_monday check (extract(isodow from end_week) = 1)
+  constraint fleet_reservations_date_order check (end_date >= start_date),
+  -- Twelve weeks. Anything longer is a transfer, not a booking, and should move
+  -- the asset's home location instead. Mirrors MAX_RESERVATION_DAYS in
+  -- web/src/lib/fleet-rules.ts.
+  constraint fleet_reservations_max_length check (end_date - start_date <= 83)
 );
 
 create index if not exists fleet_reservations_asset_window_idx
-  on public.fleet_reservations (asset_id, start_week, end_week);
+  on public.fleet_reservations (asset_id, start_date, end_date);
 create index if not exists fleet_reservations_user_idx
   on public.fleet_reservations (user_id, status);
--- The overdue sweep scans live bookings by due week.
+-- The overdue sweep scans live bookings by due date.
 create index if not exists fleet_reservations_live_idx
-  on public.fleet_reservations (status, end_week)
+  on public.fleet_reservations (status, end_date)
   where status in ('reserved', 'picked_up');
 
--- Hard guarantee that two people cannot hold the same asset in the same week.
+-- Hard guarantee that two people cannot hold the same asset on the same day.
 -- The API checks this too (for a friendly error), but the constraint is what
--- makes it true under concurrent requests — two simultaneous bookings for the
--- same week would both pass an application-level read and then collide here.
+-- makes it true under concurrent requests — two simultaneous bookings for
+-- overlapping days would both pass an application-level read and then collide
+-- here. '[]' makes the range inclusive at both ends, matching how the app reads
+-- start_date/end_date, so back-to-back bookings (one ends Wed, the next starts
+-- Thu) do not collide while a shared day does.
 create extension if not exists btree_gist;
 
 alter table public.fleet_reservations
@@ -117,7 +123,7 @@ alter table public.fleet_reservations
   add constraint fleet_reservations_no_double_booking
   exclude using gist (
     asset_id with =,
-    daterange(start_week, end_week, '[]') with &&
+    daterange(start_date, end_date, '[]') with &&
   )
   where (status in ('reserved', 'picked_up'));
 

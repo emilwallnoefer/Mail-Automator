@@ -7,31 +7,25 @@
  *
  * The three ideas the module is built around:
  *
- *  1. **Weeks, not days.** Material goes out for a mission and comes back; the
- *     old spreadsheet tried to track that per-day and nobody kept it current.
- *     A reservation is a run of ISO weeks, so booking is one or two clicks.
+ *  1. **Days.** A booking is an inclusive run of calendar days — pick it up
+ *     Tuesday, back Thursday. Missions rarely line up with Monday-to-Sunday,
+ *     and rounding a two-day job up to a whole week made the old sheet look
+ *     fully booked while half the fleet sat on a shelf.
  *  2. **Every asset has one current location**, and every movement writes an
  *     event. "Where is it" is answered by the asset row; "how did it get there"
  *     by its event history.
  *  3. **Reliability score.** Bringing material back on time earns trust; not
  *     bringing it back costs it. The score sets how far ahead you may book and
- *     where you land in the queue for a contested week — so the person who
- *     never returns anything is last in line, automatically.
+ *     where you land in the queue for a contested day, so the person who never
+ *     returns anything is last in line, automatically.
  */
 
-export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+export const WEEK_MS = 7 * DAY_MS;
 
 /* -------------------------------------------------------------------------- */
-/* Week math                                                                   */
+/* Date math                                                                   */
 /* -------------------------------------------------------------------------- */
-
-/** `YYYY-MM-DD` for the Monday of the ISO week containing `date` (UTC-safe). */
-export function mondayOf(date: Date): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  // getUTCDay(): 0=Sun..6=Sat -> shift so Monday is 0.
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return toDateKey(d);
-}
 
 export function toDateKey(date: Date): string {
   const y = date.getUTCFullYear();
@@ -50,12 +44,6 @@ export function parseDateKey(key: string): Date {
   return date;
 }
 
-export function addWeeks(weekStart: string, weeks: number): string {
-  const d = parseDateKey(weekStart);
-  d.setUTCDate(d.getUTCDate() + weeks * 7);
-  return toDateKey(d);
-}
-
 export function addDays(dateKey: string, days: number): string {
   const d = parseDateKey(dateKey);
   d.setUTCDate(d.getUTCDate() + days);
@@ -64,22 +52,38 @@ export function addDays(dateKey: string, days: number): string {
 
 /** Whole days from `from` to `to`; negative when `to` is earlier. */
 export function daysBetween(from: string, to: string): number {
-  return Math.round((parseDateKey(to).getTime() - parseDateKey(from).getTime()) / (24 * 60 * 60 * 1000));
+  return Math.round((parseDateKey(to).getTime() - parseDateKey(from).getTime()) / DAY_MS);
 }
 
-export function weeksBetween(from: string, to: string): number {
-  return Math.round((parseDateKey(to).getTime() - parseDateKey(from).getTime()) / WEEK_MS);
+/** Inclusive length of a span, in days. A single-day booking is 1. */
+export function spanLength(startDate: string, endDate: string): number {
+  return daysBetween(startDate, endDate) + 1;
 }
 
-/** The `count` Monday keys starting at `startWeek`. */
-export function weekRange(startWeek: string, count: number): string[] {
-  return Array.from({ length: count }, (_, i) => addWeeks(startWeek, i));
+/** The `count` day keys starting at `startDate`. */
+export function dayRange(startDate: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => addDays(startDate, i));
 }
 
-/** ISO week number + ISO year, for the calendar header ("KW 36"). */
-export function isoWeekNumber(weekStart: string): { week: number; year: number } {
-  const d = parseDateKey(weekStart);
-  // Thursday of this week decides the ISO year.
+/** `YYYY-MM-DD` for the Monday of the week containing `dateKey`. */
+export function mondayOf(dateKey: string): string {
+  const d = parseDateKey(dateKey);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return toDateKey(d);
+}
+
+/** 0 = Monday … 6 = Sunday. */
+export function weekdayIndex(dateKey: string): number {
+  return (parseDateKey(dateKey).getUTCDay() + 6) % 7;
+}
+
+export function isWeekend(dateKey: string): boolean {
+  return weekdayIndex(dateKey) >= 5;
+}
+
+/** ISO week number + ISO year, for the calendar's week rule ("KW 36"). */
+export function isoWeekNumber(dateKey: string): { week: number; year: number } {
+  const d = parseDateKey(mondayOf(dateKey));
   const thursday = new Date(d.getTime());
   thursday.setUTCDate(thursday.getUTCDate() + 3);
   const year = thursday.getUTCFullYear();
@@ -90,7 +94,7 @@ export function isoWeekNumber(weekStart: string): { week: number; year: number }
 }
 
 /**
- * Fixed short-month names. Deliberately not `Intl.DateTimeFormat`: ICU renders
+ * Fixed name tables. Deliberately not `Intl.DateTimeFormat`: ICU renders
  * September as "Sept" in some locales/runtime versions and "Sep" in others, so
  * the calendar header would shift width between the server and the browser.
  */
@@ -99,11 +103,33 @@ const SHORT_MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ] as const;
 
-/** "31 Aug – 6 Sep" — the month is dropped from the start when the week sits in one month. */
-export function formatWeekLabel(weekStart: string): string {
-  const start = parseDateKey(weekStart);
-  const end = parseDateKey(addDays(weekStart, 6));
-  const sameMonth = start.getUTCMonth() === end.getUTCMonth();
+const SHORT_WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
+
+/** "4 Sep" — a single day, for column headers and inline dates. */
+export function formatDay(dateKey: string): string {
+  const d = parseDateKey(dateKey);
+  return `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]}`;
+}
+
+/** "Th" — the weekday initial above a calendar column. */
+export function formatWeekday(dateKey: string): string {
+  return SHORT_WEEKDAYS[weekdayIndex(dateKey)];
+}
+
+/** "Thu 4 Sep" — a day with its weekday, for prose and emails. */
+export function formatDayLong(dateKey: string): string {
+  return `${SHORT_WEEKDAYS[weekdayIndex(dateKey)]} ${formatDay(dateKey)}`;
+}
+
+/**
+ * "4 – 8 Sep", collapsing the month when the span sits inside one, and
+ * collapsing entirely for a single day.
+ */
+export function formatSpan(startDate: string, endDate: string): string {
+  if (startDate === endDate) return formatDay(startDate);
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
   const startLabel = sameMonth
     ? `${start.getUTCDate()}`
     : `${start.getUTCDate()} ${SHORT_MONTHS[start.getUTCMonth()]}`;
@@ -125,18 +151,18 @@ export type ReservationSpan = {
   id: string;
   asset_id: string;
   user_id: string;
-  /** Monday of the first booked week. */
-  start_week: string;
-  /** Monday of the last booked week (inclusive), so a 1-week booking has start === end. */
-  end_week: string;
+  /** First booked day, `YYYY-MM-DD`. */
+  start_date: string;
+  /** Last booked day, inclusive — a one-day booking has start === end. */
+  end_date: string;
   status: ReservationStatus;
   /** `YYYY-MM-DD` the material actually came back, set on check-in. */
   returned_on?: string | null;
 };
 
-/** Half-open comparison on inclusive week spans. */
+/** Half-open comparison on inclusive day spans. */
 export function spansOverlap(a: ReservationSpan, b: ReservationSpan): boolean {
-  return a.start_week <= b.end_week && b.start_week <= a.end_week;
+  return a.start_date <= b.end_date && b.start_date <= a.end_date;
 }
 
 /** A span is "holding" the asset when it is booked or physically out. */
@@ -145,11 +171,11 @@ export function isBlocking(status: ReservationStatus): boolean {
 }
 
 /**
- * The last day the material is due back: the Sunday of the final booked week.
+ * The last day the material is due back: the final booked day itself.
  * Everything overdue-related keys off this one definition.
  */
-export function dueDateOf(span: Pick<ReservationSpan, "end_week">): string {
-  return addDays(span.end_week, 6);
+export function dueDateOf(span: Pick<ReservationSpan, "end_date">): string {
+  return span.end_date;
 }
 
 /**
@@ -172,45 +198,45 @@ export type ConflictCheck =
   | { ok: false; reason: "overlap"; conflicting: ReservationSpan[] }
   | { ok: false; reason: "inverted" }
   | { ok: false; reason: "past" }
-  | { ok: false; reason: "too_long"; maxWeeks: number }
-  | { ok: false; reason: "beyond_horizon"; horizonWeeks: number };
+  | { ok: false; reason: "too_long"; maxDays: number }
+  | { ok: false; reason: "beyond_horizon"; horizonDays: number };
 
-export const MAX_RESERVATION_WEEKS = 12;
+/** Twelve weeks. Longer than this is a transfer, not a booking. */
+export const MAX_RESERVATION_DAYS = 84;
 
 /**
  * Validates a requested span against the asset's existing bookings and the
  * requester's booking horizon. `existing` should already be scoped to the asset.
  */
 export function checkReservation(args: {
-  startWeek: string;
-  endWeek: string;
+  startDate: string;
+  endDate: string;
   today: string;
-  horizonWeeks: number;
+  horizonDays: number;
   existing: ReservationSpan[];
   /** Ignore this reservation when re-checking an edit of an existing booking. */
   ignoreId?: string;
 }): ConflictCheck {
-  const { startWeek, endWeek, today, horizonWeeks, existing, ignoreId } = args;
-  if (endWeek < startWeek) return { ok: false, reason: "inverted" };
+  const { startDate, endDate, today, horizonDays, existing, ignoreId } = args;
+  if (endDate < startDate) return { ok: false, reason: "inverted" };
 
-  const currentWeek = mondayOf(parseDateKey(today));
-  if (startWeek < currentWeek) return { ok: false, reason: "past" };
+  // Today itself is bookable — you can walk to the shelf and take something now.
+  if (startDate < today) return { ok: false, reason: "past" };
 
-  const length = weeksBetween(startWeek, endWeek) + 1;
-  if (length > MAX_RESERVATION_WEEKS) {
-    return { ok: false, reason: "too_long", maxWeeks: MAX_RESERVATION_WEEKS };
+  if (spanLength(startDate, endDate) > MAX_RESERVATION_DAYS) {
+    return { ok: false, reason: "too_long", maxDays: MAX_RESERVATION_DAYS };
   }
 
-  if (weeksBetween(currentWeek, startWeek) > horizonWeeks) {
-    return { ok: false, reason: "beyond_horizon", horizonWeeks };
+  if (daysBetween(today, startDate) > horizonDays) {
+    return { ok: false, reason: "beyond_horizon", horizonDays };
   }
 
   const candidate: ReservationSpan = {
     id: "candidate",
     asset_id: "",
     user_id: "",
-    start_week: startWeek,
-    end_week: endWeek,
+    start_date: startDate,
+    end_date: endDate,
     status: "reserved",
   };
   const conflicting = existing.filter(
@@ -230,8 +256,8 @@ export type ReliabilityTier = "trusted" | "standard" | "watch" | "restricted";
 export type ReliabilityScore = {
   score: number;
   tier: ReliabilityTier;
-  /** Weeks ahead this person may book. */
-  horizonWeeks: number;
+  /** Days ahead this person may book. */
+  horizonDays: number;
   /** How many completed reservations fed the score. */
   completed: number;
   onTime: number;
@@ -249,16 +275,16 @@ export type ReliabilityScore = {
  */
 export const PROVISIONAL_SCORE = 75;
 
-const TIER_THRESHOLDS: ReadonlyArray<{ min: number; tier: ReliabilityTier; horizonWeeks: number }> = [
-  { min: 85, tier: "trusted", horizonWeeks: 12 },
-  { min: 60, tier: "standard", horizonWeeks: 8 },
-  { min: 35, tier: "watch", horizonWeeks: 4 },
-  { min: 0, tier: "restricted", horizonWeeks: 1 },
+const TIER_THRESHOLDS: ReadonlyArray<{ min: number; tier: ReliabilityTier; horizonDays: number }> = [
+  { min: 85, tier: "trusted", horizonDays: 84 },
+  { min: 60, tier: "standard", horizonDays: 56 },
+  { min: 35, tier: "watch", horizonDays: 28 },
+  { min: 0, tier: "restricted", horizonDays: 7 },
 ];
 
-export function tierFor(score: number): { tier: ReliabilityTier; horizonWeeks: number } {
+export function tierFor(score: number): { tier: ReliabilityTier; horizonDays: number } {
   const match = TIER_THRESHOLDS.find((t) => score >= t.min) ?? TIER_THRESHOLDS[TIER_THRESHOLDS.length - 1];
-  return { tier: match.tier, horizonWeeks: match.horizonWeeks };
+  return { tier: match.tier, horizonDays: match.horizonDays };
 }
 
 export const TIER_LABEL: Record<ReliabilityTier, string> = {
@@ -326,12 +352,12 @@ export function computeReliability(spans: ReservationSpan[], today: string): Rel
   const completed = onTime + late;
   const base = completed === 0 && overdue === 0 ? PROVISIONAL_SCORE : 100;
   const score = clamp(Math.round(base + bonus - penalty), 0, 100);
-  const { tier, horizonWeeks } = tierFor(score);
+  const { tier, horizonDays } = tierFor(score);
 
   return {
     score,
     tier,
-    horizonWeeks,
+    horizonDays,
     completed,
     onTime,
     late,
@@ -373,7 +399,7 @@ export type QueueEntry = {
 };
 
 /**
- * Orders a contested week's waitlist. Higher reliability first; ties broken by
+ * Orders a contested span's waitlist. Higher reliability first; ties broken by
  * who asked first, so the score never makes the queue non-deterministic.
  *
  * This is the visible consequence of the score: if you do not bring material

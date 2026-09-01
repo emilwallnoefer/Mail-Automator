@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, Input, Notice } from "@/components/ui";
-import { addWeeks, formatWeekLabel, mondayOf, weeksBetween } from "@/lib/fleet-rules";
+import { addDays, formatDayLong, formatSpan, spanLength, toDateKey } from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
 import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
-import { WeekGrid, type WeekSelection } from "./week-grid";
+import { DayGrid, type DaySelection } from "./day-grid";
 import {
   CATEGORY_LABEL,
   STATUS_LABEL,
@@ -16,19 +16,22 @@ import {
 } from "./types";
 
 /**
- * Fleet — material tracking and week-based booking.
+ * Fleet — material tracking and day-level booking.
  *
  * Built to replace the shared Google Sheet, whose three failures this panel
  * answers directly:
- *   - booking was a merged-cell mess     -> click weeks in a grid
+ *   - booking was a merged-cell mess     -> click days in a grid
  *   - locations went stale invisibly     -> every asset shows its location and
  *                                           how long since anyone confirmed it
  *   - nothing chased late returns        -> a daily reminder cron, plus a
  *                                           reliability score that ranks you in
- *                                           the queue for contested weeks
+ *                                           the queue for contested days
  */
 
-const WINDOW_WEEKS = 8;
+/** Four weeks of day columns: a month of planning that still fits a laptop. */
+const WINDOW_DAYS = 28;
+/** How far the ← / → buttons jump. */
+const WINDOW_STEP_DAYS = 14;
 
 type Tab = "calendar" | "material" | "mine" | "standings";
 
@@ -39,26 +42,26 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const [notice, setNotice] = useState<{ tone: "neutral" | "warn" | "danger"; text: string } | null>(null);
   const [tab, setTab] = useState<Tab>("calendar");
   const [windowStart, setWindowStart] = useState<string>(
-    () => initialBoard?.window_start ?? mondayOf(new Date()),
+    () => initialBoard?.window_start ?? toDateKey(new Date()),
   );
-  const [selection, setSelection] = useState<WeekSelection>(null);
+  const [selection, setSelection] = useState<DaySelection>(null);
   const [categoryFilter, setCategoryFilter] = useState<FleetAssetCategory | "all">("all");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<FleetReservation | null>(null);
 
-  // Guards against a slow response for an earlier week overwriting a newer one
+  // Guards against a slow response for an earlier window overwriting a newer one
   // (the same staleness rule the Time Tracker follows for its week fetches).
   const requestSeq = useRef(0);
 
   const load = useCallback(
-    async (weekStart: string) => {
+    async (start: string) => {
       const seq = ++requestSeq.current;
       setLoading(true);
       setError(null);
       try {
         const response = await fetch(
-          `/api/fleet?weekStart=${encodeURIComponent(weekStart)}&weeks=${WINDOW_WEEKS}`,
+          `/api/fleet?start=${encodeURIComponent(start)}&days=${WINDOW_DAYS}`,
         );
         if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? "Request failed");
         const data = (await response.json()) as FleetBoardResponse;
@@ -99,7 +102,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     () =>
       reservations
         .filter((r) => r.is_mine && r.status !== "cancelled" && r.status !== "returned")
-        .sort((a, b) => a.start_week.localeCompare(b.start_week)),
+        .sort((a, b) => a.start_date.localeCompare(b.start_date)),
     [reservations],
   );
 
@@ -151,8 +154,8 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     const ok = await post({
       action: "reserve",
       asset_id: selection.assetId,
-      start_week: selection.startWeek,
-      end_week: selection.endWeek,
+      start_date: selection.startDate,
+      end_date: selection.endDate,
       destination: bookingDestination.trim() || undefined,
       purpose: bookingPurpose.trim() || undefined,
       waitlist,
@@ -168,7 +171,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const [bookingDestination, setBookingDestination] = useState("");
   const [bookingPurpose, setBookingPurpose] = useState("");
 
-  const weeksSelected = selection ? weeksBetween(selection.startWeek, selection.endWeek) + 1 : 0;
+  const daysSelected = selection ? spanLength(selection.startDate, selection.endDate) : 0;
 
   return (
     <Card className="space-y-4">
@@ -179,7 +182,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             <Badge tone="warn">Beta</Badge>
           </div>
           <p className="mt-1 text-xs text-ink-4">
-            Book material by the week, and see exactly where every unit is right now.
+            Book material by the day, and see exactly where every unit is right now.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -246,13 +249,21 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <Button size="xs" variant="glass-quiet" onClick={() => setWindowStart(addWeeks(windowStart, -4))}>
+              <Button
+                size="xs"
+                variant="glass-quiet"
+                onClick={() => setWindowStart(addDays(windowStart, -WINDOW_STEP_DAYS))}
+              >
                 ← Earlier
               </Button>
-              <Button size="xs" variant="glass-quiet" onClick={() => setWindowStart(mondayOf(new Date()))}>
+              <Button size="xs" variant="glass-quiet" onClick={() => setWindowStart(toDateKey(new Date()))}>
                 Today
               </Button>
-              <Button size="xs" variant="glass-quiet" onClick={() => setWindowStart(addWeeks(windowStart, 4))}>
+              <Button
+                size="xs"
+                variant="glass-quiet"
+                onClick={() => setWindowStart(addDays(windowStart, WINDOW_STEP_DAYS))}
+              >
                 Later →
               </Button>
             </div>
@@ -280,25 +291,25 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             </div>
           </div>
 
-          <WeekGrid
+          <DayGrid
             assets={visibleAssets}
             reservations={reservations}
             windowStart={windowStart}
-            windowWeeks={WINDOW_WEEKS}
+            windowDays={WINDOW_DAYS}
             today={board?.today ?? new Date().toISOString().slice(0, 10)}
-            horizonWeeks={board?.is_admin ? 52 : (board?.me.horizonWeeks ?? 8)}
+            horizonDays={board?.is_admin ? 365 : (board?.me.horizonDays ?? 56)}
             selection={selection}
             onSelect={setSelection}
             onOpenReservation={setDetail}
           />
 
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-5">
-            <LegendSwatch className="bg-glass/[0.06]" label="Free — click to book" />
+            <LegendSwatch className="bg-glass/[0.07]" label="Free — click to book" />
             <LegendSwatch className="bg-accent-deep/45" label="Yours" />
             <LegendSwatch className="bg-glass/20" label="Someone else" />
             <LegendSwatch className="bg-rose-500/30" label="Overdue" />
             <LegendSwatch
-              className="bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.08)_4px,rgba(255,255,255,0.08)_8px)]"
+              className="bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.08)_3px,rgba(255,255,255,0.08)_6px)]"
               label="Beyond your booking horizon"
             />
           </div>
@@ -309,13 +320,12 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
                 <div>
                   <p className="text-sm font-semibold text-ink">{selectedAsset.name}</p>
                   <p className="mt-0.5 text-xs text-ink-4">
-                    {weeksSelected} week{weeksSelected === 1 ? "" : "s"} ·{" "}
-                    {formatWeekLabel(selection.startWeek)}
-                    {weeksSelected > 1 ? ` → ${formatWeekLabel(selection.endWeek)}` : ""} · due back{" "}
-                    {formatWeekLabel(selection.endWeek).split("–").pop()?.trim()}
+                    {daysSelected} day{daysSelected === 1 ? "" : "s"} ·{" "}
+                    {formatSpan(selection.startDate, selection.endDate)} · back by{" "}
+                    {formatDayLong(selection.endDate)}
                   </p>
                   <p className="mt-1 text-[11px] text-ink-5">
-                    Click another week in the same row to extend the booking.
+                    Click another day in the same row to extend the booking.
                   </p>
                 </div>
                 <Button size="xs" variant="ghost" onClick={() => setSelection(null)}>
@@ -342,7 +352,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="accent" onClick={() => void confirmBooking(false)} disabled={busy}>
-                  {busy ? "Booking…" : `Book ${weeksSelected} week${weeksSelected === 1 ? "" : "s"}`}
+                  {busy ? "Booking…" : `Book ${daysSelected} day${daysSelected === 1 ? "" : "s"}`}
                 </Button>
                 <Button size="sm" variant="glass" onClick={() => void confirmBooking(true)} disabled={busy}>
                   Join waitlist instead
@@ -589,7 +599,7 @@ function MyMaterial({
       <div className="space-y-1.5">
         {reservations.length === 0 ? (
           <p className="text-xs text-ink-4">
-            Nothing booked. Pick weeks in the calendar to reserve material.
+            Nothing booked. Pick days in the calendar to reserve material.
           </p>
         ) : null}
 
@@ -618,11 +628,8 @@ function MyMaterial({
                     </Badge>
                   </div>
                   <p className="mt-1 text-[11px] text-ink-4">
-                    {formatWeekLabel(reservation.start_week)}
-                    {reservation.end_week !== reservation.start_week
-                      ? ` → ${formatWeekLabel(reservation.end_week)}`
-                      : ""}{" "}
-                    · due back {reservation.due_date}
+                    {formatSpan(reservation.start_date, reservation.end_date)} · due back{" "}
+                    {formatDayLong(reservation.due_date)}
                   </p>
                   {reservation.destination ? (
                     <p className="mt-0.5 text-[11px] text-ink-5">Going to {reservation.destination}</p>
@@ -705,7 +712,7 @@ function Standings({ board }: { board: FleetBoardResponse | null }) {
     <div className="space-y-3">
       <p className="text-xs leading-relaxed text-ink-4">
         Reliability is earned by bringing material back on time. It decides how far ahead you can book, and who wins
-        a week two people want — the lower your score, the further down the queue you sit.
+        a day two people want — the lower your score, the further down the queue you sit.
       </p>
       <ol className="space-y-1.5">
         {board.standings.map((entry, index) => (
@@ -762,13 +769,10 @@ function ReservationDetail({
           <p className="text-sm font-semibold text-ink">{asset?.name ?? "Material"}</p>
           <p className="mt-0.5 text-xs text-ink-4">
             {reservation.is_mine ? "Booked by you" : `Booked by ${reservation.holder_name}`} ·{" "}
-            {formatWeekLabel(reservation.start_week)}
-            {reservation.end_week !== reservation.start_week
-              ? ` → ${formatWeekLabel(reservation.end_week)}`
-              : ""}
+            {formatSpan(reservation.start_date, reservation.end_date)}
           </p>
           <p className="mt-0.5 text-[11px] text-ink-5">
-            Due back {reservation.due_date}
+            Due back {formatDayLong(reservation.due_date)}
             {reservation.days_overdue > 0 ? ` · ${reservation.days_overdue} days overdue` : ""}
             {reservation.destination ? ` · ${reservation.destination}` : ""}
           </p>

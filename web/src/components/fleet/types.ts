@@ -29,8 +29,8 @@ export type FleetReservation = {
   id: string;
   asset_id: string;
   user_id: string;
-  start_week: string;
-  end_week: string;
+  start_date: string;
+  end_date: string;
   status: ReservationStatus;
   purpose: string | null;
   destination: string | null;
@@ -48,7 +48,7 @@ export type FleetReservation = {
 export type FleetBoardResponse = {
   today: string;
   window_start: string;
-  window_weeks: number;
+  window_days: number;
   assets: FleetAsset[];
   reservations: FleetReservation[];
   me: ReliabilityScore & { user_id: string };

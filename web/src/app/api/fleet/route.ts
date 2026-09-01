@@ -5,14 +5,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminEmail } from "@/lib/admin";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import {
-  DEFAULT_WINDOW_WEEKS,
+  DEFAULT_WINDOW_DAYS,
   fetchAssetSpans,
   fetchFleetBoard,
   fetchReliability,
   recordAssetEvent,
   todayInZurich,
 } from "@/lib/fleet-queries";
-import { checkReservation, isBlocking, mondayOf, parseDateKey } from "@/lib/fleet-rules";
+import { checkReservation, isBlocking, parseDateKey, toDateKey } from "@/lib/fleet-rules";
 import { buildDemoBoard } from "@/lib/fleet-demo";
 
 export const runtime = "nodejs";
@@ -38,8 +38,8 @@ const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 const reserveSchema = z.object({
   action: z.literal("reserve"),
   asset_id: z.string().uuid(),
-  start_week: dateKey,
-  end_week: dateKey,
+  start_date: dateKey,
+  end_date: dateKey,
   purpose: z.string().trim().max(280).optional(),
   destination: z.string().trim().max(160).optional(),
   /** Join the waitlist instead of failing when the week is taken. */
@@ -109,25 +109,26 @@ export async function GET(request: Request) {
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
-  const rawStart = url.searchParams.get("weekStart");
-  const rawWeeks = Number(url.searchParams.get("weeks") ?? DEFAULT_WINDOW_WEEKS);
+  const rawStart = url.searchParams.get("start");
+  const rawDays = Number(url.searchParams.get("days") ?? DEFAULT_WINDOW_DAYS);
 
   let windowStart: string | undefined;
   if (rawStart) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(rawStart)) {
-      return NextResponse.json({ error: "Invalid weekStart." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid start date." }, { status: 400 });
     }
-    // Snap to Monday rather than rejecting: the stepper always sends a Monday,
-    // but a hand-typed URL should still land somewhere sensible.
-    windowStart = mondayOf(parseDateKey(rawStart));
+    // Round-trip through the parser so an impossible date (2026-02-31) is
+    // normalised rather than reaching the query as-is.
+    windowStart = toDateKey(parseDateKey(rawStart));
   }
-  const windowWeeks = Number.isFinite(rawWeeks) ? Math.min(26, Math.max(2, Math.trunc(rawWeeks))) : DEFAULT_WINDOW_WEEKS;
+  // Capped at a quarter: the grid renders one column per day.
+  const windowDays = Number.isFinite(rawDays) ? Math.min(92, Math.max(7, Math.trunc(rawDays))) : DEFAULT_WINDOW_DAYS;
 
   try {
     const board = await fetchFleetBoard(createAdminClient(), {
       viewerId: viewer.id,
       windowStart,
-      windowWeeks,
+      windowDays,
     });
     return NextResponse.json({ ...board, is_admin: viewer.isAdmin });
   } catch (error) {
@@ -143,8 +144,8 @@ export async function GET(request: Request) {
           viewerId: viewer.id,
           viewerName: viewer.email?.split("@")[0] ?? "You",
           today,
-          windowStart: windowStart ?? mondayOf(parseDateKey(today)),
-          windowWeeks,
+          windowStart: windowStart ?? today,
+          windowDays,
         }),
         is_admin: viewer.isAdmin,
       });
@@ -232,8 +233,8 @@ async function handleReserve(
   payload: z.infer<typeof reserveSchema>,
   today: string,
 ) {
-  const startWeek = mondayOf(parseDateKey(payload.start_week));
-  const endWeek = mondayOf(parseDateKey(payload.end_week));
+  const startDate = toDateKey(parseDateKey(payload.start_date));
+  const endDate = toDateKey(parseDateKey(payload.end_date));
 
   const { data: asset, error: assetError } = await admin
     .from("fleet_assets")
@@ -254,11 +255,11 @@ async function handleReserve(
   const reliability = await fetchReliability(admin, viewer.id, today);
   const existing = await fetchAssetSpans(admin, payload.asset_id);
   const check = checkReservation({
-    startWeek,
-    endWeek,
+    startDate,
+    endDate,
     today,
     // Admins are not subject to the horizon: they schedule missions months out.
-    horizonWeeks: viewer.isAdmin ? 52 : reliability.horizonWeeks,
+    horizonDays: viewer.isAdmin ? 365 : reliability.horizonDays,
     existing,
   });
 
@@ -269,8 +270,8 @@ async function handleReserve(
         .insert({
           asset_id: payload.asset_id,
           user_id: viewer.id,
-          start_week: startWeek,
-          end_week: endWeek,
+          start_date: startDate,
+          end_date: endDate,
           status: "waitlisted",
           purpose: payload.purpose ?? null,
           destination: payload.destination ?? null,
@@ -293,8 +294,8 @@ async function handleReserve(
     .insert({
       asset_id: payload.asset_id,
       user_id: viewer.id,
-      start_week: startWeek,
-      end_week: endWeek,
+      start_date: startDate,
+      end_date: endDate,
       status: "reserved",
       purpose: payload.purpose ?? null,
       destination: payload.destination ?? null,
@@ -307,7 +308,7 @@ async function handleReserve(
     // taken the same week between our check above and this insert.
     if (error.code === "23P01") {
       return NextResponse.json(
-        { error: `Someone booked ${asset.name} for those weeks a moment ago. Reload and try the waitlist.` },
+        { error: `Someone booked ${asset.name} for those days a moment ago. Reload and try the waitlist.` },
         { status: 409 },
       );
     }
@@ -327,27 +328,27 @@ async function handleReserve(
 
 function reserveErrorMessage(
   check: Exclude<ReturnType<typeof checkReservation>, { ok: true }>,
-  reliability: { score: number; horizonWeeks: number },
+  reliability: { score: number; horizonDays: number },
   assetName: string,
 ): string {
   switch (check.reason) {
     case "inverted":
-      return "The last week cannot be before the first.";
+      return "The last day cannot be before the first.";
     case "past":
-      return "That week is already over.";
+      return "That day is already past.";
     case "too_long":
-      return `A single booking can run at most ${check.maxWeeks} weeks. Split it, or ask an admin.`;
+      return `A single booking can run at most ${check.maxDays} days. Split it, or ask an admin.`;
     case "beyond_horizon":
-      return `Your reliability score (${reliability.score}) lets you book up to ${check.horizonWeeks} weeks ahead. Return material on time to book further out.`;
+      return `Your reliability score (${reliability.score}) lets you book up to ${check.horizonDays} days ahead. Return material on time to book further out.`;
     case "overlap":
-      return `${assetName} is already booked for those weeks. You can join the waitlist instead.`;
+      return `${assetName} is already booked on those days. You can join the waitlist instead.`;
   }
 }
 
 async function loadReservation(admin: Admin, id: string) {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_week, end_week, status, destination")
+    .select("id, asset_id, user_id, start_date, end_date, status, destination")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -385,7 +386,7 @@ async function handleCancel(admin: Admin, viewer: Viewer, payload: z.infer<typeo
 
   // Cancelling frees the week: promote the top of the waitlist, which is
   // ordered by reliability score.
-  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_week);
+  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_date);
   return NextResponse.json({ ok: true, promoted });
 }
 
@@ -394,13 +395,13 @@ async function handleCancel(admin: Admin, viewer: Viewer, payload: z.infer<typeo
  * booking. Returns the promoted reservation id, or null when nobody was
  * waiting or the span is still blocked.
  */
-async function promoteWaitlist(admin: Admin, assetId: string, startWeek: string): Promise<string | null> {
+async function promoteWaitlist(admin: Admin, assetId: string, startDate: string): Promise<string | null> {
   const { data: waiting, error } = await admin
     .from("fleet_reservations")
-    .select("id, user_id, start_week, end_week, created_at")
+    .select("id, user_id, start_date, end_date, created_at")
     .eq("asset_id", assetId)
     .eq("status", "waitlisted")
-    .eq("start_week", startWeek);
+    .eq("start_date", startDate);
   if (error || !waiting || waiting.length === 0) return null;
 
   const today = todayInZurich();
@@ -424,8 +425,8 @@ async function promoteWaitlist(admin: Admin, assetId: string, startWeek: string)
     const clash = existing.some(
       (span) =>
         isBlocking(span.status) &&
-        span.start_week <= candidate.row.end_week &&
-        candidate.row.start_week <= span.end_week,
+        span.start_date <= candidate.row.end_date &&
+        candidate.row.start_date <= span.end_date,
     );
     if (clash) continue;
 
@@ -554,7 +555,7 @@ async function handleCheckIn(
     note: payload.note ?? null,
   });
 
-  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_week);
+  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_date);
   const score = await fetchReliability(admin, reservation.user_id, today);
   return NextResponse.json({ ok: true, promoted, score });
 }

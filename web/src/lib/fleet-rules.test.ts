@@ -1,96 +1,148 @@
 import { describe, expect, it } from "vitest";
 import {
-  addWeeks,
+  addDays,
   checkReservation,
   computeReliability,
-  dueDateOf,
+  dayRange,
+  daysBetween,
   daysOverdue,
-  formatWeekLabel,
+  dueDateOf,
+  formatDay,
+  formatDayLong,
+  formatSpan,
+  formatWeekday,
+  isWeekend,
   isoWeekNumber,
   lateDays,
   mondayOf,
   orderQueue,
-  parseDateKey,
   PROVISIONAL_SCORE,
   reminderFor,
+  spanLength,
   spansOverlap,
   tierFor,
-  weekRange,
-  weeksBetween,
+  weekdayIndex,
   type ReservationSpan,
 } from "./fleet-rules";
 
-function span(partial: Partial<ReservationSpan> & { start_week: string; end_week: string }): ReservationSpan {
+function span(partial: Partial<ReservationSpan> & { start_date: string; end_date: string }): ReservationSpan {
   return {
     id: partial.id ?? "r1",
     asset_id: partial.asset_id ?? "a1",
     user_id: partial.user_id ?? "u1",
     status: partial.status ?? "reserved",
     returned_on: partial.returned_on ?? null,
-    start_week: partial.start_week,
-    end_week: partial.end_week,
+    start_date: partial.start_date,
+    end_date: partial.end_date,
   };
 }
 
-describe("week math", () => {
-  it("snaps any weekday to its Monday", () => {
-    // 2026-09-01 is a Tuesday; 2026-09-06 the following Sunday.
-    expect(mondayOf(parseDateKey("2026-09-01"))).toBe("2026-08-31");
-    expect(mondayOf(parseDateKey("2026-08-31"))).toBe("2026-08-31");
-    expect(mondayOf(parseDateKey("2026-09-06"))).toBe("2026-08-31");
-    expect(mondayOf(parseDateKey("2026-09-07"))).toBe("2026-09-07");
+describe("date math", () => {
+  it("steps days across month and year boundaries", () => {
+    expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
+    expect(addDays("2026-09-01", -1)).toBe("2026-08-31");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(daysBetween("2026-08-31", "2026-09-07")).toBe(7);
+    expect(daysBetween("2026-09-07", "2026-08-31")).toBe(-7);
   });
 
-  it("steps whole weeks across a month boundary", () => {
-    expect(addWeeks("2026-08-31", 1)).toBe("2026-09-07");
-    expect(addWeeks("2026-09-07", -2)).toBe("2026-08-24");
-    expect(weeksBetween("2026-08-31", "2026-10-05")).toBe(5);
+  it("counts an inclusive span, so a single day is 1", () => {
+    expect(spanLength("2026-09-01", "2026-09-01")).toBe(1);
+    expect(spanLength("2026-09-01", "2026-09-03")).toBe(3);
   });
 
   it("survives a DST transition (Europe/Zurich clocks change 2026-10-25)", () => {
-    // UTC-anchored arithmetic must not drift by an hour and land on a Sunday.
-    expect(addWeeks("2026-10-19", 1)).toBe("2026-10-26");
-    expect(mondayOf(parseDateKey("2026-10-26"))).toBe("2026-10-26");
+    // UTC-anchored arithmetic must not drift an hour and skip or repeat a day.
+    expect(addDays("2026-10-24", 1)).toBe("2026-10-25");
+    expect(addDays("2026-10-25", 1)).toBe("2026-10-26");
+    expect(daysBetween("2026-10-24", "2026-10-27")).toBe(3);
+  });
+
+  it("handles a leap day", () => {
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDays("2028-02-29", 1)).toBe("2028-03-01");
+    expect(daysBetween("2028-02-28", "2028-03-01")).toBe(2);
   });
 
   it("builds a contiguous window", () => {
-    expect(weekRange("2026-08-31", 3)).toEqual(["2026-08-31", "2026-09-07", "2026-09-14"]);
+    expect(dayRange("2026-08-31", 4)).toEqual(["2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03"]);
   });
 
-  it("computes ISO week numbers", () => {
+  it("snaps to Monday and indexes weekdays from Monday", () => {
+    // 2026-09-01 is a Tuesday.
+    expect(mondayOf("2026-09-01")).toBe("2026-08-31");
+    expect(mondayOf("2026-08-31")).toBe("2026-08-31");
+    expect(mondayOf("2026-09-06")).toBe("2026-08-31");
+    expect(weekdayIndex("2026-08-31")).toBe(0);
+    expect(weekdayIndex("2026-09-06")).toBe(6);
+  });
+
+  it("marks Saturday and Sunday as weekend", () => {
+    expect(isWeekend("2026-09-04")).toBe(false); // Friday
+    expect(isWeekend("2026-09-05")).toBe(true); // Saturday
+    expect(isWeekend("2026-09-06")).toBe(true); // Sunday
+    expect(isWeekend("2026-09-07")).toBe(false); // Monday
+  });
+
+  it("computes ISO week numbers from any day in the week", () => {
     expect(isoWeekNumber("2026-08-31")).toEqual({ week: 36, year: 2026 });
-    // 2026-01-01 is a Thursday, so its Monday belongs to ISO week 1 of 2026.
+    expect(isoWeekNumber("2026-09-06")).toEqual({ week: 36, year: 2026 });
     expect(isoWeekNumber("2025-12-29")).toEqual({ week: 1, year: 2026 });
   });
+});
 
-  it("labels a week, collapsing the month when it does not straddle one", () => {
-    expect(formatWeekLabel("2026-09-07")).toBe("7 – 13 Sep");
-    expect(formatWeekLabel("2026-08-31")).toBe("31 Aug – 6 Sep");
+describe("formatting", () => {
+  it("renders single days", () => {
+    expect(formatDay("2026-09-04")).toBe("4 Sep");
+    expect(formatWeekday("2026-09-04")).toBe("Fr");
+    expect(formatDayLong("2026-09-04")).toBe("Fr 4 Sep");
+  });
+
+  it("collapses the month inside one month, and keeps both across a boundary", () => {
+    expect(formatSpan("2026-09-04", "2026-09-04")).toBe("4 Sep");
+    expect(formatSpan("2026-09-04", "2026-09-08")).toBe("4 – 8 Sep");
+    expect(formatSpan("2026-08-31", "2026-09-02")).toBe("31 Aug – 2 Sep");
+  });
+
+  it("does not collapse the same month number in different years", () => {
+    expect(formatSpan("2026-09-28", "2027-09-02")).toBe("28 Sep – 2 Sep");
   });
 });
 
 describe("reservation spans", () => {
-  it("is due on the Sunday of the last booked week", () => {
-    expect(dueDateOf({ end_week: "2026-08-31" })).toBe("2026-09-06");
+  it("is due on the last booked day itself", () => {
+    expect(dueDateOf({ end_date: "2026-09-03" })).toBe("2026-09-03");
   });
 
-  it("detects inclusive overlap, including single shared week", () => {
-    const a = span({ start_week: "2026-08-31", end_week: "2026-09-07" });
-    const b = span({ id: "r2", start_week: "2026-09-07", end_week: "2026-09-14" });
-    const c = span({ id: "r3", start_week: "2026-09-14", end_week: "2026-09-21" });
+  it("detects inclusive overlap, including a single shared day", () => {
+    const a = span({ start_date: "2026-09-01", end_date: "2026-09-03" });
+    const b = span({ id: "r2", start_date: "2026-09-03", end_date: "2026-09-05" });
+    const c = span({ id: "r3", start_date: "2026-09-04", end_date: "2026-09-06" });
     expect(spansOverlap(a, b)).toBe(true);
     expect(spansOverlap(a, c)).toBe(false);
   });
 
+  it("lets a booking start the day after another ends", () => {
+    const existing = [span({ id: "live", start_date: "2026-09-01", end_date: "2026-09-03" })];
+    const result = checkReservation({
+      startDate: "2026-09-04",
+      endDate: "2026-09-06",
+      today: "2026-09-01",
+      horizonDays: 56,
+      existing,
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects an overlap with a live booking but ignores cancelled and returned ones", () => {
     const existing = [
-      span({ id: "live", start_week: "2026-09-07", end_week: "2026-09-14" }),
-      span({ id: "dead", start_week: "2026-09-21", end_week: "2026-09-21", status: "cancelled" }),
-      span({ id: "done", start_week: "2026-09-28", end_week: "2026-09-28", status: "returned" }),
+      span({ id: "live", start_date: "2026-09-07", end_date: "2026-09-09" }),
+      span({ id: "dead", start_date: "2026-09-14", end_date: "2026-09-14", status: "cancelled" }),
+      span({ id: "done", start_date: "2026-09-21", end_date: "2026-09-21", status: "returned" }),
     ];
-    const base = { today: "2026-09-01", horizonWeeks: 12, existing };
+    const base = { today: "2026-09-01", horizonDays: 84, existing };
 
-    const clash = checkReservation({ ...base, startWeek: "2026-09-14", endWeek: "2026-09-14" });
+    const clash = checkReservation({ ...base, startDate: "2026-09-08", endDate: "2026-09-10" });
     expect(clash.ok).toBe(false);
     if (!clash.ok && clash.reason === "overlap") {
       expect(clash.conflicting.map((s) => s.id)).toEqual(["live"]);
@@ -98,17 +150,17 @@ describe("reservation spans", () => {
       expect.unreachable("expected an overlap conflict");
     }
 
-    expect(checkReservation({ ...base, startWeek: "2026-09-21", endWeek: "2026-09-21" }).ok).toBe(true);
-    expect(checkReservation({ ...base, startWeek: "2026-09-28", endWeek: "2026-09-28" }).ok).toBe(true);
+    expect(checkReservation({ ...base, startDate: "2026-09-14", endDate: "2026-09-14" }).ok).toBe(true);
+    expect(checkReservation({ ...base, startDate: "2026-09-21", endDate: "2026-09-21" }).ok).toBe(true);
   });
 
   it("lets an edit ignore its own row", () => {
-    const existing = [span({ id: "mine", start_week: "2026-09-07", end_week: "2026-09-07" })];
+    const existing = [span({ id: "mine", start_date: "2026-09-07", end_date: "2026-09-07" })];
     const result = checkReservation({
-      startWeek: "2026-09-07",
-      endWeek: "2026-09-14",
+      startDate: "2026-09-07",
+      endDate: "2026-09-09",
       today: "2026-09-01",
-      horizonWeeks: 12,
+      horizonDays: 84,
       existing,
       ignoreId: "mine",
     });
@@ -116,36 +168,46 @@ describe("reservation spans", () => {
   });
 
   it("refuses inverted, past, over-long and beyond-horizon spans", () => {
-    const base = { today: "2026-09-01", existing: [] as ReservationSpan[], horizonWeeks: 4 };
-    expect(checkReservation({ ...base, startWeek: "2026-09-14", endWeek: "2026-09-07" })).toEqual({
+    const base = { today: "2026-09-01", existing: [] as ReservationSpan[], horizonDays: 28 };
+    expect(checkReservation({ ...base, startDate: "2026-09-10", endDate: "2026-09-08" })).toEqual({
       ok: false,
       reason: "inverted",
     });
-    expect(checkReservation({ ...base, startWeek: "2026-08-24", endWeek: "2026-08-24" })).toEqual({
+    expect(checkReservation({ ...base, startDate: "2026-08-31", endDate: "2026-08-31" })).toEqual({
       ok: false,
       reason: "past",
     });
-    expect(checkReservation({ ...base, startWeek: "2026-08-31", endWeek: "2026-12-07" })).toEqual({
+    expect(checkReservation({ ...base, startDate: "2026-09-01", endDate: "2026-12-01" })).toEqual({
       ok: false,
       reason: "too_long",
-      maxWeeks: 12,
+      maxDays: 84,
     });
-    // horizon 4 => the 5th week out is refused, the 4th allowed.
-    expect(checkReservation({ ...base, startWeek: "2026-09-28", endWeek: "2026-09-28" }).ok).toBe(true);
-    expect(checkReservation({ ...base, startWeek: "2026-10-05", endWeek: "2026-10-05" })).toEqual({
+    // horizon 28 => day 28 out is allowed, day 29 refused.
+    expect(checkReservation({ ...base, startDate: "2026-09-29", endDate: "2026-09-29" }).ok).toBe(true);
+    expect(checkReservation({ ...base, startDate: "2026-09-30", endDate: "2026-09-30" })).toEqual({
       ok: false,
       reason: "beyond_horizon",
-      horizonWeeks: 4,
+      horizonDays: 28,
     });
   });
 
-  it("allows booking the week already in progress", () => {
-    // today is Tuesday; the current week's Monday is in the past but bookable.
+  it("allows booking today itself", () => {
     const result = checkReservation({
-      startWeek: "2026-08-31",
-      endWeek: "2026-08-31",
+      startDate: "2026-09-01",
+      endDate: "2026-09-01",
       today: "2026-09-01",
-      horizonWeeks: 8,
+      horizonDays: 56,
+      existing: [],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows a booking exactly at the maximum length", () => {
+    const result = checkReservation({
+      startDate: "2026-09-01",
+      endDate: addDays("2026-09-01", 83),
+      today: "2026-09-01",
+      horizonDays: 84,
       existing: [],
     });
     expect(result.ok).toBe(true);
@@ -153,26 +215,26 @@ describe("reservation spans", () => {
 });
 
 describe("lateness", () => {
-  it("counts days past the due Sunday only while the item is still out", () => {
-    const out = span({ start_week: "2026-08-24", end_week: "2026-08-24", status: "picked_up" });
-    expect(dueDateOf(out)).toBe("2026-08-30");
-    expect(daysOverdue(out, "2026-08-30")).toBe(0);
-    expect(daysOverdue(out, "2026-09-02")).toBe(3);
+  it("counts days past the due day only while the item is still out", () => {
+    const out = span({ start_date: "2026-08-24", end_date: "2026-08-28", status: "picked_up" });
+    expect(dueDateOf(out)).toBe("2026-08-28");
+    expect(daysOverdue(out, "2026-08-28")).toBe(0);
+    expect(daysOverdue(out, "2026-08-31")).toBe(3);
 
-    const back = span({ ...out, status: "returned", returned_on: "2026-09-02" });
+    const back = span({ ...out, status: "returned", returned_on: "2026-08-31" });
     expect(daysOverdue(back, "2026-09-10")).toBe(0);
     expect(lateDays(back)).toBe(3);
   });
 
   it("treats an early or on-time return as not late", () => {
     const onTime = span({
-      start_week: "2026-08-24",
-      end_week: "2026-08-24",
+      start_date: "2026-08-24",
+      end_date: "2026-08-28",
       status: "returned",
-      returned_on: "2026-08-30",
+      returned_on: "2026-08-28",
     });
     expect(lateDays(onTime)).toBe(0);
-    expect(lateDays(span({ ...onTime, returned_on: "2026-08-27" }))).toBe(0);
+    expect(lateDays(span({ ...onTime, returned_on: "2026-08-26" }))).toBe(0);
   });
 });
 
@@ -183,7 +245,7 @@ describe("reliability score", () => {
     const r = computeReliability([], today);
     expect(r.score).toBe(PROVISIONAL_SCORE);
     expect(r.tier).toBe("standard");
-    expect(r.horizonWeeks).toBe(8);
+    expect(r.horizonDays).toBe(56);
     expect(r.summary).toBe("No return history yet");
   });
 
@@ -191,54 +253,54 @@ describe("reliability score", () => {
     const clean = Array.from({ length: 20 }, (_, i) =>
       span({
         id: `r${i}`,
-        start_week: "2026-06-01",
-        end_week: "2026-06-01",
+        start_date: "2026-06-01",
+        end_date: "2026-06-03",
         status: "returned",
-        returned_on: "2026-06-07",
+        returned_on: "2026-06-03",
       }),
     );
     const r = computeReliability(clean, today);
     expect(r.score).toBe(100);
     expect(r.tier).toBe("trusted");
-    expect(r.onTime).toBe(20);
+    expect(r.horizonDays).toBe(84);
     expect(r.summary).toBe("20 returns, all on time");
   });
 
   it("penalises a late return in proportion to how late it was", () => {
     const mild = computeReliability(
-      [span({ start_week: "2026-06-01", end_week: "2026-06-01", status: "returned", returned_on: "2026-06-09" })],
+      [span({ start_date: "2026-06-01", end_date: "2026-06-03", status: "returned", returned_on: "2026-06-05" })],
       today,
     );
     // 2 days late => 100 - (4 + 2*2) = 92
     expect(mild.score).toBe(92);
 
     const bad = computeReliability(
-      [span({ start_week: "2026-06-01", end_week: "2026-06-01", status: "returned", returned_on: "2026-07-20" })],
+      [span({ start_date: "2026-06-01", end_date: "2026-06-03", status: "returned", returned_on: "2026-07-20" })],
       today,
     );
-    // 43 days late => penalty capped at 30 => 70
+    // 47 days late => penalty capped at 30 => 70
     expect(bad.score).toBe(70);
   });
 
   it("punishes material that is still out harder, and keeps growing the penalty", () => {
-    const out = span({ start_week: "2026-08-10", end_week: "2026-08-10", status: "picked_up" });
+    const out = span({ start_date: "2026-08-10", end_date: "2026-08-16", status: "picked_up" });
     // due 2026-08-16; on 2026-09-01 that is 16 days => capped at 45 => 55
     const r = computeReliability([out], today);
     expect(r.score).toBe(55);
     expect(r.overdue).toBe(1);
     expect(r.tier).toBe("watch");
-    expect(r.horizonWeeks).toBe(4);
+    expect(r.horizonDays).toBe(28);
     expect(r.summary).toBe("1 item still out past the due date");
   });
 
   it("drops a chronic offender to restricted, with a one-week horizon", () => {
     const spans = [
-      span({ id: "a", start_week: "2026-06-01", end_week: "2026-06-01", status: "picked_up" }),
-      span({ id: "b", start_week: "2026-06-08", end_week: "2026-06-08", status: "picked_up" }),
+      span({ id: "a", start_date: "2026-06-01", end_date: "2026-06-01", status: "picked_up" }),
+      span({ id: "b", start_date: "2026-06-08", end_date: "2026-06-08", status: "picked_up" }),
       span({
         id: "c",
-        start_week: "2026-05-04",
-        end_week: "2026-05-04",
+        start_date: "2026-05-04",
+        end_date: "2026-05-04",
         status: "returned",
         returned_on: "2026-06-20",
       }),
@@ -246,12 +308,12 @@ describe("reliability score", () => {
     const r = computeReliability(spans, today);
     expect(r.score).toBe(0);
     expect(r.tier).toBe("restricted");
-    expect(r.horizonWeeks).toBe(1);
+    expect(r.horizonDays).toBe(7);
   });
 
   it("ignores cancelled bookings entirely", () => {
     const r = computeReliability(
-      [span({ start_week: "2026-06-01", end_week: "2026-06-01", status: "cancelled" })],
+      [span({ start_date: "2026-06-01", end_date: "2026-06-01", status: "cancelled" })],
       today,
     );
     expect(r.score).toBe(PROVISIONAL_SCORE);
@@ -260,7 +322,7 @@ describe("reliability score", () => {
 
   it("does not penalise a booking that has not come due yet", () => {
     const r = computeReliability(
-      [span({ start_week: "2026-09-07", end_week: "2026-09-14", status: "reserved" })],
+      [span({ start_date: "2026-09-07", end_date: "2026-09-14", status: "reserved" })],
       today,
     );
     expect(r.score).toBe(PROVISIONAL_SCORE);
@@ -300,7 +362,7 @@ describe("queue ordering", () => {
 });
 
 describe("reminder schedule", () => {
-  const out = span({ start_week: "2026-08-24", end_week: "2026-08-24", status: "picked_up" });
+  const out = span({ start_date: "2026-08-24", end_date: "2026-08-30", status: "picked_up" });
   // due 2026-08-30
 
   it("nudges the day before and on the due date", () => {
@@ -324,5 +386,12 @@ describe("reminder schedule", () => {
   it("says nothing once the item is back or the booking is cancelled", () => {
     expect(reminderFor(span({ ...out, status: "returned", returned_on: "2026-09-02" }), "2026-09-02")).toBeNull();
     expect(reminderFor(span({ ...out, status: "cancelled" }), "2026-08-30")).toBeNull();
+  });
+
+  it("fires for a single-day booking on the day itself", () => {
+    const oneDay = span({ start_date: "2026-08-30", end_date: "2026-08-30", status: "picked_up" });
+    expect(reminderFor(oneDay, "2026-08-29")).toBe("due_soon");
+    expect(reminderFor(oneDay, "2026-08-30")).toBe("due_today");
+    expect(reminderFor(oneDay, "2026-08-31")).toBe("overdue");
   });
 });

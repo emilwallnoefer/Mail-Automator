@@ -1,13 +1,6 @@
 import "server-only";
 
-import {
-  addWeeks,
-  computeReliability,
-  dueDateOf,
-  daysOverdue,
-  mondayOf,
-  type ReservationSpan,
-} from "@/lib/fleet-rules";
+import { addDays, computeReliability, daysOverdue, dueDateOf, type ReservationSpan } from "@/lib/fleet-rules";
 import type { FleetBoard } from "@/lib/fleet-queries";
 
 /**
@@ -64,10 +57,9 @@ export function buildDemoBoard(args: {
   viewerName: string;
   today: string;
   windowStart: string;
-  windowWeeks: number;
+  windowDays: number;
 }): FleetBoard & { demo: true } {
-  const { viewerId, viewerName, today, windowStart, windowWeeks } = args;
-  const thisWeek = mondayOf(new Date(`${today}T00:00:00Z`));
+  const { viewerId, viewerName, today, windowStart, windowDays } = args;
 
   const assets = ASSETS.map((asset, index) => ({
     id: assetId(index),
@@ -93,7 +85,8 @@ export function buildDemoBoard(args: {
   }));
 
   // A spread that exercises every cell state the grid can draw: yours, someone
-  // else's, a multi-week run, an overdue item, and a waitlisted week.
+  // else's, a multi-day run, an overdue item, a back-to-back handover with no
+  // gap, and a contested span with a waitlist behind it.
   const raw: Array<{
     id: string;
     asset: number;
@@ -103,34 +96,33 @@ export function buildDemoBoard(args: {
     end: string;
     status: ReservationSpan["status"];
     destination: string | null;
-    returnedOn?: string;
+    /** Days after the due date the item actually came back. */
+    returnedLate?: number;
   }> = [
-    { id: "demo-res-1", asset: 0, user: PEOPLE[0].id, name: PEOPLE[0].name, start: addWeeks(thisWeek, -2), end: addWeeks(thisWeek, -2), status: "picked_up", destination: "Refinery Antwerp" },
-    { id: "demo-res-2", asset: 1, user: viewerId, name: viewerName, start: thisWeek, end: addWeeks(thisWeek, 1), status: "picked_up", destination: "Basel site visit" },
-    { id: "demo-res-3", asset: 3, user: PEOPLE[1].id, name: PEOPLE[1].name, start: addWeeks(thisWeek, 1), end: addWeeks(thisWeek, 3), status: "reserved", destination: "Rotterdam" },
-    { id: "demo-res-4", asset: 6, user: viewerId, name: viewerName, start: addWeeks(thisWeek, 2), end: addWeeks(thisWeek, 2), status: "reserved", destination: "Training room" },
-    { id: "demo-res-5", asset: 1, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addWeeks(thisWeek, 4), end: addWeeks(thisWeek, 4), status: "reserved", destination: "Zurich demo" },
-    { id: "demo-res-6", asset: 1, user: PEOPLE[0].id, name: PEOPLE[0].name, start: addWeeks(thisWeek, 4), end: addWeeks(thisWeek, 4), status: "waitlisted", destination: "Geneva demo" },
-    { id: "demo-res-7", asset: 3, user: viewerId, name: viewerName, start: addWeeks(thisWeek, -6), end: addWeeks(thisWeek, -6), status: "returned", destination: "Lyon", returnedOn: addWeeks(thisWeek, -6) },
-    { id: "demo-res-8", asset: 4, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addWeeks(thisWeek, -4), end: addWeeks(thisWeek, -4), status: "returned", destination: "Milan", returnedOn: addWeeks(thisWeek, -3) },
+    { id: "demo-res-1", asset: 0, user: PEOPLE[0].id, name: PEOPLE[0].name, start: addDays(today, -9), end: addDays(today, -4), status: "picked_up", destination: "Refinery Antwerp" },
+    { id: "demo-res-2", asset: 1, user: viewerId, name: viewerName, start: addDays(today, -1), end: addDays(today, 2), status: "picked_up", destination: "Basel site visit" },
+    { id: "demo-res-3", asset: 3, user: PEOPLE[1].id, name: PEOPLE[1].name, start: addDays(today, 3), end: addDays(today, 9), status: "reserved", destination: "Rotterdam" },
+    { id: "demo-res-4", asset: 6, user: viewerId, name: viewerName, start: addDays(today, 5), end: addDays(today, 6), status: "reserved", destination: "Training room" },
+    // Starts the day after demo-res-3 hands back: two adjacent runs, no conflict.
+    { id: "demo-res-5", asset: 3, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addDays(today, 10), end: addDays(today, 12), status: "reserved", destination: "Zurich demo" },
+    { id: "demo-res-6", asset: 1, user: PEOPLE[0].id, name: PEOPLE[0].name, start: addDays(today, 14), end: addDays(today, 16), status: "reserved", destination: "Geneva demo" },
+    { id: "demo-res-7", asset: 1, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addDays(today, 14), end: addDays(today, 16), status: "waitlisted", destination: "Lyon demo" },
+    { id: "demo-res-8", asset: 3, user: viewerId, name: viewerName, start: addDays(today, -40), end: addDays(today, -38), status: "returned", destination: "Lyon" },
+    { id: "demo-res-9", asset: 4, user: PEOPLE[2].id, name: PEOPLE[2].name, start: addDays(today, -30), end: addDays(today, -27), status: "returned", destination: "Milan", returnedLate: 6 },
   ];
 
   const spansByUser = new Map<string, ReservationSpan[]>();
   const reservations = raw.map((row) => {
+    const due = dueDateOf({ end_date: row.end });
     const span: ReservationSpan = {
       id: row.id,
       asset_id: assetId(row.asset),
       user_id: row.user,
-      start_week: row.start,
-      end_week: row.end,
+      start_date: row.start,
+      end_date: row.end,
       status: row.status,
-      returned_on: row.returnedOn ? addWeeks(row.returnedOn, 0) : null,
+      returned_on: row.status === "returned" ? addDays(due, row.returnedLate ?? 0) : null,
     };
-    // A returned booking's actual return date is the Sunday it came back.
-    if (row.returnedOn) {
-      const due = dueDateOf({ end_week: row.end });
-      span.returned_on = row.id === "demo-res-8" ? addWeeks(due, 1) : due;
-    }
     const list = spansByUser.get(row.user) ?? [];
     list.push(span);
     spansByUser.set(row.user, list);
@@ -139,8 +131,8 @@ export function buildDemoBoard(args: {
       id: row.id,
       asset_id: span.asset_id,
       user_id: row.user,
-      start_week: row.start,
-      end_week: row.end,
+      start_date: row.start,
+      end_date: row.end,
       status: row.status,
       purpose: null,
       destination: row.destination,
@@ -150,7 +142,7 @@ export function buildDemoBoard(args: {
       created_at: new Date(Date.parse(`${today}T00:00:00Z`) - 3 * 86_400_000).toISOString(),
       holder_name: row.name,
       is_mine: row.user === viewerId,
-      due_date: dueDateOf(span),
+      due_date: due,
       days_overdue: daysOverdue(span, today),
       queue_position: row.status === "waitlisted" ? 1 : null,
     };
@@ -168,7 +160,7 @@ export function buildDemoBoard(args: {
     demo: true,
     today,
     window_start: windowStart,
-    window_weeks: windowWeeks,
+    window_days: windowDays,
     assets,
     reservations,
     me: { ...computeReliability(spansByUser.get(viewerId) ?? [], today), user_id: viewerId },
