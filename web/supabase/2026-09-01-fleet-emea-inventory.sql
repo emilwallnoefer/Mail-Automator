@@ -101,25 +101,14 @@ values
   ('LL2-10', null, 'tether', 'Tether', 'EMEA', 'out',       false, 'EMEA', 'USA',       'USA',  'Indefinitely in the USA');
 
 -- ---------------------------------------------------------------------------
--- Assigned units get an open booking, so the Assigned tab and the claim flow
--- have something to work with — same shape as the earlier import.
+-- No placeholder bookings for assigned units
 -- ---------------------------------------------------------------------------
-
-insert into public.fleet_reservations
-  (asset_id, user_id, holder_label, start_date, end_date, status, destination, source, picked_up_at)
-select
-  a.id,
-  al.user_id,
-  a.current_holder_label,
-  current_date,
-  current_date + 30,
-  'picked_up',
-  a.current_location,
-  'sheet_import',
-  now()
-from public.fleet_assets a
-left join public.fleet_holder_aliases al
-  on al.label = lower(trim(a.current_holder_label))
-where a.active
-  and not a.pooled
-  and a.current_holder_label is not null;
+--
+-- An earlier version of this file created one open reservation per assigned
+-- unit, dated current_date .. +30, so the Assigned tab had something to hold.
+-- That was fabricated data: the window was a guess, and it collided with the
+-- real roadshow bookings under the no-double-booking constraint.
+--
+-- It is not needed. The Assigned tab reads `pooled` and `current_holder_label`
+-- straight off the asset, and `claim_holder` links assets by holder name as
+-- well as by reservation — so claiming "Igor Stapper" still picks up his kit.

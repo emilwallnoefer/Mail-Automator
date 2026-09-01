@@ -776,6 +776,26 @@ async function handleClaimHolder(
     }
   }
 
+  // Assets can carry a holder name with no reservation behind them at all — an
+  // assigned unit's holder lives on the asset row. Link those too, or claiming
+  // "Igor Stapper" would take his bookings but leave his kit pointing at a name.
+  const { data: heldAssets } = await admin
+    .from("fleet_assets")
+    .select("id, name, current_holder_label")
+    .is("current_holder_user_id", null)
+    .not("current_holder_label", "is", null);
+
+  const heldMatches = (heldAssets ?? []).filter(
+    (a) => a.current_holder_label && normalizeHolderLabel(a.current_holder_label) === normalized,
+  );
+  if (heldMatches.length > 0) {
+    const { error: assetError } = await admin
+      .from("fleet_assets")
+      .update({ current_holder_user_id: targetUserId })
+      .in("id", heldMatches.map((a) => a.id));
+    if (assetError) throw new Error(assetError.message);
+  }
+
   // Remember the mapping so a later import of the same name resolves directly.
   const { error: aliasError } = await admin
     .from("fleet_holder_aliases")
@@ -785,13 +805,22 @@ async function handleClaimHolder(
     );
   if (aliasError) throw new Error(aliasError.message);
 
+  const parts: string[] = [];
+  if (matching.length > 0) {
+    parts.push(`${matching.length} booking${matching.length === 1 ? "" : "s"}`);
+  }
+  if (heldMatches.length > 0) {
+    parts.push(`${heldMatches.length} assigned unit${heldMatches.length === 1 ? "" : "s"}`);
+  }
+
   return NextResponse.json({
     ok: true,
     claimed: matching.length,
+    assets_linked: heldMatches.length,
     message:
-      matching.length > 0
-        ? `${matching.length} booking${matching.length === 1 ? "" : "s"} filed under "${label}" ${
-            matching.length === 1 ? "is" : "are"
+      parts.length > 0
+        ? `${parts.join(" and ")} filed under "${label}" ${
+            matching.length + heldMatches.length === 1 ? "is" : "are"
           } now yours.`
         : `"${label}" is linked, but there was nothing open under that name.`,
   });
