@@ -1,0 +1,312 @@
+-- Fleet module: material tracking + week-based reservations + reliability score.
+--
+-- Replaces the shared "Fleet management" Google Sheet, which nobody kept
+-- current: it tracked assignments per calendar day in a merged-cell grid, held
+-- the location in free text ("US office", "Perdu par Johan Donzé"), and had no
+-- way to tell anyone their material was overdue.
+--
+-- Three tables:
+--   fleet_assets        — one row per physical item, carrying its CURRENT location.
+--   fleet_reservations  — a booking over a run of ISO weeks (Monday keys).
+--   fleet_asset_events  — append-only movement/audit trail for an asset.
+--
+-- The reliability score is NOT stored: it is derived from fleet_reservations by
+-- `web/src/lib/fleet-rules.ts` so there is one implementation and no field that
+-- can drift out of sync with the history it summarises.
+--
+-- Apply by hand in the Supabase SQL Editor, like the other migrations in this
+-- directory. Safe to re-run.
+
+-- ---------------------------------------------------------------------------
+-- Assets
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.fleet_assets (
+  id uuid primary key default gen_random_uuid(),
+  -- Manufacturer serial. Unique when present; some legacy units have none.
+  serial_number text,
+  -- Short internal handle used in conversation ("E3-DV1-2", "SVA-330").
+  name text not null,
+  -- 'drone' | 'range_extender' | 'gcs' | 'accessory' | 'other'
+  category text not null default 'drone',
+  model text,
+  -- Which group the unit belongs to (Sales, Marketing, R&D, Customer, ...).
+  owner_group text,
+  -- 'available' | 'reserved' | 'out' | 'in_repair' | 'retired'
+  status text not null default 'available',
+  -- Where the item lives when nobody has it out.
+  home_location text,
+  -- Where it is RIGHT NOW. The question the spreadsheet could never answer.
+  current_location text,
+  -- Set while the item is physically out; cleared on check-in.
+  current_holder_user_id uuid references auth.users (id) on delete set null,
+  -- Free-text holder for people without an account (customer, partner, office).
+  current_holder_label text,
+  -- Last time a human confirmed the location, for the staleness pill.
+  location_confirmed_at timestamptz,
+  notes text,
+  -- Retired units stay in the table for history but drop out of the calendar.
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint fleet_assets_category_check
+    check (category in ('drone', 'range_extender', 'gcs', 'accessory', 'other')),
+  constraint fleet_assets_status_check
+    check (status in ('available', 'reserved', 'out', 'in_repair', 'retired'))
+);
+
+-- Partial unique index, not a column constraint: several legacy units have no
+-- serial at all, and NULLs must not collide with each other.
+create unique index if not exists fleet_assets_serial_unique
+  on public.fleet_assets (serial_number)
+  where serial_number is not null;
+
+create index if not exists fleet_assets_active_idx on public.fleet_assets (active, category, name);
+
+-- ---------------------------------------------------------------------------
+-- Reservations
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.fleet_reservations (
+  id uuid primary key default gen_random_uuid(),
+  asset_id uuid not null references public.fleet_assets (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  -- Both are MONDAY dates; end_week is inclusive, so a one-week booking has
+  -- start_week = end_week. The app derives the due date as end_week + 6 days.
+  start_week date not null,
+  end_week date not null,
+  -- 'reserved' | 'waitlisted' | 'picked_up' | 'returned' | 'cancelled'
+  status text not null default 'reserved',
+  purpose text,
+  -- Where the material is going, so the fleet stays locatable while it is out.
+  destination text,
+  picked_up_at timestamptz,
+  returned_at timestamptz,
+  -- Date the item actually came back, in Europe/Zurich terms. Scoring reads
+  -- this rather than returned_at so a late-evening check-in is not pushed onto
+  -- the next day by UTC.
+  returned_on date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint fleet_reservations_status_check
+    check (status in ('reserved', 'waitlisted', 'picked_up', 'returned', 'cancelled')),
+  constraint fleet_reservations_week_order check (end_week >= start_week),
+  -- Weeks must be Mondays. ISO dow: Monday = 1.
+  constraint fleet_reservations_start_monday check (extract(isodow from start_week) = 1),
+  constraint fleet_reservations_end_monday check (extract(isodow from end_week) = 1)
+);
+
+create index if not exists fleet_reservations_asset_window_idx
+  on public.fleet_reservations (asset_id, start_week, end_week);
+create index if not exists fleet_reservations_user_idx
+  on public.fleet_reservations (user_id, status);
+-- The overdue sweep scans live bookings by due week.
+create index if not exists fleet_reservations_live_idx
+  on public.fleet_reservations (status, end_week)
+  where status in ('reserved', 'picked_up');
+
+-- Hard guarantee that two people cannot hold the same asset in the same week.
+-- The API checks this too (for a friendly error), but the constraint is what
+-- makes it true under concurrent requests — two simultaneous bookings for the
+-- same week would both pass an application-level read and then collide here.
+create extension if not exists btree_gist;
+
+alter table public.fleet_reservations
+  drop constraint if exists fleet_reservations_no_double_booking;
+alter table public.fleet_reservations
+  add constraint fleet_reservations_no_double_booking
+  exclude using gist (
+    asset_id with =,
+    daterange(start_week, end_week, '[]') with &&
+  )
+  where (status in ('reserved', 'picked_up'));
+
+-- ---------------------------------------------------------------------------
+-- Movement / audit trail
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.fleet_asset_events (
+  id uuid primary key default gen_random_uuid(),
+  asset_id uuid not null references public.fleet_assets (id) on delete cascade,
+  reservation_id uuid references public.fleet_reservations (id) on delete set null,
+  -- 'created' | 'checked_out' | 'checked_in' | 'moved' | 'location_confirmed'
+  --   | 'status_changed' | 'reserved' | 'cancelled' | 'note'
+  kind text not null,
+  actor_user_id uuid references auth.users (id) on delete set null,
+  from_location text,
+  to_location text,
+  note text,
+  created_at timestamptz not null default now(),
+  constraint fleet_asset_events_kind_check
+    check (kind in ('created', 'checked_out', 'checked_in', 'moved', 'location_confirmed',
+                    'status_changed', 'reserved', 'cancelled', 'note'))
+);
+
+create index if not exists fleet_asset_events_asset_idx
+  on public.fleet_asset_events (asset_id, created_at desc);
+
+-- ---------------------------------------------------------------------------
+-- Reminder audit (one row per email actually sent)
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.fleet_reminder_sends (
+  id uuid primary key default gen_random_uuid(),
+  reservation_id uuid not null references public.fleet_reservations (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete set null,
+  -- 'due_soon' | 'due_today' | 'overdue'
+  kind text not null,
+  sent_for_date date not null,
+  email text,
+  status text not null default 'sent',
+  error text,
+  created_at timestamptz not null default now()
+);
+
+-- The cron gate: at most one reminder per reservation per kind per day, so a
+-- retry or a double cron invocation cannot mail the same person twice.
+create unique index if not exists fleet_reminder_sends_once_per_day
+  on public.fleet_reminder_sends (reservation_id, kind, sent_for_date);
+
+-- ---------------------------------------------------------------------------
+-- RLS
+-- ---------------------------------------------------------------------------
+
+alter table public.fleet_assets enable row level security;
+alter table public.fleet_assets force row level security;
+alter table public.fleet_reservations enable row level security;
+alter table public.fleet_reservations force row level security;
+alter table public.fleet_asset_events enable row level security;
+alter table public.fleet_asset_events force row level security;
+alter table public.fleet_reminder_sends enable row level security;
+alter table public.fleet_reminder_sends force row level security;
+
+revoke all on table public.fleet_assets from anon, authenticated;
+revoke all on table public.fleet_reservations from anon, authenticated;
+revoke all on table public.fleet_asset_events from anon, authenticated;
+revoke all on table public.fleet_reminder_sends from anon, authenticated;
+
+-- The fleet is shared property: everyone signed in may see every asset and
+-- every booking. That visibility is the point — the score and the queue only
+-- work if you can see who has what.
+grant select on table public.fleet_assets to authenticated;
+grant select on table public.fleet_reservations to authenticated;
+grant select on table public.fleet_asset_events to authenticated;
+
+drop policy if exists "fleet_assets_select_all" on public.fleet_assets;
+create policy "fleet_assets_select_all"
+  on public.fleet_assets for select to authenticated using (true);
+
+drop policy if exists "fleet_reservations_select_all" on public.fleet_reservations;
+create policy "fleet_reservations_select_all"
+  on public.fleet_reservations for select to authenticated using (true);
+
+drop policy if exists "fleet_asset_events_select_all" on public.fleet_asset_events;
+create policy "fleet_asset_events_select_all"
+  on public.fleet_asset_events for select to authenticated using (true);
+
+-- No INSERT/UPDATE/DELETE grants for `authenticated` anywhere in this module.
+-- Every write goes through /api/fleet on the service-role client, which is the
+-- only place that can enforce the horizon, the queue order and the score. A
+-- client-side write would let anyone book past their horizon or mark their own
+-- overdue item returned.
+--
+-- fleet_reminder_sends is server-only in both directions: it is cron bookkeeping.
+
+-- ---------------------------------------------------------------------------
+-- updated_at triggers
+-- ---------------------------------------------------------------------------
+
+create or replace function public.fleet_touch_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists fleet_assets_touch on public.fleet_assets;
+create trigger fleet_assets_touch
+  before update on public.fleet_assets
+  for each row execute function public.fleet_touch_updated_at();
+
+drop trigger if exists fleet_reservations_touch on public.fleet_reservations;
+create trigger fleet_reservations_touch
+  before update on public.fleet_reservations
+  for each row execute function public.fleet_touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Seed: the Elios 3 fleet as it stands in the "Fleet management" sheet.
+-- ---------------------------------------------------------------------------
+--
+-- Only the live Elios 3 units, the REx/GCS sets and the shared accessories are
+-- imported. The decommissioned Elios 1/2 rows and the 2018–19 opportunity
+-- history stay in the sheet: they are archive, and carrying them in would make
+-- the first screen of a "what can I book" tool mostly dead stock.
+--
+-- `current_location` is seeded from the sheet's "Loaned to"/"Stock location"
+-- columns. Several read "not in tracking list" — that is the honest state, and
+-- the UI surfaces those as unconfirmed so they get chased.
+--
+-- ON CONFLICT DO NOTHING keeps re-runs idempotent and never clobbers a location
+-- someone has since corrected in the app.
+
+insert into public.fleet_assets
+  (serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_label, notes)
+values
+  ('E300L121420012',      'E3-LL1-12',  'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300D122160002',      'E3-DV1-2',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
+  ('E300D122160003',      'E3-DV1-3',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           'Simon Kumm',            'Activated'),
+  ('E300D122160004',      'E3-DV1-4',   'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300D122160005',      'E3-DV1-5',   'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'APAC',           'Anton (China)',         'Activated'),
+  ('E300D222180001',      'E3-DV2-1',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
+  ('E300D222180002',      'E3-DV2-2',   'drone', 'Elios 3', 'Sales',    'retired',   'APAC',           'APAC',           'Joel',                  'Retired in the sheet'),
+  ('E300D222180003',      'E3-DV2-3',   'drone', 'Elios 3', 'Sales',    'retired',   'EMEA',           'EMEA',           null,                    'Scrapped — too damaged to repair'),
+  ('E300D222180004',      'E3-DV2-4',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
+  ('E300S922410067',      'E3-SV9-67',  'drone', 'Elios 3', 'Sales',    'in_repair', 'US Office',      'FMI',            'FMI',                   'In repair; not in Odoo'),
+  ('E300S922410068',      'E3-SV9-68',  'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
+  ('E300S922400062',      'E3-SV9-62',  'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
+  ('E300S922410073',      'E3-SV9-73',  'drone', 'Elios 3', 'Customer', 'out',       'Customer',       'Terra Inspectioneering', 'Terra Inspectioneering', 'End customer'),
+  ('E300SA22490111',      'E3-SVA-111', 'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
+  ('E300SA22500138',      'E3-SVA-138', 'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
+  ('E300SA22510158',      'E3-SVA-158', 'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'China (unidentified)', null,              'Sheet: not in tracking list'),
+  ('E300SA22510162',      'E3-SVA-162', 'drone', 'Elios 3', 'Customer', 'out',       'Customer',       'Techitop',       'Techitop',              'End customer'),
+  ('E300SA23080209',      'E3-SVA-209', 'drone', 'Elios 3', 'Sales',    'out',       'Japan',          'Japan',          'Wataru',                'Activated'),
+  ('E300SA23080222',      'E3-SVA-222', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300SA23090228',      'E3-SVA-228', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300SA23090233',      'E3-SVA-233', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300SA23120239',      'E3-SVA-239', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300SA23120241',      'E3-SVA-241', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
+  ('E300SA23130257',      'E3-SVA-257', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Matteo',                'Activated'),
+  ('E300SA23190318',      'E3-SVA-318', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Philipp',               'Activated'),
+  ('E300SA23190326',      'E3-SVA-326', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Igor',                  'Sheet: not in tracking list'),
+  ('E300SA23200330',      'E3-SVA-330', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Charles',               'Activated'),
+  ('E300SA23220346',      'E3-SVA-346', 'drone', 'Elios 3', 'Sales',    'available', 'Office Paudex',  'Office Paudex',  'Gonzalo',               'Activated'),
+  ('E300SA23290406',      'E3-SVA-406', 'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'APAC',           'APAC team',             null),
+  ('E300L322120001',      'E3-LL3-01',  'drone', 'Elios 3', 'Sales',    'available', 'APAC',           'APAC',           'Joel',                  'Demo unit'),
+  ('1826EE3RDAA23440097', 'E3R-097',    'drone', 'Elios 3', 'Sales',    'available', 'APAC',           'APAC',           'Joel',                  null),
+  ('1826EE3RDAA24030181', 'E3R-181',    'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Sheet: not in tracking list'),
+  ('1826EE3RDAA24060201', 'E3R-201',    'drone', 'Elios 3', 'Sales',    'out',       'Japan',          'Japan',          'Wataru',                'Activated'),
+  -- Range extenders / ground control stations, bookable alongside a drone.
+  ('RV0-0334',            'REx 0334',   'range_extender', 'RangeX', 'Sales', 'out',       'Office Paudex', 'Bordeaux',   'François (expertise)',  'Loaned with GCS CVO-0546, tablet, charger, E1 batteries'),
+  ('RV0-0425',            'REx 0425',   'range_extender', 'RangeX', 'Sales', 'available', 'Office Paudex', null,         null,                    'Sheet: cannot be located — needs a physical check'),
+  ('REX-0447',            'REx 0447',   'range_extender', 'RangeX', 'Sales', 'out',       'Office Paudex', 'Office Paudex', 'Fabio',              null),
+  ('CVO-0546',            'GCS 0546',   'gcs',   'GCS',     'Sales',    'out',       'Office Paudex',  'Bordeaux',       'François (expertise)',  'Paired with REx 0334'),
+  ('CVO-0482',            'GCS 0482',   'gcs',   'GCS',     'Sales',    'available', 'Office Paudex',  'Office Paudex',  null,                    'Paired with REx 0425')
+on conflict (serial_number) do nothing;
+
+-- Shared accessories have no serial in the sheet, so they cannot ride the
+-- ON CONFLICT above; guard them on name instead.
+insert into public.fleet_assets (name, category, owner_group, status, home_location, current_location, notes)
+select v.name, 'accessory', 'Sales', 'available', 'Office Paudex', 'Office Paudex', v.notes
+from (values
+  ('Field tablet',        'Shared tablet from the REx kit'),
+  ('E1 battery set (3x)', 'Three E1 batteries, booked as one item'),
+  ('REx charger',         'Charger from the REx kit')
+) as v(name, notes)
+where not exists (
+  select 1 from public.fleet_assets a where a.name = v.name
+);

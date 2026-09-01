@@ -31,6 +31,11 @@ const AdminPanel = dynamic(
   () => import("@/components/admin-panel").then((m) => m.AdminPanel),
   { ssr: false, loading: PanelLoading },
 );
+// Fleet is beta and behind a click for everyone, so it stays out of the first bundle.
+const FleetPanel = dynamic(
+  () => import("@/components/fleet/fleet-panel").then((m) => m.FleetPanel),
+  { ssr: false, loading: PanelLoading },
+);
 
 type DashboardShellProps = {
   email: string;
@@ -44,7 +49,9 @@ type DashboardShellProps = {
   initialAdminOverview?: AdminTimeOverview | null;
 };
 
-type ModuleKey = "mail" | "time" | "settings" | "admin";
+type ModuleKey = "mail" | "time" | "fleet" | "settings" | "admin";
+
+const MODULE_KEYS: ModuleKey[] = ["mail", "time", "fleet", "settings", "admin"];
 
 // One-time flag: the first-launch README prompt is for brand-new users only,
 // so it keys on "seen ever" rather than the deploy/version (which used to
@@ -154,8 +161,8 @@ export function DashboardShell({
   const availableModules = useMemo<ModuleKey[]>(() => {
     const base: ModuleKey[] =
       userRole === "sales" || userRole === "hr"
-        ? ["time", "settings"]
-        : ["mail", "time", "settings"];
+        ? ["time", "fleet", "settings"]
+        : ["mail", "time", "fleet", "settings"];
     if (isAdmin || userRole === "hr") base.push("admin");
     return base;
   }, [userRole, isAdmin]);
@@ -251,6 +258,24 @@ export function DashboardShell({
     } catch {
       // Storage blocked (e.g. private mode): stay quiet rather than nagging.
     }
+  }, []);
+
+  // Deep link support: the fleet reminder emails link to /dashboard?module=fleet,
+  // so the recipient lands on the check-in screen instead of the workspace home.
+  // Runs once on mount and then strips the param, so a later in-app module switch
+  // is not fought by a stale URL.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("module");
+    if (!requested) return;
+    if (!MODULE_KEYS.includes(requested as ModuleKey)) return;
+    if (!availableModules.includes(requested as ModuleKey)) return;
+    setActiveModule(requested as ModuleKey);
+    setShowComposer(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("module");
+    window.history.replaceState({}, "", url.toString());
+    // Intentionally mount-only: this is a landing decision, not a sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -378,9 +403,11 @@ export function DashboardShell({
                 ? "Mail Composer"
                 : activeModule === "time"
                   ? "Time Tracker"
-                  : activeModule === "admin"
-                    ? adminModuleLabel
-                    : "Settings"}
+                  : activeModule === "fleet"
+                    ? "Fleet (beta)"
+                    : activeModule === "admin"
+                      ? adminModuleLabel
+                      : "Settings"}
             </p>
           </div>
         ) : null}
@@ -520,6 +547,8 @@ export function DashboardShell({
                 >
                   {activeModule === "time" ? (
                     <TimeTrackerPanel initialWeek={prefetchedWeek} />
+                  ) : activeModule === "fleet" ? (
+                    <FleetPanel />
                   ) : activeModule === "admin" ? (
                     <AdminPanel
                       canManageUsers={canManageUsers}

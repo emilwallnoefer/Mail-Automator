@@ -1,0 +1,351 @@
+import "server-only";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  computeReliability,
+  daysOverdue,
+  dueDateOf,
+  isBlocking,
+  mondayOf,
+  orderQueue,
+  type ReliabilityScore,
+  type ReservationSpan,
+  type ReservationStatus,
+} from "@/lib/fleet-rules";
+
+/**
+ * Fleet reads.
+ *
+ * Every write in this module goes through the service-role client (see
+ * `/api/fleet`), because the rules that make the module work — booking horizon,
+ * queue order, who may mark something returned — cannot be expressed as RLS.
+ * Reads are wide on purpose: the fleet is shared property and everyone signed
+ * in can see the whole board.
+ */
+
+export const ZURICH_TZ = "Europe/Zurich";
+
+/** Today in Europe/Zurich as `YYYY-MM-DD`, so "overdue" matches the office day. */
+export function todayInZurich(now: Date = new Date()): string {
+  // en-CA renders ISO-ordered dates, which is exactly the key format we use.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZURICH_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+export type FleetAssetCategory = "drone" | "range_extender" | "gcs" | "accessory" | "other";
+export type FleetAssetStatus = "available" | "reserved" | "out" | "in_repair" | "retired";
+
+export type FleetAssetRow = {
+  id: string;
+  serial_number: string | null;
+  name: string;
+  category: FleetAssetCategory;
+  model: string | null;
+  owner_group: string | null;
+  status: FleetAssetStatus;
+  home_location: string | null;
+  current_location: string | null;
+  current_holder_user_id: string | null;
+  current_holder_label: string | null;
+  location_confirmed_at: string | null;
+  notes: string | null;
+  active: boolean;
+};
+
+export type FleetReservationRow = {
+  id: string;
+  asset_id: string;
+  user_id: string;
+  start_week: string;
+  end_week: string;
+  status: ReservationStatus;
+  purpose: string | null;
+  destination: string | null;
+  picked_up_at: string | null;
+  returned_at: string | null;
+  returned_on: string | null;
+  created_at: string;
+};
+
+/** A reservation decorated with everything the calendar needs to render it. */
+export type FleetReservationView = FleetReservationRow & {
+  holder_name: string;
+  is_mine: boolean;
+  due_date: string;
+  days_overdue: number;
+  /** Position in the waitlist for this span, 1-based. Null unless waitlisted. */
+  queue_position: number | null;
+};
+
+export type FleetAssetView = FleetAssetRow & {
+  holder_name: string | null;
+  /** Days since anyone confirmed where this is; null when never confirmed. */
+  location_age_days: number | null;
+  /** True when the location has not been confirmed within `STALE_LOCATION_DAYS`. */
+  location_stale: boolean;
+};
+
+export type FleetBoard = {
+  today: string;
+  /** Monday of the first rendered week. */
+  window_start: string;
+  window_weeks: number;
+  assets: FleetAssetView[];
+  reservations: FleetReservationView[];
+  /** The signed-in user's own standing. */
+  me: ReliabilityScore & { user_id: string };
+  /** Everyone's standing, for the leaderboard. Admins see all; others see it too — visibility is the incentive. */
+  standings: Array<{ user_id: string; name: string; score: ReliabilityScore }>;
+};
+
+/**
+ * A location nobody has confirmed in six weeks is treated as unknown. The old
+ * sheet's real failure mode was a location column that was technically filled
+ * in and two years stale.
+ */
+export const STALE_LOCATION_DAYS = 42;
+
+/** How many weeks the calendar renders at once. */
+export const DEFAULT_WINDOW_WEEKS = 8;
+
+/** The service-role client, typed the way the other query modules type it. */
+type AnySupabase = SupabaseClient;
+
+function toSpan(row: FleetReservationRow): ReservationSpan {
+  return {
+    id: row.id,
+    asset_id: row.asset_id,
+    user_id: row.user_id,
+    start_week: row.start_week,
+    end_week: row.end_week,
+    status: row.status,
+    returned_on: row.returned_on,
+  };
+}
+
+/** Best-effort display name from auth metadata, falling back to the email local part. */
+export function displayNameFor(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}): string {
+  const metadata = user.user_metadata ?? null;
+  for (const key of ["full_name", "name", "display_name"]) {
+    const value = metadata?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  const local = (user.email ?? "").split("@")[0] ?? "";
+  if (!local) return "Unknown";
+  return (
+    local
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ") || local
+  );
+}
+
+/**
+ * Loads every asset plus all reservations that touch the rendered window OR are
+ * still live (a booking that started before the window but has not come back
+ * must stay visible, otherwise an overdue item disappears off the left edge).
+ */
+export async function fetchFleetBoard(
+  admin: AnySupabase,
+  args: { viewerId: string; windowStart?: string; windowWeeks?: number; now?: Date },
+): Promise<FleetBoard> {
+  const now = args.now ?? new Date();
+  const today = todayInZurich(now);
+  const windowStart = args.windowStart ?? mondayOf(new Date(`${today}T00:00:00Z`));
+  const windowWeeks = args.windowWeeks ?? DEFAULT_WINDOW_WEEKS;
+
+  const [assetsResult, reservationsResult] = await Promise.all([
+    admin
+      .from("fleet_assets")
+      .select(
+        "id, serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_user_id, current_holder_label, location_confirmed_at, notes, active",
+      )
+      .eq("active", true)
+      .order("category", { ascending: true })
+      .order("name", { ascending: true }),
+    admin
+      .from("fleet_reservations")
+      .select(
+        "id, asset_id, user_id, start_week, end_week, status, purpose, destination, picked_up_at, returned_at, returned_on, created_at",
+      )
+      .order("start_week", { ascending: true }),
+  ]);
+
+  if (assetsResult.error) throw new Error(`fleet_assets read failed: ${assetsResult.error.message}`);
+  if (reservationsResult.error) {
+    throw new Error(`fleet_reservations read failed: ${reservationsResult.error.message}`);
+  }
+
+  const assets = (assetsResult.data ?? []) as FleetAssetRow[];
+  const reservations = (reservationsResult.data ?? []) as FleetReservationRow[];
+
+  // Resolve the names behind every user id we are about to render, in one call.
+  const userIds = new Set<string>([args.viewerId]);
+  for (const row of reservations) userIds.add(row.user_id);
+  for (const asset of assets) if (asset.current_holder_user_id) userIds.add(asset.current_holder_user_id);
+  const names = await fetchUserNames(admin, [...userIds]);
+
+  // Waitlist positions, computed per (asset, start_week) group so a contested
+  // week shows everyone where they stand. Ordering is score-first: the whole
+  // point of the score is that it decides who gets the material.
+  const scoreByUser = new Map<string, ReliabilityScore>();
+  const spansByUser = new Map<string, ReservationSpan[]>();
+  for (const row of reservations) {
+    const list = spansByUser.get(row.user_id) ?? [];
+    list.push(toSpan(row));
+    spansByUser.set(row.user_id, list);
+  }
+  for (const userId of userIds) {
+    scoreByUser.set(userId, computeReliability(spansByUser.get(userId) ?? [], today));
+  }
+
+  const queuePosition = new Map<string, number>();
+  const waitGroups = new Map<string, FleetReservationRow[]>();
+  for (const row of reservations) {
+    if (row.status !== "waitlisted") continue;
+    const key = `${row.asset_id}|${row.start_week}`;
+    const group = waitGroups.get(key) ?? [];
+    group.push(row);
+    waitGroups.set(key, group);
+  }
+  for (const group of waitGroups.values()) {
+    const ordered = orderQueue(
+      group.map((row) => ({
+        reservation_id: row.id,
+        user_id: row.user_id,
+        score: scoreByUser.get(row.user_id)?.score ?? 0,
+        requested_at: row.created_at,
+      })),
+    );
+    ordered.forEach((entry, index) => queuePosition.set(entry.reservation_id, index + 1));
+  }
+
+  const reservationViews: FleetReservationView[] = reservations.map((row) => {
+    const span = toSpan(row);
+    return {
+      ...row,
+      holder_name: names.get(row.user_id) ?? "Unknown",
+      is_mine: row.user_id === args.viewerId,
+      due_date: dueDateOf(span),
+      days_overdue: daysOverdue(span, today),
+      queue_position: queuePosition.get(row.id) ?? null,
+    };
+  });
+
+  const assetViews: FleetAssetView[] = assets.map((asset) => {
+    const ageDays = asset.location_confirmed_at
+      ? Math.max(
+          0,
+          Math.floor(
+            (new Date(`${today}T00:00:00Z`).getTime() -
+              new Date(asset.location_confirmed_at).getTime()) /
+              86_400_000,
+          ),
+        )
+      : null;
+    return {
+      ...asset,
+      holder_name: asset.current_holder_user_id
+        ? (names.get(asset.current_holder_user_id) ?? asset.current_holder_label)
+        : asset.current_holder_label,
+      location_age_days: ageDays,
+      location_stale: ageDays === null || ageDays > STALE_LOCATION_DAYS,
+    };
+  });
+
+  const standings = [...spansByUser.keys()]
+    .map((userId) => ({
+      user_id: userId,
+      name: names.get(userId) ?? "Unknown",
+      score: scoreByUser.get(userId) ?? computeReliability([], today),
+    }))
+    .sort((a, b) => b.score.score - a.score.score || a.name.localeCompare(b.name));
+
+  const mine = scoreByUser.get(args.viewerId) ?? computeReliability([], today);
+
+  return {
+    today,
+    window_start: windowStart,
+    window_weeks: windowWeeks,
+    assets: assetViews,
+    reservations: reservationViews,
+    me: { ...mine, user_id: args.viewerId },
+    standings,
+  };
+}
+
+/** Resolves auth user ids to display names. Missing users degrade to "Unknown". */
+export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (ids.length === 0) return names;
+
+  // listUsers is the only admin API that returns metadata in bulk. The fleet is
+  // an internal tool with a small user table, so one page is plenty; if the
+  // workspace ever outgrows it, the unresolved ids simply render as "Unknown".
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error || !data) return names;
+  const wanted = new Set(ids);
+  for (const user of data.users) {
+    if (!wanted.has(user.id)) continue;
+    names.set(
+      user.id,
+      displayNameFor({
+        email: user.email,
+        user_metadata: (user.user_metadata ?? null) as Record<string, unknown> | null,
+      }),
+    );
+  }
+  return names;
+}
+
+/** All reservations for one user, for the score and "my material" list. */
+export async function fetchUserSpans(admin: AnySupabase, userId: string): Promise<ReservationSpan[]> {
+  const { data, error } = await admin
+    .from("fleet_reservations")
+    .select("id, asset_id, user_id, start_week, end_week, status, returned_on")
+    .eq("user_id", userId);
+  if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
+  return ((data ?? []) as FleetReservationRow[]).map(toSpan);
+}
+
+/** Live (blocking) reservations for one asset, for the conflict check. */
+export async function fetchAssetSpans(admin: AnySupabase, assetId: string): Promise<ReservationSpan[]> {
+  const { data, error } = await admin
+    .from("fleet_reservations")
+    .select("id, asset_id, user_id, start_week, end_week, status, returned_on")
+    .eq("asset_id", assetId);
+  if (error) throw new Error(`fleet_reservations read failed: ${error.message}`);
+  return ((data ?? []) as FleetReservationRow[]).map(toSpan);
+}
+
+/** The viewer's reliability, used to gate how far ahead they may book. */
+export async function fetchReliability(admin: AnySupabase, userId: string, today: string) {
+  return computeReliability(await fetchUserSpans(admin, userId), today);
+}
+
+/** Appends a movement/audit event. Never throws — an audit gap must not fail the write. */
+export async function recordAssetEvent(
+  admin: AnySupabase,
+  event: {
+    asset_id: string;
+    reservation_id?: string | null;
+    kind: string;
+    actor_user_id?: string | null;
+    from_location?: string | null;
+    to_location?: string | null;
+    note?: string | null;
+  },
+): Promise<void> {
+  const { error } = await admin.from("fleet_asset_events").insert(event);
+  if (error) console.error("fleet_asset_events insert failed", error.message);
+}
+
+export { isBlocking };
