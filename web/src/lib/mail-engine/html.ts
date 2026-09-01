@@ -90,22 +90,32 @@ function markdownBlockToHtml(chunk: string): string {
       `<img src="${src}" alt="${safeAlt}" style="max-width:240px;height:auto;display:block;margin-top:10px;border:0;" />`,
     );
   });
-  c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
-    return hold(`<span style="font-weight:600;color:#222;">${escapeHtmlText(inner)}</span>`);
-  });
+  // Links before bold: resource lines are written as `**[label](url)**`, so
+  // if bold ran first it would swallow the whole `[label](url)` as literal
+  // text (its own hold() already fired, closing the link regex out) — the
+  // mail would render a bold run of raw markdown with no <a> at all, only
+  // rescued from looking totally broken by the mail client's own bare-URL
+  // auto-linking. Doing links first lets bold wrap the resulting placeholder.
   c = c.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, (_m, label, url) => {
     const href = safeAttrUrl(String(url));
     if (!href) return hold(escapeHtmlText(label));
     return hold(`<a href="${href}">${escapeHtmlText(label)}</a>`);
   });
+  c = c.replace(/\*\*([^*]+)\*\*/g, (_m, inner) => {
+    return hold(`<span style="font-weight:600;color:#222;">${escapeHtmlText(inner)}</span>`);
+  });
 
   // Everything still in `c` is prose. Escape it wholesale — nothing here is
-  // allowed to be markup — then restore the generated HTML.
+  // allowed to be markup — then restore the generated HTML. Bold can wrap a
+  // link placeholder (nesting one level), so resolve placeholders until none
+  // remain rather than in a single pass.
   const escaped = escapeHtmlText(c);
-  const merged = escaped.replace(
-    new RegExp(`${PLACEHOLDER}(\\d+)${PLACEHOLDER}`, "g"),
-    (_m, index) => generated[Number(index)] ?? "",
-  );
+  const placeholderPattern = new RegExp(`${PLACEHOLDER}(\\d+)${PLACEHOLDER}`, "g");
+  let merged = escaped;
+  while (placeholderPattern.test(merged)) {
+    placeholderPattern.lastIndex = 0;
+    merged = merged.replace(placeholderPattern, (_m, index) => generated[Number(index)] ?? "");
+  }
 
   return `<p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#222;">${merged.replaceAll("\n", "<br>")}</p>`;
 }

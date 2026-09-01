@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-01",
+    date: "Sep 1, 2026",
+    title: "Draft links are clickable again",
+    highlights: [
+      "Resource links in generated drafts render as real links, not raw markdown.",
+      "Affects every link block: slide decks, use-case trainings, software & learning resources, add-ons.",
+    ],
+  },
+  {
     version: "2026-08-07",
     date: "Aug 7, 2026",
     title: "Request certificates from Team Chat",
