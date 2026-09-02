@@ -258,8 +258,14 @@ export async function fetchFleetBoard(
   const windowStart = args.windowStart ?? today;
   const windowDays = args.windowDays ?? DEFAULT_WINDOW_DAYS;
 
-  const [assetsResult, reservationsResult, remindersEnabled, myAliasResult, archivedResult] =
-    await Promise.all([
+  const [
+    assetsResult,
+    reservationsResult,
+    remindersEnabled,
+    myAliasResult,
+    directory,
+    archivedResult,
+  ] = await Promise.all([
     admin
       .from("fleet_assets")
       .select(
@@ -275,6 +281,7 @@ export async function fetchFleetBoard(
       .order("start_date", { ascending: true }),
     fetchRemindersEnabled(admin),
     admin.from("fleet_holder_aliases").select("label").eq("user_id", args.viewerId).limit(1),
+    fetchHolderDirectory(admin),
     args.includeArchived
       ? admin
           .from("fleet_assets")
@@ -420,6 +427,16 @@ export async function fetchFleetBoard(
     }
   }
 
+  // A holder that will never have an account is not "unclaimed", it is simply
+  // not a person — offering "Total Energies" as a name to claim would be noise
+  // that never goes away.
+  const externalLabels = new Set(
+    directory.filter((d) => d.kind === "external").map((d) => d.label),
+  );
+  for (const key of [...unclaimedCounts.keys()]) {
+    if (externalLabels.has(key)) unclaimedCounts.delete(key);
+  }
+
   const viewer = { name: args.viewerName ?? null, email: args.viewerEmail ?? null };
   const unclaimedHolders = [...unclaimedCounts.values()]
     .map((entry) => ({
@@ -539,6 +556,35 @@ export { isBlocking, isBookable };
 
 
 /* -------------------------------------------------------------------------- */
+/* Holder directory                                                            */
+/* -------------------------------------------------------------------------- */
+
+export type HolderDirectoryEntry = {
+  label: string;
+  display_name: string;
+  email: string | null;
+  kind: "person" | "external";
+};
+
+/**
+ * The name -> account mapping behind the fleet list.
+ *
+ * The list names holders by first name ("ASSIGNED (CHARLES)") while accounts
+ * are emails, so the link is recorded rather than inferred — guessing from the
+ * name works right up until two people share a first name.
+ *
+ * Returns an empty directory if the table is missing, so an install that has
+ * not run the migration degrades to name matching rather than failing.
+ */
+export async function fetchHolderDirectory(admin: AnySupabase): Promise<HolderDirectoryEntry[]> {
+  const { data, error } = await admin
+    .from("fleet_holder_directory")
+    .select("label, display_name, email, kind");
+  if (error) return [];
+  return (data ?? []) as HolderDirectoryEntry[];
+}
+
+/* -------------------------------------------------------------------------- */
 /* Automatic identity linking                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -570,7 +616,7 @@ export async function autoLinkHolder(
     // Candidates come from BOTH tables. Someone can hold assigned kit without
     // ever appearing in a booking, and reading only reservations would leave
     // them unmatched.
-    const [{ data: mine }, { data: rows }, { data: assetRows }, { data: aliases }] =
+    const [{ data: mine }, { data: rows }, { data: assetRows }, { data: aliases }, directory] =
       await Promise.all([
         admin.from("fleet_holder_aliases").select("label").eq("user_id", viewer.id),
         admin
@@ -585,6 +631,7 @@ export async function autoLinkHolder(
           .is("current_holder_user_id", null)
           .not("current_holder_label", "is", null),
         admin.from("fleet_holder_aliases").select("label"),
+        fetchHolderDirectory(admin),
       ]);
 
     // Having an alias already is NOT a reason to stop. The alias IS the mapping,
@@ -611,18 +658,39 @@ export async function autoLinkHolder(
 
     const person = { name: viewer.name, email: viewer.email };
 
+    // The directory is the authority when it knows this email: an exact,
+    // recorded mapping beats any name heuristic, and it is what makes two
+    // colleagues sharing a first name resolvable at all.
+    const viewerEmail = (viewer.email ?? "").trim().toLowerCase();
+    const byEmail = viewerEmail
+      ? directory.find((d) => d.kind === "person" && (d.email ?? "").toLowerCase() === viewerEmail)
+      : undefined;
+
+    // An external holder (a customer, a region) is nobody's to claim.
+    const external = new Set(
+      directory.filter((d) => d.kind === "external").map((d) => d.label),
+    );
+    for (const key of [...labels.keys()]) {
+      if (external.has(key)) labels.delete(key);
+    }
+
     // Once confirmed, only names this user actually owns apply — no fresh
-    // guessing on someone who has already answered. Before that, match on a
-    // shared first or last name.
+    // guessing on someone who has already answered. Before that: the directory
+    // if it knows them, otherwise a shared first or last name.
     const matches = confirmed
       ? [...labels.entries()].filter(([key]) => myLabels.has(key)).map(([, label]) => label)
-      : [...labels.values()].filter((label) => holderLabelMatchesPerson(label, person));
+      : byEmail
+        ? [...labels.entries()]
+            .filter(([key]) => key === byEmail.label)
+            .map(([, label]) => label)
+        : [...labels.values()].filter((label) => holderLabelMatchesPerson(label, person));
 
     if (matches.length === 0) {
       return { linked: false, reason: confirmed ? "already_confirmed" : "no_match" };
     }
-    // Ambiguity only matters while guessing; a name they own is never ambiguous.
-    if (!confirmed && matches.length > 1) {
+    // Ambiguity only matters while guessing. A name they own, or one the
+    // directory names outright, is never ambiguous.
+    if (!confirmed && !byEmail && matches.length > 1) {
       return { linked: false, reason: "ambiguous", candidates: matches };
     }
 

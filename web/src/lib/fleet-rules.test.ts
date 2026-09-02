@@ -600,3 +600,42 @@ describe("holder colours", () => {
     expect(used.size).toBeGreaterThanOrEqual(8);
   });
 });
+
+
+describe("directory-backed matching", () => {
+  // The fleet list names holders by first name while accounts are emails. The
+  // directory records that mapping; these cases are why it has to exist rather
+  // than being inferred.
+  it("cannot separate two people who share a first name by name alone", () => {
+    const label = "Philipp";
+    expect(holderLabelMatchesPerson(label, { name: "Philipp Jaegle" })).toBe(true);
+    expect(holderLabelMatchesPerson(label, { name: "Philipp Vogel" })).toBe(true);
+    // Both match, so nothing but a recorded email can tell them apart.
+  });
+
+  it("matches a first-name label to a full-name account", () => {
+    // "ASSIGNED (CHARLES)" against charles.rey@flyability.com.
+    expect(holderLabelMatchesPerson("Charles", { name: null, email: "charles.rey@flyability.com" })).toBe(true);
+    expect(holderLabelMatchesPerson("Tiago", { name: null, email: "tiago.lecontepais@flyability.com" })).toBe(true);
+    expect(holderLabelMatchesPerson("Igor", { name: null, email: "igor.stapper@flyability.com" })).toBe(true);
+  });
+
+  it("survives a spelling difference between the sheet and the account", () => {
+    // The roadshow sheet wrote "Wallnofer"; the account is "wallnoefer".
+    // The first name still carries the match, which is why first OR last works.
+    expect(
+      holderLabelMatchesPerson("Emil", { name: null, email: "emil.wallnoefer@flyability.com" }),
+    ).toBe(true);
+  });
+
+  it("does not match an external holder to anyone", () => {
+    const people = [
+      { name: "Charles Rey", email: "charles.rey@flyability.com" },
+      { name: "Igor Stapper", email: "igor.stapper@flyability.com" },
+    ];
+    for (const p of people) {
+      expect(holderLabelMatchesPerson("Total Energies", p)).toBe(false);
+      expect(holderLabelMatchesPerson("USA", p)).toBe(false);
+    }
+  });
+});
