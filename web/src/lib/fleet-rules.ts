@@ -492,42 +492,57 @@ export function normalizeHolderLabel(value: string): string {
 }
 
 /**
+ * The name tokens that identify a person: their first and last name.
+ *
+ * Middle names are dropped on purpose — matching on one is far more likely to
+ * be a coincidence than a match. Tokens under three characters are dropped too:
+ * an initial ("J", "Ph") identifies nobody.
+ */
+export function nameTokens(raw: string): { first: string | null; last: string | null } {
+  const parts = normalizeHolderLabel(raw).split(" ").filter((t) => t.length >= 3);
+  if (parts.length === 0) return { first: null, last: null };
+  return {
+    first: parts[0],
+    last: parts.length > 1 ? parts[parts.length - 1] : null,
+  };
+}
+
+/**
  * Whether `label` plausibly refers to the person identified by `name` / `email`.
  *
- * This gates self-service claiming, so it is deliberately strict: an exact
- * normalised match against the full name, the first name, or the email local
- * part. It will NOT match "APAC team", "FPS" or "US Office" to an individual —
- * those are group labels, and an admin has to assign them on purpose.
+ * Matches when a FIRST or LAST name is shared, in either position — so an
+ * account for "Emil Wallnofer" matches the sheet's "Emil", its "Wallnofer", and
+ * its "Emil Wallnofer". That looseness is deliberate and necessary: the sheet
+ * spells people inconsistently, and requiring the whole name to line up would
+ * strand exactly the people this exists to onboard.
  *
- * A false positive hands one person another person's booking history and the
- * asset that goes with it, so when in doubt this returns false and the UI falls
- * back to asking an admin.
+ * The safeguard against a loose match is NOT here — it is at the call site,
+ * which auto-links only when exactly ONE unclaimed name matches. Two colleagues
+ * called Philipp both match "Philipp", so neither is linked automatically and
+ * the person is asked instead.
+ *
+ * The email local part is used as a fallback identity when the account has no
+ * display name ("emil.wallnofer@" -> emil / wallnofer).
  */
 export function holderLabelMatchesPerson(
   label: string,
   person: { name?: string | null; email?: string | null },
 ): boolean {
-  const target = normalizeHolderLabel(label);
-  if (!target) return false;
+  const target = nameTokens(label);
+  if (!target.first) return false;
 
-  const candidates = new Set<string>();
+  const targetSet = new Set([target.first, target.last].filter(Boolean) as string[]);
 
-  // Anything shorter than three characters is too weak to identify a person on
-  // its own ("Jo", "Al", an initial), so it never becomes a match candidate.
-  const MIN_CANDIDATE = 3;
-  const addNameForms = (raw: string) => {
-    const normalized = normalizeHolderLabel(raw);
-    if (normalized.length >= MIN_CANDIDATE) candidates.add(normalized);
-    const first = normalized.split(" ")[0];
-    if (first && first.length >= MIN_CANDIDATE) candidates.add(first);
-  };
-
-  if (person.name) addNameForms(person.name);
-  if (person.email) addNameForms(person.email.split("@")[0] ?? "");
-
-  return candidates.has(target);
+  const identities = [person.name, person.email ? person.email.split("@")[0] : null];
+  for (const identity of identities) {
+    if (!identity) continue;
+    const mine = nameTokens(identity);
+    for (const token of [mine.first, mine.last]) {
+      if (token && targetSet.has(token)) return true;
+    }
+  }
+  return false;
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Holder colours                                                              */

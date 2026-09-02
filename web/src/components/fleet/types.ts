@@ -86,6 +86,8 @@ export type FleetBoardResponse = {
   reminders_enabled: boolean;
   /** True once this user has been through the one-time "which name is you?" step. */
   identity_confirmed: boolean;
+  /** Set when this load linked the user to a legacy name automatically. */
+  auto_linked: { label: string; bookings: number; assets: number } | null;
   /** Units removed from the fleet. Admin-only, so the Manage tab can restore one. */
   archived_assets: FleetAsset[];
   is_admin: boolean;

@@ -188,6 +188,7 @@ export function buildDemoBoard(args: {
     reminders_enabled: false,
     // The demo board shows the identity prompt, so it can be reviewed too.
     identity_confirmed: false,
+    auto_linked: null,
     archived_assets: [],
   };
 }

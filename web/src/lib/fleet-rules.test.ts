@@ -20,6 +20,7 @@ import {
   isoWeekNumber,
   lateDays,
   mondayOf,
+  nameTokens,
   normalizeHolderLabel,
   orderQueue,
   PROVISIONAL_SCORE,
@@ -479,38 +480,63 @@ describe("holder label matching", () => {
     expect(normalizeHolderLabel("Office   Paudex")).toBe("office paudex");
   });
 
-  it("matches a first name, a full name and an email local part", () => {
-    const person = { name: "Charles Rey", email: "charles.rey@flyability.com" };
-    expect(holderLabelMatchesPerson("Charles", person)).toBe(true);
-    expect(holderLabelMatchesPerson("charles rey", person)).toBe(true);
-    expect(holderLabelMatchesPerson("Charles.Rey", person)).toBe(true);
+  it("takes first and last name, dropping middles and initials", () => {
+    expect(nameTokens("Tiago Leconte Pais")).toEqual({ first: "tiago", last: "pais" });
+    expect(nameTokens("Emil")).toEqual({ first: "emil", last: null });
+    expect(nameTokens("J. Smith")).toEqual({ first: "smith", last: null });
+    expect(nameTokens("   ")).toEqual({ first: null, last: null });
+  });
+
+  it("matches on a shared FIRST name", () => {
+    const emil = { name: "Emil Wallnofer", email: "emil.wallnofer@flyability.com" };
+    expect(holderLabelMatchesPerson("Emil", emil)).toBe(true);
+    expect(holderLabelMatchesPerson("Emil Wallnofer", emil)).toBe(true);
+  });
+
+  it("matches on a shared LAST name", () => {
+    // The sheet sometimes writes only a surname; that is still the same person.
+    expect(holderLabelMatchesPerson("Wallnofer", { name: "Emil Wallnofer" })).toBe(true);
+    expect(holderLabelMatchesPerson("Rey", { name: "Charles Rey" })).toBe(true);
+  });
+
+  it("matches across positions, so a reversed name still lines up", () => {
+    expect(holderLabelMatchesPerson("Wallnofer Emil", { name: "Emil Wallnofer" })).toBe(true);
   });
 
   it("falls back to the email when there is no display name", () => {
-    const person = { name: null, email: "wataru@flyability.com" };
-    expect(holderLabelMatchesPerson("Wataru", person)).toBe(true);
+    expect(holderLabelMatchesPerson("Wataru", { name: null, email: "wataru@flyability.com" })).toBe(true);
+    expect(
+      holderLabelMatchesPerson("Wallnofer", { name: null, email: "emil.wallnofer@flyability.com" }),
+    ).toBe(true);
   });
 
-  it("refuses group labels and other people's names", () => {
-    const person = { name: "Charles Rey", email: "charles.rey@flyability.com" };
-    expect(holderLabelMatchesPerson("APAC team", person)).toBe(false);
-    expect(holderLabelMatchesPerson("FPS", person)).toBe(false);
-    expect(holderLabelMatchesPerson("US Office", person)).toBe(false);
-    expect(holderLabelMatchesPerson("Philipp", person)).toBe(false);
-    expect(holderLabelMatchesPerson("Rey", person)).toBe(false);
+  it("still refuses group labels and unrelated people", () => {
+    const charles = { name: "Charles Rey", email: "charles.rey@flyability.com" };
+    expect(holderLabelMatchesPerson("APAC team", charles)).toBe(false);
+    expect(holderLabelMatchesPerson("FPS", charles)).toBe(false);
+    expect(holderLabelMatchesPerson("US Office", charles)).toBe(false);
+    expect(holderLabelMatchesPerson("Total Energies", charles)).toBe(false);
+    expect(holderLabelMatchesPerson("Philipp Jaegle", charles)).toBe(false);
+    expect(holderLabelMatchesPerson("Lucas Senault", charles)).toBe(false);
   });
 
-  it("does not match on a very short first name, which would be too loose", () => {
+  it("ignores a middle name, which is likelier to collide than to identify", () => {
+    // "Leconte" is Tiago's middle name; someone actually called Leconte is not him.
+    expect(holderLabelMatchesPerson("Leconte", { name: "Tiago Leconte Pais" })).toBe(false);
+  });
+
+  it("refuses tokens too short to identify anyone", () => {
     expect(holderLabelMatchesPerson("Jo", { name: "Jo Smith", email: "jo@x.com" })).toBe(false);
+    expect(holderLabelMatchesPerson("", { name: "Charles Rey" })).toBe(false);
+    expect(holderLabelMatchesPerson("  -- ", { name: "Charles Rey" })).toBe(false);
   });
 
-  it("refuses an empty or punctuation-only label", () => {
-    const person = { name: "Charles Rey", email: "charles@x.com" };
-    expect(holderLabelMatchesPerson("", person)).toBe(false);
-    expect(holderLabelMatchesPerson("  -- ", person)).toBe(false);
+  it("is ambiguous by design when two people share a first name", () => {
+    // Both match, so the CALLER must refuse to auto-link when more than one does.
+    expect(holderLabelMatchesPerson("Philipp", { name: "Philipp Jaegle" })).toBe(true);
+    expect(holderLabelMatchesPerson("Philipp", { name: "Philipp Vogel" })).toBe(true);
   });
 });
-
 
 describe("what belongs in the booking calendar", () => {
   it("includes a pooled unit that is free or merely booked", () => {

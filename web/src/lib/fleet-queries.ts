@@ -166,6 +166,12 @@ export type FleetBoard = {
    */
   identity_confirmed: boolean;
   /**
+   * Set when this load linked the user to a legacy name automatically, so the
+   * UI can tell them what just happened rather than silently rewriting history
+   * under their account.
+   */
+  auto_linked: { label: string; bookings: number; assets: number } | null;
+  /**
    * Units removed from the fleet (`active = false`). Present only for admins,
    * so the Manage tab can restore one — a soft removal you cannot see is a
    * removal you cannot undo.
@@ -238,6 +244,8 @@ export async function fetchFleetBoard(
     viewerEmail?: string | null;
     /** Admins additionally receive the archived units. */
     includeArchived?: boolean;
+    /** Result of `autoLinkHolder`, when this load performed one. */
+    autoLinked?: { label: string; bookings: number; assets: number } | null;
     windowStart?: string;
     windowDays?: number;
     now?: Date;
@@ -399,6 +407,19 @@ export async function fetchFleetBoard(
     if (isBlocking(row.status)) entry.live += 1;
     unclaimedCounts.set(key, entry);
   }
+  // Names that appear only as an asset holder still need claiming — otherwise
+  // someone with assigned kit but no bookings is invisible to both the identity
+  // prompt and the admin's list.
+  for (const asset of assets) {
+    if (asset.current_holder_user_id) continue;
+    const label = asset.current_holder_label?.trim();
+    if (!label) continue;
+    const key = normalizeHolderLabel(label);
+    if (!unclaimedCounts.has(key)) {
+      unclaimedCounts.set(key, { label, count: 0, live: 0 });
+    }
+  }
+
   const viewer = { name: args.viewerName ?? null, email: args.viewerEmail ?? null };
   const unclaimedHolders = [...unclaimedCounts.values()]
     .map((entry) => ({
@@ -428,6 +449,7 @@ export async function fetchFleetBoard(
     unclaimed_holders: unclaimedHolders,
     reminders_enabled: remindersEnabled,
     identity_confirmed: (myAliasResult.data ?? []).length > 0,
+    auto_linked: args.autoLinked ?? null,
     archived_assets: (archivedResult.data ?? []) as FleetAssetRow[],
   };
 }
@@ -514,3 +536,120 @@ export async function recordAssetEvent(
 }
 
 export { isBlocking, isBookable };
+
+
+/* -------------------------------------------------------------------------- */
+/* Automatic identity linking                                                  */
+/* -------------------------------------------------------------------------- */
+
+export type AutoLinkResult =
+  | { linked: false; reason: "already_confirmed" | "no_match" | "ambiguous"; candidates?: string[] }
+  | { linked: true; label: string; bookings: number; assets: number };
+
+/**
+ * Links a signing-in user to their legacy holder name, when that can be done
+ * without guessing.
+ *
+ * Runs on every board load until the person has an alias, so it catches both a
+ * returning user and someone who has only just signed up — no separate hook on
+ * the auth flow, and no way for a new account to slip past it.
+ *
+ * The whole safety of the loose first-or-last-name matching rests here: it
+ * links ONLY when exactly one unclaimed name matches. Two colleagues called
+ * Philipp both match "Philipp", so neither is auto-linked and the person is
+ * asked instead. Names already mapped to somebody are never candidates.
+ *
+ * Silent on failure: an identity link is a convenience, and a board that will
+ * not load because a name lookup failed is worse than one that asks the user.
+ */
+export async function autoLinkHolder(
+  admin: AnySupabase,
+  viewer: { id: string; name: string | null; email: string | null },
+): Promise<AutoLinkResult> {
+  try {
+    const { data: mine } = await admin
+      .from("fleet_holder_aliases")
+      .select("label")
+      .eq("user_id", viewer.id)
+      .limit(1);
+    if ((mine ?? []).length > 0) return { linked: false, reason: "already_confirmed" };
+
+    // Candidates come from BOTH tables. Someone can hold assigned kit without
+    // ever appearing in a booking — Igor has three units and no unclaimed
+    // reservations — and reading only reservations would leave them unmatched.
+    const [{ data: rows }, { data: assetRows }, { data: aliases }] = await Promise.all([
+      admin
+        .from("fleet_reservations")
+        .select("holder_label")
+        .is("user_id", null)
+        .not("holder_label", "is", null),
+      admin
+        .from("fleet_assets")
+        .select("current_holder_label")
+        .eq("active", true)
+        .is("current_holder_user_id", null)
+        .not("current_holder_label", "is", null),
+      admin.from("fleet_holder_aliases").select("label"),
+    ]);
+
+    const taken = new Set((aliases ?? []).map((a) => a.label as string));
+    const labels = new Map<string, string>();
+    const collect = (raw: string | null | undefined) => {
+      const label = raw?.trim();
+      if (!label) return;
+      const key = normalizeHolderLabel(label);
+      if (!key || taken.has(key)) return;
+      labels.set(key, label);
+    };
+    for (const row of rows ?? []) collect(row.holder_label as string | null);
+    for (const row of assetRows ?? []) collect(row.current_holder_label as string | null);
+
+    const person = { name: viewer.name, email: viewer.email };
+    const matches = [...labels.values()].filter((label) => holderLabelMatchesPerson(label, person));
+
+    if (matches.length === 0) return { linked: false, reason: "no_match" };
+    if (matches.length > 1) return { linked: false, reason: "ambiguous", candidates: matches };
+
+    const label = matches[0];
+    const key = normalizeHolderLabel(label);
+
+    // Take the bookings filed under the name...
+    const { data: claimed } = await admin
+      .from("fleet_reservations")
+      .update({ user_id: viewer.id })
+      .is("user_id", null)
+      .eq("holder_label", label)
+      .select("id, asset_id");
+
+    // ...and the assets whose holder is only a string.
+    const { data: heldAssets } = await admin
+      .from("fleet_assets")
+      .select("id, current_holder_label")
+      .is("current_holder_user_id", null)
+      .not("current_holder_label", "is", null);
+    const held = (heldAssets ?? []).filter(
+      (a) => a.current_holder_label && normalizeHolderLabel(a.current_holder_label as string) === key,
+    );
+    if (held.length > 0) {
+      await admin
+        .from("fleet_assets")
+        .update({ current_holder_user_id: viewer.id })
+        .in("id", held.map((a) => a.id as string));
+    }
+
+    await admin.from("fleet_holder_aliases").upsert(
+      { label: key, user_id: viewer.id, claimed_by: viewer.id, claimed_at: new Date().toISOString() },
+      { onConflict: "label" },
+    );
+
+    return {
+      linked: true,
+      label,
+      bookings: (claimed ?? []).length,
+      assets: held.length,
+    };
+  } catch (error) {
+    console.error("autoLinkHolder failed", error);
+    return { linked: false, reason: "no_match" };
+  }
+}

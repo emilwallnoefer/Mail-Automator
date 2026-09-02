@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminEmail } from "@/lib/admin";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import {
+  autoLinkHolder,
   DEFAULT_WINDOW_DAYS,
   displayNameFor,
   fetchAssetSpans,
@@ -231,11 +232,25 @@ export async function GET(request: Request) {
   const windowDays = Number.isFinite(rawDays) ? Math.min(92, Math.max(7, Math.trunc(rawDays))) : DEFAULT_WINDOW_DAYS;
 
   try {
-    const board = await fetchFleetBoard(createAdminClient(), {
+    const admin = createAdminClient();
+
+    // Match the person to their legacy name before rendering, so a returning
+    // user or a brand-new signup lands on a board that already knows them. Only
+    // fires while they have no alias, and only on an unambiguous match.
+    const auto = await autoLinkHolder(admin, {
+      id: viewer.id,
+      name: viewer.name,
+      email: viewer.email,
+    });
+
+    const board = await fetchFleetBoard(admin, {
       viewerId: viewer.id,
       viewerName: viewer.name,
       viewerEmail: viewer.email,
       includeArchived: viewer.isAdmin,
+      autoLinked: auto.linked
+        ? { label: auto.label, bookings: auto.bookings, assets: auto.assets }
+        : null,
       windowStart,
       windowDays,
     });

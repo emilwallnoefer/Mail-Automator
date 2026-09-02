@@ -266,6 +266,22 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         </Notice>
       ) : null}
 
+      {/* Matched automatically on sign-in. Announced rather than silent: this
+          moved bookings onto their account, and they should know it happened. */}
+      {board?.auto_linked ? (
+        <Notice tone="positive">
+          Welcome back — <span className="font-medium">{board.auto_linked.label}</span> in the old fleet sheet is
+          you.{" "}
+          {board.auto_linked.bookings > 0
+            ? `${board.auto_linked.bookings} booking${board.auto_linked.bookings === 1 ? "" : "s"}`
+            : "No bookings"}
+          {board.auto_linked.assets > 0
+            ? ` and ${board.auto_linked.assets} assigned unit${board.auto_linked.assets === 1 ? "" : "s"}`
+            : ""}{" "}
+          now sit under your account. Tell an admin if that is wrong.
+        </Notice>
+      ) : null}
+
       {/* Asked once per person, server-tracked — see IdentityPrompt. */}
       {board && !board.identity_confirmed ? (
         <IdentityPrompt
