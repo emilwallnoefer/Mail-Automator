@@ -46,7 +46,7 @@ const WINDOW_DAYS = 28;
 /** How far the ← / → buttons jump. */
 const WINDOW_STEP_DAYS = 14;
 
-type Tab = "calendar" | "material" | "mine" | "manage";
+type Tab = "calendar" | "mine" | "material" | "manage";
 
 export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardResponse | null }) {
   const [board, setBoard] = useState<FleetBoardResponse | null>(initialBoard);
@@ -296,8 +296,8 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         {(
           [
             ["calendar", `Calendar${bookableAssets.length ? ` (${bookableAssets.length})` : ""}`],
-            ["material", "Material"],
             ["mine", `My material${myReservations.length ? ` (${myReservations.length})` : ""}`],
+            ["material", "Material"],
             // Configuring the fleet is admin-only: this list is shared reference
             // data, and a stray entry lands in everyone's calendar.
             ...(board?.is_admin ? ([["manage", "Manage"]] as Array<[Tab, string]>) : []),
@@ -491,32 +491,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             </div>
           ) : null}
         </div>
-      ) : null}
-
-      {tab === "material" ? (
-        <MaterialList
-          assets={visibleAssets}
-          isAdmin={board?.is_admin ?? false}
-          busy={busy}
-          onConfirm={(assetId) => void post({ action: "confirm_location", asset_id: assetId })}
-          onMove={(assetId, location) => void post({ action: "move", asset_id: assetId, location })}
-          search={search}
-          onSearch={setSearch}
-        />
-      ) : null}
-
-      {tab === "mine" ? (
-        <MyMaterial
-          reservations={myReservations}
-          assets={assets}
-          busy={busy}
-          onCheckOut={(id) => void post({ action: "check_out", reservation_id: id })}
-          onCheckIn={(id, location) =>
-            void post({ action: "check_in", reservation_id: id, location: location || undefined })
-          }
-          onCancel={(id) => void post({ action: "cancel", reservation_id: id })}
-          score={board?.me ?? null}
-        />
       ) : null}
 
       {tab === "material" ? (

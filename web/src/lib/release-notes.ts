@@ -20,16 +20,14 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    // Second release of the day, so the id carries a suffix — the popup keys on
-    // `version`, and reusing "2026-09-01" would leave it un-fired for anyone who
-    // already dismissed the earlier entry.
-    version: "2026-09-01.2",
-    date: "Sep 1, 2026",
+    version: "2026-09-02",
+    date: "Sep 2, 2026",
     title: "Fleet (beta): book material by the day",
     highlights: [
       "New “Fleet” tab in the menu — replaces the fleet-management spreadsheet.",
-      "Click days in the calendar to reserve a drone, REx, or accessory — a two-day job books two days.",
-      "Calendar shows only the shared pool; units assigned to a person or customer sit in their own tab.",
+      "Click days in the calendar to reserve a drone, payload or tether — a two-day job books two days.",
+      "Calendar shows only the shared pool; assigned units are listed under Material.",
+      "Each person has their own colour, so you can see at a glance who has what.",
       "Every unit shows where it is now and how long since anyone confirmed it.",
       "Automatic reminders the day before it is due, and while it is overdue.",
       "Returning on time builds a reliability score; it sets your booking range and queue position.",
