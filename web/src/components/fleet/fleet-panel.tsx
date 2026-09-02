@@ -318,6 +318,24 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {notice ? <Notice tone={notice.tone}>{notice.text}</Notice> : null}
 
+      {board && assets.length === 0 ? (
+        <Notice tone="neutral">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              No material yet.{" "}
+              {board.is_admin
+                ? "Add the fleet in Manage — everything you add becomes bookable here."
+                : "An admin needs to add the fleet before anything can be booked."}
+            </span>
+            {board.is_admin ? (
+              <Button size="xs" variant="accent" onClick={() => setTab("manage")}>
+                Go to Manage
+              </Button>
+            ) : null}
+          </div>
+        </Notice>
+      ) : null}
+
       <nav className="flex flex-wrap gap-1.5" role="tablist" aria-label="Fleet sections">
         {(
           [

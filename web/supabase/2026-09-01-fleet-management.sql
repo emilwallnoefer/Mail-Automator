@@ -5,6 +5,9 @@
 -- ("US office", "Perdu par Johan Donzé") that went stale invisibly, and nothing
 -- ever told anyone their material was overdue.
 --
+-- Schema only. The material list is entered through the app (Fleet -> Manage),
+-- not seeded here.
+--
 -- Three tables:
 --   fleet_assets        — one row per physical item, carrying its CURRENT location.
 --   fleet_reservations  — a booking over an inclusive run of calendar days.
@@ -245,79 +248,12 @@ create trigger fleet_reservations_touch
   for each row execute function public.fleet_touch_updated_at();
 
 -- ---------------------------------------------------------------------------
--- Seed: the Elios 3 fleet as it stands in the "Fleet management" sheet.
+-- No seed
 -- ---------------------------------------------------------------------------
 --
--- Only the live Elios 3 units, the REx/GCS sets and the shared accessories are
--- imported. The decommissioned Elios 1/2 rows and the 2018–19 opportunity
--- history stay in the sheet: they are archive, and carrying them in would make
--- the first screen of a "what can I book" tool mostly dead stock.
+-- This file used to seed a fleet imported from the old "Fleet management"
+-- spreadsheet. That import has been removed: the material list is now entered
+-- and maintained through the app (Fleet -> Manage, admin only), which is the
+-- only place it can be kept correct.
 --
--- `current_location` is seeded from the sheet's "Loaned to"/"Stock location"
--- columns. Several read "not in tracking list" — that is the honest state, and
--- the UI surfaces those as unconfirmed so they get chased.
---
--- ON CONFLICT DO NOTHING keeps re-runs idempotent and never clobbers a location
--- someone has since corrected in the app.
-
-insert into public.fleet_assets
-  (serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_label, notes)
-values
-  ('E300L121420012',      'E3-LL1-12',  'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300D122160002',      'E3-DV1-2',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
-  ('E300D122160003',      'E3-DV1-3',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           'Simon Kumm',            'Activated'),
-  ('E300D122160004',      'E3-DV1-4',   'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300D122160005',      'E3-DV1-5',   'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'APAC',           'Anton (China)',         'Activated'),
-  ('E300D222180001',      'E3-DV2-1',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
-  ('E300D222180002',      'E3-DV2-2',   'drone', 'Elios 3', 'Sales',    'retired',   'APAC',           'APAC',           'Joel',                  'Retired in the sheet'),
-  ('E300D222180003',      'E3-DV2-3',   'drone', 'Elios 3', 'Sales',    'retired',   'EMEA',           'EMEA',           null,                    'Scrapped — too damaged to repair'),
-  ('E300D222180004',      'E3-DV2-4',   'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
-  ('E300S922410067',      'E3-SV9-67',  'drone', 'Elios 3', 'Sales',    'in_repair', 'US Office',      'FMI',            'FMI',                   'In repair; not in Odoo'),
-  ('E300S922410068',      'E3-SV9-68',  'drone', 'Elios 3', 'Sales',    'out',       'EMEA',           'EMEA',           null,                    'Activated'),
-  ('E300S922400062',      'E3-SV9-62',  'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
-  ('E300S922410073',      'E3-SV9-73',  'drone', 'Elios 3', 'Customer', 'out',       'Customer',       'Terra Inspectioneering', 'Terra Inspectioneering', 'End customer'),
-  ('E300SA22490111',      'E3-SVA-111', 'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
-  ('E300SA22500138',      'E3-SVA-138', 'drone', 'Elios 3', 'FPS',      'out',       'FPS Drone',      'FPS Drone',      'FPS',                   null),
-  ('E300SA22510158',      'E3-SVA-158', 'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'China (unidentified)', null,              'Sheet: not in tracking list'),
-  ('E300SA22510162',      'E3-SVA-162', 'drone', 'Elios 3', 'Customer', 'out',       'Customer',       'Techitop',       'Techitop',              'End customer'),
-  ('E300SA23080209',      'E3-SVA-209', 'drone', 'Elios 3', 'Sales',    'out',       'Japan',          'Japan',          'Wataru',                'Activated'),
-  ('E300SA23080222',      'E3-SVA-222', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300SA23090228',      'E3-SVA-228', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300SA23090233',      'E3-SVA-233', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300SA23120239',      'E3-SVA-239', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300SA23120241',      'E3-SVA-241', 'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Activated'),
-  ('E300SA23130257',      'E3-SVA-257', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Matteo',                'Activated'),
-  ('E300SA23190318',      'E3-SVA-318', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Philipp',               'Activated'),
-  ('E300SA23190326',      'E3-SVA-326', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Igor',                  'Sheet: not in tracking list'),
-  ('E300SA23200330',      'E3-SVA-330', 'drone', 'Elios 3', 'Sales',    'out',       'Office Paudex',  'Office Paudex',  'Charles',               'Activated'),
-  ('E300SA23220346',      'E3-SVA-346', 'drone', 'Elios 3', 'Sales',    'available', 'Office Paudex',  'Office Paudex',  'Gonzalo',               'Activated'),
-  ('E300SA23290406',      'E3-SVA-406', 'drone', 'Elios 3', 'Sales',    'out',       'APAC',           'APAC',           'APAC team',             null),
-  ('E300L322120001',      'E3-LL3-01',  'drone', 'Elios 3', 'Sales',    'available', 'APAC',           'APAC',           'Joel',                  'Demo unit'),
-  ('1826EE3RDAA23440097', 'E3R-097',    'drone', 'Elios 3', 'Sales',    'available', 'APAC',           'APAC',           'Joel',                  null),
-  ('1826EE3RDAA24030181', 'E3R-181',    'drone', 'Elios 3', 'Sales',    'available', 'US Office',      'US Office',      null,                    'Sheet: not in tracking list'),
-  ('1826EE3RDAA24060201', 'E3R-201',    'drone', 'Elios 3', 'Sales',    'out',       'Japan',          'Japan',          'Wataru',                'Activated'),
-  -- Range extenders / ground control stations, bookable alongside a drone.
-  ('RV0-0334',            'REx 0334',   'range_extender', 'RangeX', 'Sales', 'out',       'Office Paudex', 'Bordeaux',   'François (expertise)',  'Loaned with GCS CVO-0546, tablet, charger, E1 batteries'),
-  ('RV0-0425',            'REx 0425',   'range_extender', 'RangeX', 'Sales', 'available', 'Office Paudex', null,         null,                    'Sheet: cannot be located — needs a physical check'),
-  ('REX-0447',            'REx 0447',   'range_extender', 'RangeX', 'Sales', 'out',       'Office Paudex', 'Office Paudex', 'Fabio',              null),
-  ('CVO-0546',            'GCS 0546',   'gcs',   'GCS',     'Sales',    'out',       'Office Paudex',  'Bordeaux',       'François (expertise)',  'Paired with REx 0334'),
-  ('CVO-0482',            'GCS 0482',   'gcs',   'GCS',     'Sales',    'available', 'Office Paudex',  'Office Paudex',  null,                    'Paired with REx 0425')
--- The index above is PARTIAL (`where serial_number is not null`), and Postgres
--- only infers a partial index as an ON CONFLICT arbiter when the clause repeats
--- the index predicate — without the WHERE it fails with 42P10, "no unique or
--- exclusion constraint matching the ON CONFLICT specification". Every row in
--- this VALUES list has a serial, so the predicate always holds.
-on conflict (serial_number) where serial_number is not null do nothing;
-
--- Shared accessories have no serial in the sheet, so they cannot ride the
--- ON CONFLICT above; guard them on name instead.
-insert into public.fleet_assets (name, category, owner_group, status, home_location, current_location, notes)
-select v.name, 'accessory', 'Sales', 'available', 'Office Paudex', 'Office Paudex', v.notes
-from (values
-  ('Field tablet',        'Shared tablet from the REx kit'),
-  ('E1 battery set (3x)', 'Three E1 batteries, booked as one item'),
-  ('REx charger',         'Charger from the REx kit')
-) as v(name, notes)
-where not exists (
-  select 1 from public.fleet_assets a where a.name = v.name
-);
+-- Applying this migration gives you empty tables, ready for the Manage tab.

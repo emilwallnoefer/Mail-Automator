@@ -567,32 +567,37 @@ export async function autoLinkHolder(
   viewer: { id: string; name: string | null; email: string | null },
 ): Promise<AutoLinkResult> {
   try {
-    const { data: mine } = await admin
-      .from("fleet_holder_aliases")
-      .select("label")
-      .eq("user_id", viewer.id)
-      .limit(1);
-    if ((mine ?? []).length > 0) return { linked: false, reason: "already_confirmed" };
-
     // Candidates come from BOTH tables. Someone can hold assigned kit without
-    // ever appearing in a booking — Igor has three units and no unclaimed
-    // reservations — and reading only reservations would leave them unmatched.
-    const [{ data: rows }, { data: assetRows }, { data: aliases }] = await Promise.all([
-      admin
-        .from("fleet_reservations")
-        .select("holder_label")
-        .is("user_id", null)
-        .not("holder_label", "is", null),
-      admin
-        .from("fleet_assets")
-        .select("current_holder_label")
-        .eq("active", true)
-        .is("current_holder_user_id", null)
-        .not("current_holder_label", "is", null),
-      admin.from("fleet_holder_aliases").select("label"),
-    ]);
+    // ever appearing in a booking, and reading only reservations would leave
+    // them unmatched.
+    const [{ data: mine }, { data: rows }, { data: assetRows }, { data: aliases }] =
+      await Promise.all([
+        admin.from("fleet_holder_aliases").select("label").eq("user_id", viewer.id),
+        admin
+          .from("fleet_reservations")
+          .select("holder_label")
+          .is("user_id", null)
+          .not("holder_label", "is", null),
+        admin
+          .from("fleet_assets")
+          .select("current_holder_label")
+          .eq("active", true)
+          .is("current_holder_user_id", null)
+          .not("current_holder_label", "is", null),
+        admin.from("fleet_holder_aliases").select("label"),
+      ]);
 
-    const taken = new Set((aliases ?? []).map((a) => a.label as string));
+    // Having an alias already is NOT a reason to stop. The alias IS the mapping,
+    // and applying it has to stay idempotent: a later import writes fresh rows
+    // under the same name, and returning early here would leave them unclaimed
+    // forever for exactly the people who had already said who they are.
+    const myLabels = new Set((mine ?? []).map((a) => a.label as string));
+    const confirmed = myLabels.size > 0;
+
+    // Somebody else's alias is still off limits.
+    const taken = new Set(
+      (aliases ?? []).map((a) => a.label as string).filter((l) => !myLabels.has(l)),
+    );
     const labels = new Map<string, string>();
     const collect = (raw: string | null | undefined) => {
       const label = raw?.trim();
@@ -605,10 +610,21 @@ export async function autoLinkHolder(
     for (const row of assetRows ?? []) collect(row.current_holder_label as string | null);
 
     const person = { name: viewer.name, email: viewer.email };
-    const matches = [...labels.values()].filter((label) => holderLabelMatchesPerson(label, person));
 
-    if (matches.length === 0) return { linked: false, reason: "no_match" };
-    if (matches.length > 1) return { linked: false, reason: "ambiguous", candidates: matches };
+    // Once confirmed, only names this user actually owns apply — no fresh
+    // guessing on someone who has already answered. Before that, match on a
+    // shared first or last name.
+    const matches = confirmed
+      ? [...labels.entries()].filter(([key]) => myLabels.has(key)).map(([, label]) => label)
+      : [...labels.values()].filter((label) => holderLabelMatchesPerson(label, person));
+
+    if (matches.length === 0) {
+      return { linked: false, reason: confirmed ? "already_confirmed" : "no_match" };
+    }
+    // Ambiguity only matters while guessing; a name they own is never ambiguous.
+    if (!confirmed && matches.length > 1) {
+      return { linked: false, reason: "ambiguous", candidates: matches };
+    }
 
     const label = matches[0];
     const key = normalizeHolderLabel(label);

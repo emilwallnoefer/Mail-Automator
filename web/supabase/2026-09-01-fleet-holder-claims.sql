@@ -126,46 +126,11 @@ create trigger fleet_settings_touch
   for each row execute function public.fleet_touch_updated_at();
 
 -- ---------------------------------------------------------------------------
--- Import: one open booking per unit the sheet says is already out
+-- No import
 -- ---------------------------------------------------------------------------
 --
--- Only current state — nothing from the sheet's 2024 mission calendar, which is
--- two years stale and would land as a wall of long-overdue rows.
---
--- Each gets today as the start and a 30-day provisional due date, so the
--- calendar shows the unit as held without immediately flagging it late. The row
--- is `sheet_import`, so it stays out of everyone's score until a real person
--- claims it and the booking is theirs.
-
-insert into public.fleet_reservations
-  (asset_id, user_id, holder_label, start_date, end_date, status, destination, source, picked_up_at)
-select
-  a.id,
-  -- If this name has already been mapped to an account, attribute it straight away.
-  al.user_id,
-  a.current_holder_label,
-  current_date,
-  current_date + 30,
-  'picked_up',
-  a.current_location,
-  'sheet_import',
-  now()
-from public.fleet_assets a
--- Best-effort pre-fill: if the name is already mapped, attribute it now. The
--- comparison here is only lower(trim(...)), while the app normalises further
--- (accents, punctuation), so "François (expertise)" will not match an alias
--- written by the app. That is acceptable — this join is a shortcut, and the
--- claim flow in /api/fleet is the authoritative path. On a re-run the NOT
--- EXISTS guard below skips these assets entirely anyway.
-left join public.fleet_holder_aliases al
-  on al.label = lower(trim(a.current_holder_label))
-where a.active
-  and a.status = 'out'
-  and a.current_holder_label is not null
-  and trim(a.current_holder_label) <> ''
-  -- Idempotent, and never double-books an asset that already has a live row.
-  and not exists (
-    select 1 from public.fleet_reservations r
-    where r.asset_id = a.id
-      and r.status in ('reserved', 'picked_up')
-  );
+-- This file used to open a booking for every unit the spreadsheet said was out.
+-- That import has been removed along with the rest of the sheet data; the
+-- structure above is what matters — a reservation can be filed under a NAME
+-- before that person has an account, which is what makes the claim flow work
+-- for anyone added later.
