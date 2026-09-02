@@ -109,6 +109,10 @@ const returnToPoolSchema = z.object({
   note: z.string().trim().max(280).optional(),
 });
 
+const registerMemberSchema = z.object({
+  action: z.literal("register_member"),
+});
+
 const setRemindersSchema = z.object({
   action: z.literal("set_reminders"),
   enabled: z.boolean(),
@@ -184,6 +188,7 @@ const postSchema = z.discriminatedUnion("action", [
   createAssetSchema,
   updateAssetSchema,
   archiveAssetSchema,
+  registerMemberSchema,
 ]);
 
 type Viewer = { id: string; email: string | null; name: string; isAdmin: boolean };
@@ -336,6 +341,8 @@ export async function POST(request: Request) {
         return await handleUpdateAsset(admin, viewer, payload);
       case "archive_asset":
         return await handleArchiveAsset(admin, viewer, payload);
+      case "register_member":
+        return await handleRegisterMember(admin, viewer);
     }
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
@@ -785,14 +792,27 @@ async function handleClaimHolder(
   if (targetUserId !== viewer.id && !viewer.isAdmin) {
     return NextResponse.json({ error: "Only admins can assign a name to someone else." }, { status: 403 });
   }
-  if (!viewer.isAdmin && !holderLabelMatchesPerson(label, { name: viewer.name, email: viewer.email })) {
+
+  // A name ALREADY mapped to somebody else is never claimable by a non-admin —
+  // that would hand over a colleague's material and their booking history.
+  const { data: existingAlias } = await admin
+    .from("fleet_holder_aliases")
+    .select("user_id")
+    .eq("label", normalized)
+    .maybeSingle();
+  if (existingAlias && existingAlias.user_id !== targetUserId && !viewer.isAdmin) {
     return NextResponse.json(
-      {
-        error: `"${label}" does not match your name, so an admin has to assign it. This is deliberate — claiming a name takes over that person's material.`,
-      },
-      { status: 403 },
+      { error: `"${label}" already belongs to someone else. An admin can reassign it.` },
+      { status: 409 },
     );
   }
+
+  // An UNCLAIMED name is fair game: the spreadsheet spelled people inconsistently
+  // ("Emil", "Emil Wallnofer", "Inga Khchoyan"), so a strict name match would
+  // strand exactly the people this flow exists to onboard. Every claim is
+  // recorded with who made it, so a wrong pick is visible and reversible rather
+  // than prevented.
+  const selfMatch = holderLabelMatchesPerson(label, { name: viewer.name, email: viewer.email });
 
   // Match on the normalised label so "Wataru", "wataru" and "Wataru." are one
   // name. Done in JS rather than SQL because normalisation (accent folding,
@@ -829,7 +849,10 @@ async function handleClaimHolder(
         reservation_id: row.id,
         kind: "note",
         actor_user_id: viewer.id,
-        note: `Holder "${label}" claimed`,
+        // Whether the name actually matches the claimant is recorded rather
+        // than enforced: picking a name that is not obviously yours is allowed
+        // (the sheet spelled people inconsistently), but it should be visible.
+        note: `Holder "${label}" claimed by ${viewer.name}${selfMatch ? "" : " (name does not match theirs)"}`,
       });
     }
   }
@@ -1215,5 +1238,46 @@ async function handleArchiveAsset(
     message: payload.archived
       ? `${asset.name} removed${cancelled > 0 ? `, ${cancelled} booking${cancelled === 1 ? "" : "s"} cancelled` : ""}.`
       : `${asset.name} restored.`,
+  });
+}
+
+
+/**
+ * Registers the signed-in user as a fleet member under their own name.
+ *
+ * For someone whose name is not in the spreadsheet at all — a new joiner, or
+ * anyone who simply never appeared in the roadshow calendar. It creates the
+ * alias so the identity prompt does not ask again, and so a LATER import that
+ * does mention them resolves straight to their account.
+ */
+async function handleRegisterMember(admin: Admin, viewer: Viewer) {
+  const label = normalizeHolderLabel(viewer.name || viewer.email || "");
+  if (!label) {
+    return NextResponse.json({ error: "Could not work out your name." }, { status: 400 });
+  }
+
+  const { data: taken } = await admin
+    .from("fleet_holder_aliases")
+    .select("user_id")
+    .eq("label", label)
+    .maybeSingle();
+  if (taken && taken.user_id !== viewer.id) {
+    return NextResponse.json(
+      { error: "Someone else already registered under that name. Ask an admin to sort it out." },
+      { status: 409 },
+    );
+  }
+
+  const { error } = await admin
+    .from("fleet_holder_aliases")
+    .upsert(
+      { label, user_id: viewer.id, claimed_by: viewer.id, claimed_at: new Date().toISOString() },
+      { onConflict: "label" },
+    );
+  if (error) throw new Error(error.message);
+
+  return NextResponse.json({
+    ok: true,
+    message: `You're set up as ${viewer.name}. Nothing from the old sheet is filed under you.`,
   });
 }

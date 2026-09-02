@@ -182,10 +182,12 @@ export function buildDemoBoard(args: {
     me: { ...computeReliability(spansByUser.get(viewerId) ?? [], today), user_id: viewerId },
     standings,
     unclaimed_holders: [
-      { label: "Philipp", count: 1, mine: false },
-      { label: "APAC team", count: 1, mine: false },
+      { label: "Philipp", count: 1, live: 1, mine: false },
+      { label: "APAC team", count: 1, live: 1, mine: false },
     ],
     reminders_enabled: false,
+    // The demo board shows the identity prompt, so it can be reviewed too.
+    identity_confirmed: false,
     archived_assets: [],
   };
 }

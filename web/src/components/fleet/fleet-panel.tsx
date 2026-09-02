@@ -13,6 +13,7 @@ import {
 } from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
 import { AssetIcon } from "./asset-icon";
+import { IdentityPrompt } from "./identity-prompt";
 import { ManageMaterial } from "./manage-material";
 import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
 import { DayGrid, type DaySelection } from "./day-grid";
@@ -50,7 +51,6 @@ type Tab =
   | "assigned"
   | "material"
   | "mine"
-  | "unclaimed"
   | "standings"
   | "manage";
 
@@ -140,6 +140,11 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const staleCount = useMemo(() => assets.filter((a) => a.location_stale).length, [assets]);
 
   const unclaimedHolders = useMemo(() => board?.unclaimed_holders ?? [], [board]);
+  /** The viewer's own name, for the "add me as ..." option in the setup prompt. */
+  const myDisplayName = useMemo(
+    () => board?.standings.find((s) => s.user_id === board?.me.user_id)?.name ?? "me",
+    [board],
+  );
   /** Names the viewer is allowed to claim for themselves, without an admin. */
   const claimableByMe = useMemo(() => unclaimedHolders.filter((h) => h.mine), [unclaimedHolders]);
 
@@ -261,30 +266,16 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         </Notice>
       ) : null}
 
-      {claimableByMe.length > 0 ? (
-        <Notice tone="warn">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              {claimableByMe.map((h) => `"${h.label}"`).join(", ")} —{" "}
-              {claimableByMe.reduce((n, h) => n + h.count, 0)} item
-              {claimableByMe.reduce((n, h) => n + h.count, 0) === 1 ? " is" : "s are"} recorded under that name
-              from the old sheet. Is that you?
-            </span>
-            <span className="flex gap-1.5">
-              {claimableByMe.map((h) => (
-                <Button
-                  key={h.label}
-                  size="xs"
-                  variant="accent"
-                  disabled={busy}
-                  onClick={() => void post({ action: "claim_holder", label: h.label })}
-                >
-                  Yes, {h.label} is me
-                </Button>
-              ))}
-            </span>
-          </div>
-        </Notice>
+      {/* Asked once per person, server-tracked — see IdentityPrompt. */}
+      {board && !board.identity_confirmed ? (
+        <IdentityPrompt
+          displayName={board.me.user_id ? myDisplayName : "me"}
+          suggestions={claimableByMe}
+          allUnclaimed={unclaimedHolders}
+          busy={busy}
+          onClaim={(label) => void post({ action: "claim_holder", label })}
+          onRegister={() => void post({ action: "register_member" })}
+        />
       ) : null}
 
       {board && !board.reminders_enabled ? (
@@ -318,7 +309,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             ["assigned", `Assigned${assignedAssets.length ? ` (${assignedAssets.length})` : ""}`],
             ["material", "Material"],
             ["mine", `My material${myReservations.length ? ` (${myReservations.length})` : ""}`],
-            ["unclaimed", `Unclaimed${unclaimedHolders.length ? ` (${unclaimedHolders.length})` : ""}`],
             ["standings", "Standings"],
             // Configuring the fleet is admin-only: this list is shared reference
             // data, and a stray entry lands in everyone's calendar.
@@ -562,23 +552,13 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         />
       ) : null}
 
-      {tab === "unclaimed" ? (
-        <UnclaimedHolders
-          holders={unclaimedHolders}
-          reservations={reservations}
-          assets={assets}
-          isAdmin={board?.is_admin ?? false}
-          busy={busy}
-          onClaim={(label) => void post({ action: "claim_holder", label })}
-        />
-      ) : null}
-
       {tab === "standings" ? <Standings board={board} /> : null}
 
       {tab === "manage" && board?.is_admin ? (
         <ManageMaterial
           assets={assets}
           archived={board.archived_assets ?? []}
+          unclaimed={unclaimedHolders}
           busy={busy}
           onCreate={(draft) =>
             post({
@@ -1022,93 +1002,6 @@ function ReservationDetail({
 
 
 /* -------------------------------------------------------------------------- */
-
-/**
- * Material the old sheet says is out, filed under a name rather than an account.
- *
- * These are the units nobody is currently accountable for: they hold a slot on
- * the calendar, but until someone claims the name there is no address to remind
- * and no score to affect. Closing this list is the migration's last mile.
- */
-function UnclaimedHolders({
-  holders,
-  reservations,
-  assets,
-  isAdmin,
-  busy,
-  onClaim,
-}: {
-  holders: Array<{ label: string; count: number; mine: boolean }>;
-  reservations: FleetReservation[];
-  assets: FleetAsset[];
-  isAdmin: boolean;
-  busy: boolean;
-  onClaim: (label: string) => void;
-}) {
-  if (holders.length === 0) {
-    return (
-      <p className="text-xs text-ink-4">
-        Every booking belongs to an account. Nothing left to claim.
-      </p>
-    );
-  }
-
-  const itemsFor = (label: string) =>
-    reservations
-      .filter((r) => r.unclaimed && r.holder_label === label)
-      .map((r) => assets.find((a) => a.id === r.asset_id)?.name ?? "Material");
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs leading-relaxed text-ink-4">
-        Carried over from the fleet sheet, which recorded a name rather than an account. Claiming a name makes those
-        bookings yours — you can then check the material back in, and it starts counting toward your reliability.
-        Until then nothing is emailed and no score moves.
-      </p>
-      <ul className="space-y-1.5">
-        {holders.map((holder) => {
-          const items = itemsFor(holder.label);
-          return (
-            <li
-              key={holder.label}
-              className={`rounded-lg border px-3 py-2.5 ${
-                holder.mine ? "border-accent/40 bg-accent-deep/12" : "border-glass/10 bg-glass/[0.04]"
-              }`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs font-medium text-ink">{holder.label}</span>
-                    <Badge tone="neutral">
-                      {holder.count} item{holder.count === 1 ? "" : "s"}
-                    </Badge>
-                    {holder.mine ? <Badge tone="accent">Looks like you</Badge> : null}
-                  </div>
-                  {items.length > 0 ? (
-                    <p className="mt-1 truncate text-[11px] text-ink-5">{items.join(", ")}</p>
-                  ) : null}
-                </div>
-                {holder.mine || isAdmin ? (
-                  <Button size="xs" variant="glass" disabled={busy} onClick={() => onClaim(holder.label)}>
-                    {holder.mine ? "This is me" : "Assign to me"}
-                  </Button>
-                ) : (
-                  <span className="text-[11px] text-ink-5">Admin assigns</span>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      {!isAdmin ? (
-        <p className="text-[11px] text-ink-5">
-          Only names matching your own can be self-claimed. Group labels like &ldquo;APAC team&rdquo; need an admin.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 
 /* -------------------------------------------------------------------------- */
 

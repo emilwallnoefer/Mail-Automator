@@ -74,9 +74,18 @@ export type FleetBoardResponse = {
   me: ReliabilityScore & { user_id: string };
   standings: Array<{ user_id: string; name: string; score: ReliabilityScore }>;
   /** Holder names with live bookings and no account behind them. */
-  unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
+  unclaimed_holders: Array<{
+    label: string;
+    /** Every booking under this name, finished ones included. */
+    count: number;
+    /** How many are holding material right now. */
+    live: number;
+    mine: boolean;
+  }>;
   /** Whether return reminders are currently being sent at all. */
   reminders_enabled: boolean;
+  /** True once this user has been through the one-time "which name is you?" step. */
+  identity_confirmed: boolean;
   /** Units removed from the fleet. Admin-only, so the Manage tab can restore one. */
   archived_assets: FleetAsset[];
   is_admin: boolean;

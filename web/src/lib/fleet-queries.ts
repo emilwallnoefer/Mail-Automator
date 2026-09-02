@@ -147,9 +147,24 @@ export type FleetBoard = {
    * Holder names with live bookings and no account behind them, so the UI can
    * chase them. `mine` is the subset the viewer is allowed to claim themselves.
    */
-  unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
+  unclaimed_holders: Array<{
+    label: string;
+    /** Every booking under this name, finished ones included. */
+    count: number;
+    /** How many are holding material right now. */
+    live: number;
+    mine: boolean;
+  }>;
   /** Whether return reminders are currently being sent at all. */
   reminders_enabled: boolean;
+  /**
+   * Whether this user has been through the "which of these names is you?" step.
+   * True once they have any alias — whether they claimed a legacy name or
+   * registered as a new member. Drives the one-time prompt, and lives on the
+   * server rather than in localStorage so it is asked once per PERSON rather
+   * than once per browser.
+   */
+  identity_confirmed: boolean;
   /**
    * Units removed from the fleet (`active = false`). Present only for admins,
    * so the Manage tab can restore one — a soft removal you cannot see is a
@@ -235,7 +250,8 @@ export async function fetchFleetBoard(
   const windowStart = args.windowStart ?? today;
   const windowDays = args.windowDays ?? DEFAULT_WINDOW_DAYS;
 
-  const [assetsResult, reservationsResult, remindersEnabled, archivedResult] = await Promise.all([
+  const [assetsResult, reservationsResult, remindersEnabled, myAliasResult, archivedResult] =
+    await Promise.all([
     admin
       .from("fleet_assets")
       .select(
@@ -250,6 +266,7 @@ export async function fetchFleetBoard(
       )
       .order("start_date", { ascending: true }),
     fetchRemindersEnabled(admin),
+    admin.from("fleet_holder_aliases").select("label").eq("user_id", args.viewerId).limit(1),
     args.includeArchived
       ? admin
           .from("fleet_assets")
@@ -366,15 +383,20 @@ export async function fetchFleetBoard(
   // Names with live bookings and no account behind them. `mine` marks the ones
   // this viewer is allowed to claim without an admin — see
   // `holderLabelMatchesPerson`, which is deliberately strict about it.
-  const unclaimedCounts = new Map<string, { label: string; count: number }>();
+  // Counts EVERY booking under the name, not just live ones. This list drives
+  // the identity prompt, and someone whose bookings have all finished still owns
+  // that history — filtering to live material would offer them nothing and quietly
+  // strand six months of their record under a name nobody can claim.
+  const unclaimedCounts = new Map<string, { label: string; count: number; live: number }>();
   for (const row of reservations) {
     if (row.user_id) continue;
-    if (!isBlocking(row.status)) continue;
+    if (row.status === "cancelled") continue;
     const label = row.holder_label?.trim();
     if (!label) continue;
     const key = normalizeHolderLabel(label);
-    const entry = unclaimedCounts.get(key) ?? { label, count: 0 };
+    const entry = unclaimedCounts.get(key) ?? { label, count: 0, live: 0 };
     entry.count += 1;
+    if (isBlocking(row.status)) entry.live += 1;
     unclaimedCounts.set(key, entry);
   }
   const viewer = { name: args.viewerName ?? null, email: args.viewerEmail ?? null };
@@ -382,10 +404,18 @@ export async function fetchFleetBoard(
     .map((entry) => ({
       label: entry.label,
       count: entry.count,
+      live: entry.live,
       mine: holderLabelMatchesPerson(entry.label, viewer),
     }))
-    // The viewer's own names first, then the biggest piles of unaccounted material.
-    .sort((a, b) => Number(b.mine) - Number(a.mine) || b.count - a.count || a.label.localeCompare(b.label));
+    // The viewer's own names first, then whoever is holding the most material
+    // right now, then the biggest histories.
+    .sort(
+      (a, b) =>
+        Number(b.mine) - Number(a.mine) ||
+        b.live - a.live ||
+        b.count - a.count ||
+        a.label.localeCompare(b.label),
+    );
 
   return {
     today,
@@ -397,6 +427,7 @@ export async function fetchFleetBoard(
     standings,
     unclaimed_holders: unclaimedHolders,
     reminders_enabled: remindersEnabled,
+    identity_confirmed: (myAliasResult.data ?? []).length > 0,
     archived_assets: (archivedResult.data ?? []) as FleetAssetRow[],
   };
 }

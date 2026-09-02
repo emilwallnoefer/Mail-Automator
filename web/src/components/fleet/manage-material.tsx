@@ -49,6 +49,7 @@ const EMPTY: Draft = {
 export function ManageMaterial({
   assets,
   archived,
+  unclaimed,
   busy,
   onCreate,
   onUpdate,
@@ -56,6 +57,8 @@ export function ManageMaterial({
 }: {
   assets: FleetAsset[];
   archived: FleetAsset[];
+  /** Holder names from the old sheet that nobody has claimed yet. */
+  unclaimed: Array<{ label: string; count: number; live: number }>;
   busy: boolean;
   onCreate: (draft: Draft) => Promise<boolean>;
   onUpdate: (assetId: string, patch: Partial<Draft> & { status?: FleetAssetStatus }) => void;
@@ -403,6 +406,34 @@ export function ManageMaterial({
 
       {grouped.length === 0 ? (
         <p className="text-xs text-ink-4">Nothing matches that search.</p>
+      ) : null}
+
+      {/* ------------------------------------------------------- unclaimed */}
+      {unclaimed.length > 0 ? (
+        <section className="space-y-1.5 border-t border-glass/10 pt-4">
+          <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
+            Unclaimed names ({unclaimed.length})
+          </h3>
+          <p className="text-[11px] leading-relaxed text-ink-5">
+            Material from the old sheet is filed under these names, and nobody has taken them yet. Until someone
+            does, that material has no owner to remind and no score to move. Each person is offered their name once,
+            when they first open Fleet.
+          </p>
+          <ul className="flex flex-wrap gap-1.5">
+            {unclaimed.map((h) => (
+              <li
+                key={h.label}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-warn"
+              >
+                <span className="font-medium">{h.label}</span>
+                <span className="opacity-75">
+                  {h.live > 0 ? `${h.live} out now · ` : ""}
+                  {h.count} total
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {/* -------------------------------------------------------- archived */}
