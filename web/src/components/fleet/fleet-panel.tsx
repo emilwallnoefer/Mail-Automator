@@ -13,6 +13,7 @@ import {
 } from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
 import { AssetIcon } from "./asset-icon";
+import { ManageMaterial } from "./manage-material";
 import { ReliabilityBadge, ReliabilityCard } from "./reliability-badge";
 import { DayGrid, type DaySelection } from "./day-grid";
 import {
@@ -44,7 +45,14 @@ const WINDOW_DAYS = 28;
 /** How far the ← / → buttons jump. */
 const WINDOW_STEP_DAYS = 14;
 
-type Tab = "calendar" | "assigned" | "material" | "mine" | "unclaimed" | "standings";
+type Tab =
+  | "calendar"
+  | "assigned"
+  | "material"
+  | "mine"
+  | "unclaimed"
+  | "standings"
+  | "manage";
 
 export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardResponse | null }) {
   const [board, setBoard] = useState<FleetBoardResponse | null>(initialBoard);
@@ -312,6 +320,9 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             ["mine", `My material${myReservations.length ? ` (${myReservations.length})` : ""}`],
             ["unclaimed", `Unclaimed${unclaimedHolders.length ? ` (${unclaimedHolders.length})` : ""}`],
             ["standings", "Standings"],
+            // Configuring the fleet is admin-only: this list is shared reference
+            // data, and a stray entry lands in everyone's calendar.
+            ...(board?.is_admin ? ([["manage", "Manage"]] as Array<[Tab, string]>) : []),
           ] as Array<[Tab, string]>
         ).map(([key, label]) => (
           <button
@@ -563,6 +574,32 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
       ) : null}
 
       {tab === "standings" ? <Standings board={board} /> : null}
+
+      {tab === "manage" && board?.is_admin ? (
+        <ManageMaterial
+          assets={assets}
+          archived={board.archived_assets ?? []}
+          busy={busy}
+          onCreate={(draft) =>
+            post({
+              action: "create_asset",
+              name: draft.name,
+              category: draft.category,
+              serial_number: draft.serial_number || undefined,
+              model: draft.model || undefined,
+              owner_group: draft.owner_group || undefined,
+              pooled: draft.pooled,
+              home_location: draft.home_location || undefined,
+              current_holder_label: draft.pooled ? undefined : draft.current_holder_label,
+              notes: draft.notes || undefined,
+            })
+          }
+          onUpdate={(assetId, patch) => void post({ action: "update_asset", asset_id: assetId, ...patch })}
+          onArchive={(assetId, archivedFlag) =>
+            void post({ action: "archive_asset", asset_id: assetId, archived: archivedFlag })
+          }
+        />
+      ) : null}
 
       {detail ? (
         <ReservationDetail

@@ -150,6 +150,12 @@ export type FleetBoard = {
   unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
   /** Whether return reminders are currently being sent at all. */
   reminders_enabled: boolean;
+  /**
+   * Units removed from the fleet (`active = false`). Present only for admins,
+   * so the Manage tab can restore one — a soft removal you cannot see is a
+   * removal you cannot undo.
+   */
+  archived_assets: FleetAssetRow[];
 };
 
 /**
@@ -215,6 +221,8 @@ export async function fetchFleetBoard(
     /** Used to decide which unclaimed holder names the viewer may claim. */
     viewerName?: string | null;
     viewerEmail?: string | null;
+    /** Admins additionally receive the archived units. */
+    includeArchived?: boolean;
     windowStart?: string;
     windowDays?: number;
     now?: Date;
@@ -227,7 +235,7 @@ export async function fetchFleetBoard(
   const windowStart = args.windowStart ?? today;
   const windowDays = args.windowDays ?? DEFAULT_WINDOW_DAYS;
 
-  const [assetsResult, reservationsResult, remindersEnabled] = await Promise.all([
+  const [assetsResult, reservationsResult, remindersEnabled, archivedResult] = await Promise.all([
     admin
       .from("fleet_assets")
       .select(
@@ -242,6 +250,15 @@ export async function fetchFleetBoard(
       )
       .order("start_date", { ascending: true }),
     fetchRemindersEnabled(admin),
+    args.includeArchived
+      ? admin
+          .from("fleet_assets")
+          .select(
+            "id, serial_number, name, category, model, owner_group, status, home_location, current_location, current_holder_user_id, current_holder_label, location_confirmed_at, notes, active, pooled",
+          )
+          .eq("active", false)
+          .order("name", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (assetsResult.error) throw new Error(`fleet_assets read failed: ${assetsResult.error.message}`);
@@ -380,6 +397,7 @@ export async function fetchFleetBoard(
     standings,
     unclaimed_holders: unclaimedHolders,
     reminders_enabled: remindersEnabled,
+    archived_assets: (archivedResult.data ?? []) as FleetAssetRow[],
   };
 }
 

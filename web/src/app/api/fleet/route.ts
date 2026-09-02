@@ -114,6 +114,54 @@ const setRemindersSchema = z.object({
   enabled: z.boolean(),
 });
 
+const ASSET_CATEGORIES = [
+  "drone", "lidar", "rad_payload", "ut_payload", "lel_payload",
+  "dummy_drone", "tether", "range_extender", "gcs", "accessory", "other",
+] as const;
+
+const ASSET_STATUSES = ["available", "reserved", "out", "in_repair", "retired"] as const;
+
+/** Fields an admin can set on a piece of material. Shared by create and update. */
+const assetFields = {
+  name: z.string().trim().min(1).max(120),
+  serial_number: z.string().trim().max(120).nullable().optional(),
+  category: z.enum(ASSET_CATEGORIES),
+  model: z.string().trim().max(120).nullable().optional(),
+  owner_group: z.string().trim().max(120).nullable().optional(),
+  status: z.enum(ASSET_STATUSES).optional(),
+  /** true = shared bookable pool (calendar); false = assigned to someone. */
+  pooled: z.boolean().optional(),
+  home_location: z.string().trim().max(160).nullable().optional(),
+  current_location: z.string().trim().max(160).nullable().optional(),
+  current_holder_label: z.string().trim().max(160).nullable().optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+};
+
+const createAssetSchema = z.object({ action: z.literal("create_asset"), ...assetFields });
+
+const updateAssetSchema = z.object({
+  action: z.literal("update_asset"),
+  asset_id: z.string().uuid(),
+  name: assetFields.name.optional(),
+  serial_number: assetFields.serial_number,
+  category: assetFields.category.optional(),
+  model: assetFields.model,
+  owner_group: assetFields.owner_group,
+  status: assetFields.status,
+  pooled: assetFields.pooled,
+  home_location: assetFields.home_location,
+  current_location: assetFields.current_location,
+  current_holder_label: assetFields.current_holder_label,
+  notes: assetFields.notes,
+});
+
+const archiveAssetSchema = z.object({
+  action: z.literal("archive_asset"),
+  asset_id: z.string().uuid(),
+  /** false restores a previously archived unit. */
+  archived: z.boolean().default(true),
+});
+
 const setStatusSchema = z.object({
   action: z.literal("set_status"),
   asset_id: z.string().uuid(),
@@ -133,6 +181,9 @@ const postSchema = z.discriminatedUnion("action", [
   setRemindersSchema,
   assignSchema,
   returnToPoolSchema,
+  createAssetSchema,
+  updateAssetSchema,
+  archiveAssetSchema,
 ]);
 
 type Viewer = { id: string; email: string | null; name: string; isAdmin: boolean };
@@ -179,6 +230,7 @@ export async function GET(request: Request) {
       viewerId: viewer.id,
       viewerName: viewer.name,
       viewerEmail: viewer.email,
+      includeArchived: viewer.isAdmin,
       windowStart,
       windowDays,
     });
@@ -278,6 +330,12 @@ export async function POST(request: Request) {
         return await handleAssign(admin, viewer, payload);
       case "return_to_pool":
         return await handleReturnToPool(admin, viewer, payload);
+      case "create_asset":
+        return await handleCreateAsset(admin, viewer, payload);
+      case "update_asset":
+        return await handleUpdateAsset(admin, viewer, payload);
+      case "archive_asset":
+        return await handleArchiveAsset(admin, viewer, payload);
     }
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
@@ -983,4 +1041,179 @@ async function handleReturnToPool(
   });
 
   return NextResponse.json({ ok: true, message: `${asset.name} is back in the pool and bookable.` });
+}
+
+
+/**
+ * Adds a piece of material to the fleet. Admin only — the fleet list is shared
+ * reference data, and a stray entry shows up in everyone's calendar.
+ */
+async function handleCreateAsset(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof createAssetSchema>,
+) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json({ error: "Only admins can add material." }, { status: 403 });
+  }
+
+  const serial = payload.serial_number?.trim() || null;
+  const pooled = payload.pooled ?? true;
+  const holder = payload.current_holder_label?.trim() || null;
+
+  const { data, error } = await admin
+    .from("fleet_assets")
+    .insert({
+      name: payload.name.trim(),
+      serial_number: serial,
+      category: payload.category,
+      model: payload.model?.trim() || null,
+      owner_group: payload.owner_group?.trim() || null,
+      // An assigned unit is out with someone by definition; a pooled one with no
+      // holder is on the shelf. Deriving this keeps the two from disagreeing.
+      status: payload.status ?? (pooled ? "available" : "out"),
+      pooled,
+      home_location: payload.home_location?.trim() || null,
+      current_location: payload.current_location?.trim() || payload.home_location?.trim() || null,
+      current_holder_label: pooled ? null : holder,
+      notes: payload.notes?.trim() || null,
+      location_confirmed_at: new Date().toISOString(),
+    })
+    .select("id, name")
+    .single();
+
+  if (error) {
+    // The serial has a partial unique index; a clash is a user error, not a bug.
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: `Serial ${serial} is already on another unit.` },
+        { status: 409 },
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  await recordAssetEvent(admin, {
+    asset_id: data.id,
+    kind: "created",
+    actor_user_id: viewer.id,
+    to_location: payload.current_location?.trim() || payload.home_location?.trim() || null,
+    note: `Added to the fleet${holder ? ` — assigned to ${holder}` : ""}`,
+  });
+
+  return NextResponse.json({ ok: true, asset_id: data.id, message: `${data.name} added.` });
+}
+
+/** Edits a piece of material. Only the fields present in the request change. */
+async function handleUpdateAsset(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof updateAssetSchema>,
+) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json({ error: "Only admins can edit material." }, { status: 403 });
+  }
+
+  const { action: _action, asset_id: assetId, ...rest } = payload;
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(rest)) {
+    if (value === undefined) continue;
+    patch[key] = typeof value === "string" ? (value.trim() || null) : value;
+  }
+  if (typeof patch.name === "string" && !patch.name.trim()) {
+    return NextResponse.json({ error: "Name cannot be empty." }, { status: 400 });
+  }
+  // Moving a unit into the pool means nobody holds it any more.
+  if (patch.pooled === true) patch.current_holder_label = null;
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ ok: true, message: "Nothing to change." });
+  }
+
+  const { data, error } = await admin
+    .from("fleet_assets")
+    .update(patch)
+    .eq("id", assetId)
+    .select("name")
+    .maybeSingle();
+  if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json({ error: "That serial is already on another unit." }, { status: 409 });
+    }
+    throw new Error(error.message);
+  }
+  if (!data) return NextResponse.json({ error: "Asset not found." }, { status: 404 });
+
+  await recordAssetEvent(admin, {
+    asset_id: assetId,
+    kind: "note",
+    actor_user_id: viewer.id,
+    note: `Edited: ${Object.keys(patch).join(", ")}`,
+  });
+
+  return NextResponse.json({ ok: true, message: `${data.name} updated.` });
+}
+
+/**
+ * Removes material from the fleet, or restores it.
+ *
+ * Soft: `active = false`. Every read path filters on `active`, so the unit
+ * disappears from the calendar, the lists and the reminders while its rows,
+ * its movement history and its bookings survive. A hard delete would cascade
+ * the history away, and "this left the fleet" is not "this never existed" —
+ * which also makes the action reversible from the same screen.
+ */
+async function handleArchiveAsset(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof archiveAssetSchema>,
+) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json({ error: "Only admins can remove material." }, { status: 403 });
+  }
+
+  const { data: asset, error: readError } = await admin
+    .from("fleet_assets")
+    .select("id, name, active")
+    .eq("id", payload.asset_id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!asset) return NextResponse.json({ error: "Asset not found." }, { status: 404 });
+
+  const { error } = await admin
+    .from("fleet_assets")
+    .update({ active: !payload.archived })
+    .eq("id", payload.asset_id);
+  if (error) throw new Error(error.message);
+
+  // A live booking against a unit that just left would sit in someone's list
+  // forever with no way to check it in.
+  let cancelled = 0;
+  if (payload.archived) {
+    const { data: live } = await admin
+      .from("fleet_reservations")
+      .select("id")
+      .eq("asset_id", payload.asset_id)
+      .in("status", ["reserved", "picked_up"]);
+    if (live && live.length > 0) {
+      await admin
+        .from("fleet_reservations")
+        .update({ status: "cancelled" })
+        .in("id", live.map((r) => r.id));
+      cancelled = live.length;
+    }
+  }
+
+  await recordAssetEvent(admin, {
+    asset_id: payload.asset_id,
+    kind: "status_changed",
+    actor_user_id: viewer.id,
+    note: payload.archived ? "Removed from the fleet" : "Restored to the fleet",
+  });
+
+  return NextResponse.json({
+    ok: true,
+    message: payload.archived
+      ? `${asset.name} removed${cancelled > 0 ? `, ${cancelled} booking${cancelled === 1 ? "" : "s"} cancelled` : ""}.`
+      : `${asset.name} restored.`,
+  });
 }

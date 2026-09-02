@@ -186,5 +186,6 @@ export function buildDemoBoard(args: {
       { label: "APAC team", count: 1, mine: false },
     ],
     reminders_enabled: false,
+    archived_assets: [],
   };
 }

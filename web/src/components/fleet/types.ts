@@ -77,6 +77,8 @@ export type FleetBoardResponse = {
   unclaimed_holders: Array<{ label: string; count: number; mine: boolean }>;
   /** Whether return reminders are currently being sent at all. */
   reminders_enabled: boolean;
+  /** Units removed from the fleet. Admin-only, so the Manage tab can restore one. */
+  archived_assets: FleetAsset[];
   is_admin: boolean;
   /**
    * Set only when the fleet tables are missing and the app is not in production:
