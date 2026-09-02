@@ -180,9 +180,13 @@ export type FleetBoard = {
 };
 
 /**
- * A location nobody has confirmed in six weeks is treated as unknown. The old
+ * A location nobody has re-confirmed in six weeks is treated as stale. The old
  * sheet's real failure mode was a location column that was technically filled
- * in and two years stale.
+ * in and two years out of date.
+ *
+ * A location that has NEVER been confirmed is not stale — it is simply new.
+ * Counting those as stale flagged all 31 freshly-loaded units at once, which is
+ * noise, and noise is how a warning stops being read.
  */
 export const STALE_LOCATION_DAYS = 42;
 
@@ -381,7 +385,7 @@ export async function fetchFleetBoard(
         ? (names.get(asset.current_holder_user_id) ?? asset.current_holder_label)
         : asset.current_holder_label,
       location_age_days: ageDays,
-      location_stale: ageDays === null || ageDays > STALE_LOCATION_DAYS,
+      location_stale: ageDays !== null && ageDays > STALE_LOCATION_DAYS,
     };
   });
 

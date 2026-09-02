@@ -54,6 +54,9 @@ export function ManageMaterial({
   onCreate,
   onUpdate,
   onArchive,
+  remindersEnabled,
+  onSetReminders,
+  standings,
 }: {
   assets: FleetAsset[];
   archived: FleetAsset[];
@@ -63,6 +66,11 @@ export function ManageMaterial({
   onCreate: (draft: Draft) => Promise<boolean>;
   onUpdate: (assetId: string, patch: Partial<Draft> & { status?: FleetAssetStatus }) => void;
   onArchive: (assetId: string, archivedFlag: boolean) => void;
+  /** Whether return reminders are being sent at all. */
+  remindersEnabled: boolean;
+  onSetReminders: (enabled: boolean) => void;
+  /** The reliability leaderboard, rendered here so it stays an admin view. */
+  standings: React.ReactNode;
 }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [adding, setAdding] = useState(false);
@@ -100,6 +108,28 @@ export function ManageMaterial({
         The fleet list is shared reference data — anything here shows up in everyone&apos;s calendar. Removing a unit
         keeps its history and can be undone below.
       </p>
+
+      {/* ------------------------------------------------------- reminders */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-glass/10 bg-glass/[0.04] px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-ink">
+            Return reminders {remindersEnabled ? "are on" : "are paused"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-ink-5">
+            {remindersEnabled
+              ? "Holders are emailed the day before material is due, on the day, and while it is overdue."
+              : "Nothing is emailed. Turn this on once the fleet and its bookings are trusted."}
+          </p>
+        </div>
+        <Button
+          size="xs"
+          variant={remindersEnabled ? "glass-quiet" : "accent"}
+          disabled={busy}
+          onClick={() => onSetReminders(!remindersEnabled)}
+        >
+          {remindersEnabled ? "Pause reminders" : "Turn reminders on"}
+        </Button>
+      </div>
 
       {/* ------------------------------------------------------------- add */}
       {adding ? (
@@ -435,6 +465,12 @@ export function ManageMaterial({
           </ul>
         </section>
       ) : null}
+
+      {/* ------------------------------------------------------- standings */}
+      <section className="space-y-1.5 border-t border-glass/10 pt-4">
+        <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">Reliability standings</h3>
+        {standings}
+      </section>
 
       {/* -------------------------------------------------------- archived */}
       {archived.length > 0 ? (
