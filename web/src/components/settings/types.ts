@@ -10,6 +10,17 @@ export type SettingsSectionId =
   | "security"
   | "readme";
 
+export const SETTINGS_SECTION_IDS: SettingsSectionId[] = [
+  "gmail",
+  "travel_mapping",
+  "mail_signature",
+  "time_data",
+  "appearance",
+  "interface_sounds",
+  "security",
+  "readme",
+];
+
 export const SETTINGS_NAV: { id: SettingsSectionId; label: string; pilotOnly?: boolean }[] = [
   { id: "gmail", label: "Gmail", pilotOnly: true },
   { id: "travel_mapping", label: "Travel mapping", pilotOnly: true },
@@ -43,6 +54,12 @@ export type SettingsPanelProps = {
   userRole?: UserRole;
   /** When provided, seeds the panel so it doesn't refetch on mount. */
   initialData?: InitialSettings | null;
+  /**
+   * Section to open on load. Only the server-rendered standalone `/settings`
+   * page passes it (parsed from `?section=`) — inside the dashboard the panel is
+   * client-only and reads the URL itself.
+   */
+  initialSection?: SettingsSectionId | null;
 };
 
 export type GmailStatus = { connected: boolean; gmail_email?: string | null };

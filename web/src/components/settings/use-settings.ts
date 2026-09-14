@@ -8,8 +8,10 @@ import {
   isPresetSignatureName,
 } from "@/lib/mail-signature-presets";
 import type { UserRole } from "@/lib/user-role";
+import { useViewParam } from "@/lib/view-params";
 import {
   filterSettingsNav,
+  SETTINGS_SECTION_IDS,
   type GmailStatus,
   type InitialSettings,
   type ReadmeKey,
@@ -28,10 +30,15 @@ export function useSettings(
   userRole: UserRole,
   autoOpenProgramReadmeToken: number,
   initialData?: InitialSettings | null,
+  initialSection?: SettingsSectionId | null,
 ) {
   const isSalesOnly = userRole === "sales" || userRole === "hr";
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
+  // Mirrored into `?section=` so a reload reopens the same settings section.
+  const [activeSection, setActiveSection] = useViewParam<SettingsSectionId>(
+    "section",
+    SETTINGS_SECTION_IDS,
     userRole === "sales" ? "time_data" : "gmail",
+    initialSection,
   );
   const [navFilter, setNavFilter] = useState("");
   const [gmailStatus, setGmailStatus] = useState<GmailStatus>(
@@ -273,7 +280,7 @@ export function useSettings(
     if (autoOpenProgramReadmeToken <= 0) return;
     setActiveSection("readme");
     setOpenReadme("program");
-  }, [autoOpenProgramReadmeToken]);
+  }, [autoOpenProgramReadmeToken, setActiveSection]);
 
   const filteredNavItems = useMemo(
     () => filterSettingsNav(isSalesOnly, navFilter),
@@ -285,7 +292,7 @@ export function useSettings(
     if (!filteredNavItems.some((item) => item.id === activeSection)) {
       setActiveSection(filteredNavItems[0].id);
     }
-  }, [filteredNavItems, activeSection]);
+  }, [filteredNavItems, activeSection, setActiveSection]);
 
   return {
     isSalesOnly,

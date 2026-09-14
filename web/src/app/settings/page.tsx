@@ -1,10 +1,15 @@
 import { SettingsShell } from "@/components/settings-shell";
+import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "@/components/settings/types";
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { redirect } from "next/navigation";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!isSupabaseConfigured()) redirect("/login");
   const supabase = await createClient();
   const {
@@ -24,5 +29,17 @@ export default async function SettingsPage() {
       : null;
   const userRole = normalizeUserRole(userRoleRaw);
 
-  return <SettingsShell email={user.email ?? "Signed in"} userRole={userRole} />;
+  // The panel keeps `?section=` in sync, so a reload reopens the same section.
+  // It is resolved here rather than on mount because this page is server
+  // rendered: reading the URL during the client's first render would not match.
+  const requestedSectionRaw = (await searchParams).section;
+  const initialSection =
+    typeof requestedSectionRaw === "string" &&
+    SETTINGS_SECTION_IDS.includes(requestedSectionRaw as SettingsSectionId)
+      ? (requestedSectionRaw as SettingsSectionId)
+      : null;
+
+  return (
+    <SettingsShell email={user.email ?? "Signed in"} userRole={userRole} initialSection={initialSection} />
+  );
 }
