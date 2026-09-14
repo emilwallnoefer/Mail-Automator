@@ -711,27 +711,46 @@ export function holderLabelMatchesPerson(
 /* -------------------------------------------------------------------------- */
 
 /**
- * Palette for colouring the calendar by person.
+ * Palette for colouring the fleet by person.
  *
- * Twelve hues spread around the wheel, chosen to stay distinguishable against
- * the dark surface at the low alphas the grid uses. Stored as space-separated
- * RGB channels so a cell can vary only the alpha — a live booking, a finished
- * one and an unclaimed one are the same hue at different weights, which keeps
- * "who" and "what state" on separate visual channels.
+ * The previous twelve were named for twelve Tailwind hues but were not twelve
+ * colours: sky, teal, cyan and emerald are four blue-greens, rose, pink and
+ * fuchsia are three pinks, violet and indigo are the same blue-purple, and
+ * amber and orange differ by about fifteen degrees of hue. On screen that was
+ * five or six telling-apart-able colours doing the work of twelve.
+ *
+ * These fourteen are spaced around the wheel with no gap under ~25°, and the
+ * two pairs that sit closest in hue are separated on a second axis instead:
+ * `brown` is `orange` at a third of the chroma, and `steel` is `sky` at a
+ * sixth. Two colours that differ on two axes survive being small, being
+ * rendered at 55% alpha, and being looked at quickly — which is all this
+ * palette ever does.
+ *
+ * Every entry stays light enough to carry the near-black text the calendar
+ * prints on a booked cell, in both themes.
+ *
+ * Stored as space-separated RGB channels so a cell can vary only the alpha — a
+ * live booking, a finished one and an unclaimed one are the same hue at
+ * different weights, which keeps "who" and "what state" on separate channels.
  */
 export const HOLDER_COLORS: ReadonlyArray<{ name: string; rgb: string }> = [
-  { name: "sky", rgb: "56 189 248" },
-  { name: "amber", rgb: "251 191 36" },
-  { name: "emerald", rgb: "52 211 153" },
-  { name: "violet", rgb: "167 139 250" },
-  { name: "rose", rgb: "251 113 133" },
-  { name: "teal", rgb: "45 212 191" },
-  { name: "orange", rgb: "251 146 60" },
-  { name: "fuchsia", rgb: "232 121 249" },
-  { name: "lime", rgb: "163 230 53" },
-  { name: "indigo", rgb: "129 140 248" },
-  { name: "cyan", rgb: "34 211 238" },
-  { name: "pink", rgb: "244 114 182" },
+  { name: "red", rgb: "228 70 88" },
+  { name: "orange", rgb: "240 130 40" },
+  { name: "amber", rgb: "240 214 90" },
+  { name: "olive", rgb: "168 180 55" },
+  { name: "green", rgb: "106 191 89" },
+  { name: "emerald", rgb: "45 186 134" },
+  { name: "teal", rgb: "72 187 200" },
+  { name: "sky", rgb: "90 150 245" },
+  { name: "violet", rgb: "150 110 240" },
+  { name: "magenta", rgb: "226 108 214" },
+  { name: "pink", rgb: "250 140 165" },
+  { name: "plum", rgb: "190 90 140" },
+  // The two low-chroma entries. Muting is what lets them sit next to the
+  // saturated hue they share a wedge with and still read as a different colour:
+  // brown is orange at a third of the chroma, steel is sky at a sixth.
+  { name: "brown", rgb: "181 137 100" },
+  { name: "steel", rgb: "148 163 184" },
 ];
 
 /**
@@ -757,9 +776,73 @@ export function holderColorIndex(label: string): number {
   return hash % HOLDER_COLORS.length;
 }
 
-/** The RGB channels for a holder, ready to drop into `rgb(... / alpha)`. */
+/**
+ * The RGB channels for a holder, ready to drop into `rgb(... / alpha)`.
+ *
+ * The un-allocated fallback: correct for one name in isolation, but it can hand
+ * two people the same colour. Anything rendering a LIST of people should use
+ * `assignHolderColors` instead — see there for why.
+ */
 export function holderRgb(label: string): string {
   return HOLDER_COLORS[holderColorIndex(label)].rgb;
+}
+
+/**
+ * Give every person on the board a colour of their own.
+ *
+ * Hashing a name straight onto the palette is stable and needs no coordination,
+ * which is why it was the first thing here — but `hash % 14` has no idea what
+ * other names exist, so it collides. With a dozen holders the odds of at least
+ * one clash are better than nine in ten, and two people sharing a colour is
+ * worse than any amount of similarity between two colours: it makes the board
+ * say something false about who has what.
+ *
+ * So the colour is allocated against the roster rather than derived from the
+ * name alone. Each person asks for their hashed colour; if it is taken, they
+ * walk forward to the next free one. Two properties fall out:
+ *
+ *   - **Nobody on screen shares**, up to the size of the palette.
+ *   - **It is deterministic**: same roster in, same colours out, whatever order
+ *     the names arrived in, on the server and in the browser alike.
+ *
+ * The cost is that a NEW person can displace someone — if they hash to a taken
+ * slot and sort earlier, the person who had it moves along. That is a colour
+ * changing on the day a colleague joins the fleet, which is a far smaller
+ * problem than two people wearing one colour every day.
+ *
+ * Past `HOLDER_COLORS.length` people the pigeonhole wins and colours repeat.
+ * The wrap is deliberately half a palette away from the name that shares it, so
+ * the two that do collide are at least on opposite sides of the wheel.
+ */
+export function assignHolderColors(labels: Iterable<string>): Map<string, string> {
+  const size = HOLDER_COLORS.length;
+  // Normalised, de-duplicated and sorted: "Emil", "emil " and "EMIL" are one
+  // person, and the sort is what makes the result independent of input order.
+  const keys = [...new Set([...labels].map(normalizeHolderLabel).filter(Boolean))].sort();
+
+  const taken = new Array<boolean>(size).fill(false);
+  const byKey = new Map<string, string>();
+
+  for (const [position, key] of keys.entries()) {
+    const preferred = holderColorIndex(key);
+    let index = preferred;
+    for (let step = 0; step < size; step += 1) {
+      const candidate = (preferred + step) % size;
+      if (!taken[candidate]) {
+        index = candidate;
+        break;
+      }
+    }
+    if (taken[index]) {
+      // Every colour is spoken for. Repeat one, half a wheel from the name that
+      // already holds it, so the unavoidable clash is at least a loud one.
+      index = (preferred + Math.floor(size / 2) + position) % size;
+    }
+    taken[index] = true;
+    byKey.set(key, HOLDER_COLORS[index].rgb);
+  }
+
+  return byKey;
 }
 
 /* -------------------------------------------------------------------------- */

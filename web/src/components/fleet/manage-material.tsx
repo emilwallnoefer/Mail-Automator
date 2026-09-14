@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, Input, Notice } from "@/components/ui";
-import { holderRgb } from "@/lib/fleet-rules";
+import { useHolderRgb } from "./holder-colors";
 import { AssetDialog, type AssetDraft } from "./asset-dialog";
 import { AssetIcon } from "./asset-icon";
 import { EmptyState, SectionHeading } from "./ui";
@@ -299,8 +299,9 @@ function AssetRow({
   onCancelRemove: () => void;
   onRemove: () => void;
 }) {
+  const rgbOf = useHolderRgb();
   const holder = asset.current_holder_label ?? asset.holder_name;
-  const rgb = holder ? holderRgb(holder) : null;
+  const rgb = holder ? rgbOf(holder) : null;
 
   return (
     <div className="flex items-center overflow-hidden rounded-lg border border-glass/10 bg-glass/[0.04] transition ease-fluid hover:border-glass/20 hover:bg-glass/[0.06]">
@@ -317,11 +318,15 @@ function AssetRow({
           {[asset.model, asset.serial_number].filter(Boolean).join(" · ")}
         </span>
         <span className="flex-1" />
-        <span className="truncate text-[11px] text-ink-5">
-          {asset.current_location ?? "Location unknown"}
-        </span>
+        {/* Assigned units carry no location — see the Material register for
+            why: it travels with its person and would be wrong by morning. */}
+        {asset.pooled ? (
+          <span className="truncate text-[11px] text-ink-5">
+            {asset.current_location ?? "Location unknown"}
+          </span>
+        ) : null}
         <span className="text-[11px] text-ink-4">
-          {asset.pooled ? STATUS_LABEL[asset.status] : (holder ?? "Assigned")}
+          {asset.pooled ? STATUS_LABEL[asset.status] : (holder ?? "Assigned to nobody")}
         </span>
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { holderRgb } from "@/lib/fleet-rules";
+import { useHolderRgb } from "./holder-colors";
 import { AssetIcon } from "./asset-icon";
 import { EmptyState, SectionHeading } from "./ui";
 import {
@@ -38,7 +38,8 @@ export function MaterialList({ assets }: { assets: FleetAsset[] }) {
     // are looking for. Then by name, so the order is stable between renders.
     for (const list of map.values()) {
       list.sort((a, b) => {
-        const held = Number(Boolean(b.holder_name)) - Number(Boolean(a.holder_name));
+        const holderOf = (x: FleetAsset) => x.holder_name ?? x.current_holder_label;
+        const held = Number(Boolean(holderOf(b))) - Number(Boolean(holderOf(a)));
         return held !== 0 ? held : a.name.localeCompare(b.name);
       });
     }
@@ -86,8 +87,11 @@ export function MaterialList({ assets }: { assets: FleetAsset[] }) {
  * lets you pick out one person's kit by running your eye down the column.
  */
 function AssetTile({ asset }: { asset: FleetAsset }) {
-  const holder = asset.holder_name;
-  const rgb = holder ? holderRgb(holder) : null;
+  const rgbOf = useHolderRgb();
+  // `holder_name` is what the board resolved from an account; the raw label is
+  // the fallback for an assigned unit filed against a name with no account.
+  const holder = asset.holder_name ?? asset.current_holder_label;
+  const rgb = holder ? rgbOf(holder) : null;
 
   return (
     <div className="flex h-full overflow-hidden rounded-lg border border-glass/10 bg-glass/[0.04] transition ease-fluid hover:border-glass/20 hover:bg-glass/[0.06]">
@@ -110,20 +114,29 @@ function AssetTile({ asset }: { asset: FleetAsset }) {
           {[asset.model, asset.serial_number].filter(Boolean).join(" · ") || "No model or serial recorded"}
         </p>
 
+        {/* An assigned unit states its person and nothing else.
+            Location is a fact about the shared pool: pooled kit sits somewhere
+            between jobs and someone needs to know where. A unit assigned to a
+            person travels with them permanently, so a location on it is out of
+            date the day after it is written — and a field that is always wrong
+            is worse than no field, because it still reads as an answer. */}
         <p className="mt-1 flex items-center gap-1.5 truncate pl-[1.375rem] text-[11px]">
-          <span className="truncate text-ink-3">{asset.current_location ?? "Location unknown"}</span>
+          {asset.pooled ? (
+            <span className="truncate text-ink-3">{asset.current_location ?? "Location unknown"}</span>
+          ) : null}
+          {asset.pooled && holder ? <span className="text-ink-5">·</span> : null}
           {holder ? (
-            <>
-              <span className="text-ink-5">·</span>
-              <span className="inline-flex min-w-0 items-center gap-1">
-                <span
-                  aria-hidden
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: `rgb(${rgb} / 0.9)` }}
-                />
-                <span className="truncate text-ink-3">{holder}</span>
-              </span>
-            </>
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <span
+                aria-hidden
+                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: `rgb(${rgb} / 0.9)` }}
+              />
+              <span className="truncate text-ink-3">{holder}</span>
+            </span>
+          ) : null}
+          {!asset.pooled && !holder ? (
+            <span className="truncate text-ink-5">Assigned to nobody yet</span>
           ) : null}
         </p>
       </div>

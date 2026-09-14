@@ -236,7 +236,18 @@ export function AssetDialog({
             label="Who can use it"
             value={draft.pooled ? "pooled" : "assigned"}
             options={POOLED_CHOICES}
-            onChange={(value) => set("pooled", value === "pooled")}
+            onChange={(value) => {
+              const pooled = value === "pooled";
+              setDraft((d) => ({
+                ...d,
+                pooled,
+                // Leaving the pool clears the locations rather than saving them
+                // from fields that are no longer on screen — a value nobody can
+                // see and nobody will maintain is the definition of stale data.
+                current_location: pooled ? d.current_location : "",
+                home_location: pooled ? d.home_location : "",
+              }));
+            }}
             columns
           />
 
@@ -251,25 +262,35 @@ export function AssetDialog({
           ) : null}
 
           {/* ------------------------------------------------------- where */}
-          <ChoiceOrCustom
-            label="Current location"
-            value={draft.current_location}
-            options={locations}
-            onChange={(value) => set("current_location", value)}
-            placeholder="Lausanne"
-            allowEmpty
-            emptyLabel="Unknown"
-          />
+          {/* Locations are a fact about the shared pool only. Pooled kit sits
+              somewhere between jobs and the next person has to find it; a unit
+              assigned to one person travels with them permanently, so a
+              location on it would be stale the day after it was entered and
+              would have to be maintained forever to stay a lie. Not asking is
+              the fix. */}
+          {draft.pooled ? (
+            <>
+              <ChoiceOrCustom
+                label="Current location"
+                value={draft.current_location}
+                options={locations}
+                onChange={(value) => set("current_location", value)}
+                placeholder="Lausanne"
+                allowEmpty
+                emptyLabel="Unknown"
+              />
 
-          <ChoiceOrCustom
-            label="Home location"
-            value={draft.home_location}
-            options={locations}
-            onChange={(value) => set("home_location", value)}
-            placeholder="Where it lives between jobs"
-            allowEmpty
-            emptyLabel="None"
-          />
+              <ChoiceOrCustom
+                label="Home location"
+                value={draft.home_location}
+                options={locations}
+                onChange={(value) => set("home_location", value)}
+                placeholder="Where it lives between jobs"
+                allowEmpty
+                emptyLabel="None"
+              />
+            </>
+          ) : null}
 
           <ChoiceOrCustom
             label="Owner group"

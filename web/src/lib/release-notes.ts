@@ -29,6 +29,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       "Adding and editing material is one dialog, with the same fields both times.",
       "Type, status, location, owner group and “assigned to” are now chosen from what the fleet already uses, instead of typed out.",
       "Admins can set where a unit actually is, from Manage.",
+      "Everyone now has a colour of their own — no two people share one, and the similar-looking pairs are gone.",
+      "Material assigned to one person no longer asks for a location, since it travels with them.",
       "Reminders, unclaimed names, standings and removed units fold away under the fleet list.",
     ],
   },

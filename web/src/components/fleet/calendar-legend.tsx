@@ -1,6 +1,6 @@
 "use client";
 
-import { holderRgb } from "@/lib/fleet-rules";
+import { useHolderRgb } from "./holder-colors";
 
 /**
  * Who is who on the board.
@@ -11,6 +11,7 @@ import { holderRgb } from "@/lib/fleet-rules";
  * a question nobody asks twice.
  */
 export function CalendarLegend({ holders }: { holders: string[] }) {
+  const rgbOf = useHolderRgb();
   if (holders.length === 0) return null;
 
   return (
@@ -20,7 +21,7 @@ export function CalendarLegend({ holders }: { holders: string[] }) {
         <span key={holder} className="inline-flex items-center gap-1.5">
           <span
             className="inline-block h-3 w-3 rounded-[3px]"
-            style={{ backgroundColor: `rgb(${holderRgb(holder)} / 0.6)` }}
+            style={{ backgroundColor: `rgb(${rgbOf(holder)} / 0.6)` }}
             aria-hidden
           />
           {holder}

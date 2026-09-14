@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  assignHolderColors,
   calendarLayerFor,
   checkReservation,
   closureStatusFor,
@@ -824,15 +825,72 @@ describe("holder colours", () => {
     }
   });
 
-  it("spreads the real roster across most of the palette", () => {
-    // A hash that collapsed everyone onto two colours would defeat the point.
-    const roster = [
-      "Charles Rey", "Camilla Grosso", "François Theil", "Tiago Leconte Pais",
-      "Emil Wallnofer", "Inga Khchoyan", "Lucas Senault", "Paul Samuel",
-      "Fabio Fata", "Matteo Saglia", "Philipp Jaegle", "Igor Stapper",
-    ];
-    const used = new Set(roster.map(holderColorIndex));
-    expect(used.size).toBeGreaterThanOrEqual(8);
+  it("keeps the palette free of near-duplicate colours", () => {
+    // The point of fourteen colours is fourteen colours. The old palette named
+    // twelve Tailwind hues but contained four blue-greens and three pinks, so
+    // this pins a minimum separation rather than trusting the names.
+    const rgb = HOLDER_COLORS.map((c) => c.rgb.split(" ").map(Number) as [number, number, number]);
+    for (let i = 0; i < rgb.length; i += 1) {
+      for (let j = i + 1; j < rgb.length; j += 1) {
+        const distance = Math.hypot(
+          rgb[i][0] - rgb[j][0],
+          rgb[i][1] - rgb[j][1],
+          rgb[i][2] - rgb[j][2],
+        );
+        expect(
+          distance,
+          `${HOLDER_COLORS[i].name} and ${HOLDER_COLORS[j].name} are too close`,
+        ).toBeGreaterThan(60);
+      }
+    }
+  });
+});
+
+describe("assignHolderColors", () => {
+  const ROSTER = [
+    "Charles Rey", "Camilla Grosso", "François Theil", "Tiago Leconte Pais",
+    "Emil Wallnofer", "Inga Khchoyan", "Lucas Senault", "Paul Samuel",
+    "Fabio Fata", "Matteo Saglia", "Philipp Jaegle", "Igor Stapper",
+  ];
+
+  it("gives every person on the real roster a colour of their own", () => {
+    // This is the whole reason the allocation exists: hashing alone put several
+    // of these twelve on the same colour, which makes the board lie about who
+    // has what.
+    const assigned = assignHolderColors(ROSTER);
+    expect(assigned.size).toBe(ROSTER.length);
+    expect(new Set(assigned.values()).size).toBe(ROSTER.length);
+  });
+
+  it("is independent of the order the names arrive in", () => {
+    const forwards = assignHolderColors(ROSTER);
+    const backwards = assignHolderColors([...ROSTER].reverse());
+    for (const [key, rgb] of forwards) expect(backwards.get(key)).toBe(rgb);
+  });
+
+  it("treats one person written several ways as one person", () => {
+    const assigned = assignHolderColors(["Emil Wallnofer", "  emil   wallnofer ", "EMIL WALLNOFER"]);
+    expect(assigned.size).toBe(1);
+  });
+
+  it("ignores blanks rather than allocating a colour to nothing", () => {
+    const assigned = assignHolderColors(["", "   ", "Emil Wallnofer"]);
+    expect(assigned.size).toBe(1);
+  });
+
+  it("fills the whole palette before any colour is reused", () => {
+    const many = Array.from({ length: HOLDER_COLORS.length }, (_, i) => `Person ${i}`);
+    const assigned = assignHolderColors(many);
+    expect(new Set(assigned.values()).size).toBe(HOLDER_COLORS.length);
+  });
+
+  it("still gives everyone a colour past the size of the palette", () => {
+    // Beyond fourteen the pigeonhole wins and colours repeat, but nobody may be
+    // left without one.
+    const many = Array.from({ length: HOLDER_COLORS.length + 6 }, (_, i) => `Person ${i}`);
+    const assigned = assignHolderColors(many);
+    expect(assigned.size).toBe(many.length);
+    for (const rgb of assigned.values()) expect(rgb).toMatch(/^\d+ \d+ \d+$/);
   });
 });
 

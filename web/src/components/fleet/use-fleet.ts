@@ -237,6 +237,26 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
    * nobody has claimed, and a label already written on an assigned unit. Left
    * out, an admin would have to retype a name the fleet is already using.
    */
+  /**
+   * Every name that could be drawn in a colour anywhere in the module.
+   *
+   * Wider than `knownPeople`, because it has to include people who hold nothing
+   * right now but appear in a booking on the visible board — colours are
+   * allocated against this, and a name missing from it is a name with no
+   * uniqueness guarantee.
+   */
+  const holderRoster = useMemo(() => {
+    const names = new Set<string>();
+    for (const entry of board?.standings ?? []) names.add(entry.name);
+    for (const holder of unclaimedHolders) names.add(holder.label);
+    for (const reservation of reservations) names.add(reservation.holder_name);
+    for (const asset of assets) {
+      if (asset.holder_name) names.add(asset.holder_name);
+      if (asset.current_holder_label) names.add(asset.current_holder_label);
+    }
+    return [...names];
+  }, [board, unclaimedHolders, reservations, assets]);
+
   const knownPeople = useMemo(() => {
     const names = new Set<string>();
     for (const entry of board?.standings ?? []) names.add(entry.name);
@@ -293,6 +313,7 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
     unclaimedHolders,
     claimableByMe,
     knownPeople,
+    holderRoster,
     myDisplayName,
     visibleHolders,
   };

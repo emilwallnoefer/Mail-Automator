@@ -7,13 +7,13 @@ import {
   daysBetween,
   describeDays,
   formatDay,
-  holderRgb,
   monthBands,
   occupiedUntil,
   parseDateKey,
   type DayMeta,
 } from "@/lib/fleet-rules";
 import { AssetIcon } from "./asset-icon";
+import { useHolderRgb } from "./holder-colors";
 import type { FleetAsset, FleetReservation } from "./types";
 
 /**
@@ -246,6 +246,9 @@ const AssetRow = memo(function AssetRow({
   onOpenReservation: (reservation: FleetReservation) => void;
   onRemove: (reservation: FleetReservation) => void;
 }) {
+  // Read from context rather than derived per cell: the guarantee that nobody
+  // shares a colour only exists at the level of the whole roster.
+  const rgbOf = useHolderRgb();
   const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
 
   const stateFor = useCallback(
@@ -366,7 +369,7 @@ const AssetRow = memo(function AssetRow({
               style={
                 reservation && !selected
                   ? cellStyle({
-                      holder: reservation.holder_name,
+                      rgb: rgbOf(reservation.holder_name),
                       isHistory: state.isHistory,
                       unclaimed: reservation.unclaimed,
                       overdue,
@@ -409,13 +412,13 @@ const AssetRow = memo(function AssetRow({
  * "nobody is accountable for this" survives being the same colour as its owner.
  */
 function cellStyle(args: {
-  holder: string;
+  /** Already resolved by the caller: colours are allocated per board, not per name. */
+  rgb: string;
   isHistory: boolean;
   unclaimed: boolean;
   overdue: boolean;
 }): React.CSSProperties {
-  const { holder, isHistory, unclaimed, overdue } = args;
-  const rgb = holderRgb(holder);
+  const { rgb, isHistory, unclaimed, overdue } = args;
   const alpha = isHistory ? 0.2 : overdue ? 0.75 : 0.55;
   const style: React.CSSProperties = {
     backgroundColor: `rgb(${rgb} / ${alpha})`,
