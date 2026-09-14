@@ -47,7 +47,11 @@ type DashboardShellProps = {
   /** SSR-prefetched admin data, present only for admins. */
   initialAdminUsers?: AdminListedUser[] | null;
   initialAdminOverview?: AdminTimeOverview | null;
+  /** SSR-prefetched Fleet board, so the calendar paints without a fetch. */
+  initialFleet?: FleetBoardResponse | null;
 };
+
+import type { FleetBoardResponse } from "@/components/fleet/types";
 
 type ModuleKey = "mail" | "time" | "fleet" | "settings" | "admin";
 
@@ -131,6 +135,7 @@ export function DashboardShell({
   initialSettings = null,
   initialAdminUsers = null,
   initialAdminOverview = null,
+  initialFleet = null,
 }: DashboardShellProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [beginAnimating, setBeginAnimating] = useState(false);
@@ -548,7 +553,7 @@ export function DashboardShell({
                   {activeModule === "time" ? (
                     <TimeTrackerPanel initialWeek={prefetchedWeek} />
                   ) : activeModule === "fleet" ? (
-                    <FleetPanel />
+                    <FleetPanel initialBoard={initialFleet} />
                   ) : activeModule === "admin" ? (
                     <AdminPanel
                       canManageUsers={canManageUsers}

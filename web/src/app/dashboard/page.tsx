@@ -13,6 +13,8 @@ import {
   type AdminListedUser,
   type AdminTimeOverview,
 } from "@/lib/admin-queries";
+import { buildFleetBoard, type FleetBoardPayload } from "@/lib/fleet-board";
+import { DEFAULT_WINDOW_DAYS, displayNameFor } from "@/lib/fleet-queries";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -95,12 +97,41 @@ export default async function DashboardPage() {
         })
       : Promise.resolve(null);
 
-  const [initialWeek, initialSettings, initialAdminUsers, initialAdminOverview] = await Promise.all([
-    initialWeekPromise,
-    initialSettingsPromise,
-    adminUsersPromise,
-    adminOverviewPromise,
-  ]);
+  // Fleet was the one panel that fetched its own board on open, so opening the
+  // calendar meant downloading its code and only THEN asking for data — on a
+  // fresh function instance that meant a cold start and a first TLS handshake
+  // to the database before anything appeared. Prefetching it here rides along
+  // with the prefetches above at no extra wall-clock cost, and the panel paints
+  // seeded.
+  //
+  // `autoLink: true` matters: it is the onboarding step that matches a person to
+  // their legacy holder name, and it used to run on the panel's own fetch. Now
+  // that the panel no longer makes one, this is where it has to happen.
+  const initialFleetPromise: Promise<FleetBoardPayload | null> = userId
+    ? buildFleetBoard(
+        createAdminClient(),
+        {
+          id: userId,
+          email,
+          name: displayNameFor({ email, user_metadata: userMetadata }),
+          isAdmin,
+        },
+        { windowDays: DEFAULT_WINDOW_DAYS },
+        { autoLink: true },
+      ).catch((error) => {
+        console.error("Dashboard SSR: buildFleetBoard failed", error);
+        return null;
+      })
+    : Promise.resolve(null);
+
+  const [initialWeek, initialSettings, initialAdminUsers, initialAdminOverview, initialFleet] =
+    await Promise.all([
+      initialWeekPromise,
+      initialSettingsPromise,
+      adminUsersPromise,
+      adminOverviewPromise,
+      initialFleetPromise,
+    ]);
 
   return (
     <DashboardShell
@@ -111,6 +142,7 @@ export default async function DashboardPage() {
       initialSettings={initialSettings}
       initialAdminUsers={initialAdminUsers}
       initialAdminOverview={initialAdminOverview}
+      initialFleet={initialFleet}
     />
   );
 }

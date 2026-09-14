@@ -8,6 +8,7 @@ import {
   CATEGORY_ORDER,
   categoryRank,
   STATUS_LABEL,
+  type FleetArchivedAsset,
   type FleetAsset,
   type FleetAssetCategory,
   type FleetAssetStatus,
@@ -59,7 +60,7 @@ export function ManageMaterial({
   standings,
 }: {
   assets: FleetAsset[];
-  archived: FleetAsset[];
+  archived: FleetArchivedAsset[];
   /** Holder names from the old sheet that nobody has claimed yet. */
   unclaimed: Array<{ label: string; count: number; live: number }>;
   busy: boolean;

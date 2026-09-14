@@ -5,11 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminEmail } from "@/lib/admin";
 import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 import {
-  autoLinkHolder,
   DEFAULT_WINDOW_DAYS,
   displayNameFor,
   fetchAssetSpans,
-  fetchFleetBoard,
   fetchReliability,
   recordAssetEvent,
   todayInZurich,
@@ -25,7 +23,8 @@ import {
   toDateKey,
 } from "@/lib/fleet-rules";
 import { buildDemoBoard } from "@/lib/fleet-demo";
-import { parseBoardWindow, type BoardWindow } from "./window";
+import { parseBoardWindow } from "./window";
+import { buildFleetBoard } from "@/lib/fleet-board";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -213,38 +212,6 @@ async function resolveViewer(): Promise<Viewer | null> {
   };
 }
 
-/**
- * Builds the whole board for one viewer.
- *
- * `autoLink` is the onboarding step that matches a person to their legacy
- * holder name. It belongs on a page load — it is how a returning user or a
- * brand-new signup lands on a board that already knows them — but NOT on the
- * refresh that follows a booking: the answer cannot have changed because you
- * checked a drone back in, and it costs a round trip to ask.
- */
-async function buildBoard(
-  admin: Admin,
-  viewer: Viewer,
-  boardWindow: BoardWindow,
-  opts: { autoLink: boolean },
-) {
-  const auto = opts.autoLink
-    ? await autoLinkHolder(admin, { id: viewer.id, name: viewer.name, email: viewer.email })
-    : null;
-
-  const board = await fetchFleetBoard(admin, {
-    viewerId: viewer.id,
-    viewerName: viewer.name,
-    viewerEmail: viewer.email,
-    includeArchived: viewer.isAdmin,
-    autoLinked:
-      auto && auto.linked ? { label: auto.label, bookings: auto.bookings, assets: auto.assets } : null,
-    windowStart: boardWindow.windowStart,
-    windowDays: boardWindow.windowDays,
-  });
-  return { ...board, is_admin: viewer.isAdmin };
-}
-
 export async function GET(request: Request) {
   const viewer = await resolveViewer();
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -255,7 +222,7 @@ export async function GET(request: Request) {
 
   try {
     const admin = createAdminClient();
-    return NextResponse.json(await buildBoard(admin, viewer, boardWindow, { autoLink: true }));
+    return NextResponse.json(await buildFleetBoard(admin, viewer, boardWindow, { autoLink: true }));
   } catch (error) {
     // The fleet tables are created by a hand-applied migration
     // (supabase/2026-09-01-fleet-management.sql). Until it has been run, serve a
@@ -370,7 +337,7 @@ async function withFreshBoard(
     const boardWindow = parseBoardWindow(request, DEFAULT_WINDOW_DAYS) ?? {
       windowDays: DEFAULT_WINDOW_DAYS,
     };
-    const board = await buildBoard(admin, viewer, boardWindow, { autoLink: false });
+    const board = await buildFleetBoard(admin, viewer, boardWindow, { autoLink: false });
     return NextResponse.json({ ...body, board });
   } catch (error) {
     console.error(`POST /api/fleet (${action}) succeeded but the board refresh failed`, error);

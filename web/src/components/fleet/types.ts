@@ -16,6 +16,19 @@ export type FleetAssetCategory =
   | "other";
 export type FleetAssetStatus = "available" | "reserved" | "out" | "in_repair" | "retired";
 
+/**
+ * An archived unit, as the server actually sends it.
+ *
+ * The board computes `holder_name`, `location_age_days` and `location_stale`
+ * for ACTIVE assets only; archived ones come back as the raw row. This type was
+ * previously `FleetAsset`, which claimed three fields that are never there —
+ * harmless only because the restore list happens to read none of them.
+ */
+export type FleetArchivedAsset = Omit<
+  FleetAsset,
+  "holder_name" | "location_age_days" | "location_stale"
+>;
+
 export type FleetAsset = {
   id: string;
   serial_number: string | null;
@@ -89,7 +102,7 @@ export type FleetBoardResponse = {
   /** Set when this load linked the user to a legacy name automatically. */
   auto_linked: { label: string; bookings: number; assets: number } | null;
   /** Units removed from the fleet. Admin-only, so the Manage tab can restore one. */
-  archived_assets: FleetAsset[];
+  archived_assets: FleetArchivedAsset[];
   is_admin: boolean;
   /**
    * Set only when the fleet tables are missing and the app is not in production:
