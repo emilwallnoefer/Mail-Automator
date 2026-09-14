@@ -135,14 +135,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
           <CalendarTab state={state} onOpenReservation={setDetail} onManage={() => setTab("manage")} />
         ) : null}
 
-        {tab === "material" ? (
-          <MaterialList
-            assets={visibleAssets}
-            busy={busy}
-            onConfirm={(assetId) => void post({ action: "confirm_location", asset_id: assetId })}
-            onMove={(assetId, location) => void post({ action: "move", asset_id: assetId, location })}
-          />
-        ) : null}
+        {tab === "material" ? <MaterialList assets={visibleAssets} /> : null}
 
         {tab === "mine" ? (
           <MyMaterial
@@ -176,6 +169,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
                 owner_group: draft.owner_group || undefined,
                 pooled: draft.pooled,
                 home_location: draft.home_location || undefined,
+                current_location: draft.current_location || undefined,
                 current_holder_label: draft.pooled ? undefined : draft.current_holder_label,
                 notes: draft.notes || undefined,
               })

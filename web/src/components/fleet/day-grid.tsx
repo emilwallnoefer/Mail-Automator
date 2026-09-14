@@ -306,15 +306,11 @@ const AssetRow = memo(function AssetRow({
           <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
           <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
         </span>
-        {/* Where it is, under what it is. Amber when nobody has confirmed the
-            location lately — the same cue the Material register uses, so a
-            unit you should not count on says so on both screens. */}
-        <span
-          className={`block truncate pl-[1.375rem] text-[11px] font-normal ${
-            asset.location_stale || asset.current_location == null ? "text-warn/80" : "text-ink-5"
-          }`}
-          title={asset.location_stale ? "Nobody has confirmed this location lately" : undefined}
-        >
+        {/* Where it is, under what it is. How long ago that was confirmed is
+            deliberately absent here and in the Material register: an admin sets
+            a location once in Manage, so an age in days reported on every row
+            was chrome about a problem nobody had. */}
+        <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
           {asset.current_location ?? "Location unknown"}
         </span>
       </th>

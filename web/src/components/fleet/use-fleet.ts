@@ -30,6 +30,11 @@ const SHOW_PAST_KEY = "fleet:show-past";
 export type FleetTab = "calendar" | "mine" | "material" | "manage";
 export type FleetNotice = { tone: NoticeTone; text: string } | null;
 
+/** Holder filter: everyone. */
+export const HOLDER_ANY = "__any__";
+/** Holder filter: the units nobody is holding. */
+export const HOLDER_NOBODY = "__nobody__";
+
 export function useFleet(initialBoard: FleetBoardResponse | null) {
   const [board, setBoard] = useState<FleetBoardResponse | null>(initialBoard);
   const [loading, setLoading] = useState(!initialBoard);
@@ -42,6 +47,12 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
     () => initialBoard?.window_start ?? toDateKey(new Date()),
   );
   const [categoryFilter, setCategoryFilter] = useState<FleetAssetCategory | "all">("all");
+  /**
+   * Whose material to show. A holder NAME rather than a user id, because a unit
+   * can be against a name from the old sheet that no account has claimed yet —
+   * filtering by account would make exactly those units unfindable.
+   */
+  const [holderFilter, setHolderFilter] = useState<string>(HOLDER_ANY);
   const [search, setSearch] = useState("");
   // Finished bookings are shown by default — the calendar answering "who had
   // this in March" is deliberate. The preference is remembered per browser
@@ -167,16 +178,33 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
   const reservations = useMemo<FleetReservation[]>(() => board?.reservations ?? [], [board]);
   const today = board?.today ?? toDateKey(new Date());
 
+  /**
+   * The people with something in their hands right now, for the holder filter.
+   *
+   * Built from every asset rather than the filtered ones, so choosing a person
+   * does not remove the other people from the list you chose them in.
+   */
+  const holderOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const asset of assets) if (asset.holder_name) names.add(asset.holder_name);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [assets]);
+
   const visibleAssets = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return assets.filter((asset) => {
       if (categoryFilter !== "all" && asset.category !== categoryFilter) return false;
+      if (holderFilter === HOLDER_NOBODY) {
+        if (asset.holder_name) return false;
+      } else if (holderFilter !== HOLDER_ANY && asset.holder_name !== holderFilter) {
+        return false;
+      }
       if (!needle) return true;
       return [asset.name, asset.serial_number, asset.model, asset.current_location, asset.holder_name]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(needle));
     });
-  }, [assets, categoryFilter, search]);
+  }, [assets, categoryFilter, holderFilter, search]);
 
   // The calendar is for material you can actually take: the shared pool, minus
   // anything retired or in repair. Units assigned to a person, region or
@@ -232,6 +260,9 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
     setWindowStart,
     categoryFilter,
     setCategoryFilter,
+    holderFilter,
+    setHolderFilter,
+    holderOptions,
     search,
     setSearch,
     showPast,

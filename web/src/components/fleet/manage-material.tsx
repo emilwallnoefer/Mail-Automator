@@ -33,6 +33,12 @@ type Draft = {
   pooled: boolean;
   current_holder_label: string;
   home_location: string;
+  /**
+   * Where the unit actually is. Set here and it stays set — this is the only
+   * place it can be changed now that the Material register is a read view, so
+   * losing the field would strand every location at whatever it was seeded to.
+   */
+  current_location: string;
   notes: string;
 };
 
@@ -45,6 +51,7 @@ const EMPTY: Draft = {
   pooled: true,
   current_holder_label: "",
   home_location: "EMEA",
+  current_location: "EMEA",
   notes: "",
 };
 
@@ -175,6 +182,15 @@ export function ManageMaterial({
                 value={draft.model}
                 onChange={(e) => set("model", e.target.value)}
                 placeholder="Elios 3"
+                className="text-xs"
+              />
+            </label>
+            <label className="grid gap-1 text-[11px] text-ink-4">
+              Current location
+              <Input
+                value={draft.current_location}
+                onChange={(e) => set("current_location", e.target.value)}
+                placeholder="Lausanne"
                 className="text-xs"
               />
             </label>
@@ -317,6 +333,7 @@ export function ManageMaterial({
                           pooled: asset.pooled,
                           current_holder_label: asset.current_holder_label ?? "",
                           home_location: asset.home_location ?? "",
+                          current_location: asset.current_location ?? "",
                           status: asset.status,
                         });
                       }}
@@ -399,6 +416,13 @@ export function ManageMaterial({
                           </option>
                         ))}
                       </Select>
+                      <Input
+                        value={edit.current_location ?? ""}
+                        onChange={(e) => setEdit((v) => ({ ...v, current_location: e.target.value }))}
+                        className="text-xs"
+                        aria-label="Current location"
+                        placeholder="Current location"
+                      />
                       <Input
                         value={edit.home_location ?? ""}
                         onChange={(e) => setEdit((v) => ({ ...v, home_location: e.target.value }))}
