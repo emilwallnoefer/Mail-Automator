@@ -47,7 +47,6 @@ export function CalendarTab({
     assets,
     reservations,
     bookableAssets,
-    assignedAssets,
     visibleHolders,
   } = state;
 
@@ -117,10 +116,6 @@ export function CalendarTab({
             aria-label="Jump to date"
             className="w-auto px-2 py-1.5 text-xs [color-scheme:dark]"
           />
-
-          <span className="text-[11px] text-ink-5">
-            {formatSpan(windowStart, addDays(windowStart, WINDOW_DAYS - 1))}
-          </span>
         </div>
 
         <label className="flex cursor-pointer select-none items-center gap-1.5 rounded-lg border border-glass/15 bg-glass/[0.06] px-2.5 py-1.5 text-[11px] text-ink-3 transition hover:text-ink">
@@ -257,13 +252,6 @@ export function CalendarTab({
       ) : null}
 
       <CalendarLegend holders={visibleHolders} />
-
-      {assignedAssets.length > 0 ? (
-        <p className="text-[11px] text-ink-5">
-          {assignedAssets.length} assigned unit{assignedAssets.length === 1 ? " is" : "s are"} not bookable and stay
-          out of this grid — find {assignedAssets.length === 1 ? "it" : "them"} under Material.
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import { MyMaterial } from "./my-material";
 import { ReliabilityBadge } from "./reliability-badge";
 import { ReservationDetail } from "./reservation-detail";
 import { Standings } from "./standings";
-import { Stat } from "./ui";
 import { useFleet, type FleetTab } from "./use-fleet";
 import {
   CATEGORY_LABEL,
@@ -58,7 +57,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     visibleAssets,
     bookableAssets,
     myReservations,
-    summary,
     unclaimedHolders,
     claimableByMe,
     myDisplayName,
@@ -108,31 +106,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
           </Button>
         </div>
       </header>
-
-      {/* ---------------------------------------------------- summary strip */}
-      {board && assets.length > 0 ? (
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          <Stat label="in the pool" value={summary.pool} title="Units anyone can book" />
-          <Stat
-            label="out now"
-            value={summary.out}
-            tone={summary.out > 0 ? "accent" : "neutral"}
-            title="Units someone is physically holding"
-          />
-          <Stat
-            label="overdue"
-            value={summary.overdue}
-            tone={summary.overdue > 0 ? "danger" : "neutral"}
-            title="Bookings past their return date"
-            onClick={summary.overdue > 0 ? () => setTab("mine") : undefined}
-          />
-          <Stat
-            label="back this week"
-            value={summary.dueSoon}
-            title="Live bookings due back within seven days"
-          />
-        </div>
-      ) : null}
 
       {/* Matched automatically on sign-in. Announced rather than silent: this
           moved bookings onto their account, and they should know it happened. */}

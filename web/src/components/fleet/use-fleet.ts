@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NoticeTone } from "@/components/ui";
-import {
-  addDays,
-  isBookable,
-  summarizeFleet,
-  toDateKey,
-  type FleetSummary,
-} from "@/lib/fleet-rules";
+import { addDays, isBookable, toDateKey } from "@/lib/fleet-rules";
 import type {
   FleetAsset,
   FleetAssetCategory,
@@ -189,7 +183,6 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
   // customer are fixed — a row of unbookable cells for each of them buried the
   // handful that are genuinely free, which is the question this screen answers.
   const bookableAssets = useMemo(() => visibleAssets.filter(isBookable), [visibleAssets]);
-  const assignedAssets = useMemo(() => assets.filter((asset) => !asset.pooled), [assets]);
 
   const myReservations = useMemo(
     () =>
@@ -197,11 +190,6 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
         .filter((r) => r.is_mine && r.status !== "cancelled" && r.status !== "returned")
         .sort((a, b) => a.start_date.localeCompare(b.start_date)),
     [reservations],
-  );
-
-  const summary = useMemo<FleetSummary>(
-    () => summarizeFleet({ assets, reservations, today }),
-    [assets, reservations, today],
   );
 
   const unclaimedHolders = useMemo(() => board?.unclaimed_holders ?? [], [board]);
@@ -254,9 +242,7 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
     reservations,
     visibleAssets,
     bookableAssets,
-    assignedAssets,
     myReservations,
-    summary,
     unclaimedHolders,
     claimableByMe,
     myDisplayName,

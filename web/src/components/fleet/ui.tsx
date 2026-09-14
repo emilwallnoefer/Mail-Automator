@@ -105,67 +105,6 @@ export function EmptyState({
 }
 
 /**
- * One number in the summary strip.
- *
- * `tone` is reserved for counts that mean someone has to do something; the rest
- * stay neutral so the two that matter can be spotted without reading the
- * labels.
- */
-export function Stat({
-  label,
-  value,
-  tone = "neutral",
-  onClick,
-  title,
-}: {
-  label: string;
-  value: number | string;
-  tone?: "neutral" | "warn" | "danger" | "accent";
-  onClick?: () => void;
-  title?: string;
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "border-rose-400/35 bg-rose-500/10 text-danger"
-      : tone === "warn"
-        ? "border-amber-400/30 bg-amber-500/10 text-warn"
-        : tone === "accent"
-          ? "border-accent/30 bg-accent-deep/15 text-accent-soft"
-          : "border-glass/10 bg-glass/[0.04] text-ink-2";
-
-  const body = (
-    <>
-      <span className="text-base font-semibold leading-none tabular-nums">{value}</span>
-      <span className="text-[11px] leading-none text-ink-5">{label}</span>
-    </>
-  );
-
-  const shape = "flex min-w-0 flex-col items-start gap-1.5 rounded-lg border px-3 py-2 text-left ease-fluid";
-
-  if (!onClick) {
-    return (
-      <div className={cn(shape, toneClass)} title={title}>
-        {body}
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={cn(
-        shape,
-        toneClass,
-        "transition hover:-translate-y-px hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80",
-      )}
-    >
-      {body}
-    </button>
-  );
-}
-
-/**
  * A grey block standing in for content still on its way.
  *
  * `motion-safe:` rather than a bare `animate-pulse`: this is a perpetual
