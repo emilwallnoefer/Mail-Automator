@@ -4,6 +4,7 @@ import {
   ASSET_ID,
   get,
   MEMBER,
+  OTHER,
   pooledAsset,
   post,
   reservation,
@@ -146,5 +147,66 @@ describe("closing a booking when material leaves the pool", () => {
     const original = res.tables.fleet_reservations.find((r) => r.id === RESERVATION_ID);
     expect(original?.status).toBe("returned");
     expect(original?.returned_on).toBe(TODAY);
+  });
+});
+
+describe("an admin removing a booking from the calendar", () => {
+  // The per-cell remove control posts `cancel`. It is drawn for admins only,
+  // but the UI is not the guard — these pin what the server does.
+
+  it("lets an admin remove somebody else's booking and frees the days", async () => {
+    const res = await post(
+      {
+        viewer: ADMIN,
+        adminEmails: [ADMIN.email!],
+        tables: {
+          fleet_assets: assets(),
+          fleet_reservations: [reservation({ status: "reserved" })],
+        },
+      },
+      { action: "cancel", reservation_id: RESERVATION_ID },
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.tables.fleet_reservations[0].status).toBe("cancelled");
+
+    // Cancelled holds nothing, so the span is bookable again — which is what
+    // "the days go back into the pool" means in the confirmation.
+    const board = res.body.board as { reservations: Array<{ status: string }> };
+    expect(board.reservations.every((r) => r.status !== "reserved")).toBe(true);
+  });
+
+  it("still refuses a non-admin removing somebody else's booking", async () => {
+    const res = await post(
+      {
+        viewer: OTHER,
+        adminEmails: [ADMIN.email!],
+        tables: {
+          fleet_assets: assets(),
+          fleet_reservations: [reservation({ status: "reserved" })],
+        },
+      },
+      { action: "cancel", reservation_id: RESERVATION_ID },
+    );
+    expect(res.status).toBe(403);
+    expect(res.tables.fleet_reservations[0].status).toBe("reserved");
+  });
+
+  it("refuses to remove material that is already out", async () => {
+    // The control is not drawn for these, and the server refuses them anyway:
+    // something physically out is checked back in, not cancelled.
+    const res = await post(
+      {
+        viewer: ADMIN,
+        adminEmails: [ADMIN.email!],
+        tables: {
+          fleet_assets: assets({ status: "out" }),
+          fleet_reservations: [reservation({ status: "picked_up" })],
+        },
+      },
+      { action: "cancel", reservation_id: RESERVATION_ID },
+    );
+    expect(res.status).toBe(409);
+    expect(res.tables.fleet_reservations[0].status).toBe("picked_up");
   });
 });
