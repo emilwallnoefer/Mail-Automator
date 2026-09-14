@@ -229,6 +229,22 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
   /** Names the viewer is allowed to claim for themselves, without an admin. */
   const claimableByMe = useMemo(() => unclaimedHolders.filter((h) => h.mine), [unclaimedHolders]);
 
+  /**
+   * Everyone the fleet knows a name for, for the "assigned to" picker.
+   *
+   * Three sources, because a person can be in any of them and in none of the
+   * others: an account with a reliability score, a name from the old sheet
+   * nobody has claimed, and a label already written on an assigned unit. Left
+   * out, an admin would have to retype a name the fleet is already using.
+   */
+  const knownPeople = useMemo(() => {
+    const names = new Set<string>();
+    for (const entry of board?.standings ?? []) names.add(entry.name);
+    for (const holder of unclaimedHolders) names.add(holder.label);
+    for (const asset of assets) if (asset.current_holder_label) names.add(asset.current_holder_label);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [board, unclaimedHolders, assets]);
+
   // Legend entries: only the people with something in the rendered window, so a
   // 178-booking year does not print every name under every screen.
   const visibleHolders = useMemo(() => {
@@ -276,6 +292,7 @@ export function useFleet(initialBoard: FleetBoardResponse | null) {
     myReservations,
     unclaimedHolders,
     claimableByMe,
+    knownPeople,
     myDisplayName,
     visibleHolders,
   };

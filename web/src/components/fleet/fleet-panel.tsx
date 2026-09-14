@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge, Button, Card, Notice } from "@/components/ui";
+import type { AssetDraft } from "./asset-dialog";
 import { CalendarTab } from "./calendar-tab";
 import { FleetToolbar } from "./fleet-toolbar";
 import { IdentityPrompt } from "./identity-prompt";
@@ -20,8 +21,8 @@ import type { FleetBoardResponse, FleetReservation } from "./types";
  * Built to replace the shared Google Sheet, whose three failures this panel
  * answers directly:
  *   - booking was a merged-cell mess     -> click days in a grid
- *   - locations went stale invisibly     -> every asset shows its location and
- *                                           how long since anyone confirmed it
+ *   - you could not tell who had what    -> every unit carries its holder's
+ *                                           colour, in the register and the grid
  *   - nothing chased late returns        -> a daily reminder cron, plus a
  *                                           reliability score that ranks you in
  *                                           the queue for contested days
@@ -50,6 +51,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     myReservations,
     unclaimedHolders,
     claimableByMe,
+    knownPeople,
     myDisplayName,
   } = state;
 
@@ -158,23 +160,12 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             assets={assets}
             archived={board.archived_assets ?? []}
             unclaimed={unclaimedHolders}
+            people={knownPeople}
             busy={busy}
-            onCreate={(draft) =>
-              post({
-                action: "create_asset",
-                name: draft.name,
-                category: draft.category,
-                serial_number: draft.serial_number || undefined,
-                model: draft.model || undefined,
-                owner_group: draft.owner_group || undefined,
-                pooled: draft.pooled,
-                home_location: draft.home_location || undefined,
-                current_location: draft.current_location || undefined,
-                current_holder_label: draft.pooled ? undefined : draft.current_holder_label,
-                notes: draft.notes || undefined,
-              })
+            onCreate={(draft) => post({ action: "create_asset", ...assetFields(draft) })}
+            onUpdate={(assetId, draft) =>
+              post({ action: "update_asset", asset_id: assetId, ...assetFields(draft), status: draft.status })
             }
-            onUpdate={(assetId, patch) => void post({ action: "update_asset", asset_id: assetId, ...patch })}
             onArchive={(assetId, archivedFlag) =>
               void post({ action: "archive_asset", asset_id: assetId, archived: archivedFlag })
             }
@@ -202,4 +193,29 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
       ) : null}
     </Card>
   );
+}
+
+/**
+ * A draft from the asset dialog, as the API wants it.
+ *
+ * Every field is sent, empty ones included, rather than dropping the empties.
+ * Both route handlers already read `"" → null`, so sending the empty string is
+ * how you CLEAR a value — omitting it would mean the dialog could set a note or
+ * a location but never take one away. The holder label is safe to send whatever
+ * the pooled flag says: `handleUpdateAsset` nulls it when a unit goes back into
+ * the pool, and `handleCreateAsset` ignores it for a pooled unit.
+ */
+function assetFields(draft: AssetDraft) {
+  return {
+    name: draft.name.trim(),
+    category: draft.category,
+    serial_number: draft.serial_number.trim(),
+    model: draft.model.trim(),
+    owner_group: draft.owner_group.trim(),
+    pooled: draft.pooled,
+    home_location: draft.home_location.trim(),
+    current_location: draft.current_location.trim(),
+    current_holder_label: draft.current_holder_label.trim(),
+    notes: draft.notes.trim(),
+  };
 }
