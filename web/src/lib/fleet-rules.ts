@@ -194,6 +194,26 @@ export function isBlocking(status: ReservationStatus): boolean {
 }
 
 /**
+ * How to close a live booking whose asset is being moved between the shared
+ * pool and a fixed assignment — the booking cannot survive the move either way,
+ * but *how* it ends decides whether the score judges the holder for it.
+ *
+ * - `picked_up` -> `returned`: the material was physically out and is now back.
+ *   That is a genuine return, and it is scored like one (late if it is late).
+ * - `reserved` -> `cancelled`: nobody ever collected it. Recording a return for
+ *   material that never left the shelf would invent history, and an overdue
+ *   never-collected booking would then be scored as a late return — a penalty
+ *   for something the holder did not do.
+ *
+ * Anything else is already closed and is left alone.
+ */
+export function closureStatusFor(status: ReservationStatus): "returned" | "cancelled" | null {
+  if (status === "picked_up") return "returned";
+  if (status === "reserved") return "cancelled";
+  return null;
+}
+
+/**
  * The last day the material is due back: the final booked day itself.
  * Everything overdue-related keys off this one definition.
  */
