@@ -10,6 +10,7 @@ import {
   daysOverdue,
   describeDays,
   dueDateOf,
+  dueLabel,
   formatDay,
   formatDayLong,
   formatSpan,
@@ -873,3 +874,19 @@ describe("directory-backed matching", () => {
     }
   });
 });
+
+/* -------------------------------------------------------------------------- */
+
+describe("dueLabel", () => {
+  it("speaks in today and tomorrow before it speaks in counts", () => {
+    expect(dueLabel("2026-09-14", "2026-09-14")).toBe("due back today");
+    expect(dueLabel("2026-09-15", "2026-09-14")).toBe("due back tomorrow");
+    expect(dueLabel("2026-09-18", "2026-09-14")).toBe("due back in 4 days");
+  });
+
+  it("counts lateness in whole days, singular at one", () => {
+    expect(dueLabel("2026-09-13", "2026-09-14")).toBe("1 day overdue");
+    expect(dueLabel("2026-09-10", "2026-09-14")).toBe("4 days overdue");
+  });
+});
+

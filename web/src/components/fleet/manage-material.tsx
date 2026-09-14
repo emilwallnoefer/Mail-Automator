@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Input, Notice } from "@/components/ui";
+import { Badge, Button, Input, Notice, Select } from "@/components/ui";
 import { AssetIcon } from "./asset-icon";
+import { EmptyState, Row, SectionHeading } from "./ui";
 import {
   CATEGORY_LABEL,
   CATEGORY_ORDER,
@@ -147,17 +148,17 @@ export function ManageMaterial({
             </label>
             <label className="grid gap-1 text-[11px] text-ink-4">
               Type
-              <select
+              <Select
                 value={draft.category}
                 onChange={(e) => set("category", e.target.value as FleetAssetCategory)}
-                className="rounded-lg border border-glass/15 bg-glass/8 px-2 py-2 text-xs text-ink"
+                className="px-2 py-2 text-xs text-ink"
               >
                 {CATEGORY_ORDER.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABEL[c]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="grid gap-1 text-[11px] text-ink-4">
               Serial (optional)
@@ -201,18 +202,23 @@ export function ManageMaterial({
                 type="checkbox"
                 checked={draft.pooled}
                 onChange={(e) => set("pooled", e.target.checked)}
-                className="h-3.5 w-3.5 accent-cyan-400"
+                className="h-3.5 w-3.5 cursor-pointer accent-accent"
               />
               Bookable by everyone (shows in the calendar)
             </label>
+            {/* Sized by the wrapper: `Input`'s base carries `w-full`, and
+                `cn()` has no tailwind-merge, so a `w-56` here would not
+                replace it — both would apply and `w-full` would win. */}
             {!draft.pooled ? (
-              <Input
-                value={draft.current_holder_label}
-                onChange={(e) => set("current_holder_label", e.target.value)}
-                placeholder="Assigned to (name)"
-                className="w-56 text-xs"
-                aria-label="Assigned to"
-              />
+              <div className="w-56">
+                <Input
+                  value={draft.current_holder_label}
+                  onChange={(e) => set("current_holder_label", e.target.value)}
+                  placeholder="Assigned to (name)"
+                  className="text-xs"
+                  aria-label="Assigned to"
+                />
+              </div>
             ) : null}
           </div>
 
@@ -254,13 +260,15 @@ export function ManageMaterial({
           <Button size="sm" variant="accent" onClick={() => setAdding(true)}>
             + Add material
           </Button>
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the fleet…"
-            className="w-64 text-xs"
-            aria-label="Search material"
-          />
+          <div className="w-64 min-w-0">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the fleet…"
+              className="px-2 py-1.5 text-xs"
+              aria-label="Search material"
+            />
+          </div>
           <span className="text-[11px] text-ink-5">{assets.length} active</span>
         </div>
       )}
@@ -268,13 +276,16 @@ export function ManageMaterial({
       {/* ------------------------------------------------------------ list */}
       {grouped.map(([category, list]) => (
         <section key={category} className="space-y-1.5">
-          <h3 className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
-            <AssetIcon category={category} className="h-3.5 w-3.5 shrink-0" />
-            {CATEGORY_LABEL[category]} ({list.length})
-          </h3>
+          <SectionHeading
+            icon={<AssetIcon category={category} className="h-3.5 w-3.5 shrink-0" />}
+            count={list.length}
+          >
+            {CATEGORY_LABEL[category]}
+          </SectionHeading>
           <ul className="space-y-1.5">
             {list.map((asset) => (
-              <li key={asset.id} className="rounded-lg border border-glass/10 bg-glass/[0.04] px-3 py-2.5">
+              <li key={asset.id}>
+                <Row>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -361,10 +372,10 @@ export function ManageMaterial({
                         aria-label="Model"
                         placeholder="Model"
                       />
-                      <select
+                      <Select
                         value={edit.category ?? asset.category}
                         onChange={(e) => setEdit((v) => ({ ...v, category: e.target.value as FleetAssetCategory }))}
-                        className="rounded-lg border border-glass/15 bg-glass/8 px-2 py-2 text-xs text-ink"
+                        className="px-2 py-2 text-xs text-ink"
                         aria-label="Type"
                       >
                         {CATEGORY_ORDER.map((c) => (
@@ -372,11 +383,14 @@ export function ManageMaterial({
                             {CATEGORY_LABEL[c]}
                           </option>
                         ))}
-                      </select>
-                      <select
+                      </Select>
+                      {/* Status lives here, and only here: retiring a unit or
+                          marking it in repair is an edit like any other. The
+                          screen used to tell admins to call the API by hand. */}
+                      <Select
                         value={edit.status ?? asset.status}
                         onChange={(e) => setEdit((v) => ({ ...v, status: e.target.value as FleetAssetStatus }))}
-                        className="rounded-lg border border-glass/15 bg-glass/8 px-2 py-2 text-xs text-ink"
+                        className="px-2 py-2 text-xs text-ink"
                         aria-label="Status"
                       >
                         {(Object.keys(STATUS_LABEL) as FleetAssetStatus[]).map((st) => (
@@ -384,7 +398,7 @@ export function ManageMaterial({
                             {STATUS_LABEL[st]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <Input
                         value={edit.home_location ?? ""}
                         onChange={(e) => setEdit((v) => ({ ...v, home_location: e.target.value }))}
@@ -399,18 +413,20 @@ export function ManageMaterial({
                           type="checkbox"
                           checked={edit.pooled ?? asset.pooled}
                           onChange={(e) => setEdit((v) => ({ ...v, pooled: e.target.checked }))}
-                          className="h-3.5 w-3.5 accent-cyan-400"
+                          className="h-3.5 w-3.5 cursor-pointer accent-accent"
                         />
                         Bookable by everyone
                       </label>
                       {!(edit.pooled ?? asset.pooled) ? (
-                        <Input
-                          value={edit.current_holder_label ?? ""}
-                          onChange={(e) => setEdit((v) => ({ ...v, current_holder_label: e.target.value }))}
-                          placeholder="Assigned to (name)"
-                          className="w-56 text-xs"
-                          aria-label="Assigned to"
-                        />
+                        <div className="w-56">
+                          <Input
+                            value={edit.current_holder_label ?? ""}
+                            onChange={(e) => setEdit((v) => ({ ...v, current_holder_label: e.target.value }))}
+                            placeholder="Assigned to (name)"
+                            className="text-xs"
+                            aria-label="Assigned to"
+                          />
+                        </div>
                       ) : null}
                       <Button
                         size="xs"
@@ -429,6 +445,7 @@ export function ManageMaterial({
                     </div>
                   </div>
                 ) : null}
+                </Row>
               </li>
             ))}
           </ul>
@@ -436,15 +453,27 @@ export function ManageMaterial({
       ))}
 
       {grouped.length === 0 ? (
-        <p className="text-xs text-ink-4">Nothing matches that search.</p>
+        <EmptyState
+          title={assets.length === 0 ? "No material yet" : "Nothing matches that search"}
+          hint={
+            assets.length === 0
+              ? "Add the fleet here — everything you add becomes bookable in the calendar for everyone."
+              : "Try a different name, serial or model."
+          }
+          action={
+            assets.length === 0 && !adding ? (
+              <Button size="xs" variant="accent" onClick={() => setAdding(true)}>
+                Add the first unit
+              </Button>
+            ) : null
+          }
+        />
       ) : null}
 
       {/* ------------------------------------------------------- unclaimed */}
       {unclaimed.length > 0 ? (
         <section className="space-y-1.5 border-t border-glass/10 pt-4">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
-            Unclaimed names ({unclaimed.length})
-          </h3>
+          <SectionHeading count={unclaimed.length}>Unclaimed names</SectionHeading>
           <p className="text-[11px] leading-relaxed text-ink-5">
             Material from the old sheet is filed under these names, and nobody has taken them yet. Until someone
             does, that material has no owner to remind and no score to move. Each person is offered their name once,
@@ -469,16 +498,14 @@ export function ManageMaterial({
 
       {/* ------------------------------------------------------- standings */}
       <section className="space-y-1.5 border-t border-glass/10 pt-4">
-        <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">Reliability standings</h3>
+        <SectionHeading>Reliability standings</SectionHeading>
         {standings}
       </section>
 
       {/* -------------------------------------------------------- archived */}
       {archived.length > 0 ? (
         <section className="space-y-1.5 border-t border-glass/10 pt-4">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">
-            Removed ({archived.length})
-          </h3>
+          <SectionHeading count={archived.length}>Removed from the fleet</SectionHeading>
           <Notice tone="neutral">
             Removed units keep their bookings and movement history. Restoring one puts it straight back in the
             calendar.

@@ -158,7 +158,10 @@ export function DayGrid({
                 key={`${group.label}-${i}`}
                 scope="col"
                 colSpan={group.span}
-                className="border-b border-glass/[0.07] px-2 py-1.5 text-left text-[11px] font-medium text-ink-3/75"
+                // Month bands are the only place the year is stated, so they
+                // carry the eyebrow treatment the rest of the app uses for
+                // "this is a label, not content".
+                className="border-b border-glass/[0.07] px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-[0.15em] text-ink-3/75"
               >
                 {group.label}
               </th>
@@ -170,9 +173,18 @@ export function DayGrid({
                 key={day.key}
                 scope="col"
                 title={`KW ${day.isoWeek}`}
-                className={`px-0.5 py-1.5 text-center text-[10px] font-medium ${
+                // Today gets a tinted column rather than only a coloured
+                // numeral: on a board already coloured by person, a hue change
+                // on two characters is the one cue that does not survive.
+                className={`px-0.5 py-1.5 text-center text-[11px] font-medium ${
                   day.weekBoundary ? "border-l border-glass/20" : ""
-                } ${day.isToday ? "text-accent-soft" : day.weekend ? "text-ink-5/70" : "text-ink-3/75"}`}
+                } ${
+                  day.isToday
+                    ? "bg-accent-deep/25 text-accent-soft"
+                    : day.weekend
+                      ? "bg-glass/[0.02] text-ink-5/70"
+                      : "text-ink-3/75"
+                }`}
               >
                 <span className="block">{day.weekdayLabel}</span>
                 <span className="block text-[11px] font-normal tabular-nums">{day.dayOfMonth}</span>
@@ -201,10 +213,6 @@ export function DayGrid({
           ))}
         </tbody>
       </table>
-
-      {assets.length === 0 ? (
-        <p className="px-3 py-6 text-center text-xs text-ink-4">No material matches this filter.</p>
-      ) : null}
     </div>
   );
 }
@@ -298,7 +306,15 @@ const AssetRow = memo(function AssetRow({
           <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
           <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
         </span>
-        <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
+        {/* Where it is, under what it is. Amber when nobody has confirmed the
+            location lately — the same cue the Material register uses, so a
+            unit you should not count on says so on both screens. */}
+        <span
+          className={`block truncate pl-[1.375rem] text-[11px] font-normal ${
+            asset.location_stale || asset.current_location == null ? "text-warn/80" : "text-ink-5"
+          }`}
+          title={asset.location_stale ? "Nobody has confirmed this location lately" : undefined}
+        >
           {asset.current_location ?? "Location unknown"}
         </span>
       </th>
@@ -312,9 +328,12 @@ const AssetRow = memo(function AssetRow({
         return (
           <td
             key={day.key}
+            // The column tints live on the cell rather than the button so they
+            // run behind a booking too — that is what makes "today" and the
+            // weekends readable as continuous columns down the whole board.
             className={`group/cell relative border-t border-glass/[0.07] p-px ${
               day.weekBoundary ? "border-l border-l-glass/20" : ""
-            }`}
+            } ${day.isToday ? "bg-accent-deep/15" : day.weekend ? "bg-glass/[0.02]" : ""}`}
           >
             <button
               type="button"
@@ -346,7 +365,6 @@ const AssetRow = memo(function AssetRow({
                 mine: reservation?.is_mine ?? false,
                 unclaimed: reservation?.unclaimed ?? false,
                 isHistory: state.isHistory,
-                weekend: day.weekend,
                 isToday: day.isToday,
               })}
               style={
@@ -421,13 +439,14 @@ function cellClass(args: {
   mine: boolean;
   unclaimed: boolean;
   isHistory: boolean;
-  weekend: boolean;
   isToday: boolean;
 }): string {
-  const { state, selected, overdue, mine, isToday, weekend } = args;
+  const { state, selected, overdue, mine, isToday } = args;
   // `relative` so a run's name label can overflow its own day cell.
+  // `touch-manipulation`: the grid is tapped repeatedly to build a span, and
+  // without it every tap pays the browser's 300ms double-tap-to-zoom wait.
   const base =
-    "relative flex h-8 w-full items-center justify-center overflow-visible rounded-[3px] text-ink transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80";
+    "relative flex h-8 w-full touch-manipulation items-center justify-center overflow-visible rounded-[3px] text-ink transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80";
   const todayRing = isToday ? " ring-1 ring-inset ring-accent/50" : "";
 
   if (selected) return `${base}${todayRing} bg-accent/85 text-slate-900`;
@@ -447,7 +466,9 @@ function cellClass(args: {
     return `${base}${todayRing} cursor-not-allowed bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(255,255,255,0.05)_3px,rgba(255,255,255,0.05)_6px)]`;
   }
   if (!state.bookable) return `${base}${todayRing} cursor-not-allowed bg-transparent opacity-20`;
-  return `${base}${todayRing} ${weekend ? "bg-glass/[0.03]" : "bg-glass/[0.07]"} hover:bg-accent/30`;
+  // Free cells are one weight everywhere: the weekend and today tints belong to
+  // the column (on the <td>), so they run behind booked cells too.
+  return `${base}${todayRing} bg-glass/[0.07] hover:bg-accent/30`;
 }
 
 function firstNameOf(name: string): string {

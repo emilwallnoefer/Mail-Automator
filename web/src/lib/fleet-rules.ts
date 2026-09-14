@@ -761,3 +761,23 @@ export function holderColorIndex(label: string): number {
 export function holderRgb(label: string): string {
   return HOLDER_COLORS[holderColorIndex(label)].rgb;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Panel copy                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How a due date reads to the person holding the material.
+ *
+ * The calendar already shows the exact day; what this answers is the question
+ * behind it — "is this mine to deal with today?" — so the wording leans on
+ * today/tomorrow rather than a date the reader has to subtract from.
+ */
+export function dueLabel(dueDate: string, today: string): string {
+  const delta = daysBetween(today, dueDate);
+  if (delta < 0) return `${-delta} day${delta === -1 ? "" : "s"} overdue`;
+  if (delta === 0) return "due back today";
+  if (delta === 1) return "due back tomorrow";
+  return `due back in ${delta} days`;
+}
+
