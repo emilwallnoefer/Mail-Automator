@@ -19,7 +19,7 @@ export type TrainingDiscipline =
   | "faro_connect"
   | "rad_sensor"
   | "gas_sensor";
-export type LausanneSite = "tridel" | "tank_bern" | "aigle_bridge" | "montetan";
+export type LausanneSite = "tridel" | "tank_bern" | "aigle_bridge" | "montetan" | "bunker";
 
 type Localized = { en: string; de: string; fr: string };
 type LocalizedList = { en: string[]; de: string[]; fr: string[] };
@@ -66,6 +66,7 @@ export const LAUSANNE_SITE_OPTIONS: Array<{ id: LausanneSite; label: Localized }
   { id: "tank_bern", label: { en: "Bern", de: "Bern", fr: "Berne" } },
   { id: "aigle_bridge", label: { en: "Aigle", de: "Aigle", fr: "Aigle" } },
   { id: "montetan", label: { en: "Montétan", de: "Montétan", fr: "Montétan" } },
+  { id: "bunker", label: { en: "Bunker", de: "Bunker", fr: "Bunker" } },
 ];
 
 /** The location phrase woven into the agenda (after "in"/"à"). */
@@ -74,6 +75,7 @@ const LAUSANNE_SITE_PLACE: Record<LausanneSite, Localized> = {
   tank_bern: { en: "Bern", de: "Bern", fr: "Berne" },
   aigle_bridge: { en: "Aigle", de: "Aigle", fr: "Aigle" },
   montetan: { en: "Montétan in Lausanne", de: "Montétan in Lausanne", fr: "Montétan (Lausanne)" },
+  bunker: { en: "Bunker in Lausanne", de: "Bunker in Lausanne", fr: "Bunker (Lausanne)" },
 };
 
 /** Short location label used in the "please bring" safety list. */
@@ -82,6 +84,7 @@ const LAUSANNE_SITE_SHORT: Record<LausanneSite, Localized> = {
   tank_bern: { en: "Bern", de: "Bern", fr: "Berne" },
   aigle_bridge: { en: "Aigle", de: "Aigle", fr: "Aigle" },
   montetan: { en: "Montétan", de: "Montétan", fr: "Montétan" },
+  bunker: { en: "Bunker", de: "Bunker", fr: "Bunker" },
 };
 
 /** Safety equipment to bring per asset. `null` = nothing required. */
@@ -98,6 +101,7 @@ const LAUSANNE_SITE_SAFETY: Record<LausanneSite, Localized | null> = {
     fr: "casque, chaussures de sécurité",
   },
   montetan: null,
+  bunker: null,
 };
 
 /** Pre-reading resource IDs always offered, regardless of disciplines. */

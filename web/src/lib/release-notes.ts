@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-14",
+    date: "Sep 14, 2026",
+    title: "Bunker is now a Lausanne flight site",
+    highlights: [
+      "Pre-mail: pick “Bunker” as the asset for any training day.",
+      "The agenda reads “Bunker in Lausanne”; no extra safety gear is requested.",
+    ],
+  },
+  {
     version: "2026-09-02",
     date: "Sep 2, 2026",
     title: "Fleet (beta): book material by the day",
