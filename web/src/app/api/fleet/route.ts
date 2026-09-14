@@ -17,6 +17,7 @@ import {
 import {
   addDays,
   checkReservation,
+  closureStatusFor,
   holderLabelMatchesPerson,
   isBlocking,
   normalizeHolderLabel,
@@ -700,6 +701,12 @@ async function handleCheckIn(
   return NextResponse.json({ ok: true, promoted, score });
 }
 
+/**
+ * Records where a unit is now. Open to any signed-in user on purpose: the
+ * person who knows where the material is is whoever is standing next to it, and
+ * requiring an admin to relay that is how the old sheet went stale. Every move
+ * writes an actor-stamped event, so the history says who said what.
+ */
 async function handleMove(admin: Admin, viewer: Viewer, payload: z.infer<typeof moveSchema>) {
   const { data: asset, error: readError } = await admin
     .from("fleet_assets")
@@ -727,6 +734,7 @@ async function handleMove(admin: Admin, viewer: Viewer, payload: z.infer<typeof 
   return NextResponse.json({ ok: true });
 }
 
+/** "Yes, it is still there." Open to everyone, for the same reason as `move`. */
 async function handleConfirmLocation(admin: Admin, viewer: Viewer, payload: z.infer<typeof confirmSchema>) {
   const { data: asset, error: readError } = await admin
     .from("fleet_assets")
@@ -943,6 +951,45 @@ async function handleSetReminders(
 
 
 /**
+ * Closes every live booking on an asset, because the asset is moving between
+ * the shared pool and a fixed assignment and cannot stay booked either way.
+ *
+ * The two outcomes are split rather than blanket-cancelled: material that was
+ * physically out is recorded as returned (and scored as such), while a booking
+ * nobody ever collected is cancelled. See `closureStatusFor`.
+ */
+async function closeLiveReservations(admin: Admin, assetId: string) {
+  const { data: live, error } = await admin
+    .from("fleet_reservations")
+    .select("id, status")
+    .eq("asset_id", assetId)
+    .in("status", ["reserved", "picked_up"]);
+  if (error) throw new Error(error.message);
+  if (!live || live.length === 0) return;
+
+  const today = todayInZurich();
+  const now = new Date().toISOString();
+
+  const returned = live.filter((row) => closureStatusFor(row.status) === "returned").map((r) => r.id);
+  const cancelled = live.filter((row) => closureStatusFor(row.status) === "cancelled").map((r) => r.id);
+
+  if (returned.length > 0) {
+    const { error: returnError } = await admin
+      .from("fleet_reservations")
+      .update({ status: "returned", returned_at: now, returned_on: today })
+      .in("id", returned);
+    if (returnError) throw new Error(returnError.message);
+  }
+  if (cancelled.length > 0) {
+    const { error: cancelError } = await admin
+      .from("fleet_reservations")
+      .update({ status: "cancelled" })
+      .in("id", cancelled);
+    if (cancelError) throw new Error(cancelError.message);
+  }
+}
+
+/**
  * Takes a unit out of the shared pool and assigns it to someone.
  *
  * Used for the units that are not really shared — a regional demo drone, a
@@ -952,8 +999,19 @@ async function handleSetReminders(
  * The holder is free text on purpose: the person may have no account, which is
  * exactly the situation the sheet was in. It is recorded as an open booking so
  * the unit still has a check-in path and can be claimed later.
+ *
+ * Admin only, for the same reason `set_status` is: this takes material off the
+ * calendar for everyone and cancels whatever was booked on it. It is reachable
+ * only from Fleet -> Manage, which is already an admin-only surface.
  */
 async function handleAssign(admin: Admin, viewer: Viewer, payload: z.infer<typeof assignSchema>) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json(
+      { error: "Only admins can assign material out of the shared pool." },
+      { status: 403 },
+    );
+  }
+
   const { data: asset, error: readError } = await admin
     .from("fleet_assets")
     .select("id, name, status, current_location, pooled")
@@ -964,28 +1022,11 @@ async function handleAssign(admin: Admin, viewer: Viewer, payload: z.infer<typeo
 
   const location = payload.location ?? asset.current_location ?? null;
 
-  // Anyone else's live booking has to go: the unit is leaving the pool, and
-  // leaving a reservation pointing at it would strand that person on a date
-  // they can no longer use.
-  const { data: live } = await admin
-    .from("fleet_reservations")
-    .select("id, user_id")
-    .eq("asset_id", payload.asset_id)
-    .in("status", ["reserved", "picked_up"]);
-
-  const foreign = (live ?? []).filter((row) => row.user_id !== viewer.id);
-  if (foreign.length > 0 && !viewer.isAdmin) {
-    return NextResponse.json(
-      { error: `${asset.name} is booked by someone else. An admin can reassign it.` },
-      { status: 409 },
-    );
-  }
-  if ((live ?? []).length > 0) {
-    await admin
-      .from("fleet_reservations")
-      .update({ status: "cancelled" })
-      .in("id", (live ?? []).map((row) => row.id));
-  }
+  // Every live booking has to go: the unit is leaving the pool, and leaving a
+  // reservation pointing at it would strand that person on a date they can no
+  // longer use. `closureStatusFor` decides how each one ends, so a booking that
+  // was never collected is not filed away as a return.
+  await closeLiveReservations(admin, payload.asset_id);
 
   const today = todayInZurich();
   const { error: insertError } = await admin.from("fleet_reservations").insert({
@@ -1032,12 +1073,24 @@ async function handleAssign(admin: Admin, viewer: Viewer, payload: z.infer<typeo
 /**
  * Puts an assigned unit back into the shared pool: it becomes bookable and
  * reappears in the calendar. Closes whatever open booking was holding it.
+ *
+ * Admin only, as the mirror of `assign`. Without the guard any signed-in user
+ * could name any asset and force-close someone else's live booking — and a
+ * booking closed as `returned` past its due date is scored as a late return, so
+ * an open endpoint here is also a way to damage another person's reliability.
  */
 async function handleReturnToPool(
   admin: Admin,
   viewer: Viewer,
   payload: z.infer<typeof returnToPoolSchema>,
 ) {
+  if (!viewer.isAdmin) {
+    return NextResponse.json(
+      { error: "Only admins can return material to the shared pool." },
+      { status: 403 },
+    );
+  }
+
   const { data: asset, error: readError } = await admin
     .from("fleet_assets")
     .select("id, name, current_location, home_location")
@@ -1046,15 +1099,9 @@ async function handleReturnToPool(
   if (readError) throw new Error(readError.message);
   if (!asset) return NextResponse.json({ error: "Asset not found." }, { status: 404 });
 
-  const today = todayInZurich();
   const landingSpot = payload.location ?? asset.home_location ?? asset.current_location ?? null;
 
-  const { error: closeError } = await admin
-    .from("fleet_reservations")
-    .update({ status: "returned", returned_at: new Date().toISOString(), returned_on: today })
-    .eq("asset_id", payload.asset_id)
-    .in("status", ["reserved", "picked_up"]);
-  if (closeError) throw new Error(closeError.message);
+  await closeLiveReservations(admin, payload.asset_id);
 
   const { error: assetError } = await admin
     .from("fleet_assets")
