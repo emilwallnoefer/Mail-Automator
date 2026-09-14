@@ -168,20 +168,44 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     setBusy(true);
     setNotice(null);
     try {
-      const response = await fetch("/api/fleet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      // The window travels with the write so the server can hand back the board
+      // for the days actually on screen.
+      const response = await fetch(
+        `/api/fleet?start=${encodeURIComponent(windowStart)}&days=${WINDOW_DAYS}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
       const data = (await response.json().catch(() => null)) as
-        | { error?: string; message?: string; waitlisted?: boolean; promoted?: string | null }
+        | {
+            error?: string;
+            message?: string;
+            waitlisted?: boolean;
+            promoted?: string | null;
+            board?: FleetBoardResponse;
+          }
         | null;
       if (!response.ok) {
         setNotice({ tone: "warn", text: data?.error ?? "That did not go through." });
         return false;
       }
       if (data?.message) setNotice({ tone: "neutral", text: data.message });
-      await load(windowStart);
+
+      if (data?.board) {
+        // The write already came back with the refreshed board, so there is no
+        // second request to make. Bumping the sequence first retires any load
+        // still in flight: its response predates this write, and applying it
+        // afterwards would put the pre-write board back on screen.
+        requestSeq.current += 1;
+        setBoard(data.board);
+        setLoading(false);
+      } else {
+        // Older response, or the board refresh failed server-side. Fall back to
+        // fetching it ourselves so the screen still catches up.
+        await load(windowStart);
+      }
       return true;
     } catch (err) {
       setNotice({ tone: "danger", text: (err as Error).message || "Network error." });
