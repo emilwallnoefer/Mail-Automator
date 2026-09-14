@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, Button, Card, Input, Notice, Select } from "@/components/ui";
+import { Badge, Button, Card, Notice } from "@/components/ui";
 import { CalendarTab } from "./calendar-tab";
+import { FleetToolbar } from "./fleet-toolbar";
 import { IdentityPrompt } from "./identity-prompt";
 import { ManageMaterial } from "./manage-material";
 import { MaterialList } from "./material-list";
@@ -11,13 +12,7 @@ import { ReliabilityBadge } from "./reliability-badge";
 import { ReservationDetail } from "./reservation-detail";
 import { Standings } from "./standings";
 import { useFleet, type FleetTab } from "./use-fleet";
-import {
-  CATEGORY_LABEL,
-  CATEGORY_ORDER,
-  type FleetAssetCategory,
-  type FleetBoardResponse,
-  type FleetReservation,
-} from "./types";
+import type { FleetBoardResponse, FleetReservation } from "./types";
 
 /**
  * Fleet — material tracking and day-level booking.
@@ -48,10 +43,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     tab,
     setTab,
     windowStart,
-    categoryFilter,
-    setCategoryFilter,
-    search,
-    setSearch,
     today,
     assets,
     visibleAssets,
@@ -64,14 +55,6 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
 
   const [detail, setDetail] = useState<FleetReservation | null>(null);
 
-  // The category filter and the search box drive BOTH the calendar rows and the
-  // Material register, so they belong to the panel rather than to either tab.
-  // They used to live inside the calendar toolbar, which meant a filter set
-  // there silently trimmed the Material list with no visible control there to
-  // explain why.
-  const filtersApply = tab === "calendar" || tab === "material";
-  const filtered = categoryFilter !== "all" || search.trim() !== "";
-
   const tabs: Array<[FleetTab, string, number | null]> = [
     ["calendar", "Calendar", bookableAssets.length || null],
     ["mine", "My material", myReservations.length || null],
@@ -82,17 +65,15 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   ];
 
   return (
-    <Card padding="lg" className="space-y-4">
+    <Card padding="lg" className="space-y-3">
       {/* ----------------------------------------------------------- header */}
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-ink">Fleet</h2>
-            <Badge tone="warn">Beta</Badge>
-          </div>
-          <p className="mt-1 text-xs text-ink-4">
-            Book material by the day, and see exactly where every unit is right now.
-          </p>
+      {/* One line. The strapline that used to sit under the title explained the
+          module to someone who had already opened it, and cost a whole band of
+          height above the grid on every visit. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="text-lg font-semibold text-ink">Fleet</h2>
+          <Badge tone="warn">Beta</Badge>
         </div>
         <div className="flex items-center gap-2">
           {board ? <ReliabilityBadge score={board.me} /> : null}
@@ -143,76 +124,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
         {notice ? <Notice tone={notice.tone}>{notice.text}</Notice> : null}
       </div>
 
-      {/* ------------------------------------------------- tabs and filters */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav
-          className="flex flex-wrap items-center gap-0.5 rounded-lg border border-glass/12 bg-glass/[0.05] p-0.5"
-          role="tablist"
-          aria-label="Fleet sections"
-        >
-          {tabs.map(([key, label, count]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`fleet-tab-${key}`}
-              aria-selected={tab === key}
-              aria-controls="fleet-tabpanel"
-              onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition ease-fluid focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/80 ${
-                tab === key
-                  ? "bg-accent-deep/30 text-accent-soft ring-1 ring-inset ring-accent/40"
-                  : "text-ink-4 hover:bg-glass/10 hover:text-ink-2"
-              }`}
-            >
-              {label}
-              {count != null ? (
-                <span className="text-[11px] tabular-nums opacity-60">{count}</span>
-              ) : null}
-            </button>
-          ))}
-        </nav>
-
-        {filtersApply ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Select
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value as FleetAssetCategory | "all")}
-              className="w-auto px-2 py-1.5 text-xs text-ink"
-              aria-label="Filter by type"
-            >
-              <option value="all">All types</option>
-              {CATEGORY_ORDER.map((value) => (
-                <option key={value} value={value}>
-                  {CATEGORY_LABEL[value]}
-                </option>
-              ))}
-            </Select>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") setSearch("");
-              }}
-              placeholder="Search name, serial, location…"
-              className="w-52 px-2 py-1.5 text-xs"
-              aria-label="Search material"
-            />
-            {filtered ? (
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={() => {
-                  setSearch("");
-                  setCategoryFilter("all");
-                }}
-              >
-                Clear
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <FleetToolbar state={state} tabs={tabs} />
 
       {/* ------------------------------------------------------------ tabs */}
       {/* One panel, re-rendered per tab, rather than four mounted panels with

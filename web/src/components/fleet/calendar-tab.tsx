@@ -2,27 +2,20 @@
 
 import { useState } from "react";
 import { Button, Input } from "@/components/ui";
-import {
-  addDays,
-  formatDayLong,
-  formatSpan,
-  occupiedUntil,
-  spanLength,
-  toDateKey,
-} from "@/lib/fleet-rules";
+import { formatDayLong, formatSpan, occupiedUntil, spanLength } from "@/lib/fleet-rules";
 import { playUiSound } from "@/lib/ui-sounds";
 import { CalendarLegend } from "./calendar-legend";
 import { DayGrid, type DaySelection } from "./day-grid";
 import { EmptyState, Skeleton } from "./ui";
-import { WINDOW_DAYS, WINDOW_STEP_DAYS, type FleetState } from "./use-fleet";
+import { WINDOW_DAYS, type FleetState } from "./use-fleet";
 import type { FleetReservation } from "./types";
 
 /**
- * The booking screen: navigate the window, click days, confirm.
+ * The booking screen: the grid, and what you do with a selection.
  *
- * Ordered the way the job is done — when, then what, then confirm — so the
- * controls that move the window sit above the grid and the thing you are about
- * to book sits below it, where your eye already is after clicking a cell.
+ * Only the content. The window navigation and the filters live in
+ * `FleetToolbar` with the section tabs, so the panel has one control surface
+ * rather than a band of chrome per feature.
  */
 export function CalendarTab({
   state,
@@ -40,9 +33,8 @@ export function CalendarTab({
     busy,
     post,
     windowStart,
-    setWindowStart,
+    // Set in the toolbar, read here: the grid is what it changes.
     showPast,
-    toggleShowPast,
     today,
     assets,
     reservations,
@@ -80,55 +72,6 @@ export function CalendarTab({
 
   return (
     <div className="space-y-3">
-      {/* ------------------------------------------------------ window nav */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center rounded-lg border border-glass/15 bg-glass/[0.06] p-0.5">
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setWindowStart(addDays(windowStart, -WINDOW_STEP_DAYS))}
-              aria-label={`Back ${WINDOW_STEP_DAYS} days`}
-            >
-              ←
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => setWindowStart(toDateKey(new Date()))}>
-              Today
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setWindowStart(addDays(windowStart, WINDOW_STEP_DAYS))}
-              aria-label={`Forward ${WINDOW_STEP_DAYS} days`}
-            >
-              →
-            </Button>
-          </div>
-
-          {/* Stepping 14 days at a time makes older history unreachable in
-              practice — a year back is 26 clicks. Jump straight there. */}
-          <Input
-            type="date"
-            value={windowStart}
-            onChange={(event) => {
-              if (event.target.value) setWindowStart(event.target.value);
-            }}
-            aria-label="Jump to date"
-            className="w-auto px-2 py-1.5 text-xs [color-scheme:dark]"
-          />
-        </div>
-
-        <label className="flex cursor-pointer select-none items-center gap-1.5 rounded-lg border border-glass/15 bg-glass/[0.06] px-2.5 py-1.5 text-[11px] text-ink-3 transition hover:text-ink">
-          <input
-            type="checkbox"
-            checked={showPast}
-            onChange={(event) => toggleShowPast(event.target.checked)}
-            className="h-3.5 w-3.5 cursor-pointer accent-accent"
-          />
-          Show finished bookings
-        </label>
-      </div>
-
       {/* ---------------------------------------------------------- the grid */}
       {loading && !board ? (
         <GridSkeleton />

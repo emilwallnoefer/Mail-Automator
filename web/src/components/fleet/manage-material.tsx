@@ -206,14 +206,19 @@ export function ManageMaterial({
               />
               Bookable by everyone (shows in the calendar)
             </label>
+            {/* Sized by the wrapper: `Input`'s base carries `w-full`, and
+                `cn()` has no tailwind-merge, so a `w-56` here would not
+                replace it — both would apply and `w-full` would win. */}
             {!draft.pooled ? (
-              <Input
-                value={draft.current_holder_label}
-                onChange={(e) => set("current_holder_label", e.target.value)}
-                placeholder="Assigned to (name)"
-                className="w-56 text-xs"
-                aria-label="Assigned to"
-              />
+              <div className="w-56">
+                <Input
+                  value={draft.current_holder_label}
+                  onChange={(e) => set("current_holder_label", e.target.value)}
+                  placeholder="Assigned to (name)"
+                  className="text-xs"
+                  aria-label="Assigned to"
+                />
+              </div>
             ) : null}
           </div>
 
@@ -255,13 +260,15 @@ export function ManageMaterial({
           <Button size="sm" variant="accent" onClick={() => setAdding(true)}>
             + Add material
           </Button>
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the fleet…"
-            className="w-64 text-xs"
-            aria-label="Search material"
-          />
+          <div className="w-64 min-w-0">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the fleet…"
+              className="px-2 py-1.5 text-xs"
+              aria-label="Search material"
+            />
+          </div>
           <span className="text-[11px] text-ink-5">{assets.length} active</span>
         </div>
       )}
@@ -411,13 +418,15 @@ export function ManageMaterial({
                         Bookable by everyone
                       </label>
                       {!(edit.pooled ?? asset.pooled) ? (
-                        <Input
-                          value={edit.current_holder_label ?? ""}
-                          onChange={(e) => setEdit((v) => ({ ...v, current_holder_label: e.target.value }))}
-                          placeholder="Assigned to (name)"
-                          className="w-56 text-xs"
-                          aria-label="Assigned to"
-                        />
+                        <div className="w-56">
+                          <Input
+                            value={edit.current_holder_label ?? ""}
+                            onChange={(e) => setEdit((v) => ({ ...v, current_holder_label: e.target.value }))}
+                            placeholder="Assigned to (name)"
+                            className="text-xs"
+                            aria-label="Assigned to"
+                          />
+                        </div>
                       ) : null}
                       <Button
                         size="xs"
