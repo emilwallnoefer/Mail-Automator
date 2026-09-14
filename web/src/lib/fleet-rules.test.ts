@@ -27,6 +27,7 @@ import {
   mondayOf,
   nameTokens,
   normalizeHolderLabel,
+  occupiedUntil,
   orderQueue,
   parseDateKey,
   PROVISIONAL_SCORE,
@@ -337,6 +338,49 @@ describe("reservation spans", () => {
       existing: [],
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("how long a booking actually occupied the asset", () => {
+  const booked = (extra: Partial<ReservationSpan>) =>
+    span({ start_date: "2026-09-14", end_date: "2026-09-18", ...extra });
+
+  it("runs to the end date while the booking is live", () => {
+    expect(occupiedUntil(booked({ status: "reserved" }))).toBe("2026-09-18");
+    expect(occupiedUntil(booked({ status: "picked_up" }))).toBe("2026-09-18");
+  });
+
+  it("stops on the day the material came back early", () => {
+    expect(occupiedUntil(booked({ status: "returned", returned_on: "2026-09-16" }))).toBe("2026-09-16");
+  });
+
+  it("collapses to a single day when it came back the day it went out", () => {
+    expect(occupiedUntil(booked({ status: "returned", returned_on: "2026-09-14" }))).toBe("2026-09-14");
+  });
+
+  it("does not stretch past the end date when the return was late", () => {
+    // Lateness is shown by the overdue marking, not by drawing the booking
+    // over days it was never booked for.
+    expect(occupiedUntil(booked({ status: "returned", returned_on: "2026-09-25" }))).toBe("2026-09-18");
+  });
+
+  it("falls back to the end date when no return date was recorded", () => {
+    expect(occupiedUntil(booked({ status: "returned", returned_on: null }))).toBe("2026-09-18");
+  });
+
+  it("never inverts the span", () => {
+    // Bad data must not produce a booking that ends before it begins.
+    const odd = booked({ status: "returned", returned_on: "2026-09-01" });
+    expect(occupiedUntil(odd)).toBe("2026-09-14");
+    expect(occupiedUntil(odd) >= odd.start_date).toBe(true);
+  });
+
+  it("is never the same thing as the due date", () => {
+    // `dueDateOf` drives lateness and reminders and must stay the day that was
+    // promised, whatever actually happened.
+    const early = booked({ status: "returned", returned_on: "2026-09-16" });
+    expect(dueDateOf(early)).toBe("2026-09-18");
+    expect(occupiedUntil(early)).toBe("2026-09-16");
   });
 });
 

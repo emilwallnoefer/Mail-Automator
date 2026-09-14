@@ -30,6 +30,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       "Booking, picking up and bringing back material is roughly four times quicker.",
       "New “Past bookings” tick box above the calendar — untick it to hide finished bookings.",
       "Your choice is remembered on this device.",
+      "Material returned early now ends on the day it came back, instead of running to the booked date.",
     ],
   },
   {

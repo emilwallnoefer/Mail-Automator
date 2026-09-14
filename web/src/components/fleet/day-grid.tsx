@@ -9,6 +9,7 @@ import {
   formatDay,
   holderRgb,
   monthBands,
+  occupiedUntil,
   parseDateKey,
   type DayMeta,
 } from "@/lib/fleet-rules";
@@ -119,7 +120,8 @@ export function DayGrid({
       // while past bookings are hidden, so they cost no work either.
       if (!layer) continue;
       const target = layer === "live" ? live : history;
-      const length = daysBetween(reservation.start_date, reservation.end_date);
+      // Stops on the day it actually came back, when that was early.
+      const length = daysBetween(reservation.start_date, occupiedUntil(reservation));
       const startMs = parseDateKey(reservation.start_date).getTime();
       for (let i = 0; i <= length; i += 1) {
         const d = new Date(startMs + i * DAY_MS);

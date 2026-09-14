@@ -338,6 +338,32 @@ export function dueDateOf(span: Pick<ReservationSpan, "end_date">): string {
 }
 
 /**
+ * The last day a booking actually occupied the asset, for DISPLAY.
+ *
+ * A booking normally runs to its end date. When the material came back early,
+ * it stops on the day it was returned: the unit was back on the shelf for the
+ * rest of the booked span, and drawing it as still held made the board look
+ * fuller than the fleet was — the exact failure the spreadsheet had. Those days
+ * were already bookable (a returned booking blocks nothing); only the picture
+ * was wrong.
+ *
+ * Two things this deliberately does NOT do:
+ *
+ *  - It never runs past `end_date`. A late return is shown by the overdue
+ *    marking, not by stretching the booking over days it was never booked for.
+ *  - It is not `dueDateOf`. The due date is what lateness and reminders are
+ *    measured against and must stay the day that was promised, whatever
+ *    actually happened.
+ */
+export function occupiedUntil(span: ReservationSpan): string {
+  if (span.status !== "returned" || !span.returned_on) return span.end_date;
+  // Never invert the span: a returned_on before the start would otherwise draw
+  // a booking that ends before it begins.
+  if (span.returned_on < span.start_date) return span.start_date;
+  return span.returned_on < span.end_date ? span.returned_on : span.end_date;
+}
+
+/**
  * Days overdue as of `today`. 0 while still within the booked span, and 0 once
  * the material is back — a late return is history, not a live debt.
  */

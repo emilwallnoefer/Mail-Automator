@@ -6,6 +6,7 @@ import {
   addDays,
   formatDayLong,
   formatSpan,
+  occupiedUntil,
   holderRgb,
   isBookable,
   spanLength,
@@ -858,7 +859,7 @@ function MyMaterial({
                     </Badge>
                   </div>
                   <p className="mt-1 text-[11px] text-ink-4">
-                    {formatSpan(reservation.start_date, reservation.end_date)} · due back{" "}
+                    {formatSpan(reservation.start_date, occupiedUntil(reservation))} · due back{" "}
                     {formatDayLong(reservation.due_date)}
                   </p>
                   {reservation.destination ? (
@@ -999,7 +1000,7 @@ function ReservationDetail({
           <p className="text-sm font-semibold text-ink">{asset?.name ?? "Material"}</p>
           <p className="mt-0.5 text-xs text-ink-4">
             {reservation.is_mine ? "Booked by you" : `Booked by ${reservation.holder_name}`} ·{" "}
-            {formatSpan(reservation.start_date, reservation.end_date)}
+            {formatSpan(reservation.start_date, occupiedUntil(reservation))}
           </p>
           <p className="mt-0.5 text-[11px] text-ink-5">
             Due back {formatDayLong(reservation.due_date)}
