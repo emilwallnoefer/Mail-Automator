@@ -71,6 +71,8 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const [showPast, setShowPast] = useState(true);
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<FleetReservation | null>(null);
+  // A booking an admin has asked to remove, held until they confirm.
+  const [pendingRemoval, setPendingRemoval] = useState<FleetReservation | null>(null);
 
   // Guards against a slow response for an earlier window overwriting a newer one
   // (the same staleness rule the Time Tracker follows for its week fetches).
@@ -448,9 +450,46 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             horizonDays={board?.is_admin ? 365 : (board?.me.horizonDays ?? 56)}
             selection={selection}
             showPast={showPast}
+            canRemove={board?.is_admin ?? false}
             onSelect={setSelection}
             onOpenReservation={setDetail}
+            onRemove={setPendingRemoval}
           />
+
+          {pendingRemoval ? (
+            <div
+              role="alertdialog"
+              aria-label="Confirm removing this booking"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2"
+            >
+              <p className="text-xs text-ink-2">
+                Remove{" "}
+                <span className="font-medium text-ink">
+                  {assets.find((a) => a.id === pendingRemoval.asset_id)?.name ?? "this booking"}
+                </span>{" "}
+                for {pendingRemoval.is_mine ? "you" : pendingRemoval.holder_name} on{" "}
+                {formatSpan(pendingRemoval.start_date, occupiedUntil(pendingRemoval))}? The days go back
+                into the pool.
+              </p>
+              <span className="flex items-center gap-1.5">
+                <Button
+                  size="xs"
+                  variant="danger"
+                  disabled={busy}
+                  onClick={() => {
+                    const target = pendingRemoval;
+                    setPendingRemoval(null);
+                    void post({ action: "cancel", reservation_id: target.id });
+                  }}
+                >
+                  {busy ? "Removing…" : "Remove booking"}
+                </Button>
+                <Button size="xs" variant="ghost" onClick={() => setPendingRemoval(null)}>
+                  Keep
+                </Button>
+              </span>
+            </div>
+          ) : null}
 
           {assignedAssets.length > 0 ? (
             <p className="text-[11px] text-ink-5">

@@ -63,8 +63,16 @@ type DayGridProps = {
    * unit as free, which is the one thing this calendar must never do.
    */
   showPast: boolean;
+  /**
+   * Whether to offer the per-cell remove control. Admin only — the server is
+   * the authority (`cancel` already refuses anyone but the owner or an admin);
+   * this just decides whether to draw it.
+   */
+  canRemove: boolean;
   onSelect: (selection: DaySelection) => void;
   onOpenReservation: (reservation: FleetReservation) => void;
+  /** Asks to remove a booking. The caller confirms; this only requests it. */
+  onRemove: (reservation: FleetReservation) => void;
 };
 
 type CellState = {
@@ -90,8 +98,10 @@ export function DayGrid({
   horizonDays,
   selection,
   showPast,
+  canRemove,
   onSelect,
   onOpenReservation,
+  onRemove,
 }: DayGridProps) {
   // Every per-day fact the grid needs, in one pass over the window. See the
   // file header — this is the difference between ~400 date parses per render
@@ -183,8 +193,10 @@ export function DayGrid({
                   ? { startDate: selection.startDate, endDate: selection.endDate }
                   : null
               }
+              canRemove={canRemove}
               onSelect={onSelect}
               onOpenReservation={onOpenReservation}
+              onRemove={onRemove}
             />
           ))}
         </tbody>
@@ -211,16 +223,20 @@ const AssetRow = memo(function AssetRow({
   byAssetDay,
   historyByAssetDay,
   rowSelection,
+  canRemove,
   onSelect,
   onOpenReservation,
+  onRemove,
 }: {
   asset: FleetAsset;
   days: DayMeta[];
   byAssetDay: Map<string, FleetReservation>;
   historyByAssetDay: Map<string, FleetReservation>;
   rowSelection: RowSelection;
+  canRemove: boolean;
   onSelect: (selection: DaySelection) => void;
   onOpenReservation: (reservation: FleetReservation) => void;
+  onRemove: (reservation: FleetReservation) => void;
 }) {
   const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
 
@@ -296,7 +312,7 @@ const AssetRow = memo(function AssetRow({
         return (
           <td
             key={day.key}
-            className={`border-t border-glass/[0.07] p-px ${
+            className={`group/cell relative border-t border-glass/[0.07] p-px ${
               day.weekBoundary ? "border-l border-l-glass/20" : ""
             }`}
           >
@@ -350,6 +366,19 @@ const AssetRow = memo(function AssetRow({
                 </span>
               ) : null}
             </button>
+            {canRemove && reservation && reservation.status === "reserved" ? (
+              <button
+                type="button"
+                onClick={() => onRemove(reservation)}
+                title={`Remove ${asset.name} booking — ${reservation.holder_name}`}
+                aria-label={`Remove booking: ${asset.name}, ${reservation.holder_name}, ${formatDay(
+                  reservation.start_date,
+                )}`}
+                className="absolute right-0 top-0 z-[3] flex h-3.5 w-3.5 items-center justify-center rounded-bl-[3px] rounded-tr-[3px] bg-slate-900/80 text-[11px] leading-none text-rose-200 opacity-0 transition hover:bg-rose-500 hover:text-white focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent group-hover/cell:opacity-100"
+              >
+                −
+              </button>
+            ) : null}
           </td>
         );
       })}
