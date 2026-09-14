@@ -20,6 +20,9 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    // Several releases share 2026-09-14, so every id carries a suffix: the
+    // popup is keyed by this string in localStorage, and a reused one would
+    // hide the release from everyone who already saw the other.
     version: "2026-09-14-fleet-material",
     date: "Sep 14, 2026",
     title: "See who has what, at a glance",
@@ -35,8 +38,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    // Third entry dated 2026-09-14, so the id carries a suffix for the same
-    // reason the Fleet one below does: the popup is keyed by this string.
+    version: "2026-09-14-stay-put",
+    date: "Sep 14, 2026",
+    title: "Reloading keeps you where you were",
+    highlights: [
+      "Refresh no longer drops you back on the workspace home.",
+      "The open module — and the section inside Admin or Settings — comes back with the page.",
+      "The address bar now shows the view, so you can bookmark or share it.",
+    ],
+  },
+  {
     version: "2026-09-14-fleet-ui",
     date: "Sep 14, 2026",
     title: "Fleet, tidied up",

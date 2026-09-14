@@ -1,4 +1,4 @@
-import { DashboardShell } from "@/components/dashboard-shell";
+import { DashboardShell, MODULE_KEYS, type ModuleKey } from "@/components/dashboard-shell";
 import type { WeekResponse } from "@/components/time-tracker-panel";
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +17,11 @@ import { buildFleetBoard, type FleetBoardPayload } from "@/lib/fleet-board";
 import { DEFAULT_WINDOW_DAYS, displayNameFor } from "@/lib/fleet-queries";
 import { redirect } from "next/navigation";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!isSupabaseConfigured()) redirect("/login");
   const supabase = await createClient();
   // Verify the session locally (no Auth-server round-trip). Middleware already
@@ -55,6 +59,18 @@ export default async function DashboardPage() {
   const initialRole = normalizeUserRole(userRoleRaw);
   const isAdmin = isAdminEmail(email);
   const isPilot = initialRole !== "sales" && initialRole !== "hr";
+
+  // `?module=` is how an open module survives a reload (the shell keeps it in
+  // sync) and how the fleet reminder mails deep-link into the check-in screen.
+  // Resolving it here rather than in a mount effect means the requested panel is
+  // in the first paint instead of flashing the workspace home first. Unknown
+  // values fall through to the home screen; the shell still re-checks the module
+  // against the user's role.
+  const requestedModuleRaw = (await searchParams).module;
+  const requestedModule =
+    typeof requestedModuleRaw === "string" && MODULE_KEYS.includes(requestedModuleRaw as ModuleKey)
+      ? (requestedModuleRaw as ModuleKey)
+      : null;
 
   // Prefetch each landing/panel's initial data server-side so the panels paint
   // seeded instead of waterfalling client fetches on open. Every prefetch is
@@ -143,6 +159,7 @@ export default async function DashboardPage() {
       initialAdminUsers={initialAdminUsers}
       initialAdminOverview={initialAdminOverview}
       initialFleet={initialFleet}
+      initialModule={requestedModule}
     />
   );
 }
