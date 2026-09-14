@@ -10,6 +10,12 @@ on:
     paths:
       - "web/**"
       - ".github/workflows/**"
+  # Advisories are published against versions we already ship, so the gate can
+  # turn red without anyone pushing. Run it daily against main so that shows up
+  # as its own failed run instead of on the next unrelated PR.
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 jobs:
   web-security-checks:
