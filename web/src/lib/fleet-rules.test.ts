@@ -6,6 +6,7 @@ import {
   dayRange,
   daysBetween,
   daysOverdue,
+  describeDays,
   dueDateOf,
   formatDay,
   formatDayLong,
@@ -19,10 +20,12 @@ import {
   isWeekend,
   isoWeekNumber,
   lateDays,
+  monthBands,
   mondayOf,
   nameTokens,
   normalizeHolderLabel,
   orderQueue,
+  parseDateKey,
   PROVISIONAL_SCORE,
   reminderFor,
   spanLength,
@@ -97,6 +100,117 @@ describe("date math", () => {
     expect(isoWeekNumber("2026-08-31")).toEqual({ week: 36, year: 2026 });
     expect(isoWeekNumber("2026-09-06")).toEqual({ week: 36, year: 2026 });
     expect(isoWeekNumber("2025-12-29")).toEqual({ week: 1, year: 2026 });
+  });
+});
+
+describe("describing a window of day columns", () => {
+  // The grid used to derive all of this per cell. These assertions pin the
+  // equivalence, so the fast path cannot drift from the helpers it replaced.
+  const window = () =>
+    describeDays({ windowStart: "2026-08-31", windowDays: 28, today: "2026-09-04", horizonDays: 14 });
+
+  it("produces one entry per day, in order, starting at the window start", () => {
+    const days = window();
+    expect(days).toHaveLength(28);
+    expect(days[0].key).toBe("2026-08-31");
+    expect(days[27].key).toBe(addDays("2026-08-31", 27));
+    expect(days.map((d) => d.key)).toEqual(dayRange("2026-08-31", 28));
+  });
+
+  it("agrees with the per-day helpers it replaced", () => {
+    for (const day of window()) {
+      expect(day.weekend).toBe(isWeekend(day.key));
+      expect(day.weekdayLabel).toBe(formatWeekday(day.key));
+      expect(day.dayOfMonth).toBe(parseDateKey(day.key).getUTCDate());
+      expect(day.isoWeek).toBe(isoWeekNumber(day.key).week);
+      expect(day.inPast).toBe(day.key < "2026-09-04");
+      expect(day.beyondHorizon).toBe(daysBetween("2026-09-04", day.key) > 14);
+    }
+  });
+
+  it("marks today, and only today", () => {
+    const today = window().filter((d) => d.isToday);
+    expect(today.map((d) => d.key)).toEqual(["2026-09-04"]);
+  });
+
+  it("draws a week rule on every Monday except the first column", () => {
+    // The window starts ON a Monday: it gets no rule, the later ones do.
+    const days = window();
+    expect(days[0].weekdayLabel).toBe("Mo");
+    expect(days[0].weekBoundary).toBe(false);
+    expect(days.filter((d) => d.weekBoundary).map((d) => d.key)).toEqual([
+      "2026-09-07",
+      "2026-09-14",
+      "2026-09-21",
+    ]);
+  });
+
+  it("steps correctly across a month boundary and a DST change", () => {
+    const days = describeDays({
+      windowStart: "2026-10-24",
+      windowDays: 4,
+      today: "2026-10-24",
+      horizonDays: 84,
+    });
+    // Europe/Zurich clocks change on 2026-10-25; UTC-anchored stepping must not
+    // repeat or skip a day.
+    expect(days.map((d) => d.key)).toEqual(["2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27"]);
+    expect(days.map((d) => d.dayOfMonth)).toEqual([24, 25, 26, 27]);
+  });
+
+  it("treats the horizon as inclusive, matching checkReservation", () => {
+    const days = describeDays({
+      windowStart: "2026-09-04",
+      windowDays: 20,
+      today: "2026-09-04",
+      horizonDays: 14,
+    });
+    const byKey = new Map(days.map((d) => [d.key, d]));
+    expect(byKey.get("2026-09-18")!.beyondHorizon).toBe(false); // day 14
+    expect(byKey.get("2026-09-19")!.beyondHorizon).toBe(true); // day 15
+    // The grid and the booking check must refuse the same day.
+    expect(
+      checkReservation({
+        startDate: "2026-09-19",
+        endDate: "2026-09-19",
+        today: "2026-09-04",
+        horizonDays: 14,
+        existing: [],
+      }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("month bands above the calendar", () => {
+  it("collapses consecutive days into one band per month", () => {
+    const days = describeDays({
+      windowStart: "2026-08-31",
+      windowDays: 28,
+      today: "2026-08-31",
+      horizonDays: 84,
+    });
+    expect(monthBands(days)).toEqual([
+      { label: "August 2026", span: 1 },
+      { label: "September 2026", span: 27 },
+    ]);
+  });
+
+  it("spans add up to the window length", () => {
+    const days = describeDays({
+      windowStart: "2026-12-20",
+      windowDays: 28,
+      today: "2026-12-20",
+      horizonDays: 84,
+    });
+    const bands = monthBands(days);
+    expect(bands.reduce((sum, b) => sum + b.span, 0)).toBe(28);
+    // Across a year boundary the year is part of the label, so December 2026
+    // and January 2027 never merge.
+    expect(bands.map((b) => b.label)).toEqual(["December 2026", "January 2027"]);
+  });
+
+  it("is empty for an empty window", () => {
+    expect(monthBands([])).toEqual([]);
   });
 });
 

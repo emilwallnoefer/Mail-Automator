@@ -105,6 +105,15 @@ const SHORT_MONTHS = [
 
 const SHORT_WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
 
+/**
+ * Full month names, for the calendar's month band. Fixed for the same reason
+ * `SHORT_MONTHS` is, and so the band costs no ICU call per column.
+ */
+const LONG_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+] as const;
+
 /** "4 Sep" — a single day, for column headers and inline dates. */
 export function formatDay(dateKey: string): string {
   const d = parseDateKey(dateKey);
@@ -134,6 +143,93 @@ export function formatSpan(startDate: string, endDate: string): string {
     ? `${start.getUTCDate()}`
     : `${start.getUTCDate()} ${SHORT_MONTHS[start.getUTCMonth()]}`;
   return `${startLabel} – ${end.getUTCDate()} ${SHORT_MONTHS[end.getUTCMonth()]}`;
+}
+
+/**
+ * Everything the calendar needs to know about one day column.
+ *
+ * Note what is NOT here: anything about a particular asset. These facts depend
+ * only on the day, the viewer's horizon and what today is, which is what makes
+ * them shareable across every row of the grid.
+ */
+export type DayMeta = {
+  key: string;
+  /** Day number for the column header ("4"). */
+  dayOfMonth: number;
+  /** Weekday initial for the column header ("Th"). */
+  weekdayLabel: string;
+  /** "September 2026", for the month band above the columns. */
+  monthLabel: string;
+  weekend: boolean;
+  isToday: boolean;
+  /** A Monday that is not the first column — where the week rule is drawn. */
+  weekBoundary: boolean;
+  /** ISO week number, shown as the column's "KW 36" tooltip. */
+  isoWeek: number;
+  /** Earlier than today: nothing can be booked here. */
+  inPast: boolean;
+  /** Further ahead than this viewer's reliability score lets them book. */
+  beyondHorizon: boolean;
+};
+
+/**
+ * Describes a whole window of day columns in one pass.
+ *
+ * The grid renders one cell per asset per day — roughly 400 of them — and every
+ * one of those facts used to be recomputed per cell, each call re-parsing the
+ * date string through a regex and a fresh `Date`. At ~1,500 parses per render,
+ * on a component that re-renders for every keystroke in the search box and
+ * every click in the calendar, that is what made the board feel sticky.
+ *
+ * Here a single `Date` is stepped forward across the window, so the work is
+ * O(days) once per window instead of O(assets x days) on every render.
+ */
+export function describeDays(args: {
+  windowStart: string;
+  windowDays: number;
+  today: string;
+  horizonDays: number;
+}): DayMeta[] {
+  const { windowStart, windowDays, today, horizonDays } = args;
+  const cursor = parseDateKey(windowStart);
+  const todayMs = parseDateKey(today).getTime();
+  const days: DayMeta[] = [];
+
+  for (let i = 0; i < windowDays; i += 1) {
+    const key = toDateKey(cursor);
+    const weekday = (cursor.getUTCDay() + 6) % 7;
+    // Whole days from today; negative in the past. Same value `daysBetween`
+    // would return, without re-parsing either side.
+    const offset = Math.round((cursor.getTime() - todayMs) / DAY_MS);
+
+    days.push({
+      key,
+      dayOfMonth: cursor.getUTCDate(),
+      weekdayLabel: SHORT_WEEKDAYS[weekday],
+      monthLabel: `${LONG_MONTHS[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`,
+      weekend: weekday >= 5,
+      isToday: offset === 0,
+      weekBoundary: i > 0 && weekday === 0,
+      isoWeek: isoWeekNumber(key).week,
+      inPast: offset < 0,
+      beyondHorizon: offset > horizonDays,
+    });
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return days;
+}
+
+/** Collapses a described window into the month bands above the columns. */
+export function monthBands(days: DayMeta[]): Array<{ label: string; span: number }> {
+  const bands: Array<{ label: string; span: number }> = [];
+  for (const day of days) {
+    const last = bands[bands.length - 1];
+    if (last && last.label === day.monthLabel) last.span += 1;
+    else bands.push({ label: day.monthLabel, span: 1 });
+  }
+  return bands;
 }
 
 /* -------------------------------------------------------------------------- */

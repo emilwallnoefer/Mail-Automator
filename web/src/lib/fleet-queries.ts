@@ -491,18 +491,35 @@ export async function fetchRemindersEnabled(admin: AnySupabase): Promise<boolean
 }
 
 /** Resolves auth user ids to display names. Missing users degrade to "Unknown". */
-export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  if (ids.length === 0) return names;
+/**
+ * Short-lived cache of the user directory.
+ *
+ * `listUsers` is a GoTrue admin call that pulls the whole user table, and the
+ * board needs it on every single load — including the refetch that follows every
+ * booking, check-out and check-in, which is what made the module feel sticky
+ * after each click. Display names change approximately never, so serving them
+ * from a few seconds of cache is free.
+ *
+ * Per-instance and deliberately tiny: this is a latency cache, not a source of
+ * truth. A cold start or a second instance simply refetches.
+ */
+const USER_NAME_TTL_MS = 30_000;
+let userNameCache: { names: Map<string, string>; expiresAt: number } | null = null;
 
+async function loadAllUserNames(admin: AnySupabase): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (userNameCache && userNameCache.expiresAt > now) return userNameCache.names;
+
+  const names = new Map<string, string>();
   // listUsers is the only admin API that returns metadata in bulk. The fleet is
   // an internal tool with a small user table, so one page is plenty; if the
   // workspace ever outgrows it, the unresolved ids simply render as "Unknown".
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  // Do not cache a failure: an outage would otherwise blank every name for the
+  // whole TTL, and the caller already degrades to "Unknown" on its own.
   if (error || !data) return names;
-  const wanted = new Set(ids);
+
   for (const user of data.users) {
-    if (!wanted.has(user.id)) continue;
     names.set(
       user.id,
       displayNameFor({
@@ -510,6 +527,19 @@ export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise
         user_metadata: (user.user_metadata ?? null) as Record<string, unknown> | null,
       }),
     );
+  }
+  userNameCache = { names, expiresAt: now + USER_NAME_TTL_MS };
+  return names;
+}
+
+export async function fetchUserNames(admin: AnySupabase, ids: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (ids.length === 0) return names;
+
+  const all = await loadAllUserNames(admin);
+  for (const id of ids) {
+    const name = all.get(id);
+    if (name !== undefined) names.set(id, name);
   }
   return names;
 }
