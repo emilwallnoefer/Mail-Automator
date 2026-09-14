@@ -20,6 +20,22 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    // Third entry dated 2026-09-14, so the id carries a suffix for the same
+    // reason the Fleet one below does: the popup is keyed by this string.
+    version: "2026-09-14-fleet-ui",
+    date: "Sep 14, 2026",
+    title: "Fleet, tidied up",
+    highlights: [
+      "A summary across the top: what is in the pool, what is out, what is overdue, what is back this week.",
+      "Click the overdue count to jump straight to your own material.",
+      "Clicking a booking now opens it as a dialog, instead of far below the calendar.",
+      "Today and the weekends are shaded down the whole board.",
+      "The type filter and search now sit above both the calendar and the material list, so a filter is always visible.",
+      "Colour key moved into a “What the shading means” section you can fold away.",
+      "Admins can set a unit to in repair or retired from Manage → Edit.",
+    ],
+  },
+  {
     // Distinct from the "2026-09-14" Bunker entry below: the popup is keyed by
     // this string in localStorage, so reusing it would hide this release from
     // everyone who already saw that one.

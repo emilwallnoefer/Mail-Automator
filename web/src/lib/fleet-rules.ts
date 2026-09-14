@@ -761,3 +761,77 @@ export function holderColorIndex(label: string): number {
 export function holderRgb(label: string): string {
   return HOLDER_COLORS[holderColorIndex(label)].rgb;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Panel summaries                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How a due date reads to the person holding the material.
+ *
+ * The calendar already shows the exact day; what this answers is the question
+ * behind it — "is this mine to deal with today?" — so the wording leans on
+ * today/tomorrow rather than a date the reader has to subtract from.
+ */
+export function dueLabel(dueDate: string, today: string): string {
+  const delta = daysBetween(today, dueDate);
+  if (delta < 0) return `${-delta} day${delta === -1 ? "" : "s"} overdue`;
+  if (delta === 0) return "due back today";
+  if (delta === 1) return "due back tomorrow";
+  return `due back in ${delta} days`;
+}
+
+/** The counts behind the summary strip at the top of the panel. */
+export type FleetSummary = {
+  /** Units in the shared pool that can be booked at all. */
+  pool: number;
+  /** Units a person is physically holding right now. */
+  out: number;
+  /** Live bookings past their due date. */
+  overdue: number;
+  /** Live bookings coming back within the next week, overdue ones excluded. */
+  dueSoon: number;
+  /** Units whose recorded location nobody has confirmed lately. */
+  stale: number;
+};
+
+/**
+ * Rolls the board up into the numbers the panel header shows.
+ *
+ * Pure and `Date.now()`-free like the rest of this module: `today` is passed in
+ * so the server's day wins over whatever timezone the browser is in, which is
+ * the same reason the board ships a `today` field at all.
+ */
+export function summarizeFleet(args: {
+  assets: Array<{ pooled: boolean; status: string; location_stale: boolean }>;
+  reservations: Array<{ status: ReservationStatus; days_overdue: number; end_date: string }>;
+  today: string;
+  /** How far ahead "due soon" looks. A week: the horizon of a work plan. */
+  soonDays?: number;
+}): FleetSummary {
+  const { assets, reservations, today, soonDays = 7 } = args;
+  const horizon = addDays(today, soonDays);
+
+  let out = 0;
+  let overdue = 0;
+  let dueSoon = 0;
+  for (const reservation of reservations) {
+    // Only bookings that actually hold material count — a cancelled or returned
+    // one is history, and counting it would inflate every number here.
+    if (!isBlocking(reservation.status)) continue;
+    if (reservation.status === "picked_up") out += 1;
+    if (reservation.days_overdue > 0) {
+      overdue += 1;
+      continue;
+    }
+    if (dueDateOf(reservation) <= horizon) dueSoon += 1;
+  }
+
+  return {
+    pool: assets.filter(isBookable).length,
+    out,
+    overdue,
+    dueSoon,
+    stale: assets.filter((asset) => asset.location_stale).length,
+  };
+}

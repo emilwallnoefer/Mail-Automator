@@ -10,6 +10,7 @@ import {
   daysOverdue,
   describeDays,
   dueDateOf,
+  dueLabel,
   formatDay,
   formatDayLong,
   formatSpan,
@@ -34,9 +35,11 @@ import {
   reminderFor,
   spanLength,
   spansOverlap,
+  summarizeFleet,
   tierFor,
   weekdayIndex,
   type ReservationSpan,
+  type ReservationStatus,
 } from "./fleet-rules";
 
 function span(partial: Partial<ReservationSpan> & { start_date: string; end_date: string }): ReservationSpan {
@@ -871,5 +874,91 @@ describe("directory-backed matching", () => {
       expect(holderLabelMatchesPerson("Total Energies", p)).toBe(false);
       expect(holderLabelMatchesPerson("USA", p)).toBe(false);
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+describe("dueLabel", () => {
+  it("speaks in today and tomorrow before it speaks in counts", () => {
+    expect(dueLabel("2026-09-14", "2026-09-14")).toBe("due back today");
+    expect(dueLabel("2026-09-15", "2026-09-14")).toBe("due back tomorrow");
+    expect(dueLabel("2026-09-18", "2026-09-14")).toBe("due back in 4 days");
+  });
+
+  it("counts lateness in whole days, singular at one", () => {
+    expect(dueLabel("2026-09-13", "2026-09-14")).toBe("1 day overdue");
+    expect(dueLabel("2026-09-10", "2026-09-14")).toBe("4 days overdue");
+  });
+});
+
+describe("summarizeFleet", () => {
+  const asset = (over: Partial<{ pooled: boolean; status: string; location_stale: boolean }> = {}) => ({
+    pooled: true,
+    status: "available",
+    location_stale: false,
+    ...over,
+  });
+  const booking = (
+    over: Partial<{ status: ReservationStatus; days_overdue: number; end_date: string }> = {},
+  ) => ({
+    status: "reserved" as ReservationStatus,
+    days_overdue: 0,
+    end_date: "2026-09-20",
+    ...over,
+  });
+
+  it("counts only the pool as bookable", () => {
+    const summary = summarizeFleet({
+      assets: [
+        asset(),
+        asset({ pooled: false }),
+        asset({ status: "retired" }),
+        asset({ status: "in_repair" }),
+      ],
+      reservations: [],
+      today: "2026-09-14",
+    });
+    expect(summary.pool).toBe(1);
+  });
+
+  it("ignores bookings that hold nothing", () => {
+    const summary = summarizeFleet({
+      assets: [],
+      reservations: [
+        booking({ status: "cancelled", end_date: "2026-09-15" }),
+        booking({ status: "returned", end_date: "2026-09-15" }),
+        booking({ status: "waitlisted", end_date: "2026-09-15" }),
+      ],
+      today: "2026-09-14",
+    });
+    expect(summary).toMatchObject({ out: 0, overdue: 0, dueSoon: 0 });
+  });
+
+  it("separates overdue from due-soon rather than counting a booking twice", () => {
+    const summary = summarizeFleet({
+      assets: [],
+      reservations: [
+        booking({ status: "picked_up", days_overdue: 3, end_date: "2026-09-10" }),
+        booking({ status: "picked_up", end_date: "2026-09-16" }),
+        // Beyond the week, so it is out but not yet due back.
+        booking({ status: "reserved", end_date: "2026-10-30" }),
+      ],
+      today: "2026-09-14",
+    });
+    expect(summary.out).toBe(2);
+    expect(summary.overdue).toBe(1);
+    expect(summary.dueSoon).toBe(1);
+  });
+
+  it("counts every unit whose location has gone unconfirmed", () => {
+    const summary = summarizeFleet({
+      assets: [asset({ location_stale: true }), asset({ pooled: false, location_stale: true }), asset()],
+      reservations: [],
+      today: "2026-09-14",
+    });
+    // Staleness is about the register, not the pool: an assigned unit nobody
+    // has confirmed is exactly as lost as a pooled one.
+    expect(summary.stale).toBe(2);
   });
 });
