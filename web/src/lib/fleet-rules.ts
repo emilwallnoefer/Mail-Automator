@@ -310,11 +310,57 @@ export function closureStatusFor(status: ReservationStatus): "returned" | "cance
 }
 
 /**
+ * Which layer of the calendar a booking belongs to.
+ *
+ * The grid draws two: live bookings, which hold the asset, and finished ones,
+ * which answer "who had this in March". `showPast` hides the second layer.
+ *
+ * The order of these checks is the safety property. A booking that is still
+ * holding the asset is ALWAYS "live", whatever `showPast` says — hiding one
+ * would draw a booked unit as free and let somebody book on top of it. Only a
+ * completed booking can be hidden.
+ */
+export function calendarLayerFor(
+  status: ReservationStatus,
+  showPast: boolean,
+): "live" | "history" | null {
+  if (isBlocking(status)) return "live";
+  if (status === "returned") return showPast ? "history" : null;
+  return null; // cancelled and waitlisted hold nothing and are never drawn
+}
+
+/**
  * The last day the material is due back: the final booked day itself.
  * Everything overdue-related keys off this one definition.
  */
 export function dueDateOf(span: Pick<ReservationSpan, "end_date">): string {
   return span.end_date;
+}
+
+/**
+ * The last day a booking actually occupied the asset, for DISPLAY.
+ *
+ * A booking normally runs to its end date. When the material came back early,
+ * it stops on the day it was returned: the unit was back on the shelf for the
+ * rest of the booked span, and drawing it as still held made the board look
+ * fuller than the fleet was — the exact failure the spreadsheet had. Those days
+ * were already bookable (a returned booking blocks nothing); only the picture
+ * was wrong.
+ *
+ * Two things this deliberately does NOT do:
+ *
+ *  - It never runs past `end_date`. A late return is shown by the overdue
+ *    marking, not by stretching the booking over days it was never booked for.
+ *  - It is not `dueDateOf`. The due date is what lateness and reminders are
+ *    measured against and must stay the day that was promised, whatever
+ *    actually happened.
+ */
+export function occupiedUntil(span: ReservationSpan): string {
+  if (span.status !== "returned" || !span.returned_on) return span.end_date;
+  // Never invert the span: a returned_on before the start would otherwise draw
+  // a booking that ends before it begins.
+  if (span.returned_on < span.start_date) return span.start_date;
+  return span.returned_on < span.end_date ? span.returned_on : span.end_date;
 }
 
 /**

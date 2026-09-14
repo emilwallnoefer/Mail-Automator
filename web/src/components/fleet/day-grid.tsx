@@ -2,13 +2,14 @@
 
 import { memo, useCallback, useMemo } from "react";
 import {
+  calendarLayerFor,
   DAY_MS,
   daysBetween,
   describeDays,
   formatDay,
   holderRgb,
-  isBlocking,
   monthBands,
+  occupiedUntil,
   parseDateKey,
   type DayMeta,
 } from "@/lib/fleet-rules";
@@ -54,6 +55,14 @@ type DayGridProps = {
   /** Days ahead the viewer is allowed to book, from their reliability score. */
   horizonDays: number;
   selection: DaySelection;
+  /**
+   * Whether finished bookings are drawn behind the live ones.
+   *
+   * Only ever hides COMPLETED bookings. A booking that still holds the asset
+   * stays on the grid whatever this is set to — hiding one would draw a booked
+   * unit as free, which is the one thing this calendar must never do.
+   */
+  showPast: boolean;
   onSelect: (selection: DaySelection) => void;
   onOpenReservation: (reservation: FleetReservation) => void;
 };
@@ -80,6 +89,7 @@ export function DayGrid({
   today,
   horizonDays,
   selection,
+  showPast,
   onSelect,
   onOpenReservation,
 }: DayGridProps) {
@@ -105,13 +115,13 @@ export function DayGrid({
     const live = new Map<string, FleetReservation>();
     const history = new Map<string, FleetReservation>();
     for (const reservation of reservations) {
-      const target = isBlocking(reservation.status)
-        ? live
-        : reservation.status === "returned"
-          ? history
-          : null;
-      if (!target) continue; // cancelled and waitlisted hold nothing
-      const length = daysBetween(reservation.start_date, reservation.end_date);
+      const layer = calendarLayerFor(reservation.status, showPast);
+      // Cancelled and waitlisted hold nothing; finished bookings drop out here
+      // while past bookings are hidden, so they cost no work either.
+      if (!layer) continue;
+      const target = layer === "live" ? live : history;
+      // Stops on the day it actually came back, when that was early.
+      const length = daysBetween(reservation.start_date, occupiedUntil(reservation));
       const startMs = parseDateKey(reservation.start_date).getTime();
       for (let i = 0; i <= length; i += 1) {
         const d = new Date(startMs + i * DAY_MS);
@@ -119,7 +129,7 @@ export function DayGrid({
       }
     }
     return { live, history };
-  }, [reservations]);
+  }, [reservations, showPast]);
 
   return (
     <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/[0.03]">

@@ -20,6 +20,20 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    // Distinct from the "2026-09-14" Bunker entry below: the popup is keyed by
+    // this string in localStorage, so reusing it would hide this release from
+    // everyone who already saw that one.
+    version: "2026-09-14-fleet",
+    date: "Sep 14, 2026",
+    title: "Fleet is faster, and the calendar can hide old bookings",
+    highlights: [
+      "Booking, picking up and bringing back material is roughly four times quicker.",
+      "New “Past bookings” tick box above the calendar — untick it to hide finished bookings.",
+      "Your choice is remembered on this device.",
+      "Material returned early now ends on the day it came back, instead of running to the booked date.",
+    ],
+  },
+  {
     version: "2026-09-14",
     date: "Sep 14, 2026",
     title: "Bunker is now a Lausanne flight site",
