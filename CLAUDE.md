@@ -33,6 +33,12 @@ Tests (run from `web/`): `npm run test` — Vitest unit suite (`src/**/*.test.ts
 
 `.github/workflows/security-baseline.yml` is the only CI job. On every PR touching `web/**` it runs `npm ci`, `npm run lint`, then `npm audit --omit=dev --audit-level=high`. That last gate fails the **whole PR** on any high-severity advisory in a production dependency — including PRs that only touch markdown. A red check on an unrelated PR usually means the gate is failing on `main`, not that the PR broke something.
 
+The same job also runs **daily at 06:00 UTC against `main`** (plus `workflow_dispatch`), so an advisory published against a version already shipping surfaces as its own failed run rather than on the next unrelated PR. If that scheduled run is red, fix it before anything else — every open PR is red until you do.
+
+**Next.js is kept on the latest release, always.** It is pinned exactly in `web/package.json` (no `^`), and Dependabot proposes the bump weekly in a `next` group that carries `eslint-config-next` and `@next/*` with it — the two are version-locked, so never merge them apart. Review and merge that PR promptly rather than letting it sit; a stale pin is how the audit gate goes red. Dependabot also has security updates and vulnerability alerts enabled on the repo, so an advisory against the pinned version opens a PR on its own.
+
+Dependabot writes the lockfile with its own npm, which may not be npm 10. If one of its PRs fails `npm ci` with `Missing: @emnapi/core@… from lock file`, don't debug the dependency — check the branch out and regenerate the lock per the first rule below.
+
 Two rules when touching `web/package.json`:
 
 - **Regenerate the lockfile with npm 10**, not whatever npm you have locally: `npx -y npm@10 install --package-lock-only`. The runner's Node 22 ships npm 10, and the two majors resolve nested optional platform packages differently (`@img/sharp-wasm32` + `@rolldown/binding-wasm32-wasi` both want `@emnapi/*`, one via a range and one via an exact pin). A lock written by npm 11 installs fine on macOS and then fails `npm ci` on the runner with `Missing: @emnapi/core@… from lock file`. Validate before pushing with `npx -y npm@10 ci --dry-run` against a copy of `package.json` + `package-lock.json`.
