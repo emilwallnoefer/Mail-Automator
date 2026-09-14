@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   checkReservation,
+  closureStatusFor,
   computeReliability,
   dayRange,
   daysBetween,
@@ -669,6 +670,41 @@ describe("what belongs in the booking calendar", () => {
   it("excludes pooled units nobody could take", () => {
     expect(isBookable({ pooled: true, status: "in_repair" })).toBe(false);
     expect(isBookable({ pooled: true, status: "retired" })).toBe(false);
+  });
+});
+
+
+describe("closing a booking when material leaves or rejoins the pool", () => {
+  it("records material that was physically out as returned", () => {
+    expect(closureStatusFor("picked_up")).toBe("returned");
+  });
+
+  it("cancels a booking nobody ever collected", () => {
+    expect(closureStatusFor("reserved")).toBe("cancelled");
+  });
+
+  it("leaves already-closed bookings alone", () => {
+    expect(closureStatusFor("returned")).toBeNull();
+    expect(closureStatusFor("cancelled")).toBeNull();
+    expect(closureStatusFor("waitlisted")).toBeNull();
+  });
+
+  it("does not let an uncollected overdue booking score as a late return", () => {
+    // The scenario the split exists for: booked for last week, never picked up,
+    // and the asset is now being assigned to someone else. Cancelled, so the
+    // score sees nothing; had it closed as `returned` it would have been
+    // counted as a return seven days late.
+    const span: ReservationSpan = {
+      id: "r1",
+      asset_id: "a1",
+      user_id: "u1",
+      start_date: "2026-09-01",
+      end_date: "2026-09-03",
+      status: closureStatusFor("reserved")!,
+      returned_on: "2026-09-10",
+    };
+    expect(span.status).toBe("cancelled");
+    expect(computeReliability([span], "2026-09-10").score).toBe(PROVISIONAL_SCORE);
   });
 });
 
