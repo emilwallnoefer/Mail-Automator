@@ -1,17 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import {
-  dayRange,
+  DAY_MS,
   daysBetween,
+  describeDays,
   formatDay,
-  formatWeekday,
   holderRgb,
-  isWeekend,
-  isoWeekNumber,
   isBlocking,
+  monthBands,
   parseDateKey,
-  weekdayIndex,
+  type DayMeta,
 } from "@/lib/fleet-rules";
 import { AssetIcon } from "./asset-icon";
 import type { FleetAsset, FleetReservation } from "./types";
@@ -27,6 +26,21 @@ import type { FleetAsset, FleetReservation } from "./types";
  * Days rather than weeks because most missions are two or three days long.
  * Booking by the week meant a Tuesday–Wednesday job blocked the unit from
  * Monday to Sunday, so the board looked full while the shelf was not.
+ *
+ * ## Why this file is shaped for re-rendering
+ *
+ * The grid is the biggest thing on the screen — roughly 400 cells — and it sits
+ * under state that changes constantly: a keystroke in the search box, a click in
+ * the calendar. Two rules keep that cheap, and both are easy to undo by
+ * accident:
+ *
+ *  1. **Per-day facts are computed once per window**, by `describeDays`, not per
+ *     cell. Anything that depends only on the day belongs in `DayMeta`.
+ *  2. **Each row is a memoised component** that only sees its own slice of the
+ *     selection, so selecting days in one row does not re-render the others.
+ *     This works only while the callbacks from the parent are stable — they are
+ *     `useState` setters today. Passing an inline arrow instead would silently
+ *     make every row re-render again.
  */
 
 export type DaySelection = { assetId: string; startDate: string; endDate: string } | null;
@@ -55,6 +69,9 @@ type CellState = {
   inPast: boolean;
 };
 
+/** The part of a selection one row cares about: its own, or nothing. */
+type RowSelection = { startDate: string; endDate: string } | null;
+
 export function DayGrid({
   assets,
   reservations,
@@ -66,7 +83,15 @@ export function DayGrid({
   onSelect,
   onOpenReservation,
 }: DayGridProps) {
-  const days = useMemo(() => dayRange(windowStart, windowDays), [windowStart, windowDays]);
+  // Every per-day fact the grid needs, in one pass over the window. See the
+  // file header — this is the difference between ~400 date parses per render
+  // and ~28 per window.
+  const days = useMemo(
+    () => describeDays({ windowStart, windowDays, today, horizonDays }),
+    [windowStart, windowDays, today, horizonDays],
+  );
+
+  const months = useMemo(() => monthBands(days), [days]);
 
   // Index reservations by asset+day once, rather than scanning the list for
   // every one of the (assets × days) cells.
@@ -87,80 +112,14 @@ export function DayGrid({
           : null;
       if (!target) continue; // cancelled and waitlisted hold nothing
       const length = daysBetween(reservation.start_date, reservation.end_date);
+      const startMs = parseDateKey(reservation.start_date).getTime();
       for (let i = 0; i <= length; i += 1) {
-        const d = new Date(parseDateKey(reservation.start_date).getTime() + i * 86_400_000);
+        const d = new Date(startMs + i * DAY_MS);
         target.set(`${reservation.asset_id}|${d.toISOString().slice(0, 10)}`, reservation);
       }
     }
     return { live, history };
   }, [reservations]);
-
-  // Week rules: where a Monday falls inside the window, so the eye can group
-  // days without a separate header row per week.
-  const weekBoundaries = useMemo(() => new Set(days.filter((d, i) => i > 0 && weekdayIndex(d) === 0)), [days]);
-
-  // Month spans for the top header row.
-  const monthGroups = useMemo(() => {
-    const groups: Array<{ label: string; span: number }> = [];
-    for (const day of days) {
-      const d = parseDateKey(day);
-      const label = `${d.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} ${d.getUTCFullYear()}`;
-      const last = groups[groups.length - 1];
-      if (last && last.label === label) last.span += 1;
-      else groups.push({ label, span: 1 });
-    }
-    return groups;
-  }, [days]);
-
-  function stateFor(asset: FleetAsset, day: string, index: number): CellState {
-    const key = `${asset.id}|${day}`;
-    const liveReservation = byAssetDay.get(key) ?? null;
-    const reservation = liveReservation ?? historyByAssetDay.get(key) ?? null;
-    const isHistory = liveReservation === null && reservation !== null;
-    const inPast = day < today;
-    const beyondHorizon = daysBetween(today, day) > horizonDays;
-    const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
-    return {
-      reservation,
-      // Label the booking's own first day, or the window's left edge when the
-      // booking started before the visible range.
-      isHistory,
-      isRunStart: reservation ? reservation.start_date === day || index === 0 : false,
-      // A finished booking does not hold the asset, so a future day carrying one
-      // is still bookable. In practice history sits in the past anyway.
-      bookable: !liveReservation && !inPast && !beyondHorizon && assetBookable,
-      beyondHorizon,
-      inPast,
-    };
-  }
-
-  function handleCellClick(asset: FleetAsset, day: string, state: CellState) {
-    // A past booking is still worth opening — it answers "who had this, and
-    // when did it come back" — but it must not block booking a free future day.
-    if (state.reservation && (!state.isHistory || !state.bookable)) {
-      onOpenReservation(state.reservation);
-      return;
-    }
-    if (!state.bookable) return;
-
-    // Second click in the same row extends the run; anything else starts fresh.
-    if (selection && selection.assetId === asset.id) {
-      if (day === selection.startDate && day === selection.endDate) {
-        onSelect(null); // click the single selected cell again to clear
-        return;
-      }
-      const startDate = day < selection.startDate ? day : selection.startDate;
-      const endDate = day > selection.startDate ? day : selection.startDate;
-      onSelect({ assetId: asset.id, startDate, endDate });
-      return;
-    }
-    onSelect({ assetId: asset.id, startDate: day, endDate: day });
-  }
-
-  function isSelected(assetId: string, day: string): boolean {
-    if (!selection || selection.assetId !== assetId) return false;
-    return day >= selection.startDate && day <= selection.endDate;
-  }
 
   return (
     <div className="overflow-x-auto rounded-xl border border-glass/10 bg-glass/[0.03]">
@@ -174,7 +133,7 @@ export function DayGrid({
             >
               Material
             </th>
-            {monthGroups.map((group, i) => (
+            {months.map((group, i) => (
               <th
                 key={`${group.label}-${i}`}
                 scope="col"
@@ -186,108 +145,37 @@ export function DayGrid({
             ))}
           </tr>
           <tr>
-            {days.map((day) => {
-              const isToday = day === today;
-              const weekend = isWeekend(day);
-              const { week } = isoWeekNumber(day);
-              return (
-                <th
-                  key={day}
-                  scope="col"
-                  title={`KW ${week}`}
-                  className={`px-0.5 py-1.5 text-center text-[10px] font-medium ${
-                    weekBoundaries.has(day) ? "border-l border-glass/20" : ""
-                  } ${isToday ? "text-accent-soft" : weekend ? "text-ink-5/70" : "text-ink-3/75"}`}
-                >
-                  <span className="block">{formatWeekday(day)}</span>
-                  <span className="block text-[11px] font-normal tabular-nums">{parseDateKey(day).getUTCDate()}</span>
-                </th>
-              );
-            })}
+            {days.map((day) => (
+              <th
+                key={day.key}
+                scope="col"
+                title={`KW ${day.isoWeek}`}
+                className={`px-0.5 py-1.5 text-center text-[10px] font-medium ${
+                  day.weekBoundary ? "border-l border-glass/20" : ""
+                } ${day.isToday ? "text-accent-soft" : day.weekend ? "text-ink-5/70" : "text-ink-3/75"}`}
+              >
+                <span className="block">{day.weekdayLabel}</span>
+                <span className="block text-[11px] font-normal tabular-nums">{day.dayOfMonth}</span>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {assets.map((asset) => (
-            <tr key={asset.id}>
-              <th
-                scope="row"
-                className="sticky left-0 z-[1] border-t border-glass/[0.07] bg-surface/95 px-3 py-2 backdrop-blur"
-              >
-                <span className="flex items-center gap-1.5">
-                  <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
-                  <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
-                </span>
-                <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
-                  {asset.current_location ?? "Location unknown"}
-                </span>
-              </th>
-              {days.map((day, index) => {
-                const state = stateFor(asset, day, index);
-                const selected = isSelected(asset.id, day);
-                const reservation = state.reservation;
-                const overdue = reservation != null && reservation.days_overdue > 0;
-
-                return (
-                  <td
-                    key={day}
-                    className={`border-t border-glass/[0.07] p-px ${
-                      weekBoundaries.has(day) ? "border-l border-l-glass/20" : ""
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleCellClick(asset, day, state)}
-                      disabled={!state.bookable && !reservation}
-                      title={
-                        reservation
-                          ? `${asset.name} · ${formatDay(day)} · ${reservation.holder_name}${
-                              state.isHistory ? " (returned)" : ""
-                            }${reservation.unclaimed ? " (from the sheet — not claimed yet)" : ""}${
-                              reservation.destination ? ` · ${reservation.destination}` : ""
-                            }`
-                          : `${asset.name} · ${formatDay(day)}`
-                      }
-                      aria-label={
-                        reservation
-                          ? `${asset.name}, ${formatDay(day)}: ${
-                              state.isHistory ? "was with" : "booked by"
-                            } ${reservation.holder_name}`
-                          : `${asset.name}, ${formatDay(day)}: ${
-                              state.bookable ? "free, click to book" : "not bookable"
-                            }`
-                      }
-                      aria-pressed={selected}
-                      className={cellClass({
-                        state,
-                        selected,
-                        overdue,
-                        mine: reservation?.is_mine ?? false,
-                        unclaimed: reservation?.unclaimed ?? false,
-                        isHistory: state.isHistory,
-                        weekend: isWeekend(day),
-                        isToday: day === today,
-                      })}
-                      style={
-                        reservation && !selected
-                          ? cellStyle({
-                              holder: reservation.holder_name,
-                              isHistory: state.isHistory,
-                              unclaimed: reservation.unclaimed,
-                              overdue,
-                            })
-                          : undefined
-                      }
-                    >
-                      {reservation && state.isRunStart ? (
-                        <span className="pointer-events-none absolute left-0.5 z-[1] whitespace-nowrap text-[10px] font-medium">
-                          {reservation.is_mine ? "You" : firstNameOf(reservation.holder_name)}
-                        </span>
-                      ) : null}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
+            <AssetRow
+              key={asset.id}
+              asset={asset}
+              days={days}
+              byAssetDay={byAssetDay}
+              historyByAssetDay={historyByAssetDay}
+              rowSelection={
+                selection && selection.assetId === asset.id
+                  ? { startDate: selection.startDate, endDate: selection.endDate }
+                  : null
+              }
+              onSelect={onSelect}
+              onOpenReservation={onOpenReservation}
+            />
           ))}
         </tbody>
       </table>
@@ -298,6 +186,166 @@ export function DayGrid({
     </div>
   );
 }
+
+/**
+ * One asset's row.
+ *
+ * Memoised on purpose: `rowSelection` is null for every row but the one being
+ * selected, so a click in the calendar re-renders one row instead of all of
+ * them. `days`, the two index maps and the two callbacks are all referentially
+ * stable between renders, so the comparison actually holds.
+ */
+const AssetRow = memo(function AssetRow({
+  asset,
+  days,
+  byAssetDay,
+  historyByAssetDay,
+  rowSelection,
+  onSelect,
+  onOpenReservation,
+}: {
+  asset: FleetAsset;
+  days: DayMeta[];
+  byAssetDay: Map<string, FleetReservation>;
+  historyByAssetDay: Map<string, FleetReservation>;
+  rowSelection: RowSelection;
+  onSelect: (selection: DaySelection) => void;
+  onOpenReservation: (reservation: FleetReservation) => void;
+}) {
+  const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
+
+  const stateFor = useCallback(
+    (day: DayMeta, index: number): CellState => {
+      const key = `${asset.id}|${day.key}`;
+      const liveReservation = byAssetDay.get(key) ?? null;
+      const reservation = liveReservation ?? historyByAssetDay.get(key) ?? null;
+      const isHistory = liveReservation === null && reservation !== null;
+      return {
+        reservation,
+        // Label the booking's own first day, or the window's left edge when the
+        // booking started before the visible range.
+        isHistory,
+        isRunStart: reservation ? reservation.start_date === day.key || index === 0 : false,
+        // A finished booking does not hold the asset, so a future day carrying one
+        // is still bookable. In practice history sits in the past anyway.
+        bookable: !liveReservation && !day.inPast && !day.beyondHorizon && assetBookable,
+        beyondHorizon: day.beyondHorizon,
+        inPast: day.inPast,
+      };
+    },
+    [asset.id, assetBookable, byAssetDay, historyByAssetDay],
+  );
+
+  const handleCellClick = useCallback(
+    (day: string, state: CellState) => {
+      // A past booking is still worth opening — it answers "who had this, and
+      // when did it come back" — but it must not block booking a free future day.
+      if (state.reservation && (!state.isHistory || !state.bookable)) {
+        onOpenReservation(state.reservation);
+        return;
+      }
+      if (!state.bookable) return;
+
+      // Second click in the same row extends the run; anything else starts fresh.
+      if (rowSelection) {
+        if (day === rowSelection.startDate && day === rowSelection.endDate) {
+          onSelect(null); // click the single selected cell again to clear
+          return;
+        }
+        const startDate = day < rowSelection.startDate ? day : rowSelection.startDate;
+        const endDate = day > rowSelection.startDate ? day : rowSelection.startDate;
+        onSelect({ assetId: asset.id, startDate, endDate });
+        return;
+      }
+      onSelect({ assetId: asset.id, startDate: day, endDate: day });
+    },
+    [asset.id, rowSelection, onSelect, onOpenReservation],
+  );
+
+  return (
+    <tr>
+      <th
+        scope="row"
+        className="sticky left-0 z-[1] border-t border-glass/[0.07] bg-surface/95 px-3 py-2 backdrop-blur"
+      >
+        <span className="flex items-center gap-1.5">
+          <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
+          <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
+        </span>
+        <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
+          {asset.current_location ?? "Location unknown"}
+        </span>
+      </th>
+      {days.map((day, index) => {
+        const state = stateFor(day, index);
+        const selected =
+          rowSelection != null && day.key >= rowSelection.startDate && day.key <= rowSelection.endDate;
+        const reservation = state.reservation;
+        const overdue = reservation != null && reservation.days_overdue > 0;
+
+        return (
+          <td
+            key={day.key}
+            className={`border-t border-glass/[0.07] p-px ${
+              day.weekBoundary ? "border-l border-l-glass/20" : ""
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => handleCellClick(day.key, state)}
+              disabled={!state.bookable && !reservation}
+              title={
+                reservation
+                  ? `${asset.name} · ${formatDay(day.key)} · ${reservation.holder_name}${
+                      state.isHistory ? " (returned)" : ""
+                    }${reservation.unclaimed ? " (from the sheet — not claimed yet)" : ""}${
+                      reservation.destination ? ` · ${reservation.destination}` : ""
+                    }`
+                  : `${asset.name} · ${formatDay(day.key)}`
+              }
+              aria-label={
+                reservation
+                  ? `${asset.name}, ${formatDay(day.key)}: ${
+                      state.isHistory ? "was with" : "booked by"
+                    } ${reservation.holder_name}`
+                  : `${asset.name}, ${formatDay(day.key)}: ${
+                      state.bookable ? "free, click to book" : "not bookable"
+                    }`
+              }
+              aria-pressed={selected}
+              className={cellClass({
+                state,
+                selected,
+                overdue,
+                mine: reservation?.is_mine ?? false,
+                unclaimed: reservation?.unclaimed ?? false,
+                isHistory: state.isHistory,
+                weekend: day.weekend,
+                isToday: day.isToday,
+              })}
+              style={
+                reservation && !selected
+                  ? cellStyle({
+                      holder: reservation.holder_name,
+                      isHistory: state.isHistory,
+                      unclaimed: reservation.unclaimed,
+                      overdue,
+                    })
+                  : undefined
+              }
+            >
+              {reservation && state.isRunStart ? (
+                <span className="pointer-events-none absolute left-0.5 z-[1] whitespace-nowrap text-[10px] font-medium">
+                  {reservation.is_mine ? "You" : firstNameOf(reservation.holder_name)}
+                </span>
+              ) : null}
+            </button>
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
 
 /**
  * The colour of a booked cell: the hue is the person, the weight is the state.
