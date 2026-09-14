@@ -25,6 +25,7 @@ import {
   toDateKey,
 } from "@/lib/fleet-rules";
 import { buildDemoBoard } from "@/lib/fleet-demo";
+import { parseBoardWindow, type BoardWindow } from "./window";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -212,50 +213,49 @@ async function resolveViewer(): Promise<Viewer | null> {
   };
 }
 
+/**
+ * Builds the whole board for one viewer.
+ *
+ * `autoLink` is the onboarding step that matches a person to their legacy
+ * holder name. It belongs on a page load — it is how a returning user or a
+ * brand-new signup lands on a board that already knows them — but NOT on the
+ * refresh that follows a booking: the answer cannot have changed because you
+ * checked a drone back in, and it costs a round trip to ask.
+ */
+async function buildBoard(
+  admin: Admin,
+  viewer: Viewer,
+  boardWindow: BoardWindow,
+  opts: { autoLink: boolean },
+) {
+  const auto = opts.autoLink
+    ? await autoLinkHolder(admin, { id: viewer.id, name: viewer.name, email: viewer.email })
+    : null;
+
+  const board = await fetchFleetBoard(admin, {
+    viewerId: viewer.id,
+    viewerName: viewer.name,
+    viewerEmail: viewer.email,
+    includeArchived: viewer.isAdmin,
+    autoLinked:
+      auto && auto.linked ? { label: auto.label, bookings: auto.bookings, assets: auto.assets } : null,
+    windowStart: boardWindow.windowStart,
+    windowDays: boardWindow.windowDays,
+  });
+  return { ...board, is_admin: viewer.isAdmin };
+}
+
 export async function GET(request: Request) {
   const viewer = await resolveViewer();
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const url = new URL(request.url);
-  const rawStart = url.searchParams.get("start");
-  const rawDays = Number(url.searchParams.get("days") ?? DEFAULT_WINDOW_DAYS);
-
-  let windowStart: string | undefined;
-  if (rawStart) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawStart)) {
-      return NextResponse.json({ error: "Invalid start date." }, { status: 400 });
-    }
-    // Round-trip through the parser so an impossible date (2026-02-31) is
-    // normalised rather than reaching the query as-is.
-    windowStart = toDateKey(parseDateKey(rawStart));
-  }
-  // Capped at a quarter: the grid renders one column per day.
-  const windowDays = Number.isFinite(rawDays) ? Math.min(92, Math.max(7, Math.trunc(rawDays))) : DEFAULT_WINDOW_DAYS;
+  const boardWindow = parseBoardWindow(request, DEFAULT_WINDOW_DAYS);
+  if (!boardWindow) return NextResponse.json({ error: "Invalid start date." }, { status: 400 });
+  const { windowStart, windowDays } = boardWindow;
 
   try {
     const admin = createAdminClient();
-
-    // Match the person to their legacy name before rendering, so a returning
-    // user or a brand-new signup lands on a board that already knows them. Only
-    // fires while they have no alias, and only on an unambiguous match.
-    const auto = await autoLinkHolder(admin, {
-      id: viewer.id,
-      name: viewer.name,
-      email: viewer.email,
-    });
-
-    const board = await fetchFleetBoard(admin, {
-      viewerId: viewer.id,
-      viewerName: viewer.name,
-      viewerEmail: viewer.email,
-      includeArchived: viewer.isAdmin,
-      autoLinked: auto.linked
-        ? { label: auto.label, bookings: auto.bookings, assets: auto.assets }
-        : null,
-      windowStart,
-      windowDays,
-    });
-    return NextResponse.json({ ...board, is_admin: viewer.isAdmin });
+    return NextResponse.json(await buildBoard(admin, viewer, boardWindow, { autoLink: true }));
   } catch (error) {
     // The fleet tables are created by a hand-applied migration
     // (supabase/2026-09-01-fleet-management.sql). Until it has been run, serve a
@@ -327,42 +327,95 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const today = todayInZurich();
 
+  let result: NextResponse;
   try {
-    switch (payload.action) {
-      case "reserve":
-        return await handleReserve(admin, viewer, payload, today);
-      case "cancel":
-        return await handleCancel(admin, viewer, payload);
-      case "check_out":
-        return await handleCheckOut(admin, viewer, payload);
-      case "check_in":
-        return await handleCheckIn(admin, viewer, payload, today);
-      case "move":
-        return await handleMove(admin, viewer, payload);
-      case "confirm_location":
-        return await handleConfirmLocation(admin, viewer, payload);
-      case "set_status":
-        return await handleSetStatus(admin, viewer, payload);
-      case "claim_holder":
-        return await handleClaimHolder(admin, viewer, payload);
-      case "set_reminders":
-        return await handleSetReminders(admin, viewer, payload);
-      case "assign":
-        return await handleAssign(admin, viewer, payload);
-      case "return_to_pool":
-        return await handleReturnToPool(admin, viewer, payload);
-      case "create_asset":
-        return await handleCreateAsset(admin, viewer, payload);
-      case "update_asset":
-        return await handleUpdateAsset(admin, viewer, payload);
-      case "archive_asset":
-        return await handleArchiveAsset(admin, viewer, payload);
-      case "register_member":
-        return await handleRegisterMember(admin, viewer);
-    }
+    result = await dispatch(admin, viewer, payload, today);
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
     return NextResponse.json({ error: "Could not complete that action." }, { status: 500 });
+  }
+
+  // The write is done. Hand back the refreshed board with it, so the client does
+  // not have to ask for one — that second request is a whole extra function
+  // invocation and its own `auth.getUser()` round trip, on top of re-reading
+  // everything this request already has a warm connection for.
+  if (!result.ok) return result;
+  return await withFreshBoard(result, admin, viewer, request, payload.action);
+}
+
+/**
+ * Attaches a freshly built board to a successful write response.
+ *
+ * The write has already happened by this point, so a failure here must never
+ * turn into a failed action: the original response goes back untouched and the
+ * client falls back to fetching the board itself.
+ */
+async function withFreshBoard(
+  result: NextResponse,
+  admin: Admin,
+  viewer: Viewer,
+  request: Request,
+  action: string,
+): Promise<NextResponse> {
+  let body: Record<string, unknown>;
+  try {
+    body = (await result.clone().json()) as Record<string, unknown>;
+  } catch {
+    return result;
+  }
+
+  try {
+    // A malformed window must not cost anyone their booking, so an unparseable
+    // one falls back to the default window rather than failing the request.
+    const boardWindow = parseBoardWindow(request, DEFAULT_WINDOW_DAYS) ?? {
+      windowDays: DEFAULT_WINDOW_DAYS,
+    };
+    const board = await buildBoard(admin, viewer, boardWindow, { autoLink: false });
+    return NextResponse.json({ ...body, board });
+  } catch (error) {
+    console.error(`POST /api/fleet (${action}) succeeded but the board refresh failed`, error);
+    return NextResponse.json(body);
+  }
+}
+
+/** Routes one validated payload to its handler. */
+async function dispatch(
+  admin: Admin,
+  viewer: Viewer,
+  payload: z.infer<typeof postSchema>,
+  today: string,
+): Promise<NextResponse> {
+  switch (payload.action) {
+    case "reserve":
+      return await handleReserve(admin, viewer, payload, today);
+    case "cancel":
+      return await handleCancel(admin, viewer, payload);
+    case "check_out":
+      return await handleCheckOut(admin, viewer, payload);
+    case "check_in":
+      return await handleCheckIn(admin, viewer, payload, today);
+    case "move":
+      return await handleMove(admin, viewer, payload);
+    case "confirm_location":
+      return await handleConfirmLocation(admin, viewer, payload);
+    case "set_status":
+      return await handleSetStatus(admin, viewer, payload);
+    case "claim_holder":
+      return await handleClaimHolder(admin, viewer, payload);
+    case "set_reminders":
+      return await handleSetReminders(admin, viewer, payload);
+    case "assign":
+      return await handleAssign(admin, viewer, payload);
+    case "return_to_pool":
+      return await handleReturnToPool(admin, viewer, payload);
+    case "create_asset":
+      return await handleCreateAsset(admin, viewer, payload);
+    case "update_asset":
+      return await handleUpdateAsset(admin, viewer, payload);
+    case "archive_asset":
+      return await handleArchiveAsset(admin, viewer, payload);
+    case "register_member":
+      return await handleRegisterMember(admin, viewer);
   }
 }
 
@@ -377,11 +430,18 @@ async function handleReserve(
   const startDate = toDateKey(parseDateKey(payload.start_date));
   const endDate = toDateKey(parseDateKey(payload.end_date));
 
-  const { data: asset, error: assetError } = await admin
-    .from("fleet_assets")
-    .select("id, name, status, active, current_location")
-    .eq("id", payload.asset_id)
-    .maybeSingle();
+  // Three independent reads, so they go together: none of them needs an answer
+  // from either of the others, and run one after another they cost three round
+  // trips where one will do.
+  const [{ data: asset, error: assetError }, reliability, existing] = await Promise.all([
+    admin
+      .from("fleet_assets")
+      .select("id, name, status, active, current_location")
+      .eq("id", payload.asset_id)
+      .maybeSingle(),
+    fetchReliability(admin, viewer.id, today),
+    fetchAssetSpans(admin, payload.asset_id),
+  ]);
   if (assetError) throw new Error(assetError.message);
   if (!asset || !asset.active) {
     return NextResponse.json({ error: "That asset no longer exists." }, { status: 404 });
@@ -393,8 +453,6 @@ async function handleReserve(
     );
   }
 
-  const reliability = await fetchReliability(admin, viewer.id, today);
-  const existing = await fetchAssetSpans(admin, payload.asset_id);
   const check = checkReservation({
     startDate,
     endDate,
@@ -486,14 +544,35 @@ function reserveErrorMessage(
   }
 }
 
+/**
+ * Loads a reservation together with the asset it points at.
+ *
+ * The asset comes back through the `asset_id` foreign key rather than as a
+ * second query: check-out and check-in both need the current location, and
+ * asking for it separately cost a round trip for data the database can hand
+ * over in the same one.
+ */
 async function loadReservation(admin: Admin, id: string) {
   const { data, error } = await admin
     .from("fleet_reservations")
-    .select("id, asset_id, user_id, start_date, end_date, status, destination")
+    .select(
+      "id, asset_id, user_id, start_date, end_date, status, destination, fleet_assets(current_location, home_location)",
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data;
+  if (!data) return null;
+
+  // PostgREST nests the embedded row under the table name; a many-to-one
+  // embed is a single object, but type it defensively either way. The raw key
+  // is dropped so callers have exactly one way to reach the asset.
+  const { fleet_assets: embedded, ...reservation } = data as typeof data & { fleet_assets?: unknown };
+  const asset = (Array.isArray(embedded) ? embedded[0] : embedded) as
+    | { current_location: string | null; home_location: string | null }
+    | null
+    | undefined;
+
+  return { ...reservation, asset: asset ?? null };
 }
 
 async function handleCancel(admin: Admin, viewer: Viewer, payload: z.infer<typeof cancelSchema>) {
@@ -518,16 +597,18 @@ async function handleCancel(admin: Admin, viewer: Viewer, payload: z.infer<typeo
     .eq("id", payload.reservation_id);
   if (error) throw new Error(error.message);
 
-  await recordAssetEvent(admin, {
-    asset_id: reservation.asset_id,
-    reservation_id: reservation.id,
-    kind: "cancelled",
-    actor_user_id: viewer.id,
-  });
-
   // Cancelling frees the week: promote the top of the waitlist, which is
-  // ordered by reliability score.
-  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_date);
+  // ordered by reliability score. That and the audit event are independent of
+  // each other, so they go together.
+  const [, promoted] = await Promise.all([
+    recordAssetEvent(admin, {
+      asset_id: reservation.asset_id,
+      reservation_id: reservation.id,
+      kind: "cancelled",
+      actor_user_id: viewer.id,
+    }),
+    promoteWaitlist(admin, reservation.asset_id, reservation.start_date),
+  ]);
   return NextResponse.json({ ok: true, promoted });
 }
 
@@ -600,12 +681,7 @@ async function handleCheckOut(admin: Admin, viewer: Viewer, payload: z.infer<typ
     return NextResponse.json({ error: "Only a confirmed booking can be picked up." }, { status: 409 });
   }
 
-  const { data: asset } = await admin
-    .from("fleet_assets")
-    .select("current_location")
-    .eq("id", reservation.asset_id)
-    .maybeSingle();
-
+  const asset = reservation.asset;
   const destination = payload.location ?? reservation.destination ?? null;
 
   const [{ error: resError }, { error: assetError }] = await Promise.all([
@@ -654,12 +730,7 @@ async function handleCheckIn(
     return NextResponse.json({ error: "That booking is already closed." }, { status: 409 });
   }
 
-  const { data: asset } = await admin
-    .from("fleet_assets")
-    .select("current_location, home_location")
-    .eq("id", reservation.asset_id)
-    .maybeSingle();
-
+  const asset = reservation.asset;
   const landingSpot = payload.location ?? asset?.home_location ?? asset?.current_location ?? null;
 
   const [{ error: resError }, { error: assetError }] = await Promise.all([
@@ -686,18 +757,22 @@ async function handleCheckIn(
   if (resError) throw new Error(resError.message);
   if (assetError) throw new Error(assetError.message);
 
-  await recordAssetEvent(admin, {
-    asset_id: reservation.asset_id,
-    reservation_id: reservation.id,
-    kind: "checked_in",
-    actor_user_id: viewer.id,
-    from_location: asset?.current_location ?? null,
-    to_location: landingSpot,
-    note: payload.note ?? null,
-  });
-
-  const promoted = await promoteWaitlist(admin, reservation.asset_id, reservation.start_date);
-  const score = await fetchReliability(admin, reservation.user_id, today);
+  // The audit event, the waitlist promotion and the score all follow from the
+  // update above but not from each other, so they go together rather than in
+  // series.
+  const [, promoted, score] = await Promise.all([
+    recordAssetEvent(admin, {
+      asset_id: reservation.asset_id,
+      reservation_id: reservation.id,
+      kind: "checked_in",
+      actor_user_id: viewer.id,
+      from_location: asset?.current_location ?? null,
+      to_location: landingSpot,
+      note: payload.note ?? null,
+    }),
+    promoteWaitlist(admin, reservation.asset_id, reservation.start_date),
+    fetchReliability(admin, reservation.user_id, today),
+  ]);
   return NextResponse.json({ ok: true, promoted, score });
 }
 
