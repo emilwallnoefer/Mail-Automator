@@ -26,6 +26,7 @@ import { AdminOnboardingPanel } from "@/components/admin-onboarding-panel";
 import { WeekStepper } from "@/components/week-stepper";
 import { FreshnessPill } from "@/components/freshness-pill";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
+import { useViewParam } from "@/lib/view-params";
 
 type AdminUser = {
   id: string;
@@ -95,6 +96,8 @@ const ADMIN_SECTIONS: Array<{ id: AdminSection; label: string; adminOnly: boolea
   { id: "security", label: "Security", adminOnly: true },
 ];
 
+const ADMIN_SECTION_IDS = ADMIN_SECTIONS.map((entry) => entry.id);
+
 const BUBBLES: Array<{ left: string; size: string; duration: string; delay: string }> = [
   { left: "7%", size: "8px", duration: "9.5s", delay: "0s" },
   { left: "24%", size: "7px", duration: "11s", delay: "-2.2s" },
@@ -143,7 +146,14 @@ function addDays(value: Date, delta: number) {
 }
 
 export function AdminPanel({ canManageUsers = true, initialUsers = null, initialOverview = null }: AdminPanelProps = {}) {
-  const [section, setSection] = useState<AdminSection>(canManageUsers ? "overview" : "time");
+  // Mirrored into `?section=` so a reload reopens the section the admin was on
+  // rather than snapping back to Overview. The HR snap-back below still has the
+  // last word, so a hand-typed admin-only section cannot be reached that way.
+  const [section, setSection] = useViewParam<AdminSection>(
+    "section",
+    ADMIN_SECTION_IDS,
+    canManageUsers ? "overview" : "time",
+  );
 
   const [users, setUsers] = useState<AdminUser[]>(initialUsers ?? []);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -226,7 +236,7 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
     if (!canManageUsers && section !== "time") {
       setSection("time");
     }
-  }, [canManageUsers, section]);
+  }, [canManageUsers, section, setSection]);
 
   const changeRole = useCallback(async (userId: string, next: UserRole | null) => {
     setRolePending((prev) => ({ ...prev, [userId]: true }));

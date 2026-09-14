@@ -2,7 +2,7 @@
 
 import { AnimatePresence, m } from "framer-motion";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { ChatWidget } from "@/components/chat-widget";
 import { MailComposerPanel } from "@/components/mail-composer/mail-composer-panel";
@@ -12,6 +12,7 @@ import { Notice } from "@/components/ui";
 import type { InitialSettingsData } from "@/lib/settings-queries";
 import type { AdminListedUser, AdminTimeOverview } from "@/lib/admin-queries";
 import { playUiSound } from "@/lib/ui-sounds";
+import { writeViewParams } from "@/lib/view-params";
 import { createClient } from "@/lib/supabase/client";
 import { LATEST_RELEASE } from "@/lib/release-notes";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
@@ -49,13 +50,20 @@ type DashboardShellProps = {
   initialAdminOverview?: AdminTimeOverview | null;
   /** SSR-prefetched Fleet board, so the calendar paints without a fetch. */
   initialFleet?: FleetBoardResponse | null;
+  /**
+   * Module to open on load, parsed server-side from `?module=`. It is what makes
+   * a reload (and the fleet reminder deep links) land on the view the user left,
+   * and it is resolved on the server so the right panel is in the first paint
+   * instead of flashing the workspace home. `null` = the workspace home.
+   */
+  initialModule?: ModuleKey | null;
 };
 
 import type { FleetBoardResponse } from "@/components/fleet/types";
 
-type ModuleKey = "mail" | "time" | "fleet" | "settings" | "admin";
+export type ModuleKey = "mail" | "time" | "fleet" | "settings" | "admin";
 
-const MODULE_KEYS: ModuleKey[] = ["mail", "time", "fleet", "settings", "admin"];
+export const MODULE_KEYS: ModuleKey[] = ["mail", "time", "fleet", "settings", "admin"];
 
 // One-time flag: the first-launch README prompt is for brand-new users only,
 // so it keys on "seen ever" rather than the deploy/version (which used to
@@ -136,11 +144,12 @@ export function DashboardShell({
   initialAdminUsers = null,
   initialAdminOverview = null,
   initialFleet = null,
+  initialModule = null,
 }: DashboardShellProps) {
-  const [showComposer, setShowComposer] = useState(false);
+  const [showComposer, setShowComposer] = useState(initialModule != null);
   const [beginAnimating, setBeginAnimating] = useState(false);
   const [activeModule, setActiveModule] = useState<ModuleKey>(
-    initialRole === "sales" || initialRole === "hr" ? "time" : "mail",
+    initialModule ?? (initialRole === "sales" || initialRole === "hr" ? "time" : "mail"),
   );
   const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
   const [roleSaving, setRoleSaving] = useState(false);
@@ -265,28 +274,34 @@ export function DashboardShell({
     }
   }, []);
 
-  // Deep link support: the fleet reminder emails link to /dashboard?module=fleet,
-  // so the recipient lands on the check-in screen instead of the workspace home.
-  // Runs once on mount and then strips the param, so a later in-app module switch
-  // is not fought by a stale URL.
+  // Mirror the open module into `?module=`, so a reload (or a shared link, or
+  // the fleet reminder mail's /dashboard?module=fleet) restores the same view
+  // instead of dropping the user back on the workspace home. `replaceState`
+  // keeps this out of the history stack: switching modules is not a navigation.
+  //
+  // `?section=` belongs to whichever panel is open (Admin, Settings), which owns
+  // it via `useViewParam`; `switchModule` below clears it when the module
+  // changes, so a section never leaks from one panel into another.
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("module");
-    if (!requested) return;
-    if (!MODULE_KEYS.includes(requested as ModuleKey)) return;
-    if (!availableModules.includes(requested as ModuleKey)) return;
-    setActiveModule(requested as ModuleKey);
-    setShowComposer(true);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("module");
-    window.history.replaceState({}, "", url.toString());
-    // Intentionally mount-only: this is a landing decision, not a sync.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    writeViewParams({ module: showComposer ? activeModule : null });
+  }, [activeModule, showComposer]);
+
+  // Every module switch goes through here. The `?section=` reset happens now,
+  // not in the sync effect above, because the incoming panel reads the URL while
+  // it renders — which is before any effect of this commit runs. Clearing it
+  // afterwards would wipe the section the new panel had just written.
+  const switchModule = useCallback(
+    (next: ModuleKey) => {
+      if (next !== activeModule) writeViewParams({ section: null });
+      setActiveModule(next);
+    },
+    [activeModule],
+  );
 
   useEffect(() => {
     if (availableModules.includes(activeModule)) return;
-    setActiveModule(availableModules[0]);
-  }, [activeModule, availableModules]);
+    switchModule(availableModules[0]);
+  }, [activeModule, availableModules, switchModule]);
 
   const bottomPopupVisible = showProgramReadmePrompt || showWhatsNew;
 
@@ -343,7 +358,7 @@ export function DashboardShell({
       if (updateError) throw updateError;
       setUserRole(nextRole);
       if (nextRole === "sales" || nextRole === "hr") {
-        setActiveModule("time");
+        switchModule("time");
       }
     } catch (err) {
       setRoleError((err as Error).message || "Could not save role.");
@@ -363,7 +378,7 @@ export function DashboardShell({
 
   function openModuleCard(module: ModuleKey) {
     if (activeModule !== module) playUiSound("switchWhoosh");
-    setActiveModule(module);
+    switchModule(module);
     handleBeginAutomating();
   }
 
@@ -383,7 +398,7 @@ export function DashboardShell({
           onSelectModule={(module) => {
             if (!availableModules.includes(module)) return;
             if (module !== activeModule) playUiSound("switchWhoosh");
-            setActiveModule(module);
+            switchModule(module);
             setShowComposer(true);
           }}
         />
@@ -609,7 +624,7 @@ export function DashboardShell({
             type="button"
             onClick={() => {
               playUiSound("switchWhoosh");
-              setActiveModule("settings");
+              switchModule("settings");
               setShowComposer(true);
               setSettingsReadmeOpenToken((prev) => prev + 1);
               dismissProgramReadmePrompt();

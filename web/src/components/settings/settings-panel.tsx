@@ -19,8 +19,9 @@ export function SettingsPanel({
   autoOpenProgramReadmeToken = 0,
   userRole = "eu_pilot",
   initialData = null,
+  initialSection = null,
 }: SettingsPanelProps) {
-  const s = useSettings(userRole, autoOpenProgramReadmeToken, initialData);
+  const s = useSettings(userRole, autoOpenProgramReadmeToken, initialData, initialSection);
 
   return (
     <section className="underwater-panel relative overflow-hidden rounded-2xl">
