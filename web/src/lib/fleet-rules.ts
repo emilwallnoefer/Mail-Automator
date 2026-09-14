@@ -310,6 +310,26 @@ export function closureStatusFor(status: ReservationStatus): "returned" | "cance
 }
 
 /**
+ * Which layer of the calendar a booking belongs to.
+ *
+ * The grid draws two: live bookings, which hold the asset, and finished ones,
+ * which answer "who had this in March". `showPast` hides the second layer.
+ *
+ * The order of these checks is the safety property. A booking that is still
+ * holding the asset is ALWAYS "live", whatever `showPast` says — hiding one
+ * would draw a booked unit as free and let somebody book on top of it. Only a
+ * completed booking can be hidden.
+ */
+export function calendarLayerFor(
+  status: ReservationStatus,
+  showPast: boolean,
+): "live" | "history" | null {
+  if (isBlocking(status)) return "live";
+  if (status === "returned") return showPast ? "history" : null;
+  return null; // cancelled and waitlisted hold nothing and are never drawn
+}
+
+/**
  * The last day the material is due back: the final booked day itself.
  * Everything overdue-related keys off this one definition.
  */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  calendarLayerFor,
   checkReservation,
   closureStatusFor,
   computeReliability,
@@ -17,6 +18,7 @@ import {
   HOLDER_COLORS,
   holderLabelMatchesPerson,
   holderRgb,
+  isBlocking,
   isBookable,
   isWeekend,
   isoWeekNumber,
@@ -335,6 +337,44 @@ describe("reservation spans", () => {
       existing: [],
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("which calendar layer a booking is drawn in", () => {
+  it("draws live bookings in the live layer", () => {
+    expect(calendarLayerFor("reserved", true)).toBe("live");
+    expect(calendarLayerFor("picked_up", true)).toBe("live");
+  });
+
+  it("draws finished bookings in the history layer", () => {
+    expect(calendarLayerFor("returned", true)).toBe("history");
+  });
+
+  it("hides finished bookings when past bookings are switched off", () => {
+    expect(calendarLayerFor("returned", false)).toBeNull();
+  });
+
+  it("NEVER hides a booking that still holds the asset", () => {
+    // The safety property. Hiding a live booking would draw a booked unit as
+    // free and let somebody book on top of it, so `showPast` must not reach
+    // these two statuses at all.
+    expect(calendarLayerFor("reserved", false)).toBe("live");
+    expect(calendarLayerFor("picked_up", false)).toBe("live");
+  });
+
+  it("never draws bookings that hold nothing", () => {
+    for (const showPast of [true, false]) {
+      expect(calendarLayerFor("cancelled", showPast)).toBeNull();
+      expect(calendarLayerFor("waitlisted", showPast)).toBeNull();
+    }
+  });
+
+  it("agrees with isBlocking about what is live", () => {
+    const statuses = ["reserved", "picked_up", "returned", "cancelled", "waitlisted"] as const;
+    for (const status of statuses) {
+      expect(calendarLayerFor(status, true) === "live").toBe(isBlocking(status));
+      expect(calendarLayerFor(status, false) === "live").toBe(isBlocking(status));
+    }
   });
 });
 

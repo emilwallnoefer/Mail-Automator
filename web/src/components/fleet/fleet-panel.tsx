@@ -46,6 +46,9 @@ const WINDOW_DAYS = 28;
 /** How far the ← / → buttons jump. */
 const WINDOW_STEP_DAYS = 14;
 
+/** Where the "show finished bookings" preference is remembered, per browser. */
+const SHOW_PAST_KEY = "fleet:show-past";
+
 type Tab = "calendar" | "mine" | "material" | "manage";
 
 export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardResponse | null }) {
@@ -60,6 +63,11 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
   const [selection, setSelection] = useState<DaySelection>(null);
   const [categoryFilter, setCategoryFilter] = useState<FleetAssetCategory | "all">("all");
   const [search, setSearch] = useState("");
+  // Finished bookings are shown by default — the calendar answering "who had
+  // this in March" is deliberate. The preference is remembered per browser
+  // because re-hiding them on every visit is the kind of small friction that
+  // makes people stop using a filter.
+  const [showPast, setShowPast] = useState(true);
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<FleetReservation | null>(null);
 
@@ -89,6 +97,26 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
     },
     [],
   );
+
+  useEffect(() => {
+    // Read after mount rather than in the initial state: this panel can be
+    // server-rendered, where localStorage does not exist, and seeding state
+    // from it directly would mismatch the first client render.
+    try {
+      if (window.localStorage.getItem(SHOW_PAST_KEY) === "0") setShowPast(false);
+    } catch {
+      // Private window, or storage blocked. The default stands.
+    }
+  }, []);
+
+  const toggleShowPast = useCallback((next: boolean) => {
+    setShowPast(next);
+    try {
+      window.localStorage.setItem(SHOW_PAST_KEY, next ? "1" : "0");
+    } catch {
+      // Not being able to remember it is not a reason to refuse the toggle.
+    }
+  }, []);
 
   useEffect(() => {
     if (initialBoard && initialBoard.window_start === windowStart) return;
@@ -398,6 +426,15 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
                 className="w-52 text-xs"
                 aria-label="Search material"
               />
+              <label className="flex cursor-pointer select-none items-center gap-1.5 rounded-lg border border-glass/15 bg-glass/8 px-2 py-1.5 text-xs text-ink-3 transition hover:text-ink">
+                <input
+                  type="checkbox"
+                  checked={showPast}
+                  onChange={(event) => toggleShowPast(event.target.checked)}
+                  className="h-3.5 w-3.5 cursor-pointer accent-accent"
+                />
+                Past bookings
+              </label>
             </div>
           </div>
 
@@ -409,6 +446,7 @@ export function FleetPanel({ initialBoard = null }: { initialBoard?: FleetBoardR
             today={board?.today ?? new Date().toISOString().slice(0, 10)}
             horizonDays={board?.is_admin ? 365 : (board?.me.horizonDays ?? 56)}
             selection={selection}
+            showPast={showPast}
             onSelect={setSelection}
             onOpenReservation={setDetail}
           />
