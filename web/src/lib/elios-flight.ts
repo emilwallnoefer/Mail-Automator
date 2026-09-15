@@ -28,7 +28,11 @@ export const DRONE_X = 68;
 /** The Elios 3 is a sphere in a cage — one radius covers the whole aircraft. */
 export const DRONE_RADIUS = 11;
 
-export const OBSTACLE_WIDTH = 34;
+/**
+ * Wide enough to draw a structure into rather than a bar — tube banks, brick
+ * courses and stiffener ribs all need room to read at this scale.
+ */
+export const OBSTACLE_WIDTH = 42;
 export const GAP_HEIGHT = 74;
 export const SCROLL_SPEED = 78;
 /** Horizontal distance between obstacle centres. */
