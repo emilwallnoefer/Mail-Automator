@@ -31,13 +31,8 @@ export function RoleGate({ email }: { email: string }) {
         <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">One last step</p>
         <h1 className="mt-2 text-lg font-semibold">You&rsquo;re in — almost</h1>
         <p className="mt-3 text-sm text-ink-3/85">
-          You&rsquo;re signed in as <span className="font-medium text-ink-2">{email}</span>. An admin just
-          needs to give you a role, which is what decides the modules you&rsquo;ll see.
-        </p>
-        <p className="mt-3 text-sm text-ink-3/85">They already know you&rsquo;re here.</p>
-        <p className="mt-3 text-sm text-ink-4/75">
-          Until then, consider this the waiting room. We&rsquo;d offer you a magazine, but all we have is
-          this. ☕
+          You&rsquo;re signed in as <span className="font-medium text-ink-2">{email}</span>. An admin needs
+          to give you a role before the workspace opens — they already know you&rsquo;re here.
         </p>
         <RoleGateGame />
         <form action="/logout" method="post" className="mt-5">

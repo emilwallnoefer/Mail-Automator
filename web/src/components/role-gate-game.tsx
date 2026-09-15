@@ -19,8 +19,8 @@ import {
 } from "@/lib/elios-flight";
 
 /**
- * "Confined Space Run" — the Elios 3 threads the gaps in a boiler, a sewer, a
- * ballast tank, while somebody waits for an admin to assign their role.
+ * "Fly where people can't" — the Elios 3 threads the gaps in a boiler, a sewer,
+ * a ballast tank, while somebody waits for an admin to assign their role.
  *
  * The only client component behind the gate, and deliberately inert: no fetch,
  * no Supabase, no session props, so it adds a game without adding anything
@@ -466,7 +466,7 @@ export function RoleGateGame() {
       <div
         role="button"
         tabIndex={0}
-        aria-label="Confined Space Run: fly the Elios 3 through the gaps. Press space to fly."
+        aria-label="Fly where people can't: fly the Elios 3 through the gaps. Press space to fly."
         onPointerDown={(e) => {
           // preventDefault stops the tap selecting text or starting a drag —
           // but it also suppresses the focus that would normally follow, which
@@ -488,22 +488,21 @@ export function RoleGateGame() {
           <div className="pointer-events-none absolute inset-0 grid place-items-center bg-surface/70 px-4 text-center backdrop-blur-[1px]">
             <div>
               <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
-                Confined Space Run
+                Fly where people can&rsquo;t
               </p>
-              <p className="mt-1 text-sm font-medium text-ink">
-                {hud.status === "crashed" ? `${hud.score} cleared — ${crashLine(hud.score)}` : "Fly the Elios 3"}
-              </p>
+              {hud.status === "crashed" ? (
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {hud.score} cleared — {crashLine(hud.score)}
+                </p>
+              ) : null}
               <p className="mt-1 text-[11px] text-ink-4/80">
-                {hud.status === "crashed" ? "Tap or press space to go again" : "Tap or press space to fly"}
+                Tap or press space to {hud.status === "crashed" ? "go again" : "fly"}
               </p>
             </div>
           </div>
         ) : null}
       </div>
-      <p className="mt-2 text-[11px] text-ink-4/75">
-        Mind the gaps.
-        {best !== null ? <span className="text-ink-5"> · Best {best}</span> : null}
-      </p>
+      {best !== null ? <p className="mt-2 text-[11px] text-ink-5">Best {best}</p> : null}
     </div>
   );
 }
