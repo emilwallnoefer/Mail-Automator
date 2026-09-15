@@ -22,6 +22,13 @@ const MailTrackingPanel = dynamic(
   () => import("@/components/mail-tracking-panel").then((m) => m.MailTrackingPanel),
   { ssr: false },
 );
+
+// Holder claims is an occasional clean-up screen, not something an admin opens
+// on every visit — same treatment as the insights charts: out of the panel chunk.
+const AdminHolderClaims = dynamic(
+  () => import("@/components/admin-holder-claims").then((m) => m.AdminHolderClaims),
+  { ssr: false },
+);
 import { AdminOnboardingPanel } from "@/components/admin-onboarding-panel";
 import { WeekStepper } from "@/components/week-stepper";
 import { FreshnessPill } from "@/components/freshness-pill";
@@ -64,6 +71,7 @@ type AdminSection =
   | "users"
   | "reminders"
   | "mail_ai"
+  | "holder_claims"
   | "audit"
   | "security";
 
@@ -92,6 +100,7 @@ const ADMIN_SECTIONS: Array<{ id: AdminSection; label: string; adminOnly: boolea
   { id: "users", label: "Users & roles", adminOnly: true },
   { id: "reminders", label: "Reminders", adminOnly: true },
   { id: "mail_ai", label: "Mail & AI", adminOnly: true },
+  { id: "holder_claims", label: "Holder claims", adminOnly: true },
   { id: "audit", label: "Audit log", adminOnly: true },
   { id: "security", label: "Security", adminOnly: true },
 ];
@@ -372,6 +381,8 @@ export function AdminPanel({ canManageUsers = true, initialUsers = null, initial
               {section === "reminders" && canManageUsers ? <AdminReminderControls /> : null}
 
               {section === "mail_ai" && canManageUsers ? <AdminMailSettings /> : null}
+
+              {section === "holder_claims" && canManageUsers ? <AdminHolderClaims /> : null}
 
               {section === "audit" && canManageUsers ? <AdminAuditLog /> : null}
 

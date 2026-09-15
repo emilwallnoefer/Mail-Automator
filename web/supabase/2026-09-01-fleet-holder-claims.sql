@@ -106,9 +106,15 @@ alter table public.fleet_settings force row level security;
 revoke all on table public.fleet_holder_aliases from anon, authenticated;
 revoke all on table public.fleet_settings from anon, authenticated;
 
--- Readable by everyone signed in (the UI shows who claimed what, and whether
--- reminders are live); written only by the service-role client behind
--- /api/fleet, which is what enforces "you may only claim your own name".
+-- Written only by the service-role client behind /api/fleet. Note that claiming
+-- a name is deliberately PERMISSIVE, not restricted to your own: the sheet this
+-- data came from spelled people inconsistently, so a strict name match would
+-- strand exactly the people the flow exists to onboard. The route records
+-- whether the label matched the claimant, mails the admins when it did not, and
+-- Admin → Holder claims lets an admin reassign or release the name. See
+-- 2026-09-15-fleet-claim-oversight.sql, which also withdraws the `select` grant
+-- below on fleet_holder_aliases — no client ever used it, and the oversight
+-- columns it adds are not everyone's business.
 grant select on table public.fleet_holder_aliases to authenticated;
 grant select on table public.fleet_settings to authenticated;
 

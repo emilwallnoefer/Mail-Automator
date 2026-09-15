@@ -22,6 +22,8 @@ const ACTION_LABELS: Record<string, string> = {
   mail_brief_model_change: "Mail model change",
   security_alerts_change: "Security alerts change",
   employee_record_view: "Employee record viewed",
+  fleet_holder_reassign: "Holder name reassigned",
+  fleet_holder_release: "Holder name released",
 };
 
 function roleText(value: unknown): string {
