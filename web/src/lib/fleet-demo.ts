@@ -31,7 +31,7 @@ const ASSETS: Array<{
   { name: "E3-SVA-330", serial: "E300SA23200330", category: "drone", model: "Elios 3", location: "Office Paudex", status: "out", confirmedDaysAgo: 2 },
   { name: "E3-SVA-257", serial: "E300SA23130257", category: "drone", model: "Elios 3", location: "Office Paudex", status: "available", confirmedDaysAgo: 5 },
   { name: "E3-SVA-318", serial: "E300SA23190318", category: "drone", model: "Elios 3", location: "US Office", status: "out", confirmedDaysAgo: 61 },
-  { name: "E3-DV1-2", serial: "E300D122160002", category: "drone", model: "Elios 3", location: "EMEA", status: "available", confirmedDaysAgo: 12 },
+  { name: "E3-DV1-2", serial: "E300D122160002", category: "drone", model: "Elios 3", location: "Pilots HQ Lausanne", status: "available", confirmedDaysAgo: 12 },
   { name: "E3-DV1-4", serial: "E300D122160004", category: "drone", model: "Elios 3", location: "US Office", status: "available", confirmedDaysAgo: null },
   { name: "E3-SV9-67", serial: "E300S922410067", category: "drone", model: "Elios 3", location: "FMI", status: "in_repair", confirmedDaysAgo: 9 },
   { name: "REx 0334", serial: "RV0-0334", category: "range_extender", model: "RangeX", location: "Bordeaux", status: "out", confirmedDaysAgo: 3 },

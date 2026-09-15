@@ -20,6 +20,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-15-fleet-lausanne",
+    date: "Sep 15, 2026",
+    title: "The pool has an address",
+    highlights: [
+      "Material that used to sit at “EMEA” now says Pilots HQ Lausanne — a place you can actually go and pick it up.",
+      "The old label is gone from every unit, so it is no longer offered when you set a location.",
+    ],
+  },
+  {
     // Several releases share 2026-09-14, so every id carries a suffix: the
     // popup is keyed by this string in localStorage, and a reused one would
     // hide the release from everyone who already saw the other.
