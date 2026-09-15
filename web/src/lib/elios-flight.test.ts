@@ -1,36 +1,161 @@
 import { describe, expect, it } from "vitest";
 import {
-  CONFINED_SPACES,
   DRONE_RADIUS,
+  DRONE_X,
+  EDGE_MARGIN,
   FLAP_VELOCITY,
-  GAP_HEIGHT,
   MAX_FALL_SPEED,
-  MIN_GAP_MARGIN,
-  OBSTACLE_WIDTH,
+  MIN_PASSAGE,
+  OBSTACLE_KINDS,
   WORLD_HEIGHT,
+  buildObstacle,
+  circleHitsSolid,
   createGame,
   crashLine,
+  distanceToSegment,
   flap,
-  gapYFromDraw,
   hitsCeiling,
   hitsGround,
   hitsObstacle,
   isNewBest,
+  kindFromDraw,
   parseStoredBest,
-  spaceFromDraw,
+  pointInPolygon,
   stepGame,
   type GameState,
+  type Obstacle,
+  type ObstacleKind,
   type StepInput,
 } from "@/lib/elios-flight";
 
-const INPUT: StepInput = { dt: 1 / 60, gapDraw: 0.5, spaceDraw: 0 };
+const INPUT: StepInput = { dt: 1 / 60, kindDraw: 0, placeDraw: 0.5 };
 
-/** Run n frames, so a whole flight is replayable and deterministic. */
 function fly(state: GameState, frames: number, input: Partial<StepInput> = {}): GameState {
   let s = state;
   for (let i = 0; i < frames; i += 1) s = stepGame(s, { ...INPUT, ...input });
   return s;
 }
+
+/** Place a built obstacle so the drone sits inside its column. */
+function at(kind: ObstacleKind, draw: number, x = DRONE_X - 10): Obstacle {
+  const built = buildObstacle(kind, draw);
+  return { x, kind, passed: false, ...built };
+}
+
+describe("obstacle vocabulary", () => {
+  it("maps every draw to a real kind", () => {
+    for (const draw of [0, 0.3, 0.999, 1, 5, -2, Number.NaN]) {
+      expect(OBSTACLE_KINDS).toContain(kindFromDraw(draw));
+    }
+  });
+
+  it("gives each kind its own geometry rather than restyling one shape", () => {
+    // The point of the rewrite: these must genuinely differ, not share a
+    // rectangle pair with different paint.
+    const shapes = OBSTACLE_KINDS.map((k) => {
+      const b = buildObstacle(k, 0.5);
+      return `${k}:${b.width}:${b.solids.length}:${b.solids.map((s) => s.shape).join(",")}`;
+    });
+    expect(new Set(shapes).size).toBeGreaterThan(5);
+  });
+
+  it("uses a disc for the saw, so it is round in play and not just in the drawing", () => {
+    const saw = buildObstacle("SAW", 0.5);
+    expect(saw.solids).toHaveLength(1);
+    expect(saw.solids[0].shape).toBe("disc");
+  });
+
+  it("uses triangles for spikes", () => {
+    for (const kind of ["SPIKES_FLOOR", "SPIKES_CEILING"] as const) {
+      const built = buildObstacle(kind, 0.5);
+      expect(built.solids).toHaveLength(3);
+      for (const s of built.solids) {
+        expect(s.shape).toBe("poly");
+        if (s.shape === "poly") expect(s.points).toHaveLength(3);
+      }
+    }
+  });
+});
+
+describe("every kind stays flyable", () => {
+  // Sweep the column at the drone's radius and prove some height is free.
+  const freeHeights = (o: Obstacle) => {
+    const free: number[] = [];
+    for (let y = DRONE_RADIUS; y <= WORLD_HEIGHT - DRONE_RADIUS; y += 1) {
+      if (!hitsObstacle(y, o)) free.push(y);
+    }
+    return free;
+  };
+
+  it("leaves a passage at least MIN_PASSAGE tall, for every kind and placement", () => {
+    for (const kind of OBSTACLE_KINDS) {
+      for (const draw of [0, 0.25, 0.5, 0.75, 1]) {
+        const o = at(kind, draw);
+        const free = freeHeights(o);
+        expect(free.length, `${kind} @ ${draw} has no gap at all`).toBeGreaterThan(0);
+
+        // Longest unbroken run of free height.
+        let best = 0;
+        let run = 0;
+        let prev = -99;
+        for (const y of free) {
+          run = y === prev + 1 ? run + 1 : 1;
+          best = Math.max(best, run);
+          prev = y;
+        }
+        expect(best, `${kind} @ ${draw} passage too tight`).toBeGreaterThanOrEqual(
+          MIN_PASSAGE - 2 * DRONE_RADIUS,
+        );
+      }
+    }
+  });
+
+  it("never buries the opening in the floor or ceiling", () => {
+    for (const kind of OBSTACLE_KINDS) {
+      for (const draw of [0, 1]) {
+        const free = freeHeights(at(kind, draw));
+        expect(free.some((y) => y > EDGE_MARGIN && y < WORLD_HEIGHT - EDGE_MARGIN)).toBe(true);
+      }
+    }
+  });
+});
+
+describe("collision geometry", () => {
+  it("measures distance to a segment, including past both ends", () => {
+    expect(distanceToSegment(0, 0, -1, 5, 1, 5)).toBeCloseTo(5);
+    expect(distanceToSegment(10, 5, -1, 5, 1, 5)).toBeCloseTo(9);
+    // Degenerate segment must not divide by zero.
+    expect(distanceToSegment(3, 4, 0, 0, 0, 0)).toBeCloseTo(5);
+  });
+
+  it("tests points against a polygon", () => {
+    const square: Array<readonly [number, number]> = [[0, 0], [10, 0], [10, 10], [0, 10]];
+    expect(pointInPolygon(5, 5, square)).toBe(true);
+    expect(pointInPolygon(15, 5, square)).toBe(false);
+    expect(pointInPolygon(-1, 5, square)).toBe(false);
+  });
+
+  it("hits a disc by real distance, not a bounding box", () => {
+    const disc = { shape: "disc", cx: 50, cy: 50, r: 10 } as const;
+    // Dead centre of the corner of its bounding box, but outside the circle.
+    expect(circleHitsSolid(50 + 9.9, 50 + 9.9, 1, disc, 0)).toBe(false);
+    expect(circleHitsSolid(50 + 10.5, 50, 1, disc, 0)).toBe(true);
+  });
+
+  it("lets the drone slip past the sloped face of a spike", () => {
+    // Beside the tip at the same height: a box test would call this a hit.
+    const spikes = at("SPIKES_FLOOR", 0.5, DRONE_X - 6);
+    const tipY = WORLD_HEIGHT - 58;
+    expect(hitsObstacle(tipY - DRONE_RADIUS - 3, spikes)).toBe(false);
+    // Low enough to be in the teeth themselves.
+    expect(hitsObstacle(WORLD_HEIGHT - 12, spikes)).toBe(true);
+  });
+
+  it("respects the offset, so a shape only bites where it is drawn", () => {
+    const far = { ...at("GATE", 0.5), x: 300 };
+    expect(hitsObstacle(WORLD_HEIGHT / 2, far)).toBe(false);
+  });
+});
 
 describe("idle and crashed states are frozen", () => {
   it("does not drop the drone before anyone has played", () => {
@@ -67,91 +192,39 @@ describe("flap", () => {
 describe("physics", () => {
   it("falls under gravity and rises after a flap", () => {
     const start = flap(createGame());
-    const afterRise = fly(start, 6);
-    expect(afterRise.y).toBeLessThan(start.y);
-    const afterFall = fly(afterRise, 60);
-    expect(afterFall.y).toBeGreaterThan(afterRise.y);
+    const up = fly(start, 6);
+    expect(up.y).toBeLessThan(start.y);
+    expect(fly(up, 60).y).toBeGreaterThan(up.y);
   });
 
   it("caps fall speed", () => {
-    const s = fly({ ...createGame(), status: "flying" }, 600);
-    expect(s.velocity).toBeLessThanOrEqual(MAX_FALL_SPEED);
+    expect(fly({ ...createGame(), status: "flying" }, 600).velocity).toBeLessThanOrEqual(MAX_FALL_SPEED);
   });
 
   it("clamps a huge timestep instead of teleporting through an obstacle", () => {
-    // A backgrounded tab resumes with a multi-second dt. Un-clamped, the drone
-    // would jump the full height of the world between collision checks.
     const s = stepGame({ ...createGame(), status: "flying" }, { ...INPUT, dt: 30 });
     expect(Number.isFinite(s.y)).toBe(true);
     expect(s.y).toBeLessThanOrEqual(WORLD_HEIGHT);
   });
 
   it("ignores a negative timestep rather than running backwards", () => {
-    const s = stepGame({ ...createGame(), status: "flying" }, { ...INPUT, dt: -5 });
-    expect(s.y).toBe(WORLD_HEIGHT / 2);
+    expect(stepGame({ ...createGame(), status: "flying" }, { ...INPUT, dt: -5 }).y).toBe(WORLD_HEIGHT / 2);
   });
 });
 
 describe("crash detection", () => {
-  it("crashes into the floor", () => {
+  it("crashes into the floor and the ceiling", () => {
     expect(hitsGround(WORLD_HEIGHT - DRONE_RADIUS)).toBe(true);
-    expect(hitsGround(WORLD_HEIGHT / 2)).toBe(false);
-    expect(fly({ ...createGame(), status: "flying", y: WORLD_HEIGHT - 20 }, 60).status).toBe("crashed");
-  });
-
-  it("crashes into the ceiling", () => {
     expect(hitsCeiling(DRONE_RADIUS)).toBe(true);
+    expect(hitsGround(WORLD_HEIGHT / 2)).toBe(false);
     expect(hitsCeiling(WORLD_HEIGHT / 2)).toBe(false);
   });
 
-  it("parks the drone on the surface it hit, not through it", () => {
+  it("parks the drone inside the world, not through a surface", () => {
     const s = fly({ ...createGame(), status: "flying", y: WORLD_HEIGHT - 20 }, 90);
     expect(s.status).toBe("crashed");
     expect(s.y).toBeLessThanOrEqual(WORLD_HEIGHT - DRONE_RADIUS);
     expect(s.y).toBeGreaterThanOrEqual(DRONE_RADIUS);
-  });
-
-  it("passes cleanly through a gap it fits", () => {
-    const obstacle = { x: 60, gapY: 60, passed: false, label: CONFINED_SPACES[0] };
-    expect(hitsObstacle(60 + GAP_HEIGHT / 2, obstacle)).toBe(false);
-  });
-
-  it("hits the solid part above and below the gap", () => {
-    const obstacle = { x: 60, gapY: 80, passed: false, label: CONFINED_SPACES[0] };
-    expect(hitsObstacle(20, obstacle)).toBe(true);
-    expect(hitsObstacle(190, obstacle)).toBe(true);
-  });
-
-  it("clips on a gap edge rather than letting the cage overlap", () => {
-    // The Elios is a sphere in a cage: its full radius has to clear the edge.
-    const obstacle = { x: 60, gapY: 80, passed: false, label: CONFINED_SPACES[0] };
-    expect(hitsObstacle(80 + DRONE_RADIUS - 1, obstacle)).toBe(true);
-    expect(hitsObstacle(80 + DRONE_RADIUS + 1, obstacle)).toBe(false);
-  });
-
-  it("ignores obstacles the drone is not level with", () => {
-    const far = { x: 300, gapY: 0, passed: false, label: CONFINED_SPACES[0] };
-    expect(hitsObstacle(WORLD_HEIGHT / 2, far)).toBe(false);
-  });
-});
-
-describe("gap placement", () => {
-  it("never opens a gap off-screen, for any draw", () => {
-    for (const draw of [0, 0.25, 0.5, 0.75, 1, -3, 9, Number.NaN]) {
-      const gapY = gapYFromDraw(draw);
-      expect(gapY).toBeGreaterThanOrEqual(MIN_GAP_MARGIN);
-      expect(gapY + GAP_HEIGHT).toBeLessThanOrEqual(WORLD_HEIGHT - MIN_GAP_MARGIN);
-    }
-  });
-
-  it("always names a real confined space", () => {
-    for (const draw of [0, 0.5, 0.999, 1, 5, Number.NaN]) {
-      expect(CONFINED_SPACES).toContain(spaceFromDraw(draw));
-    }
-  });
-
-  it("leaves a gap the drone actually fits through", () => {
-    expect(GAP_HEIGHT).toBeGreaterThan(DRONE_RADIUS * 2);
   });
 });
 
@@ -161,12 +234,11 @@ describe("scoring", () => {
       ...createGame(),
       status: "flying",
       y: 100,
-      obstacles: [{ x: 40, gapY: 60, passed: false, label: CONFINED_SPACES[0] }],
+      obstacles: [at("SAW", 0.9, 0)],
     };
-    const scored = fly(state, 40);
+    const scored = fly(state, 30);
     expect(scored.score).toBeGreaterThan(0);
-    // Once past, it must not tick up again on later frames.
-    expect(fly(scored, 40).score).toBe(scored.score);
+    expect(fly(scored, 30).score).toBe(scored.score);
   });
 
   it("does not score an obstacle still ahead", () => {
@@ -174,21 +246,22 @@ describe("scoring", () => {
       ...createGame(),
       status: "flying",
       y: 100,
-      obstacles: [{ x: 200, gapY: 60, passed: false, label: CONFINED_SPACES[0] }],
+      obstacles: [at("GATE", 0.5, 240)],
     };
     expect(stepGame(state, INPUT).score).toBe(0);
   });
 
-  it("spawns obstacles as the run goes on, and retires old ones", () => {
+  it("spawns a mix of kinds and retires them off-screen", () => {
     let s = flap(createGame());
-    for (let i = 0; i < 400; i += 1) {
-      s = stepGame(s, { ...INPUT, gapDraw: 0.5, spaceDraw: (i % 8) / 8 });
-      if (s.status === "crashed") s = { ...s, status: "flying", y: s.obstacles[0]?.gapY ?? 100 };
+    const seen = new Set<string>();
+    for (let i = 0; i < 2400; i += 1) {
+      s = stepGame(s, { ...INPUT, kindDraw: (i * 0.6180339887) % 1, placeDraw: (i * 0.4142135624) % 1 });
+      for (const o of s.obstacles) seen.add(o.kind);
+      if (s.status === "crashed") s = { ...s, status: "flying", y: WORLD_HEIGHT / 2 };
     }
-    expect(s.obstacles.length).toBeGreaterThan(0);
-    // Off-screen obstacles are dropped rather than accumulating forever.
+    expect(seen.size).toBeGreaterThan(4);
     expect(s.obstacles.length).toBeLessThan(8);
-    expect(s.obstacles.every((o) => o.x + OBSTACLE_WIDTH > -8)).toBe(true);
+    expect(s.obstacles.every((o) => o.x + o.width > -8)).toBe(true);
   });
 });
 
@@ -213,13 +286,10 @@ describe("best score", () => {
 });
 
 describe("crashLine", () => {
-  it("says something for every score", () => {
+  it("says something for every score and does not scold a zero", () => {
     for (const score of [0, 1, 2, 3, 7, 8, 14, 15, 99]) {
       expect(crashLine(score).length).toBeGreaterThan(0);
     }
-  });
-
-  it("does not scold the player who scored nothing", () => {
     expect(crashLine(0)).not.toMatch(/bad|terrible|useless|fail/i);
   });
 });
