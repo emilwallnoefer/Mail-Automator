@@ -12,6 +12,7 @@ import { Notice } from "@/components/ui";
 import type { InitialSettingsData } from "@/lib/settings-queries";
 import type { AdminListedUser, AdminTimeOverview } from "@/lib/admin-queries";
 import { playUiSound } from "@/lib/ui-sounds";
+import type { ModuleKey } from "@/lib/dashboard-modules";
 import { writeViewParams } from "@/lib/view-params";
 import { createClient } from "@/lib/supabase/client";
 import { LATEST_RELEASE } from "@/lib/release-notes";
@@ -60,10 +61,6 @@ type DashboardShellProps = {
 };
 
 import type { FleetBoardResponse } from "@/components/fleet/types";
-
-export type ModuleKey = "mail" | "time" | "fleet" | "settings" | "admin";
-
-export const MODULE_KEYS: ModuleKey[] = ["mail", "time", "fleet", "settings", "admin"];
 
 // One-time flag: the first-launch README prompt is for brand-new users only,
 // so it keys on "seen ever" rather than the deploy/version (which used to

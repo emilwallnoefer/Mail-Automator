@@ -1,4 +1,7 @@
-import { DashboardShell, MODULE_KEYS, type ModuleKey } from "@/components/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard-shell";
+// Deliberately NOT from the shell: it is a client module, and a server
+// component importing a value from one gets a reference that throws on use.
+import { isModuleKey } from "@/lib/dashboard-modules";
 import type { WeekResponse } from "@/components/time-tracker-panel";
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
@@ -67,10 +70,7 @@ export default async function DashboardPage({
   // values fall through to the home screen; the shell still re-checks the module
   // against the user's role.
   const requestedModuleRaw = (await searchParams).module;
-  const requestedModule =
-    typeof requestedModuleRaw === "string" && MODULE_KEYS.includes(requestedModuleRaw as ModuleKey)
-      ? (requestedModuleRaw as ModuleKey)
-      : null;
+  const requestedModule = isModuleKey(requestedModuleRaw) ? requestedModuleRaw : null;
 
   // Prefetch each landing/panel's initial data server-side so the panels paint
   // seeded instead of waterfalling client fetches on open. Every prefetch is
