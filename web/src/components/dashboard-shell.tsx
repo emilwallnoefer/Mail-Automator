@@ -8,13 +8,11 @@ import { ChatWidget } from "@/components/chat-widget";
 import { MailComposerPanel } from "@/components/mail-composer/mail-composer-panel";
 import { useMailComposer } from "@/components/mail-composer/use-mail-composer";
 import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
-import { Notice } from "@/components/ui";
 import type { InitialSettingsData } from "@/lib/settings-queries";
 import type { AdminListedUser, AdminTimeOverview } from "@/lib/admin-queries";
 import { playUiSound } from "@/lib/ui-sounds";
 import type { ModuleKey } from "@/lib/dashboard-modules";
 import { writeViewParams } from "@/lib/view-params";
-import { createClient } from "@/lib/supabase/client";
 import { LATEST_RELEASE } from "@/lib/release-notes";
 import { userRoleLabel, type UserRole } from "@/lib/user-role";
 
@@ -143,14 +141,34 @@ export function DashboardShell({
   initialFleet = null,
   initialModule = null,
 }: DashboardShellProps) {
+  // The role is decided entirely on the server: it lives in `app_metadata`,
+  // only PATCH /api/admin/users writes it, and an account without one never
+  // reaches this shell at all (dashboard/page.tsx renders the RoleGate
+  // instead). So this is a prop, not state — there is nothing here that can
+  // change it, which is also why `availableModules` below is fixed for the
+  // lifetime of the shell.
+  const userRole: UserRole | null = initialRole;
+
+  const availableModules = useMemo<ModuleKey[]>(() => {
+    const base: ModuleKey[] =
+      userRole === "sales" || userRole === "hr"
+        ? ["time", "fleet", "settings"]
+        : ["mail", "time", "fleet", "settings"];
+    if (isAdmin || userRole === "hr") base.push("admin");
+    return base;
+  }, [userRole, isAdmin]);
+
   const [showComposer, setShowComposer] = useState(initialModule != null);
   const [beginAnimating, setBeginAnimating] = useState(false);
-  const [activeModule, setActiveModule] = useState<ModuleKey>(
-    initialModule ?? (initialRole === "sales" || initialRole === "hr" ? "time" : "mail"),
-  );
-  const [userRole, setUserRole] = useState<UserRole | null>(initialRole);
-  const [roleSaving, setRoleSaving] = useState(false);
-  const [roleError, setRoleError] = useState<string | null>(null);
+  // `?module=` is attacker-supplied (and survives a role change in a bookmark),
+  // so the requested module is clamped to what this role may actually open —
+  // here, at the initial value, and again in `switchModule`. It used to be a
+  // corrective effect that re-set the state after the first render; doing it
+  // before there is a state to correct is both cheaper and one less render.
+  const [activeModule, setActiveModule] = useState<ModuleKey>(() => {
+    const preferred = initialModule ?? (userRole === "sales" || userRole === "hr" ? "time" : "mail");
+    return availableModules.includes(preferred) ? preferred : availableModules[0];
+  });
   const [showProgramReadmePrompt, setShowProgramReadmePrompt] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   // The floating chat pill shares the bottom-right corner with the first-launch
@@ -168,15 +186,6 @@ export function DashboardShell({
   const weekPrefetchedRef = useRef(false);
 
   const composer = useMailComposer(userRole);
-
-  const availableModules = useMemo<ModuleKey[]>(() => {
-    const base: ModuleKey[] =
-      userRole === "sales" || userRole === "hr"
-        ? ["time", "fleet", "settings"]
-        : ["mail", "time", "fleet", "settings"];
-    if (isAdmin || userRole === "hr") base.push("admin");
-    return base;
-  }, [userRole, isAdmin]);
 
   const canManageUsers = isAdmin;
   const adminModuleLabel = canManageUsers ? "Admin" : "Team time";
@@ -246,6 +255,19 @@ export function DashboardShell({
     })();
   }, [userRole, gmailStatusSeeded]);
 
+  // Which bottom-right popup to show, decided once from localStorage.
+  //
+  // `react-hooks/set-state-in-effect` is suppressed for this effect ONLY. The
+  // decision depends on `window.localStorage`, which does not exist during SSR:
+  // reading it in a lazy `useState` initializer would make the server and the
+  // first client render disagree and produce a hydration mismatch on the popup.
+  // A mount effect is the correct shape here; the compliant alternative is
+  // `useSyncExternalStore`, which is a bigger change than this popup warrants.
+  //
+  // This is long-standing code, not new: the rule only started reporting it
+  // once the first-login role picker was removed from this component and the
+  // React Compiler could analyse the whole function again.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const firstLaunchSeen = window.localStorage.getItem(PROGRAM_README_PROMPT_SEEN_KEY);
@@ -270,6 +292,7 @@ export function DashboardShell({
       // Storage blocked (e.g. private mode): stay quiet rather than nagging.
     }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Mirror the open module into `?module=`, so a reload (or a shared link, or
   // the fleet reminder mail's /dashboard?module=fleet) restores the same view
@@ -289,24 +312,22 @@ export function DashboardShell({
   // afterwards would wipe the section the new panel had just written.
   const switchModule = useCallback(
     (next: ModuleKey) => {
-      if (next !== activeModule) writeViewParams({ section: null });
-      setActiveModule(next);
+      // Same clamp as the initial value: a module this role cannot open falls
+      // back to the first one it can, so `activeModule` is never unavailable.
+      const target = availableModules.includes(next) ? next : availableModules[0];
+      if (target !== activeModule) writeViewParams({ section: null });
+      setActiveModule(target);
     },
-    [activeModule],
+    [activeModule, availableModules],
   );
-
-  useEffect(() => {
-    if (availableModules.includes(activeModule)) return;
-    switchModule(availableModules[0]);
-  }, [activeModule, availableModules, switchModule]);
 
   const bottomPopupVisible = showProgramReadmePrompt || showWhatsNew;
 
   useEffect(() => {
-    if (!bottomPopupVisible) {
-      setBottomPopupHeight(0);
-      return;
-    }
+    // No reset when the popup hides: `chatBottomOffsetRem` already ignores the
+    // measurement while `bottomPopupVisible` is false, so zeroing it here only
+    // bought an extra render (and was a synchronous setState in an effect).
+    if (!bottomPopupVisible) return;
     const el = bottomPopupRef.current;
     if (!el) return;
     const update = () => setBottomPopupHeight(el.offsetHeight);
@@ -342,40 +363,6 @@ export function DashboardShell({
       window.localStorage.setItem(WHATS_NEW_SEEN_VERSION_KEY, LATEST_RELEASE.version);
     } catch {
       // Ignore storage errors to avoid blocking interaction.
-    }
-  }
-
-  async function handleSelectRole(nextRole: UserRole) {
-    if (roleSaving) return;
-    setRoleSaving(true);
-    setRoleError(null);
-    try {
-      const supabase = createClient();
-      // TEMPORARY SUPPRESSION — this line is KNOWN-BROKEN, not approved.
-      //
-      // `data` is `user_metadata`, which this browser call writes with the ANON
-      // key: the user is assigning their own role. It is not an escalation today
-      // only because nothing reads that bag any more (dashboard/page.tsx derives
-      // the role from `app_metadata`, and every endpoint re-checks it) — which is
-      // also why the write is inert: on reload `app_metadata.role` is still null
-      // and this picker reappears.
-      //
-      // Whether new users get a guarded server route that writes `app_metadata`,
-      // or the picker is dropped and roles become admin-only via PATCH
-      // /api/admin/users, is an open product decision. Do NOT copy this pattern,
-      // and delete this suppression together with the matching entry in
-      // src/lib/role-source.test.ts when the decision lands. See SECURITY.md T0.1.
-      // eslint-disable-next-line no-restricted-syntax
-      const { error: updateError } = await supabase.auth.updateUser({ data: { role: nextRole } });
-      if (updateError) throw updateError;
-      setUserRole(nextRole);
-      if (nextRole === "sales" || nextRole === "hr") {
-        switchModule("time");
-      }
-    } catch (err) {
-      setRoleError((err as Error).message || "Could not save role.");
-    } finally {
-      setRoleSaving(false);
     }
   }
 
@@ -680,50 +667,6 @@ export function DashboardShell({
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
-      {userRole == null ? (
-        <div className="fixed inset-0 z-[140] grid place-items-center bg-surface/85 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-glass/20 bg-surface/95 p-4 shadow-xl">
-            <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">First Login Setup</p>
-            <h2 className="mt-2 text-lg font-semibold">Choose your workspace profile</h2>
-            <p className="mt-2 text-sm text-ink-3/85">
-              This controls which modules and settings you see.
-            </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSelectRole("eu_pilot");
-                }}
-                disabled={roleSaving}
-                className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-glass/15 disabled:translate-y-0 disabled:opacity-60"
-              >
-                EU Pilot
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSelectRole("us_pilot");
-                }}
-                disabled={roleSaving}
-                className="rounded-lg border border-glass/20 bg-glass/10 px-3 py-2 text-sm font-medium transition hover:-translate-y-px hover:bg-glass/15 disabled:translate-y-0 disabled:opacity-60"
-              >
-                US Pilot
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSelectRole("sales");
-                }}
-                disabled={roleSaving}
-                className="rounded-lg border border-accent/60 bg-accent-deep/20 px-3 py-2 text-sm font-medium text-accent-soft transition hover:-translate-y-px hover:bg-accent-deep/30 disabled:translate-y-0 disabled:opacity-60"
-              >
-                Sales
-              </button>
-            </div>
-            {roleError ? <Notice className="mt-3">{roleError}</Notice> : null}
-          </div>
         </div>
       ) : null}
     </main>

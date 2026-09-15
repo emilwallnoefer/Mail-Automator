@@ -3,6 +3,7 @@ import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "@/components/setti
 import { normalizeUserRole } from "@/lib/user-role";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isAdminEmail } from "@/lib/admin";
 import { redirect } from "next/navigation";
 
 export default async function SettingsPage({
@@ -28,6 +29,11 @@ export default async function SettingsPage({
       ? (user.app_metadata as Record<string, unknown>).role
       : null;
   const userRole = normalizeUserRole(userRoleRaw);
+
+  // An account with no role is held on the gate at /dashboard until an admin
+  // assigns one. Settings is a module like any other, so it must not be a way
+  // around that. Admins are exempt — they are the ones who lift the hold.
+  if (userRole == null && !isAdminEmail(user.email)) redirect("/dashboard");
 
   // The panel keeps `?section=` in sync, so a reload reopens the same section.
   // It is resolved here rather than on mount because this page is server

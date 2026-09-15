@@ -72,17 +72,14 @@ type Violation = { file: string; line: number; snippet: string; kind: "read" | "
  * fails just as loudly as a new violation would. Copying an entry to excuse a
  * new line is the one thing this file exists to prevent.
  *
- * TEMPORARY — `components/dashboard-shell.tsx`: the first-login role picker
- * writes the chosen role into `user_metadata` with the anon key. It is not an
- * escalation today (nothing reads that bag any more — `dashboard/page.tsx`
- * derives the role from `app_metadata` via getClaims(), and every endpoint
- * re-checks it), which is also why the write is inert: on reload
- * `app_metadata.role` is still null and the picker comes back. Whether new
- * users get a guarded self-service endpoint that writes `app_metadata`, or the
- * picker is dropped and roles become admin-only via PATCH /api/admin/users, is
- * an open product decision. Delete this entry when that lands.
+ * It is EMPTY, and empty is the goal state: no file under `src/` reads or
+ * writes a role through `user_metadata`. The last entry was the first-login
+ * role picker in `components/dashboard-shell.tsx` — that picker is gone, roles
+ * are assigned by an admin through the guardAdmin()-protected
+ * PATCH /api/admin/users, and an account with no role is held on the RoleGate
+ * until one is. Keep it empty.
  */
-const KNOWN_VIOLATIONS = ["components/dashboard-shell.tsx"];
+const KNOWN_VIOLATIONS: string[] = [];
 
 /**
  * Flags every read of a `role` field off a value that came from
@@ -263,6 +260,11 @@ describe("role source", () => {
   it("the tracked known violations are still exactly the ones on the register", () => {
     // Shrink-only: a fixed file must be removed from KNOWN_VIOLATIONS, and a new
     // one can never be added without a reviewer reading the comment above it.
+    //
+    // With the register empty this reads as "no file violates the invariant at
+    // all" — still a real assertion, and the strictest the register can be. It
+    // is deliberately NOT the same check as the test above: that one ignores
+    // registered files, this one refuses to let any file be registered.
     const offending = [...new Set(violations.map((v) => v.file))].sort();
     expect(
       offending,

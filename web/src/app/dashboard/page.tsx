@@ -1,4 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { RoleGate } from "@/components/role-gate";
+import { notifyAdminsOfPendingRole } from "@/lib/role-assignment-notice";
 // Deliberately NOT from the shell: it is a client module, and a server
 // component importing a value from one gets a reference that throws on use.
 import { isModuleKey } from "@/lib/dashboard-modules";
@@ -62,6 +64,26 @@ export default async function DashboardPage({
   const initialRole = normalizeUserRole(userRoleRaw);
   const isAdmin = isAdminEmail(email);
   const isPilot = initialRole !== "sales" && initialRole !== "hr";
+  // A role can only be written by PATCH /api/admin/users, so a brand-new
+  // account arrives with none and is held on the "waiting for access" screen
+  // below. Admins are exempt: they are the people who assign the role, and
+  // locking them out would leave nobody able to fix it.
+  const awaitingRole = initialRole == null && !isAdmin;
+
+  // Held accounts get the gate INSTEAD of the shell: none of the prefetches
+  // below run, no panel code is sent, and there is nothing to reach behind it.
+  // Telling the admins is best-effort and deduped on the server (one mail per
+  // account, ever) — it can never throw into this render.
+  if (awaitingRole) {
+    if (userId && email) {
+      await notifyAdminsOfPendingRole({
+        userId,
+        email,
+        name: displayNameFor({ email, user_metadata: userMetadata }),
+      });
+    }
+    return <RoleGate email={email ?? "this account"} />;
+  }
 
   // `?module=` is how an open module survives a reload (the shell keeps it in
   // sync) and how the fleet reminder mails deep-link into the check-in screen.
