@@ -40,16 +40,29 @@ export const OBSTACLE_SPACING = 148;
 /** Keep a gap from hugging the ceiling or floor, where it is unfair. */
 export const MIN_GAP_MARGIN = 26;
 
-/** The confined spaces an Elios actually gets sent into. */
+/**
+ * Places an Elios actually gets sent. Not just pipework — the point of a
+ * caged drone is the range of things it flies inside, so this spans industry
+ * (boiler, blast furnace), infrastructure (sewer, penstock, metro tunnel),
+ * marine (ballast tank, cargo hold), extraction (mine stope), agriculture
+ * (grain silo), natural (cave) and the one nobody plans for (collapse).
+ */
 export const CONFINED_SPACES = [
   "BOILER",
   "PRESSURE VESSEL",
   "SEWER",
   "CHIMNEY",
   "STORAGE TANK",
-  "MINE SHAFT",
+  "MINE STOPE",
   "BALLAST TANK",
   "COOLING DUCT",
+  "CAVE",
+  "GRAIN SILO",
+  "PENSTOCK",
+  "BLAST FURNACE",
+  "CARGO HOLD",
+  "METRO TUNNEL",
+  "COLLAPSE",
 ] as const;
 
 export type ConfinedSpace = (typeof CONFINED_SPACES)[number];

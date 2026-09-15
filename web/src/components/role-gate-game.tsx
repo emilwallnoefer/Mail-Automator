@@ -115,20 +115,21 @@ export function RoleGateGame() {
     let stopped = false;
 
     /**
-     * The Elios 3, drawn the way the real aircraft works.
+     * The Elios 3.
      *
-     * The cage is DECOUPLED: it is a passive carbon shell on a gimbal, and when
-     * an Elios bumps a wall the cage takes the hit while the inner frame stays
-     * level. So the cage never rotates here — only the drone inside it tilts.
-     * Rotating the cage would look like a spinning ball and would be wrong
-     * about the one thing that makes an Elios an Elios.
+     * The cage is RIGIDLY MOUNTED — that is the Elios 3 change; the gimballed,
+     * free-rotating cage belongs to the Elios 1 and 2. So the whole aircraft
+     * banks as one body: cage and frame rotate together, and the cage never
+     * spins independently of the drone inside it.
      */
     const drawDrone = (y: number, t: number) => {
       const r = DRONE_RADIUS;
+      const tilt = Math.max(-0.42, Math.min(0.55, stateRef.current.velocity / 460));
       ctx.save();
       ctx.translate(DRONE_X, y);
+      ctx.rotate(tilt);
 
-      // --- Outer cage: fixed. Geodesic shell, so a sphere of great circles.
+      // --- Cage: part of the airframe, so it banks with everything else.
       ctx.strokeStyle = accent;
       ctx.lineWidth = 0.9;
       ctx.globalAlpha = 0.9;
@@ -148,10 +149,6 @@ export function RoleGateGame() {
         ctx.stroke();
       }
 
-      // --- Inner frame: gimballed, this is what tilts.
-      const tilt = Math.max(-0.42, Math.min(0.55, stateRef.current.velocity / 460));
-      ctx.save();
-      ctx.rotate(tilt);
       ctx.globalAlpha = 1;
 
       // Rotor discs, blurred while spinning.
@@ -196,7 +193,6 @@ export function RoleGateGame() {
       ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      ctx.restore();
       ctx.restore();
     };
 
@@ -310,7 +306,7 @@ export function RoleGateGame() {
           }
           break;
         }
-        case "MINE SHAFT": {
+        case "MINE STOPE": {
           // Timber sets against rough rock.
           ctx.fillStyle = `${STEEL}0.1)`;
           ctx.fillRect(x, top, w, height);
@@ -329,6 +325,154 @@ export function RoleGateGame() {
           ctx.moveTo(right - 4, top);
           ctx.lineTo(right - 4, bottom);
           ctx.stroke();
+          break;
+        }
+        case "CAVE": {
+          // Rough rock: irregular fracture lines, no man-made straight edges.
+          ctx.strokeStyle = `${STEEL}0.34)`;
+          let seed = Math.floor(x * 7.3) % 97;
+          const rnd = () => ((seed = (seed * 31 + 17) % 97) / 97);
+          for (let yy = top + 5; yy < bottom; yy += 9) {
+            ctx.beginPath();
+            ctx.moveTo(x, yy + rnd() * 4 - 2);
+            for (let xx = x + 8; xx <= right; xx += 8) ctx.lineTo(xx, yy + rnd() * 5 - 2.5);
+            ctx.stroke();
+          }
+          break;
+        }
+        case "GRAIN SILO": {
+          // Grain heaped against the wall, with the free surface sloping.
+          ctx.fillStyle = `${STEEL}0.22)`;
+          ctx.beginPath();
+          ctx.moveTo(x, bottom);
+          ctx.lineTo(x, top + height * 0.55);
+          ctx.lineTo(right, top + height * 0.3);
+          ctx.lineTo(right, bottom);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = `${STEEL}0.4)`;
+          let gseed = Math.floor(x * 3.1) % 89;
+          const grnd = () => ((gseed = (gseed * 29 + 11) % 89) / 89);
+          for (let i = 0; i < 26; i += 1) {
+            const gx = x + grnd() * w;
+            const surface = top + height * (0.55 - ((gx - x) / w) * 0.25);
+            const gy = surface + grnd() * (bottom - surface);
+            if (gy < bottom) ctx.fillRect(gx, gy, 1, 1);
+          }
+          break;
+        }
+        case "PENSTOCK": {
+          // Riveted penstock shell with flow streaks along it.
+          ctx.strokeStyle = `${STEEL}0.4)`;
+          ctx.lineWidth = 0.8;
+          for (let xx = x + 6; xx < right; xx += 10) {
+            ctx.beginPath();
+            ctx.moveTo(xx, top);
+            ctx.lineTo(xx, bottom);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = `${STEEL}0.5)`;
+          for (let yy = top + 14; yy < bottom; yy += 26) {
+            ctx.beginPath();
+            ctx.moveTo(x, yy);
+            ctx.lineTo(right, yy);
+            ctx.stroke();
+            ctx.fillStyle = `${STEEL}0.5)`;
+            for (let xx = x + 4; xx < right - 2; xx += 7) {
+              ctx.beginPath();
+              ctx.arc(xx, yy, 0.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          break;
+        }
+        case "BLAST FURNACE": {
+          // Refractory brick, hot seams glowing through.
+          ctx.strokeStyle = `${STEEL}0.3)`;
+          let brow = 0;
+          for (let yy = top; yy < bottom; yy += 9) {
+            ctx.beginPath();
+            ctx.moveTo(x, yy);
+            ctx.lineTo(right, yy);
+            ctx.stroke();
+            for (let xx = x + (brow % 2 ? 0 : 9); xx < right; xx += 18) {
+              ctx.beginPath();
+              ctx.moveTo(xx, yy);
+              ctx.lineTo(xx, yy + 9);
+              ctx.stroke();
+            }
+            brow += 1;
+          }
+          ctx.strokeStyle = "rgba(251,191,36,0.3)";
+          ctx.lineWidth = 1.2;
+          for (let yy = top + 13; yy < bottom; yy += 31) {
+            ctx.beginPath();
+            ctx.moveTo(x + 3, yy);
+            ctx.lineTo(right - 3, yy);
+            ctx.stroke();
+          }
+          break;
+        }
+        case "CARGO HOLD": {
+          // Corrugated bulkhead: deep vertical folds.
+          ctx.strokeStyle = `${STEEL}0.45)`;
+          ctx.lineWidth = 1.1;
+          for (let xx = x + 4; xx < right; xx += 7) {
+            ctx.beginPath();
+            ctx.moveTo(xx, top);
+            ctx.lineTo(xx, bottom);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = `${STEEL}0.25)`;
+          ctx.lineWidth = 0.7;
+          for (let xx = x + 7.5; xx < right; xx += 7) {
+            ctx.beginPath();
+            ctx.moveTo(xx, top);
+            ctx.lineTo(xx, bottom);
+            ctx.stroke();
+          }
+          break;
+        }
+        case "METRO TUNNEL": {
+          // Segmental lining rings with bolt pockets.
+          ctx.strokeStyle = `${STEEL}0.38)`;
+          for (let yy = top + 7; yy < bottom; yy += 15) {
+            ctx.beginPath();
+            ctx.moveTo(x, yy);
+            ctx.lineTo(right, yy);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = `${STEEL}0.28)`;
+          for (let yy = top + 7; yy < bottom; yy += 15) {
+            for (let xx = x + 11; xx < right - 4; xx += 13) {
+              ctx.strokeRect(xx, yy + 4, 5, 6);
+            }
+          }
+          break;
+        }
+        case "COLLAPSE": {
+          // Broken slabs at angles with rebar poking out of them.
+          ctx.strokeStyle = `${STEEL}0.45)`;
+          ctx.lineWidth = 1;
+          let cseed = Math.floor(x * 5.7) % 83;
+          const crnd = () => ((cseed = (cseed * 37 + 13) % 83) / 83);
+          for (let yy = top; yy < bottom; yy += 16) {
+            const skew = crnd() * 10 - 5;
+            ctx.beginPath();
+            ctx.moveTo(x, yy + skew);
+            ctx.lineTo(right, yy + 12 - skew);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = `${STEEL}0.6)`;
+          ctx.lineWidth = 0.6;
+          for (let i = 0; i < 5; i += 1) {
+            const rx = x + crnd() * w;
+            const ry = top + crnd() * height;
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx + crnd() * 9 - 4, ry + crnd() * 9 - 4);
+            ctx.stroke();
+          }
           break;
         }
         case "CHIMNEY": {
