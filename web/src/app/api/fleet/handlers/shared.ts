@@ -29,7 +29,24 @@ export type FleetActionContext = {
   viewer: Viewer;
   /** Today in Europe/Zurich, resolved once per request. */
   today: string;
+  /**
+   * Absolute base URL of this deployment, for links that leave the browser —
+   * an admin notification email cannot use a relative href. `APP_BASE_URL`
+   * wins when set, otherwise the request's own origin.
+   */
+  origin: string;
 };
+
+/** `APP_BASE_URL`, else the request's own origin. Never a trailing slash. */
+export function appBaseUrl(request: Request): string {
+  const fromEnv = process.env.APP_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  try {
+    return new URL(request.url).origin.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
 
 export async function resolveViewer(): Promise<Viewer | null> {
   const supabase = await createClient();

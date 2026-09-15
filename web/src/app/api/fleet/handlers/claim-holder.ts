@@ -1,8 +1,54 @@
 import { NextResponse } from "next/server";
+import { getAdminEmails } from "@/lib/admin";
+import { isResendConfigured, sendEmailViaResend } from "@/lib/email/resend";
 import { recordAssetEvent } from "@/lib/fleet-queries";
+import {
+  buildHolderClaimMismatchEmail,
+  claimEventNote,
+  describeClaimedMaterial,
+  type HolderClaim,
+} from "@/lib/fleet-holder-claims";
 import { holderLabelMatchesPerson, normalizeHolderLabel } from "@/lib/fleet-rules";
 import type { FleetActionContext } from "./shared";
 import type { FleetPayload } from "./schemas";
+
+/** Deep link to Admin → Holder claims, for the mismatch notification. */
+export const HOLDER_CLAIMS_PATH = "/dashboard?module=admin&section=holder_claims";
+
+/**
+ * Tells the admins that somebody claimed a name that does not look like theirs.
+ *
+ * Best-effort on purpose, exactly like `api/chat/certificate-request`: by the
+ * time this runs the claim has already succeeded and is already recorded on the
+ * alias row. A missing Resend key, an empty `ADMIN_EMAILS`, a network blip or a
+ * 500 from Resend must never turn into a failed claim — a mail outage cannot be
+ * allowed to block onboarding, which is the one thing this flow exists to do.
+ * Failures are logged, and that is all.
+ */
+async function notifyAdminsOfMismatch(claim: HolderClaim, origin: string): Promise<void> {
+  try {
+    const recipients = getAdminEmails();
+    if (recipients.length === 0 || !isResendConfigured()) {
+      console.warn(
+        "claim_holder: no admin notification sent (ADMIN_EMAILS empty or Resend unconfigured)",
+      );
+      return;
+    }
+    const email = buildHolderClaimMismatchEmail(claim, `${origin}${HOLDER_CLAIMS_PATH}`);
+    const results = await Promise.all(
+      recipients.map((to) =>
+        sendEmailViaResend({ to, subject: email.subject, html: email.html, text: email.text }),
+      ),
+    );
+    for (const [i, result] of results.entries()) {
+      if (!result.ok) {
+        console.error(`claim_holder: mail to ${recipients[i]} failed — ${result.error}`);
+      }
+    }
+  } catch (error) {
+    console.error("claim_holder: admin notification threw", error);
+  }
+}
 
 /**
  * Takes ownership of every live booking filed under a free-text holder name.
@@ -11,19 +57,29 @@ import type { FleetPayload } from "./schemas";
  * as "out with Wataru" before Wataru had an account, and when he signs in he
  * claims the name and those bookings become his — check-in, reminders and all.
  *
- * Authorisation is the whole story here, because claiming a name hands you
- * somebody's material and their booking history:
+ * Claiming an UNCLAIMED name is deliberately permissive: any signed-in user may
+ * claim any free label, whether or not it looks like theirs. That is not an
+ * oversight. The sheet spelled people inconsistently ("Emil", "Emil Wallnofer",
+ * "Inga Khchoyan") and filed real, one-person material under group labels
+ * ("APAC team", "FPS"), so a strict name match would strand exactly the people
+ * this flow exists to onboard. Do not "fix" it back into a match check.
+ *
+ * What is enforced instead is visibility and reversibility:
  *
  *   - an admin may map any label to any account;
- *   - anyone else may only claim a label that matches THEIR OWN name or email
- *     local part, per `holderLabelMatchesPerson`, which refuses group labels
- *     ("APAC team", "FPS") outright.
+ *   - a label ALREADY mapped to somebody else is never claimable by a non-admin,
+ *     because that would hand over a colleague's material and their history;
+ *   - every claim records who made it, the label as typed, and whether it looked
+ *     like the claimant (`holderLabelMatchesPerson`) on the alias row;
+ *   - a mismatch is written into the asset history AND mailed to the admins;
+ *   - Admin → Holder claims lists every claim and lets an admin reassign the
+ *     label to the right account or release it back to unclaimed.
  */
 export async function handleClaimHolder(
   ctx: FleetActionContext,
   payload: FleetPayload<"claim_holder">,
 ): Promise<NextResponse> {
-  const { admin, viewer } = ctx;
+  const { admin, viewer, origin } = ctx;
   const label = payload.label.trim();
   const normalized = normalizeHolderLabel(label);
   if (!normalized) {
@@ -54,8 +110,16 @@ export async function handleClaimHolder(
   // ("Emil", "Emil Wallnofer", "Inga Khchoyan"), so a strict name match would
   // strand exactly the people this flow exists to onboard. Every claim is
   // recorded with who made it, so a wrong pick is visible and reversible rather
-  // than prevented.
-  const selfMatch = holderLabelMatchesPerson(label, { name: viewer.name, email: viewer.email });
+  // than prevented. Mismatches additionally land in the admins' inbox below.
+  //
+  // An admin filing a label under SOMEBODY ELSE is not a self-match question at
+  // all — it is the correction, not the thing to report — so the check runs
+  // against whoever the label is being filed under, and an admin acting for a
+  // third party is never treated as a suspicious claim.
+  const claimingForSelf = targetUserId === viewer.id;
+  const selfMatch = claimingForSelf
+    ? holderLabelMatchesPerson(label, { name: viewer.name, email: viewer.email })
+    : true;
 
   // Match on the normalised label so "Wataru", "wataru" and "Wataru." are one
   // name. Done in JS rather than SQL because normalisation (accent folding,
@@ -95,7 +159,9 @@ export async function handleClaimHolder(
         // Whether the name actually matches the claimant is recorded rather
         // than enforced: picking a name that is not obviously yours is allowed
         // (the sheet spelled people inconsistently), but it should be visible.
-        note: `Holder "${label}" claimed by ${viewer.name}${selfMatch ? "" : " (name does not match theirs)"}`,
+        // Wording shared with the admin table and the mail — see
+        // `lib/fleet-holder-claims.ts`.
+        note: claimEventNote({ label, claimant: { name: viewer.name, email: viewer.email }, selfMatch }),
       });
     }
   }
@@ -121,30 +187,52 @@ export async function handleClaimHolder(
   }
 
   // Remember the mapping so a later import of the same name resolves directly.
+  //
+  // `claimed_label` keeps the human spelling, which the primary key cannot: it
+  // is the normalised form, so "Emil Wallnöfer" is stored as "emil wallnofer"
+  // and the admin table would otherwise have no way to show what was typed.
   const { error: aliasError } = await admin
     .from("fleet_holder_aliases")
     .upsert(
-      { label: normalized, user_id: targetUserId, claimed_by: viewer.id, claimed_at: new Date().toISOString() },
+      {
+        label: normalized,
+        user_id: targetUserId,
+        claimed_by: viewer.id,
+        claimed_at: new Date().toISOString(),
+        self_match: selfMatch,
+        claimed_label: label,
+      },
       { onConflict: "label" },
     );
   if (aliasError) throw new Error(aliasError.message);
 
-  const parts: string[] = [];
-  if (matching.length > 0) {
-    parts.push(`${matching.length} booking${matching.length === 1 ? "" : "s"}`);
+  const material = { bookings: matching.length, assets: heldMatches.length };
+
+  // The claim is committed. Everything after this point is reporting, and must
+  // not be able to undo it.
+  if (!selfMatch) {
+    await notifyAdminsOfMismatch(
+      {
+        label,
+        claimant: { name: viewer.name, email: viewer.email },
+        selfMatch,
+        material,
+      },
+      origin,
+    );
   }
-  if (heldMatches.length > 0) {
-    parts.push(`${heldMatches.length} assigned unit${heldMatches.length === 1 ? "" : "s"}`);
-  }
+
+  const moved = describeClaimedMaterial(material);
 
   return NextResponse.json({
     ok: true,
     claimed: matching.length,
     assets_linked: heldMatches.length,
+    self_match: selfMatch,
     message:
-      parts.length > 0
-        ? `${parts.join(" and ")} filed under "${label}" ${
-            matching.length + heldMatches.length === 1 ? "is" : "are"
+      material.bookings + material.assets > 0
+        ? `${moved} filed under "${label}" ${
+            material.bookings + material.assets === 1 ? "is" : "are"
           } now yours.`
         : `"${label}" is linked, but there was nothing open under that name.`,
   });

@@ -7,7 +7,7 @@ import { buildFleetBoard } from "@/lib/fleet-board";
 import { parseBoardWindow } from "./window";
 import { isMissingFleetTable } from "./missing-table";
 import { postSchema, type PostPayload } from "./handlers/schemas";
-import { resolveViewer, type Admin, type FleetActionContext, type Viewer } from "./handlers/shared";
+import { appBaseUrl, resolveViewer, type Admin, type FleetActionContext, type Viewer } from "./handlers/shared";
 import { handleReserve } from "./handlers/reserve";
 import { handleCancel } from "./handlers/cancel";
 import { handleCheckOut } from "./handlers/check-out";
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
   let result: NextResponse;
   try {
-    result = await dispatch({ admin, viewer, today }, payload);
+    result = await dispatch({ admin, viewer, today, origin: appBaseUrl(request) }, payload);
   } catch (error) {
     console.error(`POST /api/fleet (${payload.action}) failed`, error);
     return NextResponse.json({ error: "Could not complete that action." }, { status: 500 });

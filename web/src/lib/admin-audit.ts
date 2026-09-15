@@ -12,6 +12,11 @@ export type AdminAuditAction =
   | "reminder_resume"
   | "mail_brief_model_change"
   | "security_alerts_change"
+  // Fleet holder claims. Claiming a free-text name is deliberately permissive,
+  // so the correction an admin makes afterwards is the accountable step: who
+  // moved somebody else's material, and where to.
+  | "fleet_holder_reassign"
+  | "fleet_holder_release"
   // Read, not a write. Viewing one employee's day-level time record exposes
   // sick leave, break names and free-text comp notes, so who looked at whose
   // record is worth an accountable trail even though nothing changed.
