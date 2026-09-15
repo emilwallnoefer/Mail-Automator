@@ -351,6 +351,21 @@ export function DashboardShell({
     setRoleError(null);
     try {
       const supabase = createClient();
+      // TEMPORARY SUPPRESSION — this line is KNOWN-BROKEN, not approved.
+      //
+      // `data` is `user_metadata`, which this browser call writes with the ANON
+      // key: the user is assigning their own role. It is not an escalation today
+      // only because nothing reads that bag any more (dashboard/page.tsx derives
+      // the role from `app_metadata`, and every endpoint re-checks it) — which is
+      // also why the write is inert: on reload `app_metadata.role` is still null
+      // and this picker reappears.
+      //
+      // Whether new users get a guarded server route that writes `app_metadata`,
+      // or the picker is dropped and roles become admin-only via PATCH
+      // /api/admin/users, is an open product decision. Do NOT copy this pattern,
+      // and delete this suppression together with the matching entry in
+      // src/lib/role-source.test.ts when the decision lands. See SECURITY.md T0.1.
+      // eslint-disable-next-line no-restricted-syntax
       const { error: updateError } = await supabase.auth.updateUser({ data: { role: nextRole } });
       if (updateError) throw updateError;
       setUserRole(nextRole);

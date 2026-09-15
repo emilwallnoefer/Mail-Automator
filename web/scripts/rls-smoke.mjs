@@ -108,6 +108,11 @@ async function main() {
   }
 
   // 2. T0.1 — self-set role lands in user_metadata but NOT app_metadata.
+  // The `no-restricted-syntax` ban on reading a role from `user_metadata` is
+  // suspended for this block ONLY: these reads are the assertion that the
+  // self-assigned role is inert, not a privilege decision. Nothing here grants
+  // anything — it checks that `app_metadata.role` did not move.
+  /* eslint-disable no-restricted-syntax */
   {
     const prevRole = a.user.user_metadata?.role ?? null;
     await a.supabase.auth.updateUser({ data: { role: "hr" } });
@@ -122,6 +127,7 @@ async function main() {
     // Restore prior user_metadata.role so the test is idempotent.
     await a.supabase.auth.updateUser({ data: { role: prevRole } });
   }
+  /* eslint-enable no-restricted-syntax */
 
   // 3. T0.5 — spoofed chat sender_email is overwritten by the JWT email.
   {
