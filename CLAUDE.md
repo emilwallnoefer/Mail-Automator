@@ -52,7 +52,11 @@ Vulnerabilities that live *inside* `next` (it vendors a pinned `postcss` and an 
 
 - Supabase handles auth; the SSR client lives in `src/lib/supabase/server.ts` and the browser client in `client.ts`. `src/proxy.ts` (Next 16's rename of middleware) refreshes the session cookie and gates `/dashboard`, `/settings`, `/login` via `lib/supabase/middleware.ts`. It is not the only guard — both gated pages re-check the session server-side and redirect, so a proxy bypass exposes nothing.
 - `src/lib/supabase/admin.ts` is `"server-only"` and holds the **service-role** client. It bypasses RLS — only call it after a successful `guardAdmin()` / `guardTimeViewer()` check.
-- Role resolution: `ADMIN_EMAILS` (env, comma-separated) → admin. Otherwise `user_metadata.role` ∈ {`sales`, `eu_pilot`, `us_pilot`, `hr`}. `hr` is admin-assigned only and gets read-only access to team-time endpoints via `guardTimeViewer()`. See `src/lib/admin-guard.ts` and `src/lib/user-role.ts`.
+- **Role resolution — roles live in `app_metadata.role` ONLY, never `user_metadata`.** `ADMIN_EMAILS` (env, comma-separated) → admin. Otherwise `app_metadata.role` ∈ {`sales`, `eu_pilot`, `us_pilot`, `hr`} (legacy `pilot` normalises to `eu_pilot`). Read it through `normalizeUserRole()` in `src/lib/user-role.ts`; the guards live in `src/lib/admin-guard.ts`.
+  - `user_metadata` is **user-writable**: any signed-in user can rewrite it from the browser with `supabase.auth.updateUser()`. A role stored there is a role the user assigns to themselves, so **any check against `user_metadata.role` is a privilege-escalation bug**, not a style issue — that was the real hole SECURITY.md tracks as T0.1. Do not write one, and do not "restore" one because some older doc or comment mentions it.
+  - `app_metadata` is writable only with the **service-role key**. That is why the one and only way a role changes is the `guardAdmin()`-protected `PATCH /api/admin/users` route, which writes it through the service-role client and audit-logs the change. No self-service role endpoint exists; do not add one.
+  - `hr` is **admin-assigned only** and must never become self-selectable — it grants read-only access to the team-time endpoints via `guardTimeViewer()`, i.e. to every employee's time data.
+  - `user_metadata` is still the right home for the user's *own* non-privilege preferences (theme, signature, travel-sheet mapping). The line is simple: if it decides what someone is allowed to do, it does not go there.
 - All `/api/admin/*` routes must start with `guardAdmin()` or `guardTimeViewer()` before touching the service-role client. This is the single most important security invariant.
 
 ### Modules & where to look
@@ -80,6 +84,7 @@ Required env (dev: a gitignored dotenv in `web/` — this checkout uses `web/.en
 - `RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO` — reminder emails.
 - `CRON_SECRET` — Vercel Cron bearer token. If unset, only admin sessions can hit cron routes.
 - `GOOGLE_SHEETS_*` — travel-sheet integration for the Time Tracker (`lib/google-sheets.ts`).
+- `TRACKING_SALT` — server-only; a long random string. `app/r/[id]/route.ts` stores a SHA-256 of each clicking recipient's IP in `mail_link_clicks`, and this salt is the only thing that makes the hash irreversible: the IPv4 space is small enough to brute-force an unsalted SHA-256 in seconds. Those are **external recipients'** IPs — third-party personal data — which is why `supabase/2026-05-06-mail-link-tracking.sql` promises they are never recoverable. If unset the code falls back to `""` and that promise silently becomes false: it fails open, with no error. Set it in every environment that serves `/r/<id>`, and treat it as a secret. Rotating it is safe but resets click de-duplication — old hashes stop matching new ones.
 - Optional `APP_BASE_URL` — overrides dashboard link embedded in reminder emails.
 
 The `web/README.md` has the most detailed env-var reference and the cron/team-chat operational notes; treat it as the source of truth before this file.
