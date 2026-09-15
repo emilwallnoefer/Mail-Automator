@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui";
+import { RoleGateGame } from "@/components/role-gate-game";
 
 /**
  * The holding screen a signed-in account sees while it has no role.
@@ -11,7 +12,13 @@ import { Button } from "@/components/ui";
  *
  * It is a server component rendered INSTEAD of the dashboard shell, not an
  * overlay on top of it: no module code is sent, no panel is mounted and no
- * prefetch runs, so there is nothing to reach behind it.
+ * prefetch runs, so there is nothing to reach behind it. `RoleGateGame` is the
+ * one client component here, and it is deliberately inert — no fetch, no
+ * Supabase, no session props — so the gate still exposes nothing.
+ *
+ * The tone is deliberately light. This is somebody's first ever screen in the
+ * app and nothing is wrong — they are waiting on a colleague, not looking at an
+ * error, so it should not read like a permissions failure.
  */
 export function RoleGate({ email }: { email: string }) {
   return (
@@ -21,17 +28,13 @@ export function RoleGate({ email }: { email: string }) {
     >
       <div className="absolute inset-0 aurora-bg" />
       <div className="relative w-full max-w-md rounded-2xl border border-glass/20 bg-surface/95 p-6 shadow-xl">
-        <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">Waiting for access</p>
-        <h1 className="mt-2 text-lg font-semibold">Your account needs a role</h1>
+        <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">One last step</p>
+        <h1 className="mt-2 text-lg font-semibold">You&rsquo;re in — almost</h1>
         <p className="mt-3 text-sm text-ink-3/85">
-          You are signed in as <span className="font-medium text-ink-2">{email}</span>, but an admin has not
-          assigned you a role yet. That role is what decides which modules you see, so nothing is available
-          until it is set.
+          You&rsquo;re signed in as <span className="font-medium text-ink-2">{email}</span>. An admin needs
+          to give you a role before the workspace opens — they already know you&rsquo;re here.
         </p>
-        <p className="mt-3 text-sm text-ink-3/85">
-          The admins have been told you are here. You will not get a confirmation — just sign in again once
-          they have set you up, and the workspace opens.
-        </p>
+        <RoleGateGame />
         <form action="/logout" method="post" className="mt-5">
           <Button type="submit" variant="glass" size="md" className="w-full">
             Sign out
