@@ -20,6 +20,19 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    // Shares 2026-09-15 with the fleet-location release below, so the id
+    // carries its own suffix — reusing that one would hide this popup from
+    // everyone who already dismissed it.
+    version: "2026-09-15-role-assignment",
+    date: "Sep 15, 2026",
+    title: "New accounts are set up for you",
+    highlights: [
+      "Signing in for the first time no longer asks you to pick your own profile — you land on a short screen saying your account is waiting for access.",
+      "An admin is told the moment you arrive, and once they set your role the workspace opens on your next sign-in.",
+      "Nobody can put themselves in the wrong profile any more, so the modules you see are the ones you are meant to have.",
+    ],
+  },
+  {
     version: "2026-09-15-fleet-lausanne",
     date: "Sep 15, 2026",
     title: "The pool has an address",
