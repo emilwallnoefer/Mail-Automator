@@ -3,14 +3,19 @@
  *
  * Cells are quoted when they contain a comma, quote, CR, or LF, and inner
  * quotes are doubled per RFC 4180. Cells that a spreadsheet could interpret as
- * a formula (leading `=`, `+`, `@`, tab/CR, or a `-` not starting a number)
- * are prefixed with a single quote to defuse CSV-injection attacks.
+ * a formula (leading `=`, `+`, `@`, tab/CR, or a `-` on anything that is not a
+ * plain negative number) are prefixed with a single quote to defuse
+ * CSV-injection attacks.
+ *
+ * The negative-number exemption matches the value in full (`-2.5`, not `-1+…`):
+ * Excel evaluates anything starting with `-` as a formula, so `-1+cmd|'…'!A0`
+ * is a live DDE payload that merely *looks* like it starts with a number.
  */
 function escapeCsvCell(value: unknown): string {
   if (value == null) return "";
   let str = String(value);
   const injectable =
-    /^[=+@\t\r]/.test(str) || (str[0] === "-" && !/^-\d/.test(str));
+    /^[=+@\t\r]/.test(str) || (str[0] === "-" && !/^-\d+(?:\.\d+)?$/.test(str));
   if (injectable) str = `'${str}`;
   if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
