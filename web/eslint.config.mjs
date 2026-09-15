@@ -19,6 +19,33 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // The role must come from `app_metadata` (service-role writable only), never
+  // `user_metadata`, which the user rewrites themselves with the anon key via
+  // supabase.auth.updateUser(). See SECURITY.md T0.1, and the AST-level
+  // architecture guard in src/lib/role-source.test.ts, which also follows the
+  // aliased `const m = user.user_metadata` form these selectors cannot see.
+  // Only `role` is restricted — the rest of user_metadata (travel-sheet
+  // mapping, signature, appearance, gmail_email) is legitimate preference data.
+  {
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            'MemberExpression[property.name="role"][object.property.name="user_metadata"], MemberExpression[property.name="role"][object.name=/^(user_metadata|userMetadata)$/], MemberExpression[computed=true][property.value="role"][object.property.name="user_metadata"], MemberExpression[computed=true][property.value="role"][object.name=/^(user_metadata|userMetadata)$/], VariableDeclarator[init.property.name="user_metadata"] > ObjectPattern > Property[key.name="role"], VariableDeclarator[init.name=/^(user_metadata|userMetadata)$/] > ObjectPattern > Property[key.name="role"]',
+          message:
+            "Never read the role from user_metadata: the user can rewrite that bag themselves (supabase.auth.updateUser), so this would let any employee self-assign `hr` and read everyone else's time data. Read `app_metadata.role` and pass it through normalizeUserRole(); only PATCH /api/admin/users (behind guardAdmin) may write it. See SECURITY.md T0.1.",
+        },
+        {
+          selector:
+            'CallExpression[callee.property.name="updateUser"] > ObjectExpression > Property[key.name="data"] > ObjectExpression > Property[key.name="role"], CallExpression[callee.property.name="updateUser"] > ObjectExpression > Property[key.value="data"] > ObjectExpression > Property[key.value="role"]',
+          message:
+            "Never write a role through updateUser({ data: … }): `data` IS user_metadata and this call runs with the anon key in the browser, so it is the user assigning their own role. Roles are set only by PATCH /api/admin/users, which is behind guardAdmin() and writes app_metadata with the service-role key. See SECURITY.md T0.1.",
+        },
+      ],
+    },
+  },
+
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
