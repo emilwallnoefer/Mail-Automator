@@ -14,6 +14,7 @@ Key variables consumed by the app (set these in `.env.local` for local dev and i
 - `RESEND_API_KEY` — API key from [Resend](https://resend.com/api-keys). Used by the weekly "log your time" reminder email job.
 - `RESEND_FROM` — verified sender identity used for reminder emails, currently `Flya Allrounder <noreply@flya.space>`. The domain must be verified in Resend first (`flya.space`, EU/Ireland region).
 - `RESEND_REPLY_TO` — optional `Reply-To` header for reminder emails (e.g. an HR mailbox).
+- `TRACKING_SALT` — **server-only**; any long random string. The public click redirect (`src/app/r/[id]/route.ts`) stores a SHA-256 of the clicking recipient's IP in `mail_link_clicks`, never the IP itself, so repeated scanner hits can be de-duplicated without holding personal data. The salt is the only thing that makes that hash irreversible — the whole IPv4 space hashes in seconds, so an unsalted digest is just a reversible encoding of the address. These are **external recipients'** IPs, i.e. third-party personal data, which is why `supabase/2026-05-06-mail-link-tracking.sql` states they are never recoverable. If the variable is unset the code falls back to an empty salt and that statement silently stops being true: it fails open, with no error and nothing in the logs. Set it in every environment that serves `/r/<id>`, and treat it as a secret — leaking it is equivalent to publishing the IPs. Changing it does not break anything, but past hashes stop matching new ones (de-duplication resets).
 - `CRON_SECRET` — any long random string. Vercel automatically sends it as `Authorization: Bearer <CRON_SECRET>` when it triggers Cron endpoints, and our reminder route rejects calls that don't match.
 - `APP_BASE_URL` — optional. Overrides the dashboard link embedded in reminder emails. Defaults to the request origin. Set to `https://flya.space` in production.
 - `NEXT_PUBLIC_SITE_URL` — public origin used to build the `/r/<id>` click-tracking links embedded in **outbound customer email**, and to absolutise image URLs in email HTML. Currently `https://flya.space`. Resolution order is `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → request origin (`src/lib/email/link-tracker.ts`). Set it explicitly: relying on the fallbacks means the hostname baked into already-sent emails is decided by deployment state rather than by you. Because it is `NEXT_PUBLIC_*` it is compiled in at build time — changing it requires a redeploy, not just an env save. Never point it at a preview deployment URL; those links must outlive the deployment. See `docs/domain-change-runbook.md`.
@@ -22,10 +23,13 @@ Security note: the service role key bypasses Row-Level Security. It is only refe
 
 ### Roles
 
-Roles are stored in Supabase `user_metadata.role`:
+Roles are stored in Supabase **`app_metadata.role`** — never `user_metadata`.
 
-- `sales`, `eu_pilot`, `us_pilot` — self-selectable on first login.
-- `hr` — read-only access to the **Team time** tab (aggregated weekly summaries + per-user week drill-down). HR cannot see or manage user roles. Not self-selectable; only an admin (email listed in `ADMIN_EMAILS`) can assign it via the Admin → Users &amp; roles tab.
+`user_metadata` is writable by the user themselves (`supabase.auth.updateUser()` with the anon key), so a role kept there is a role anyone can grant themselves; that was the T0.1 privilege escalation fixed in `supabase/2026-07-03-role-in-app-metadata.sql`. `app_metadata` is writable only with the service-role key. Every read goes through `normalizeUserRole()` (`src/lib/user-role.ts`) against `app_metadata`; every write goes through `PATCH /api/admin/users`, which is behind `guardAdmin()` and audit-logs the change. **Any new check against `user_metadata.role` reopens the hole — don't write one.**
+
+- `sales`, `eu_pilot`, `us_pilot` — assigned by an admin in Admin → Users &amp; roles.
+- `hr` — read-only access to the **Team time** tab (aggregated weekly summaries + per-user week drill-down). HR cannot see or manage user roles. Admin-assigned only, and must never become self-selectable.
+- Legacy `pilot` values normalise to `eu_pilot`.
 
 The `hr` role re-uses the admin time endpoints (`/api/admin/time-overview` and `/api/admin/time-user`) via `guardTimeViewer()`. Role management (`/api/admin/users`) remains gated behind `guardAdmin()`.
 
@@ -33,7 +37,7 @@ The `hr` role re-uses the admin time endpoints (`/api/admin/time-overview` and `
 
 A Vercel Cron Job hits `GET /api/cron/time-log-reminder` every Monday at 07:00 UTC **and** 08:00 UTC (configured in `vercel.json`). The route internally gates on "weekday = Monday AND hour = 9 in Europe/Zurich", so exactly one of the two invocations does work year-round — regardless of CET/CEST daylight-savings shifts.
 
-For each user whose `user_metadata.role` is `sales`, `eu_pilot`, or `us_pilot`, the route sums `time_day_logs.net_mins` across the previous Monday→Sunday window. If the total is **0 minutes**, a reminder email is sent via [Resend](https://resend.com).
+For each user whose `app_metadata.role` is `sales`, `eu_pilot`, or `us_pilot`, the route sums `time_day_logs.net_mins` across the previous Monday→Sunday window. If the total is **0 minutes**, a reminder email is sent via [Resend](https://resend.com).
 
 Useful knobs (all admin-gated unless called with the cron secret):
 
