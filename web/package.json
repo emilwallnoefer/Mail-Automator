@@ -41,7 +41,7 @@
     "jsdom": "^30.0.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "gaxios": "7.1.4",
