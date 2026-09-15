@@ -80,9 +80,17 @@ export type EliosGameProps = {
    * Off by default so a caller has to opt in to the network.
    */
   leaderboard?: boolean;
+  /**
+   * Stop the animation loop entirely.
+   *
+   * For a caller that fades the game out rather than unmounting it: an
+   * invisible canvas repainting sixty times a second is pure waste, and the
+   * game state lives in refs, so pausing and resuming picks up mid-flight.
+   */
+  paused?: boolean;
 };
 
-export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGameProps) {
+export function EliosGame({ className = "mt-4", leaderboard = false, paused = false }: EliosGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(createGame());
   // Server render has no localStorage, so the server snapshot is always null.
@@ -151,6 +159,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGame
   );
 
   const press = useCallback(() => {
+    if (paused) return;
     const s = stateRef.current;
     if (s.status === "crashed") {
       stateRef.current = flap(createGame());
@@ -158,7 +167,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGame
       stateRef.current = flap(s);
     }
     setHud({ status: "flying", score: stateRef.current.score });
-  }, []);
+  }, [paused]);
 
   // The frame loop is set up once and must not restart when a callback
   // identity changes — restarting it mid-flight would reset the canvas.
@@ -168,6 +177,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGame
   }, [submitScore]);
 
   useEffect(() => {
+    if (paused) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -381,7 +391,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGame
       stopped = true;
       cancelAnimationFrame(raf);
     };
-  }, [leaderboard]);
+  }, [leaderboard, paused]);
 
   // Space and Enter must fly too — the canvas is focusable and this is the
   // whole control scheme.

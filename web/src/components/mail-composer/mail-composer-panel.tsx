@@ -60,6 +60,16 @@ export function MailComposerPanel({
     preDayCount,
   } = composer;
 
+  /**
+   * Has the mail started appearing in the preview?
+   *
+   * Keyed off the animated subject rather than `result`, because the typing
+   * effect is what actually fills the space — the moment a character lands is
+   * the moment the game should start getting out of the way. `result` alone
+   * would hand the slot over a beat early, while the card is still blank.
+   */
+  const mailIsWriting = Boolean(animatedPreviewSubject || animatedPreviewBody || result);
+
   return (
     <section className="underwater-panel relative grid items-start gap-6 overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div className="relative min-h-0 min-w-0 w-full lg:col-start-1 lg:row-start-1">
@@ -485,20 +495,6 @@ export function MailComposerPanel({
             </>
           )}
 
-          {loading ? (
-            <div className="mt-5 rounded-xl border border-glass/20 bg-glass/5 p-3">
-              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
-                Writing your draft
-              </p>
-              <p className="mt-1 text-sm text-ink-3/85">
-                This takes a moment. Fly something while you wait.
-              </p>
-              {/* Mounted only while generating, so the loop and the board fetch
-                  cost nothing on a composer nobody is waiting on. */}
-              <EliosGame className="mt-3" leaderboard />
-            </div>
-          ) : null}
-
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => {
@@ -545,7 +541,35 @@ export function MailComposerPanel({
       </div>
 
       <div className="relative min-h-0 min-w-0 w-full lg:col-start-2 lg:row-start-1">
-        <LivePreview result={result} animatedSubject={animatedPreviewSubject} animatedBody={animatedPreviewBody} />
+        <LivePreview
+          result={result}
+          animatedSubject={animatedPreviewSubject}
+          animatedBody={animatedPreviewBody}
+          idleSlot={
+            /*
+              The game waits in the slot the mail will fill, from the moment the
+              composer opens — not only once Generate is pressed, so there is
+              something to do while the form is being filled in too.
+
+              It collapses the instant the first character is typed rather than
+              when the request returns: `animatedPreviewSubject` drives the neon
+              write effect, so this hands the space over exactly as the mail
+              starts appearing in it. Height and opacity animate together so the
+              card does not jump, and `paused` stops the loop once it is hidden.
+            */
+            <div
+              aria-hidden={mailIsWriting}
+              className={`overflow-hidden transition-all duration-700 ease-out ${
+                mailIsWriting ? "mt-0 max-h-0 opacity-0" : "mt-4 max-h-[560px] opacity-100"
+              }`}
+            >
+              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
+                {loading ? "Writing your draft" : "While you wait"}
+              </p>
+              <EliosGame className="mt-2" leaderboard paused={mailIsWriting} />
+            </div>
+          }
+        />
       </div>
     </section>
   );
