@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui";
 import type { GenerateResponse } from "./types";
 
@@ -20,10 +21,19 @@ export function LivePreview({
   result,
   animatedSubject,
   animatedBody,
+  idleSlot,
 }: {
   result: GenerateResponse | null;
   animatedSubject: string;
   animatedBody: string;
+  /**
+   * Rendered inside the card while it is empty, in place of the waiting line.
+   *
+   * A slot rather than an overlay: the empty card is short, so anything
+   * absolutely positioned over the column lands outside it and collides with
+   * the heading. Putting it here lets the card grow around whatever it holds.
+   */
+  idleSlot?: ReactNode;
 }) {
   return (
     <div className="glass-card hourlogger-surface min-w-0 w-full self-stretch rounded-2xl p-4 md:p-5">
@@ -56,6 +66,9 @@ export function LivePreview({
           </div>
         </div>
       )}
+      {/* Outside the branch on purpose: the slot has to survive the switch to
+          the result, or it would vanish instantly instead of fading. */}
+      {idleSlot}
     </div>
   );
 }
