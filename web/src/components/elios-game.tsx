@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { LeaderboardRow } from "@/lib/elios-leaderboard";
 import {
   BEST_SCORE_KEY,
   DRONE_RADIUS,
@@ -71,7 +72,17 @@ function subscribeBest(onChange: () => void) {
   };
 }
 
-export function RoleGateGame() {
+export type EliosGameProps = {
+  /** Extra classes for the wrapper — the composer needs different spacing. */
+  className?: string;
+  /**
+   * Show the workspace leaderboard under the game and post scores to it.
+   * Off by default so a caller has to opt in to the network.
+   */
+  leaderboard?: boolean;
+};
+
+export function EliosGame({ className = "mt-4", leaderboard = false }: EliosGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(createGame());
   // Server render has no localStorage, so the server snapshot is always null.
@@ -80,6 +91,64 @@ export function RoleGateGame() {
     status: "idle",
     score: 0,
   });
+  const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
+
+  /**
+   * Refresh the board. Silent on failure: an unapplied migration or a dropped
+   * connection must never break the game wrapped around it, and the board is
+   * the least important thing on screen.
+   */
+  const loadBoard = useCallback(async () => {
+    try {
+      const res = await fetch("/api/elios-score", { cache: "no-store" });
+      if (!res.ok) return;
+      const json = (await res.json()) as { board?: LeaderboardRow[] };
+      setBoard(json.board ?? []);
+    } catch {
+      // Leave whatever was showing.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!leaderboard) return;
+    // Fetched inline with a cancel flag rather than by calling loadBoard():
+    // the React Compiler treats an effect that calls a setState-bearing
+    // callback as a synchronous set, and this shape also stops a late response
+    // writing into an unmounted component.
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/elios-score", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { board?: LeaderboardRow[] };
+        if (!cancelled) setBoard(json.board ?? []);
+      } catch {
+        // The board is the least important thing on screen.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [leaderboard]);
+
+  /** Post a finished run. The server decides whether it is an improvement. */
+  const submitScore = useCallback(
+    async (score: number) => {
+      try {
+        const res = await fetch("/api/elios-score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ score }),
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { recorded?: boolean };
+        if (json.recorded) await loadBoard();
+      } catch {
+        // A lost score is not worth telling anybody about.
+      }
+    },
+    [loadBoard],
+  );
 
   const press = useCallback(() => {
     const s = stateRef.current;
@@ -90,6 +159,13 @@ export function RoleGateGame() {
     }
     setHud({ status: "flying", score: stateRef.current.score });
   }, []);
+
+  // The frame loop is set up once and must not restart when a callback
+  // identity changes — restarting it mid-flight would reset the canvas.
+  const submitScoreRef = useRef(submitScore);
+  useEffect(() => {
+    submitScoreRef.current = submitScore;
+  }, [submitScore]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -273,6 +349,7 @@ export function RoleGateGame() {
 
       if (before.status === "flying" && after.status === "crashed") {
         if (isNewBest(after.score, readBest())) writeBest(after.score);
+        if (leaderboard && after.score > 0) void submitScoreRef.current(after.score);
         setHud({ status: "crashed", score: after.score });
       } else if (after.score !== before.score) {
         setHud({ status: after.status, score: after.score });
@@ -304,7 +381,7 @@ export function RoleGateGame() {
       stopped = true;
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [leaderboard]);
 
   // Space and Enter must fly too — the canvas is focusable and this is the
   // whole control scheme.
@@ -319,7 +396,7 @@ export function RoleGateGame() {
   );
 
   return (
-    <div className="mt-4">
+    <div className={className}>
       <div
         role="button"
         tabIndex={0}
@@ -359,7 +436,19 @@ export function RoleGateGame() {
           </div>
         ) : null}
       </div>
-      {best !== null ? <p className="mt-2 text-[11px] text-ink-5">Best {best}</p> : null}
+      <div className="mt-2 flex items-start justify-between gap-3">
+        {best !== null ? <p className="text-[11px] text-ink-5">Best {best}</p> : <span />}
+        {leaderboard && board && board.length > 0 ? (
+          <ol className="min-w-0 text-right text-[11px] leading-5 text-ink-4/80">
+            {board.slice(0, 5).map((row, i) => (
+              <li key={`${row.name}-${i}`} className={row.you ? "text-accent-soft/90" : undefined}>
+                <span className="text-ink-5">{i + 1}.</span> {row.name}{" "}
+                <span className="font-medium text-ink-3">{row.score}</span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
     </div>
   );
 }

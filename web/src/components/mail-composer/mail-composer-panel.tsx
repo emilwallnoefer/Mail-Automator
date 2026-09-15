@@ -8,6 +8,7 @@ import {
   TRAINING_DISCIPLINES,
 } from "@/lib/training-disciplines";
 import type { UserRole } from "@/lib/user-role";
+import { EliosGame } from "@/components/elios-game";
 import { AssetChecklist } from "./asset-checklist";
 import { ComposerChoiceRow, composerSegmentClass, ProgressiveField } from "./composer-fields";
 import { LivePreview } from "./live-preview";
@@ -483,6 +484,20 @@ export function MailComposerPanel({
               </div>
             </>
           )}
+
+          {loading ? (
+            <div className="mt-5 rounded-xl border border-glass/20 bg-glass/5 p-3">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
+                Writing your draft
+              </p>
+              <p className="mt-1 text-sm text-ink-3/85">
+                This takes a moment. Fly something while you wait.
+              </p>
+              {/* Mounted only while generating, so the loop and the board fetch
+                  cost nothing on a composer nobody is waiting on. */}
+              <EliosGame className="mt-3" leaderboard />
+            </div>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <button

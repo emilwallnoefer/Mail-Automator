@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-15-elios-game",
+    date: "Sep 15, 2026",
+    title: "Something to do while the draft writes",
+    highlights: [
+      "Generating a mail now shows a small game — fly the Elios 3 through gates, spikes and saw blades while you wait.",
+      "There is a workspace leaderboard: first name and best score, everyone in one list.",
+      "Same game greets a brand-new account that is still waiting for an admin to assign it a role.",
+    ],
+  },
+  {
     // Shares 2026-09-15 with the fleet-location release below, so the id
     // carries its own suffix — reusing that one would hide this popup from
     // everyone who already dismissed it.
