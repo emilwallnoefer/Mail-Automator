@@ -20,6 +20,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-15-holder-claims",
+    date: "Sep 15, 2026",
+    title: "Every claimed name, in one table",
+    highlights: [
+      "Admin → Holder claims lists who claimed which fleet name, when, and how much material came with it.",
+      "A claim under a name that does not look like the claimant is flagged in the table and mailed to admins — the claim still goes through, because the old sheet spelled everyone differently.",
+      "Admins can reassign a name to the right person, or release it back to unclaimed; the bookings and assigned units follow either way.",
+      "Every correction is written into the unit's history and the audit log.",
+    ],
+  },
+  {
     version: "2026-09-15-fleet-lausanne",
     date: "Sep 15, 2026",
     title: "The pool has an address",

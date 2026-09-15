@@ -22,8 +22,13 @@ export function fmtRelative(iso: string | null): string {
 
 export function fmtAbsolute(iso: string | null): string {
   if (!iso) return "—";
+  // `toLocaleString()` does not throw on an unparseable date — it returns the
+  // string "Invalid Date" — so the raw value is the better fallback, and the
+  // catch below only covers a genuinely broken Intl environment.
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
   try {
-    return new Date(iso).toLocaleString();
+    return date.toLocaleString();
   } catch {
     return iso;
   }
