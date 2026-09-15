@@ -183,11 +183,37 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Draw in world units and let the transform handle DPR, so nothing below
-    // has to know about device pixels.
+    /**
+     * Size the backing store to the space the canvas actually occupies.
+     *
+     * It was fixed at WORLD_WIDTH x WORLD_HEIGHT and then stretched by CSS to
+     * whatever width the container gave it — fine in the narrow role-gate card,
+     * visibly soft in the composer's preview column, which is more than twice
+     * as wide. The drawing code still works in world units; only the transform
+     * changes, so nothing below has to know the display size.
+     *
+     * Re-measured on resize, because the composer column changes width when the
+     * layout breaks to one column and when the window is dragged.
+     */
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    canvas.width = WORLD_WIDTH * dpr;
-    canvas.height = WORLD_HEIGHT * dpr;
+    /** Ceiling on the backing store, so a very wide card cannot allocate an absurd buffer. */
+    const MAX_BACKING_WIDTH = 2400;
+    let backingWidth = 0;
+
+    const resize = () => {
+      const cssWidth = canvas.clientWidth || WORLD_WIDTH;
+      const next = Math.min(Math.round(cssWidth * dpr), MAX_BACKING_WIDTH);
+      if (next === backingWidth) return;
+      backingWidth = next;
+      canvas.width = next;
+      canvas.height = Math.round((next * WORLD_HEIGHT) / WORLD_WIDTH);
+    };
+    resize();
+
+    // Resizing the canvas clears it, so a resize between frames would flash —
+    // the loop repaints every frame, so it redraws before anything is shown.
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
 
     const css = getComputedStyle(canvas);
     const ink = css.getPropertyValue("--ink").trim() || "#e2e8f0";
@@ -365,7 +391,10 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
         setHud({ status: after.status, score: after.score });
       }
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // World units to device pixels. Derived from the live backing store so a
+      // resize takes effect on the very next frame.
+      const scale = canvas.width / WORLD_WIDTH;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
       // Floor and ceiling, so the crash surfaces are visible.
@@ -390,6 +419,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      observer.disconnect();
     };
   }, [leaderboard, paused]);
 
