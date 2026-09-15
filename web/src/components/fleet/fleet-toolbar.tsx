@@ -2,7 +2,13 @@
 
 import { Button, Input, Select } from "@/components/ui";
 import { addDays, toDateKey } from "@/lib/fleet-rules";
-import { WINDOW_STEP_DAYS, type FleetState, type FleetTab } from "./use-fleet";
+import {
+  HOLDER_ANY,
+  HOLDER_NOBODY,
+  WINDOW_STEP_DAYS,
+  type FleetState,
+  type FleetTab,
+} from "./use-fleet";
 import { CATEGORY_LABEL, CATEGORY_ORDER, type FleetAssetCategory } from "./types";
 
 /**
@@ -37,6 +43,9 @@ export function FleetToolbar({
     setTab,
     categoryFilter,
     setCategoryFilter,
+    holderFilter,
+    setHolderFilter,
+    holderOptions,
     search,
     setSearch,
     windowStart,
@@ -50,7 +59,8 @@ export function FleetToolbar({
   // They used to live inside the calendar's own toolbar, which meant a filter
   // set there silently trimmed Material with no visible control to explain why.
   const filtersApply = tab === "calendar" || tab === "material";
-  const filtered = categoryFilter !== "all" || search.trim() !== "";
+  const filtered =
+    categoryFilter !== "all" || holderFilter !== HOLDER_ANY || search.trim() !== "";
 
   return (
     <div className="overflow-hidden rounded-xl border border-glass/12 bg-glass/[0.04]">
@@ -97,6 +107,26 @@ export function FleetToolbar({
                 ))}
               </Select>
             </div>
+            {/* Only offered once somebody actually holds something: a filter
+                whose every option is "nobody" is a control that cannot act. */}
+            {holderOptions.length > 0 ? (
+              <div className="w-32 shrink-0 sm:w-40">
+                <Select
+                  value={holderFilter}
+                  onChange={(event) => setHolderFilter(event.target.value)}
+                  className="px-2 py-1.5 text-xs text-ink"
+                  aria-label="Filter by who has it"
+                >
+                  <option value={HOLDER_ANY}>Anyone</option>
+                  <option value={HOLDER_NOBODY}>Nobody — free</option>
+                  {holderOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
             <div className="w-36 min-w-0 sm:w-56">
               <Input
                 value={search}
@@ -116,6 +146,7 @@ export function FleetToolbar({
                 onClick={() => {
                   setSearch("");
                   setCategoryFilter("all");
+                  setHolderFilter(HOLDER_ANY);
                 }}
               >
                 Clear

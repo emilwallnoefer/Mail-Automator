@@ -7,13 +7,13 @@ import {
   daysBetween,
   describeDays,
   formatDay,
-  holderRgb,
   monthBands,
   occupiedUntil,
   parseDateKey,
   type DayMeta,
 } from "@/lib/fleet-rules";
 import { AssetIcon } from "./asset-icon";
+import { useHolderRgb } from "./holder-colors";
 import type { FleetAsset, FleetReservation } from "./types";
 
 /**
@@ -246,6 +246,9 @@ const AssetRow = memo(function AssetRow({
   onOpenReservation: (reservation: FleetReservation) => void;
   onRemove: (reservation: FleetReservation) => void;
 }) {
+  // Read from context rather than derived per cell: the guarantee that nobody
+  // shares a colour only exists at the level of the whole roster.
+  const rgbOf = useHolderRgb();
   const assetBookable = asset.status !== "retired" && asset.status !== "in_repair";
 
   const stateFor = useCallback(
@@ -306,15 +309,11 @@ const AssetRow = memo(function AssetRow({
           <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
           <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
         </span>
-        {/* Where it is, under what it is. Amber when nobody has confirmed the
-            location lately — the same cue the Material register uses, so a
-            unit you should not count on says so on both screens. */}
-        <span
-          className={`block truncate pl-[1.375rem] text-[11px] font-normal ${
-            asset.location_stale || asset.current_location == null ? "text-warn/80" : "text-ink-5"
-          }`}
-          title={asset.location_stale ? "Nobody has confirmed this location lately" : undefined}
-        >
+        {/* Where it is, under what it is. How long ago that was confirmed is
+            deliberately absent here and in the Material register: an admin sets
+            a location once in Manage, so an age in days reported on every row
+            was chrome about a problem nobody had. */}
+        <span className="block truncate pl-[1.375rem] text-[11px] font-normal text-ink-5">
           {asset.current_location ?? "Location unknown"}
         </span>
       </th>
@@ -370,7 +369,7 @@ const AssetRow = memo(function AssetRow({
               style={
                 reservation && !selected
                   ? cellStyle({
-                      holder: reservation.holder_name,
+                      rgb: rgbOf(reservation.holder_name),
                       isHistory: state.isHistory,
                       unclaimed: reservation.unclaimed,
                       overdue,
@@ -413,13 +412,13 @@ const AssetRow = memo(function AssetRow({
  * "nobody is accountable for this" survives being the same colour as its owner.
  */
 function cellStyle(args: {
-  holder: string;
+  /** Already resolved by the caller: colours are allocated per board, not per name. */
+  rgb: string;
   isHistory: boolean;
   unclaimed: boolean;
   overdue: boolean;
 }): React.CSSProperties {
-  const { holder, isHistory, unclaimed, overdue } = args;
-  const rgb = holderRgb(holder);
+  const { rgb, isHistory, unclaimed, overdue } = args;
   const alpha = isHistory ? 0.2 : overdue ? 0.75 : 0.55;
   const style: React.CSSProperties = {
     backgroundColor: `rgb(${rgb} / ${alpha})`,

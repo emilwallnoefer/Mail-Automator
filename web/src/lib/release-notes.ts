@@ -20,6 +20,24 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    // Several releases share 2026-09-14, so every id carries a suffix: the
+    // popup is keyed by this string in localStorage, and a reused one would
+    // hide the release from everyone who already saw the other.
+    version: "2026-09-14-fleet-material",
+    date: "Sep 14, 2026",
+    title: "See who has what, at a glance",
+    highlights: [
+      "Material is now a card per unit, each carrying the colour of the person holding it — the same colour they have in the calendar.",
+      "New filter next to the type filter: show only one person’s material, or only what nobody has.",
+      "Adding and editing material is one dialog, with the same fields both times.",
+      "Type, status, location, owner group and “assigned to” are now chosen from what the fleet already uses, instead of typed out.",
+      "Admins can set where a unit actually is, from Manage.",
+      "Everyone now has a colour of their own — no two people share one, and the similar-looking pairs are gone.",
+      "Material assigned to one person no longer asks for a location, since it travels with them.",
+      "Reminders, unclaimed names, standings and removed units fold away under the fleet list.",
+    ],
+  },
+  {
     version: "2026-09-14-stay-put",
     date: "Sep 14, 2026",
     title: "Reloading keeps you where you were",
@@ -30,8 +48,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    // Fourth entry dated 2026-09-14, so the id carries a suffix for the same
-    // reason the Fleet one below does: the popup is keyed by this string.
     version: "2026-09-14-fleet-ui",
     date: "Sep 14, 2026",
     title: "Fleet, tidied up",
@@ -40,7 +56,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       "Today and the weekends are shaded down the whole board.",
       "The type filter and search now sit above both the calendar and the material list, so a filter is always visible.",
       "Your material leads with “due back tomorrow” rather than a date to work out.",
-      "A unit whose location nobody has confirmed lately is flagged in both the calendar and the material list.",
       "Admins can set a unit to in repair or retired from Manage → Edit.",
     ],
   },

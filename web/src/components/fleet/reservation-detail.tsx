@@ -3,9 +3,10 @@
 import { m } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { Badge, Button } from "@/components/ui";
-import { dueLabel, formatDayLong, formatSpan, holderRgb, occupiedUntil } from "@/lib/fleet-rules";
+import { dueLabel, formatDayLong, formatSpan, occupiedUntil } from "@/lib/fleet-rules";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { AssetIcon } from "./asset-icon";
+import { useHolderRgb } from "./holder-colors";
 import type { FleetAsset, FleetReservation } from "./types";
 
 /**
@@ -32,6 +33,7 @@ export function ReservationDetail({
   onCheckIn: (id: string) => void;
   onCancel: (id: string) => void;
 }) {
+  const rgbOf = useHolderRgb();
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true);
 
@@ -73,7 +75,7 @@ export function ReservationDetail({
             calendar cell used, so the dialog is visibly about that cell. */}
         <div
           className="h-1 w-full"
-          style={{ backgroundColor: `rgb(${holderRgb(reservation.holder_name)} / 0.85)` }}
+          style={{ backgroundColor: `rgb(${rgbOf(reservation.holder_name)} / 0.85)` }}
           aria-hidden
         />
 

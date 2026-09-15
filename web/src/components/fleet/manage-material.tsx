@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Input, Notice, Select } from "@/components/ui";
+import { Button, Input, Notice } from "@/components/ui";
+import { useHolderRgb } from "./holder-colors";
+import { AssetDialog, type AssetDraft } from "./asset-dialog";
 import { AssetIcon } from "./asset-icon";
-import { EmptyState, Row, SectionHeading } from "./ui";
+import { EmptyState, SectionHeading } from "./ui";
 import {
   CATEGORY_LABEL,
-  CATEGORY_ORDER,
   categoryRank,
   STATUS_LABEL,
   type FleetArchivedAsset,
   type FleetAsset,
   type FleetAssetCategory,
-  type FleetAssetStatus,
 } from "./types";
 
 /**
@@ -22,36 +22,20 @@ import {
  * its movement history and its bookings survive, and it can be restored from
  * the same screen. A hard delete would cascade the history away, and "this left
  * the fleet" is not "this never existed".
+ *
+ * The screen is a list plus a dialog. It used to be a stack of six unrelated
+ * things in one scroll — a reminders toggle, an add form that pushed everything
+ * down when opened, the list with a second edit form expanding inside it, then
+ * unclaimed names, standings and the archive — so the thing you came to do was
+ * never where you left it. Everything that is not the fleet list now folds
+ * away, and adding and editing both happen in `AssetDialog`.
  */
-
-type Draft = {
-  name: string;
-  serial_number: string;
-  category: FleetAssetCategory;
-  model: string;
-  owner_group: string;
-  pooled: boolean;
-  current_holder_label: string;
-  home_location: string;
-  notes: string;
-};
-
-const EMPTY: Draft = {
-  name: "",
-  serial_number: "",
-  category: "drone",
-  model: "",
-  owner_group: "EMEA",
-  pooled: true,
-  current_holder_label: "",
-  home_location: "EMEA",
-  notes: "",
-};
 
 export function ManageMaterial({
   assets,
   archived,
   unclaimed,
+  people,
   busy,
   onCreate,
   onUpdate,
@@ -64,9 +48,11 @@ export function ManageMaterial({
   archived: FleetArchivedAsset[];
   /** Holder names from the old sheet that nobody has claimed yet. */
   unclaimed: Array<{ label: string; count: number; live: number }>;
+  /** Everyone the fleet knows about, for the "assigned to" picker. */
+  people: readonly string[];
   busy: boolean;
-  onCreate: (draft: Draft) => Promise<boolean>;
-  onUpdate: (assetId: string, patch: Partial<Draft> & { status?: FleetAssetStatus }) => void;
+  onCreate: (draft: AssetDraft) => Promise<boolean>;
+  onUpdate: (assetId: string, draft: AssetDraft) => Promise<boolean>;
   onArchive: (assetId: string, archivedFlag: boolean) => void;
   /** Whether return reminders are being sent at all. */
   remindersEnabled: boolean;
@@ -74,10 +60,8 @@ export function ManageMaterial({
   /** The reliability leaderboard, rendered here so it stays an admin view. */
   standings: React.ReactNode;
 }) {
-  const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [edit, setEdit] = useState<Partial<Draft> & { status?: FleetAssetStatus }>({});
+  /** `null` = closed; `{ asset: null }` = adding; `{ asset }` = editing. */
+  const [dialog, setDialog] = useState<{ asset: FleetAsset | null } | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -87,7 +71,7 @@ export function ManageMaterial({
     for (const a of assets) {
       if (
         needle &&
-        ![a.name, a.serial_number, a.model, a.current_holder_label]
+        ![a.name, a.serial_number, a.model, a.current_holder_label, a.current_location]
           .filter(Boolean)
           .some((f) => String(f).toLowerCase().includes(needle))
       ) {
@@ -97,389 +81,136 @@ export function ManageMaterial({
       list.push(a);
       map.set(a.category, list);
     }
+    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name));
     return [...map.entries()].sort((a, b) => categoryRank(a[0]) - categoryRank(b[0]));
   }, [assets, search]);
 
-  function set<K extends keyof Draft>(key: K, value: Draft[K]) {
-    setDraft((d) => ({ ...d, [key]: value }));
-  }
+  // The answers the pickers offer, taken from what the fleet already says.
+  // Sorted, so the same option sits in the same place every time the dialog
+  // opens rather than moving with whatever was added last.
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of assets) {
+      if (a.current_location) set.add(a.current_location);
+      if (a.home_location) set.add(a.home_location);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [assets]);
+
+  const ownerGroups = useMemo(
+    () => [...new Set(assets.map((a) => a.owner_group).filter(Boolean) as string[])].sort(),
+    [assets],
+  );
+
+  const models = useMemo(
+    () => [...new Set(assets.map((a) => a.model).filter(Boolean) as string[])].sort(),
+    [assets],
+  );
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs leading-relaxed text-ink-4">
-        The fleet list is shared reference data — anything here shows up in everyone&apos;s calendar. Removing a unit
-        keeps its history and can be undone below.
-      </p>
-
-      {/* ------------------------------------------------------- reminders */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-glass/10 bg-glass/[0.04] px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-ink">
-            Return reminders {remindersEnabled ? "are on" : "are paused"}
-          </p>
-          <p className="mt-0.5 text-[11px] text-ink-5">
-            {remindersEnabled
-              ? "Holders are emailed the day before material is due, on the day, and while it is overdue."
-              : "Nothing is emailed. Turn this on once the fleet and its bookings are trusted."}
-          </p>
-        </div>
-        <Button
-          size="xs"
-          variant={remindersEnabled ? "glass-quiet" : "accent"}
-          disabled={busy}
-          onClick={() => onSetReminders(!remindersEnabled)}
-        >
-          {remindersEnabled ? "Pause reminders" : "Turn reminders on"}
+    <div className="space-y-3">
+      {/* ----------------------------------------------------------- toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="accent" onClick={() => setDialog({ asset: null })}>
+          + Add material
         </Button>
+        <div className="w-48 min-w-0 sm:w-64">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSearch("");
+            }}
+            placeholder="Search the fleet…"
+            className="px-2 py-1.5 text-xs"
+            aria-label="Search material"
+          />
+        </div>
+        <span className="text-[11px] text-ink-5">{assets.length} active</span>
       </div>
 
-      {/* ------------------------------------------------------------- add */}
-      {adding ? (
-        <div className="rounded-xl border border-accent/30 bg-accent-deep/10 p-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Name / unit id
-              <Input
-                value={draft.name}
-                onChange={(e) => set("name", e.target.value)}
-                placeholder="SVA-412"
-                className="text-xs"
-              />
-            </label>
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Type
-              <Select
-                value={draft.category}
-                onChange={(e) => set("category", e.target.value as FleetAssetCategory)}
-                className="px-2 py-2 text-xs text-ink"
-              >
-                {CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABEL[c]}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Serial (optional)
-              <Input
-                value={draft.serial_number}
-                onChange={(e) => set("serial_number", e.target.value)}
-                placeholder="E300SA23200412"
-                className="text-xs"
-              />
-            </label>
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Model (optional)
-              <Input
-                value={draft.model}
-                onChange={(e) => set("model", e.target.value)}
-                placeholder="Elios 3"
-                className="text-xs"
-              />
-            </label>
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Home location
-              <Input
-                value={draft.home_location}
-                onChange={(e) => set("home_location", e.target.value)}
-                className="text-xs"
-              />
-            </label>
-            <label className="grid gap-1 text-[11px] text-ink-4">
-              Owner group
-              <Input
-                value={draft.owner_group}
-                onChange={(e) => set("owner_group", e.target.value)}
-                className="text-xs"
-              />
-            </label>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <label className="inline-flex items-center gap-2 text-xs text-ink-3">
-              <input
-                type="checkbox"
-                checked={draft.pooled}
-                onChange={(e) => set("pooled", e.target.checked)}
-                className="h-3.5 w-3.5 cursor-pointer accent-accent"
-              />
-              Bookable by everyone (shows in the calendar)
-            </label>
-            {/* Sized by the wrapper: `Input`'s base carries `w-full`, and
-                `cn()` has no tailwind-merge, so a `w-56` here would not
-                replace it — both would apply and `w-full` would win. */}
-            {!draft.pooled ? (
-              <div className="w-56">
-                <Input
-                  value={draft.current_holder_label}
-                  onChange={(e) => set("current_holder_label", e.target.value)}
-                  placeholder="Assigned to (name)"
-                  className="text-xs"
-                  aria-label="Assigned to"
-                />
-              </div>
-            ) : null}
-          </div>
-
-          <Input
-            value={draft.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            placeholder="Notes (optional)"
-            className="mt-2 text-xs"
-            aria-label="Notes"
-          />
-
-          {!draft.pooled && !draft.current_holder_label.trim() ? (
-            <p className="mt-2 text-[11px] text-warn">
-              An assigned unit needs a holder name, or nobody will know who has it.
-            </p>
-          ) : null}
-
-          <div className="mt-3 flex gap-2">
-            <Button
-              size="sm"
-              variant="accent"
-              disabled={busy || !draft.name.trim() || (!draft.pooled && !draft.current_holder_label.trim())}
-              onClick={async () => {
-                if (await onCreate(draft)) {
-                  setDraft(EMPTY);
-                  setAdding(false);
-                }
-              }}
-            >
-              {busy ? "Adding…" : "Add material"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setDraft(EMPTY); }}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="accent" onClick={() => setAdding(true)}>
-            + Add material
-          </Button>
-          <div className="w-64 min-w-0">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search the fleet…"
-              className="px-2 py-1.5 text-xs"
-              aria-label="Search material"
-            />
-          </div>
-          <span className="text-[11px] text-ink-5">{assets.length} active</span>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------ list */}
-      {grouped.map(([category, list]) => (
-        <section key={category} className="space-y-1.5">
-          <SectionHeading
-            icon={<AssetIcon category={category} className="h-3.5 w-3.5 shrink-0" />}
-            count={list.length}
-          >
-            {CATEGORY_LABEL[category]}
-          </SectionHeading>
-          <ul className="space-y-1.5">
-            {list.map((asset) => (
-              <li key={asset.id}>
-                <Row>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
-                      <span className="text-xs font-medium text-ink">{asset.name}</span>
-                      <Badge tone={asset.pooled ? "positive" : "neutral"}>
-                        {asset.pooled ? "Bookable" : "Assigned"}
-                      </Badge>
-                      <Badge tone="neutral">{STATUS_LABEL[asset.status]}</Badge>
-                    </div>
-                    <p className="mt-1 truncate text-[11px] text-ink-5">
-                      {asset.serial_number ? `${asset.serial_number} · ` : ""}
-                      {asset.model ?? "—"}
-                      {asset.current_holder_label ? ` · with ${asset.current_holder_label}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    <Button
-                      size="xs"
-                      variant="glass-quiet"
-                      disabled={busy}
-                      onClick={() => {
-                        setEditingId(editingId === asset.id ? null : asset.id);
-                        setEdit({
-                          name: asset.name,
-                          serial_number: asset.serial_number ?? "",
-                          model: asset.model ?? "",
-                          category: asset.category,
-                          pooled: asset.pooled,
-                          current_holder_label: asset.current_holder_label ?? "",
-                          home_location: asset.home_location ?? "",
-                          status: asset.status,
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    {confirmId === asset.id ? (
-                      <>
-                        <Button
-                          size="xs"
-                          variant="danger"
-                          disabled={busy}
-                          onClick={() => {
-                            onArchive(asset.id, true);
-                            setConfirmId(null);
-                          }}
-                        >
-                          Remove
-                        </Button>
-                        <Button size="xs" variant="ghost" onClick={() => setConfirmId(null)}>
-                          Keep
-                        </Button>
-                      </>
-                    ) : (
-                      <Button size="xs" variant="ghost" disabled={busy} onClick={() => setConfirmId(asset.id)}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {editingId === asset.id ? (
-                  <div className="mt-2 space-y-2 border-t border-glass/10 pt-2">
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <Input
-                        value={edit.name ?? ""}
-                        onChange={(e) => setEdit((v) => ({ ...v, name: e.target.value }))}
-                        className="text-xs"
-                        aria-label="Name"
-                        placeholder="Name"
-                      />
-                      <Input
-                        value={edit.serial_number ?? ""}
-                        onChange={(e) => setEdit((v) => ({ ...v, serial_number: e.target.value }))}
-                        className="text-xs"
-                        aria-label="Serial"
-                        placeholder="Serial"
-                      />
-                      <Input
-                        value={edit.model ?? ""}
-                        onChange={(e) => setEdit((v) => ({ ...v, model: e.target.value }))}
-                        className="text-xs"
-                        aria-label="Model"
-                        placeholder="Model"
-                      />
-                      <Select
-                        value={edit.category ?? asset.category}
-                        onChange={(e) => setEdit((v) => ({ ...v, category: e.target.value as FleetAssetCategory }))}
-                        className="px-2 py-2 text-xs text-ink"
-                        aria-label="Type"
-                      >
-                        {CATEGORY_ORDER.map((c) => (
-                          <option key={c} value={c}>
-                            {CATEGORY_LABEL[c]}
-                          </option>
-                        ))}
-                      </Select>
-                      {/* Status lives here, and only here: retiring a unit or
-                          marking it in repair is an edit like any other. The
-                          screen used to tell admins to call the API by hand. */}
-                      <Select
-                        value={edit.status ?? asset.status}
-                        onChange={(e) => setEdit((v) => ({ ...v, status: e.target.value as FleetAssetStatus }))}
-                        className="px-2 py-2 text-xs text-ink"
-                        aria-label="Status"
-                      >
-                        {(Object.keys(STATUS_LABEL) as FleetAssetStatus[]).map((st) => (
-                          <option key={st} value={st}>
-                            {STATUS_LABEL[st]}
-                          </option>
-                        ))}
-                      </Select>
-                      <Input
-                        value={edit.home_location ?? ""}
-                        onChange={(e) => setEdit((v) => ({ ...v, home_location: e.target.value }))}
-                        className="text-xs"
-                        aria-label="Home location"
-                        placeholder="Home location"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="inline-flex items-center gap-2 text-xs text-ink-3">
-                        <input
-                          type="checkbox"
-                          checked={edit.pooled ?? asset.pooled}
-                          onChange={(e) => setEdit((v) => ({ ...v, pooled: e.target.checked }))}
-                          className="h-3.5 w-3.5 cursor-pointer accent-accent"
-                        />
-                        Bookable by everyone
-                      </label>
-                      {!(edit.pooled ?? asset.pooled) ? (
-                        <div className="w-56">
-                          <Input
-                            value={edit.current_holder_label ?? ""}
-                            onChange={(e) => setEdit((v) => ({ ...v, current_holder_label: e.target.value }))}
-                            placeholder="Assigned to (name)"
-                            className="text-xs"
-                            aria-label="Assigned to"
-                          />
-                        </div>
-                      ) : null}
-                      <Button
-                        size="xs"
-                        variant="accent"
-                        disabled={busy}
-                        onClick={() => {
-                          onUpdate(asset.id, edit);
-                          setEditingId(null);
-                        }}
-                      >
-                        Save
-                      </Button>
-                      <Button size="xs" variant="ghost" onClick={() => setEditingId(null)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-                </Row>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-
+      {/* -------------------------------------------------------------- list */}
       {grouped.length === 0 ? (
         <EmptyState
           title={assets.length === 0 ? "No material yet" : "Nothing matches that search"}
           hint={
             assets.length === 0
               ? "Add the fleet here — everything you add becomes bookable in the calendar for everyone."
-              : "Try a different name, serial or model."
+              : "Try a different name, serial, model or location."
           }
           action={
-            assets.length === 0 && !adding ? (
-              <Button size="xs" variant="accent" onClick={() => setAdding(true)}>
+            assets.length === 0 ? (
+              <Button size="xs" variant="accent" onClick={() => setDialog({ asset: null })}>
                 Add the first unit
               </Button>
             ) : null
           }
         />
-      ) : null}
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([category, list]) => (
+            <section key={category} className="space-y-1.5">
+              <SectionHeading
+                icon={<AssetIcon category={category} className="h-3.5 w-3.5 shrink-0" />}
+                count={list.length}
+              >
+                {CATEGORY_LABEL[category]}
+              </SectionHeading>
 
-      {/* ------------------------------------------------------- unclaimed */}
+              <ul className="space-y-1">
+                {list.map((asset) => (
+                  <li key={asset.id}>
+                    <AssetRow
+                      asset={asset}
+                      busy={busy}
+                      confirming={confirmId === asset.id}
+                      onEdit={() => setDialog({ asset })}
+                      onAskRemove={() => setConfirmId(asset.id)}
+                      onCancelRemove={() => setConfirmId(null)}
+                      onRemove={() => {
+                        onArchive(asset.id, true);
+                        setConfirmId(null);
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {/* --------------------------------------------------- folded sections */}
+      <Fold
+        title="Return reminders"
+        summary={remindersEnabled ? "On" : "Paused"}
+        tone={remindersEnabled ? "neutral" : "warn"}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="min-w-0 text-[11px] leading-relaxed text-ink-5">
+            {remindersEnabled
+              ? "Holders are emailed the day before material is due, on the day, and while it is overdue."
+              : "Nothing is emailed. Turn this on once the fleet and its bookings are trusted."}
+          </p>
+          <Button
+            size="xs"
+            variant={remindersEnabled ? "glass-quiet" : "accent"}
+            disabled={busy}
+            onClick={() => onSetReminders(!remindersEnabled)}
+          >
+            {remindersEnabled ? "Pause reminders" : "Turn reminders on"}
+          </Button>
+        </div>
+      </Fold>
+
       {unclaimed.length > 0 ? (
-        <section className="space-y-1.5 border-t border-glass/10 pt-4">
-          <SectionHeading count={unclaimed.length}>Unclaimed names</SectionHeading>
+        <Fold title="Unclaimed names" summary={String(unclaimed.length)} tone="warn">
           <p className="text-[11px] leading-relaxed text-ink-5">
             Material from the old sheet is filed under these names, and nobody has taken them yet. Until someone
-            does, that material has no owner to remind and no score to move. Each person is offered their name once,
-            when they first open Fleet.
+            does, that material has no owner to remind and no score to move. Each person is offered their name
+            once, when they first open Fleet.
           </p>
-          <ul className="flex flex-wrap gap-1.5">
+          <ul className="mt-2 flex flex-wrap gap-1.5">
             {unclaimed.map((h) => (
               <li
                 key={h.label}
@@ -493,33 +224,27 @@ export function ManageMaterial({
               </li>
             ))}
           </ul>
-        </section>
+        </Fold>
       ) : null}
 
-      {/* ------------------------------------------------------- standings */}
-      <section className="space-y-1.5 border-t border-glass/10 pt-4">
-        <SectionHeading>Reliability standings</SectionHeading>
-        {standings}
-      </section>
+      <Fold title="Reliability standings">{standings}</Fold>
 
-      {/* -------------------------------------------------------- archived */}
       {archived.length > 0 ? (
-        <section className="space-y-1.5 border-t border-glass/10 pt-4">
-          <SectionHeading count={archived.length}>Removed from the fleet</SectionHeading>
-          <Notice tone="neutral">
+        <Fold title="Removed from the fleet" summary={String(archived.length)}>
+          <Notice tone="neutral" className="text-xs">
             Removed units keep their bookings and movement history. Restoring one puts it straight back in the
             calendar.
           </Notice>
-          <ul className="space-y-1.5">
+          <ul className="mt-2 space-y-1">
             {archived.map((asset) => (
               <li
                 key={asset.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-glass/10 bg-glass/[0.02] px-3 py-2 opacity-70"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-glass/10 bg-glass/[0.02] px-3 py-2"
               >
-                <span className="flex items-center gap-1.5">
+                <span className="flex min-w-0 items-center gap-1.5">
                   <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-5" />
-                  <span className="text-xs text-ink-3">{asset.name}</span>
-                  <span className="text-[11px] text-ink-5">
+                  <span className="truncate text-xs text-ink-3">{asset.name}</span>
+                  <span className="truncate text-[11px] text-ink-5">
                     {asset.serial_number ?? asset.model ?? CATEGORY_LABEL[asset.category]}
                   </span>
                 </span>
@@ -529,8 +254,144 @@ export function ManageMaterial({
               </li>
             ))}
           </ul>
-        </section>
+        </Fold>
+      ) : null}
+
+      {dialog ? (
+        <AssetDialog
+          asset={dialog.asset}
+          people={people}
+          locations={locations}
+          ownerGroups={ownerGroups}
+          models={models}
+          busy={busy}
+          onSave={(draft) => (dialog.asset ? onUpdate(dialog.asset.id, draft) : onCreate(draft))}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One unit in the admin list.
+ *
+ * Denser than the Material register's tile — this is a list you scan to find
+ * the one you need to change, not a board you read — but it carries the same
+ * holder colour, so the two screens agree about who has what.
+ */
+function AssetRow({
+  asset,
+  busy,
+  confirming,
+  onEdit,
+  onAskRemove,
+  onCancelRemove,
+  onRemove,
+}: {
+  asset: FleetAsset;
+  busy: boolean;
+  confirming: boolean;
+  onEdit: () => void;
+  onAskRemove: () => void;
+  onCancelRemove: () => void;
+  onRemove: () => void;
+}) {
+  const rgbOf = useHolderRgb();
+  const holder = asset.current_holder_label ?? asset.holder_name;
+  const rgb = holder ? rgbOf(holder) : null;
+
+  return (
+    <div className="flex items-center overflow-hidden rounded-lg border border-glass/10 bg-glass/[0.04] transition ease-fluid hover:border-glass/20 hover:bg-glass/[0.06]">
+      <span
+        aria-hidden
+        className="h-full w-1 shrink-0 self-stretch"
+        style={{ backgroundColor: rgb ? `rgb(${rgb} / 0.85)` : "rgb(148 163 184 / 0.25)" }}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 px-2.5 py-2">
+        <AssetIcon category={asset.category} className="h-4 w-4 shrink-0 text-ink-4" />
+        <span className="truncate text-xs font-medium text-ink">{asset.name}</span>
+        <span className="truncate text-[11px] text-ink-5">
+          {[asset.model, asset.serial_number].filter(Boolean).join(" · ")}
+        </span>
+        <span className="flex-1" />
+        {/* Assigned units carry no location — see the Material register for
+            why: it travels with its person and would be wrong by morning. */}
+        {asset.pooled ? (
+          <span className="truncate text-[11px] text-ink-5">
+            {asset.current_location ?? "Location unknown"}
+          </span>
+        ) : null}
+        <span className="text-[11px] text-ink-4">
+          {asset.pooled ? STATUS_LABEL[asset.status] : (holder ?? "Assigned to nobody")}
+        </span>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1 px-2">
+        {confirming ? (
+          <>
+            <Button size="xs" variant="danger" disabled={busy} onClick={onRemove}>
+              Remove
+            </Button>
+            <Button size="xs" variant="ghost" onClick={onCancelRemove}>
+              Keep
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="xs" variant="glass-quiet" disabled={busy} onClick={onEdit}>
+              Edit
+            </Button>
+            <Button size="xs" variant="ghost" disabled={busy} onClick={onAskRemove}>
+              Remove
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A section that stays out of the way until asked for.
+ *
+ * Everything below the fleet list is reference — reminders you set once, names
+ * waiting to be claimed, a leaderboard, an archive. Open by default they turned
+ * Manage into a page you scroll past; the summary in the header is enough to
+ * tell you whether it is worth opening.
+ */
+function Fold({
+  title,
+  summary,
+  tone = "neutral",
+  children,
+}: {
+  title: string;
+  summary?: string;
+  tone?: "neutral" | "warn";
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-xl border border-glass/10 bg-glass/[0.03]">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/80">
+        <span className="text-ink-5 transition ease-fluid group-open:rotate-90" aria-hidden>
+          ›
+        </span>
+        <span className="text-[11px] uppercase tracking-[0.15em] text-ink-3/75">{title}</span>
+        {summary ? (
+          <span
+            className={`rounded px-1.5 py-px text-[11px] ${
+              tone === "warn" ? "bg-amber-500/15 text-warn" : "bg-glass/10 text-ink-5"
+            }`}
+          >
+            {summary}
+          </span>
+        ) : null}
+      </summary>
+      <div className="border-t border-glass/[0.07] px-3 py-2.5">{children}</div>
+    </details>
   );
 }
