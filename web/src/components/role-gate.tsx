@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui";
-import { RoleGateGame } from "@/components/role-gate-game";
+import { EliosGame } from "@/components/elios-game";
 
 /**
  * The holding screen a signed-in account sees while it has no role.
@@ -34,7 +34,7 @@ export function RoleGate({ email }: { email: string }) {
           You&rsquo;re signed in as <span className="font-medium text-ink-2">{email}</span>. An admin needs
           to give you a role before the workspace opens — they already know you&rsquo;re here.
         </p>
-        <RoleGateGame />
+        <EliosGame leaderboard />
         <form action="/logout" method="post" className="mt-5">
           <Button type="submit" variant="glass" size="md" className="w-full">
             Sign out
