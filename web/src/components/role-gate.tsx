@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui";
+import { RoleGateGame } from "@/components/role-gate-game";
 
 /**
  * The holding screen a signed-in account sees while it has no role.
@@ -11,7 +12,9 @@ import { Button } from "@/components/ui";
  *
  * It is a server component rendered INSTEAD of the dashboard shell, not an
  * overlay on top of it: no module code is sent, no panel is mounted and no
- * prefetch runs, so there is nothing to reach behind it.
+ * prefetch runs, so there is nothing to reach behind it. `RoleGateGame` is the
+ * one client component here, and it is deliberately inert — no fetch, no
+ * Supabase, no session props — so the gate still exposes nothing.
  *
  * The tone is deliberately light. This is somebody's first ever screen in the
  * app and nothing is wrong — they are waiting on a colleague, not looking at an
@@ -33,9 +36,10 @@ export function RoleGate({ email }: { email: string }) {
         </p>
         <p className="mt-3 text-sm text-ink-3/85">They already know you&rsquo;re here.</p>
         <p className="mt-3 text-sm text-ink-4/75">
-          Until then, consider this the waiting room. We&rsquo;d offer you a magazine, but this box is all
-          we&rsquo;ve got. ☕
+          Until then, consider this the waiting room. We&rsquo;d offer you a magazine, but all we have is
+          this. ☕
         </p>
+        <RoleGateGame />
         <form action="/logout" method="post" className="mt-5">
           <Button type="submit" variant="glass" size="md" className="w-full">
             Sign out
