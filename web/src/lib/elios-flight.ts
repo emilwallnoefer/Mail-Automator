@@ -1,22 +1,37 @@
 /**
  * Physics, geometry and rules for "Fly where people can't".
  *
- * Obstacles are real shapes, not a pair of rectangles wearing a skin: a saw
- * blade is a circle, spikes are triangles, a ramp is a wedge. Collision is
- * tested against that same geometry, so what you see is exactly what you hit —
- * which is what separates this from a flappy clone with different wallpaper.
+ * The run flies through the confined spaces the Elios 3 actually inspects — a
+ * boiler, a ballast tank, a mine stope, a sewer, a storage tank — and every
+ * obstacle is something a pilot meets in there: superheater pendants, web
+ * frames with lightening holes, hang-ups in an ore pass, root intrusions,
+ * agitators. Each space is sealed off from the next by a bulkhead with a
+ * manhole in it, which is how you get from one confined space to another.
+ *
+ * Obstacles are real shapes, not a pair of rectangles wearing a skin. The
+ * collision test runs against exactly the polygons and discs the renderer
+ * draws, so a clinker heap is as ragged in play as it looks and a flange is
+ * round. What you see is what you hit.
  *
  * Everything here is pure: no canvas, no `Date.now()`, no `Math.random()`. The
- * caller passes the timestep and the draws in, so a whole run replays exactly
- * in a test — the same discipline `fleet-rules.ts` follows.
+ * caller passes the timestep and the draws in — ragged shapes come from a
+ * seeded generator — so a whole run replays exactly in a test, the same
+ * discipline `fleet-rules.ts` follows.
+ *
+ * The flight model and spacing constants are unchanged from the first version
+ * of the game on purpose: the leaderboard counts obstacles cleared, and a
+ * redesign that quietly made the run easier would devalue every score on it.
  */
 
 /**
  * Fixed world units. The canvas scales to fit, so the game plays identically at
  * any card width and the constants never need retuning for a new screen size.
+ * One unit is roughly 2 cm, which makes the caged drone about the 48 cm it is.
  */
 export const WORLD_WIDTH = 320;
 export const WORLD_HEIGHT = 200;
+/** Metres per world unit, for the proximity readout. */
+export const METRES_PER_UNIT = 0.022;
 
 /** Downward acceleration, world units per second squared. */
 export const GRAVITY = 420;
@@ -26,7 +41,7 @@ export const FLAP_VELOCITY = -145;
 export const MAX_FALL_SPEED = 220;
 
 export const DRONE_X = 68;
-/** The Elios 3 is a sphere in a cage — one radius covers the whole aircraft. */
+/** The Elios 3 flies inside a cage — one radius covers the whole aircraft. */
 export const DRONE_RADIUS = 11;
 
 export const SCROLL_SPEED = 78;
@@ -36,6 +51,33 @@ export const OBSTACLE_GAP = 112;
 export const MIN_PASSAGE = 52;
 /** Keep a passage off the very floor and ceiling, where it is unfair. */
 export const EDGE_MARGIN = 20;
+
+/** Obstacles per space before a bulkhead opens onto the next one. */
+export const ZONE_LENGTH = 7;
+
+const H = WORLD_HEIGHT;
+
+// ---------------------------------------------------------------------------
+// Spaces
+// ---------------------------------------------------------------------------
+
+export const ZONES = ["BOILER", "BALLAST", "MINE", "SEWER", "TANK"] as const;
+export type Zone = (typeof ZONES)[number];
+
+export const ZONE_NAMES: Record<Zone, { name: string; industry: string }> = {
+  BOILER: { name: "Boiler", industry: "Power generation" },
+  BALLAST: { name: "Ballast tank", industry: "Maritime" },
+  MINE: { name: "Stope", industry: "Mining" },
+  SEWER: { name: "Sewer", industry: "Wastewater" },
+  TANK: { name: "Storage tank", industry: "Oil & gas" },
+};
+
+/** The zone at a (possibly out-of-range) index, wrapping like the run does. */
+export function zoneAt(index: number): Zone {
+  const n = ZONES.length;
+  const i = Number.isFinite(index) ? Math.floor(index) : 0;
+  return ZONES[((i % n) + n) % n];
+}
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -49,27 +91,97 @@ export type Solid =
   | { readonly shape: "disc"; readonly cx: number; readonly cy: number; readonly r: number };
 
 /**
- * The obstacle vocabulary. Each is a genuinely different problem to fly — go
- * over, go under, thread a tip, pick a side, climb a slope — rather than a
- * restyled column.
+ * The obstacle vocabulary, grouped by the space it belongs to. Within a space
+ * each kind is a genuinely different problem to fly — thread a gap, go over,
+ * go under, pick a side of something in mid-air — rather than a restyled
+ * column.
  */
 export const OBSTACLE_KINDS = [
-  "GATE",
-  "SPIKES_FLOOR",
-  "SPIKES_CEILING",
-  "SAW",
-  "BLOCK",
-  "RAMP",
-  "PINCER",
-  "PILLARS",
+  "BULKHEAD",
+  // Boiler
+  "PENDANT",
+  "CLINKER",
+  "HOPPER",
+  "PLATEN",
+  "TUBE_BANK",
+  // Ballast tank
+  "WEB_FRAME",
+  "BRACKETS",
+  "CROSS_TIE",
+  "STRINGER",
+  "DOUBLE_FRAME",
+  // Mine
+  "ROCK_JAW",
+  "HANGING_ROCK",
+  "MUCK_PILE",
+  "HANGUP",
+  "VENT_DUCT",
+  // Sewer
+  "ROOTS",
+  "DEBRIS",
+  "DROP_PIPE",
+  "COLLAPSE",
+  "PENSTOCK",
+  // Storage tank
+  "AGITATOR",
+  "ROOF_LEGS",
+  "HEATING_COILS",
+  "INLET",
+  "SWING_LINE",
 ] as const;
 
 export type ObstacleKind = (typeof OBSTACLE_KINDS)[number];
 
+export const ZONE_KINDS: Record<Zone, readonly ObstacleKind[]> = {
+  BOILER: ["PENDANT", "CLINKER", "HOPPER", "PLATEN", "TUBE_BANK"],
+  BALLAST: ["WEB_FRAME", "BRACKETS", "CROSS_TIE", "STRINGER", "DOUBLE_FRAME"],
+  MINE: ["ROCK_JAW", "HANGING_ROCK", "MUCK_PILE", "HANGUP", "VENT_DUCT"],
+  SEWER: ["ROOTS", "DEBRIS", "DROP_PIPE", "COLLAPSE", "PENSTOCK"],
+  TANK: ["AGITATOR", "ROOF_LEGS", "HEATING_COILS", "INLET", "SWING_LINE"],
+};
+
+/** What the crash screen says you flew into — the name an inspector would use. */
+export const KIND_LABELS: Record<ObstacleKind | "FLOOR" | "CEILING", string> = {
+  BULKHEAD: "the edge of a manhole",
+  PENDANT: "a superheater pendant",
+  CLINKER: "a clinker heap",
+  HOPPER: "the ash hopper slope",
+  PLATEN: "a division wall",
+  TUBE_BANK: "an economiser tube bank",
+  WEB_FRAME: "a web frame",
+  BRACKETS: "a bracketed stiffener",
+  CROSS_TIE: "a cross tie",
+  STRINGER: "a stringer deck",
+  DOUBLE_FRAME: "a web frame",
+  ROCK_JAW: "a rock constriction",
+  HANGING_ROCK: "loose rock in the back",
+  MUCK_PILE: "the muck pile",
+  HANGUP: "a hang-up",
+  VENT_DUCT: "the vent duct",
+  ROOTS: "a root intrusion",
+  DEBRIS: "a debris pile",
+  DROP_PIPE: "a drop pipe",
+  COLLAPSE: "a partial collapse",
+  PENSTOCK: "a penstock gate",
+  AGITATOR: "the agitator",
+  ROOF_LEGS: "a roof support leg",
+  HEATING_COILS: "the heating coils",
+  INLET: "an inlet nozzle",
+  SWING_LINE: "the swing line",
+  FLOOR: "the floor",
+  CEILING: "the roof",
+};
+
 export type Obstacle = {
+  /** Unique within a run, so the renderer can cache one sprite per obstacle. */
+  id: number;
   /** Left edge in world units; moves right-to-left. */
   x: number;
   kind: ObstacleKind;
+  /** Index into ZONES of the space this obstacle stands in. */
+  zone: number;
+  /** Seed its ragged edges were cut from; the renderer reuses it for detail. */
+  seed: number;
   width: number;
   solids: readonly Solid[];
   /** Scored once, when the drone is fully past the trailing edge. */
@@ -78,117 +190,540 @@ export type Obstacle = {
 
 const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(Math.max(n, 0), 1) : 0.5);
 
+/** A draw in [0, 1] as a 32-bit seed. */
+export function seedFromDraw(draw: number): number {
+  return Math.floor(clamp01(draw) * 0xffffffff) >>> 0;
+}
+
+/** mulberry32: small, fast and good enough to cut a rock with. */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function rect(x: number, y: number, w: number, h: number): Solid {
   return { shape: "poly", points: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]] };
 }
 
-export function kindFromDraw(draw: number): ObstacleKind {
-  const safe = Number.isFinite(draw) ? Math.min(Math.max(draw, 0), 0.999999) : 0;
-  return OBSTACLE_KINDS[Math.floor(safe * OBSTACLE_KINDS.length)];
+function poly(points: readonly Vec[]): Solid {
+  return { shape: "poly", points };
+}
+
+const ARC_STEPS = 4;
+
+/** A rectangle with rounded corners as a polygon; radii run TL, TR, BR, BL. */
+export function roundedRect(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  [tl, tr, br, bl]: readonly [number, number, number, number],
+): Vec[] {
+  const pts: Vec[] = [];
+  const arc = (cx: number, cy: number, r: number, a0: number) => {
+    if (r <= 0) {
+      pts.push([cx, cy]);
+      return;
+    }
+    for (let i = 0; i <= ARC_STEPS; i += 1) {
+      const a = a0 + (Math.PI / 2) * (i / ARC_STEPS);
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+  };
+  arc(x + tl, y + tl, tl, Math.PI);
+  arc(x + w - tr, y + tr, tr, Math.PI * 1.5);
+  arc(x + w - br, y + h - br, br, 0);
+  arc(x + bl, y + h - bl, bl, Math.PI / 2);
+  return pts;
+}
+
+/** Mirror a solid top-to-bottom, turning a floor fixture into a roof one. */
+function flipV(solid: Solid): Solid {
+  if (solid.shape === "disc") return { ...solid, cy: H - solid.cy };
+  return { shape: "poly", points: solid.points.map(([x, y]) => [x, H - y] as Vec) };
+}
+
+type MassOptions = {
+  /** Where along the width the mass reaches furthest, 0..1. */
+  tip: number;
+  /** How far the edges reach, as a share of the tip's reach. */
+  shoulder: number;
+  /** Points along the ragged edge. */
+  points: number;
+  /** How much each point may fall short of its envelope. */
+  rough: number;
+};
+
+/**
+ * Something growing down from the roof — slag, a rock slab, broken crown — as
+ * one polygon: the roof, then a ragged edge from right to left that reaches
+ * exactly `reach` at the tip and never beyond it. That guarantee is what keeps
+ * a random shape from closing the passage.
+ */
+function ceilingMass(width: number, reach: number, rand: () => number, o: MassOptions): Vec[] {
+  const pts: Vec[] = [[0, 0], [width, 0]];
+  const tipX = o.tip * width;
+  const step = width / (o.points - 1);
+  let tipPlaced = false;
+  for (let i = o.points - 1; i >= 0; i -= 1) {
+    const edge = i === 0 || i === o.points - 1;
+    const x = edge ? i * step : i * step + (rand() - 0.5) * step * 0.5;
+    if (!tipPlaced && x < tipX) {
+      pts.push([tipX, reach]);
+      tipPlaced = true;
+    }
+    const d = Math.min(Math.abs(x / width - o.tip) / Math.max(o.tip, 1 - o.tip), 1);
+    const envelope = o.shoulder + (1 - o.shoulder) * (1 - d ** 1.5);
+    pts.push([x, reach * envelope * (1 - o.rough * rand())]);
+  }
+  if (!tipPlaced) pts.push([tipX, reach]);
+  return pts;
+}
+
+/** The same, standing on the floor. */
+function floorMass(width: number, reach: number, rand: () => number, o: MassOptions): Vec[] {
+  return ceilingMass(width, reach, rand, o).map(([x, y]) => [x, H - y] as Vec);
+}
+
+/** Points along a circular arc, both ends included. */
+function arc(cx: number, cy: number, r: number, from: number, to: number, steps = 8): Vec[] {
+  const pts: Vec[] = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const a = from + (to - from) * (i / steps);
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return pts;
+}
+
+/**
+ * The plates above and below an opening, `x0`..`x0 + width` wide. A `round`
+ * opening is cut as a stadium — the shape of a lightening hole or a manhole —
+ * by arching both plates away from the gap. The arch only ever removes steel,
+ * so the narrowest point of the passage is still exactly `top`..`bottom`.
+ */
+function platesAround(x0: number, width: number, top: number, bottom: number, round: boolean): Solid[] {
+  if (!round) return [rect(x0, 0, width, top), rect(x0, bottom, width, H - bottom)];
+  const r = width / 2;
+  const cx = x0 + r;
+  return [
+    poly([[x0, 0], [x0 + width, 0], ...arc(cx, top, r, 0, -Math.PI)]),
+    poly([[x0 + width, H], [x0, H], ...arc(cx, bottom, r, Math.PI, 0)]),
+  ];
+}
+
+/** Radius of the vent duct, and how far below the back its hangers hold it. */
+export const VENT_DUCT_RADIUS = 11;
+const VENT_DUCT_HANG = 10;
+
+/**
+ * The vent duct's path and outline, shared by collision and drawing so the
+ * two cannot disagree: up a riser at the left, round an elbow, along a
+ * sagging run, round the other elbow and up again. `outline` is the solid —
+ * everything from the back down to the duct's outer wall.
+ */
+export function ventDuct(width: number, sag: number): { centre: Vec[]; outline: Vec[] } {
+  const r = VENT_DUCT_RADIUS;
+  const bend = r + 1;
+  const xr = r + 0.5;
+  const run = (x: number) => VENT_DUCT_HANG + r + sag * Math.sin((Math.PI * x) / width);
+  const x0 = xr + bend;
+  const x1 = width - xr - bend;
+  const yl = run(x0);
+  const yr = run(x1);
+  const middle: Vec[] = [];
+  for (let x = x0 + 4; x < x1 - 1; x += 4) middle.push([x, run(x)]);
+  const centre: Vec[] = [
+    [xr, 0],
+    ...arc(x0, yl - bend, bend, Math.PI, Math.PI / 2),
+    ...middle,
+    ...arc(x1, yr - bend, bend, Math.PI / 2, 0),
+    [width - xr, 0],
+  ];
+  const lower: Vec[] = [];
+  for (let x = x1 - 4; x > x0 + 1; x -= 4) lower.push([x, run(x) + r]);
+  const outline: Vec[] = [
+    [0.5, 0],
+    [width - 0.5, 0],
+    ...arc(x1, yr - bend, bend + r, 0, Math.PI / 2),
+    ...lower,
+    ...arc(x0, yl - bend, bend + r, Math.PI / 2, Math.PI),
+  ];
+  return { centre, outline };
+}
+
+/**
+ * A closed Catmull-Rom curve through `points`, clamped to a box so the
+ * smoothing can never push the outline past the reach its control points
+ * were cut to.
+ */
+function smoothClosed(points: readonly Vec[], samples: number, box: [number, number, number, number]): Vec[] {
+  const [minX, minY, maxX, maxY] = box;
+  const n = points.length;
+  const out: Vec[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const p0 = points[(i - 1 + n) % n];
+    const p1 = points[i];
+    const p2 = points[(i + 1) % n];
+    const p3 = points[(i + 2) % n];
+    for (let s = 0; s < samples; s += 1) {
+      const t = s / samples;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const at = (a: number, b: number, c: number, d: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([
+        Math.min(maxX, Math.max(minX, at(p0[0], p1[0], p2[0], p3[0]))),
+        Math.min(maxY, Math.max(minY, at(p0[1], p1[1], p2[1], p3[1]))),
+      ]);
+    }
+  }
+  return out;
+}
+
+/** A wall with one opening in it, placed by `t`. */
+function wallWithOpening(width: number, passage: number, t: number, round = false): Solid[] {
+  const top = EDGE_MARGIN + t * (H - 2 * EDGE_MARGIN - passage);
+  return platesAround(0, width, top, top + passage, round);
+}
+
+/** Top of a body of height `h` that must leave MIN_PASSAGE free above and below. */
+function midAirTop(h: number, t: number): number {
+  const lowest = EDGE_MARGIN + MIN_PASSAGE;
+  const highest = H - EDGE_MARGIN - MIN_PASSAGE - h;
+  return lowest + t * Math.max(0, highest - lowest);
 }
 
 /**
  * Build one obstacle's geometry.
  *
- * `draw` places the opening. Every kind guarantees a passage at least
- * `MIN_PASSAGE` tall, so a random layout can never come out unflyable.
+ * `placeDraw` places the opening; `seed` cuts the ragged edges. Every kind
+ * guarantees a passage at least `MIN_PASSAGE` tall, so no layout can come out
+ * unflyable — the test suite sweeps every kind to prove it.
  */
-export function buildObstacle(kind: ObstacleKind, draw: number): { width: number; solids: Solid[] } {
-  const t = clamp01(draw);
-  const H = WORLD_HEIGHT;
+export function buildObstacle(
+  kind: ObstacleKind,
+  placeDraw: number,
+  seed = 0,
+): { width: number; solids: Solid[] } {
+  const t = clamp01(placeDraw);
+  const rand = seededRandom(seed);
 
   switch (kind) {
-    case "SPIKES_FLOOR": {
-      // A row of teeth on the deck: fly over them.
-      const width = 54;
-      const spikeH = Math.min(58, H - MIN_PASSAGE - EDGE_MARGIN);
-      const solids: Solid[] = [];
-      for (let i = 0; i < 3; i += 1) {
-        const bx = i * 18;
-        solids.push({ shape: "poly", points: [[bx, H], [bx + 9, H - spikeH], [bx + 18, H]] });
-      }
-      return { width, solids };
+    // --- Between spaces ---------------------------------------------------
+    case "BULKHEAD": {
+      // A watertight bulkhead with a manhole: the way into the next space.
+      // Generous on purpose — it is a doorway, not a test.
+      return { width: 22, solids: wallWithOpening(22, MIN_PASSAGE + 34, t, true) };
     }
-    case "SPIKES_CEILING": {
-      const width = 54;
-      const spikeH = Math.min(58, H - MIN_PASSAGE - EDGE_MARGIN);
-      const solids: Solid[] = [];
-      for (let i = 0; i < 3; i += 1) {
-        const bx = i * 18;
-        solids.push({ shape: "poly", points: [[bx, 0], [bx + 9, spikeH], [bx + 18, 0]] });
-      }
-      return { width, solids };
+
+    // --- Boiler -----------------------------------------------------------
+    case "PENDANT": {
+      // A superheater pendant hanging from the roof: fly under it. The tubes
+      // return in nested U-bends, so the bottom is a full half-round.
+      const width = 36;
+      const length = 70 + t * 48;
+      const bend = width / 2;
+      return { width, solids: [poly(roundedRect(0, 0, width, length, [0, 0, bend, bend]))] };
     }
-    case "SAW": {
-      // A blade in open air: above or below, your choice.
-      const width = 44;
-      const r = 18;
-      const lowest = EDGE_MARGIN + MIN_PASSAGE + r;
-      const highest = H - EDGE_MARGIN - MIN_PASSAGE - r;
-      const cy = lowest + t * Math.max(0, highest - lowest);
-      return { width, solids: [{ shape: "disc", cx: width / 2, cy, r }] };
+    case "CLINKER": {
+      // A heap of fused slag on the furnace floor: fly over it.
+      const width = 56;
+      const reach = 44 + t * 22;
+      const tip = 0.35 + rand() * 0.3;
+      return {
+        width,
+        solids: [poly(floorMass(width, reach, rand, { tip, shoulder: 0.14, points: 9, rough: 0.24 }))],
+      };
     }
-    case "BLOCK": {
-      // A slab hanging in mid-air; both sides are passable.
-      const width = 38;
-      const h = 46;
-      const lowest = EDGE_MARGIN + MIN_PASSAGE;
-      const highest = H - EDGE_MARGIN - MIN_PASSAGE - h;
-      const top = lowest + t * Math.max(0, highest - lowest);
-      return { width, solids: [rect(0, top, width, h)] };
+    case "HOPPER": {
+      // The sloped tube wall of the ash hopper: read the climb early.
+      const width = 64;
+      const rise = 60 + t * 16;
+      return { width, solids: [poly([[0, H], [width, H - rise], [width, H]])] };
     }
-    case "RAMP": {
-      // A wedge climbing out of the floor: the climb starts well before the
-      // high end, so it has to be read early.
-      const width = 62;
-      const rise = Math.min(70, H - MIN_PASSAGE - EDGE_MARGIN);
-      return { width, solids: [{ shape: "poly", points: [[0, H], [width, H - rise], [width, H]] }] };
+    case "PLATEN": {
+      // A division wall of tubes with a bent-out lane through it.
+      return { width: 28, solids: wallWithOpening(28, MIN_PASSAGE + 22, t) };
     }
-    case "PINCER": {
-      // Two tips pointing at each other, with the opening between them.
-      const width = 46;
-      const passage = MIN_PASSAGE + 10;
-      const topTip = EDGE_MARGIN + t * (H - 2 * EDGE_MARGIN - passage);
-      const bottomTip = topTip + passage;
+    case "TUBE_BANK": {
+      // An economiser bank end-on, hanging in the gas path: pick a side.
+      const width = 42;
+      const h = 50;
+      const top = midAirTop(h, t);
+      return { width, solids: [poly(roundedRect(0, top, width, h, [5, 5, 5, 5]))] };
+    }
+
+    // --- Ballast tank -----------------------------------------------------
+    case "WEB_FRAME": {
+      // A transverse web frame; the lightening hole is the way through.
+      return { width: 18, solids: wallWithOpening(18, MIN_PASSAGE + 24, t, true) };
+    }
+    case "BRACKETS": {
+      // A vertical stiffener with tripping brackets either side of its toe —
+      // on the bottom plating or, half the time, hanging off the deckhead.
+      const width = 58;
+      const stem = 52 + rand() * 14;
+      const left = stem * (0.5 + rand() * 0.2);
+      const right = stem * (0.5 + rand() * 0.2);
+      const solids: Solid[] = [
+        rect(26, H - stem, 6, stem),
+        poly([[0, H], [26, H], [26, H - left]]),
+        poly([[32, H], [width, H], [32, H - right]]),
+      ];
+      return { width, solids: t >= 0.5 ? solids.map(flipV) : solids };
+    }
+    case "CROSS_TIE": {
+      // A cross tie spanning the tank, seen end-on: an I-section in mid-air.
+      const width = 40;
+      const h = 48;
+      const flange = 8;
+      const web = 12;
+      const top = midAirTop(h, t);
+      const b = top + h;
+      const w0 = (width - web) / 2;
+      const w1 = w0 + web;
       return {
         width,
         solids: [
-          { shape: "poly", points: [[0, 0], [width, 0], [width / 2, topTip]] },
-          { shape: "poly", points: [[0, H], [width, H], [width / 2, bottomTip]] },
+          poly([
+            [0, top], [width, top], [width, top + flange], [w1, top + flange],
+            [w1, b - flange], [width, b - flange], [width, b], [0, b],
+            [0, b - flange], [w0, b - flange], [w0, top + flange], [0, top + flange],
+          ]),
         ],
       };
     }
-    case "PILLARS": {
-      // Two narrow gates back to back with offset openings, so clearing the
+    case "STRINGER": {
+      // A horizontal stringer deck edge-on, with a knee bracket under each end:
+      // commit to over or under early and hold it.
+      const width = 88;
+      const plate = 7;
+      const knee = 10;
+      const lowest = EDGE_MARGIN + MIN_PASSAGE;
+      const highest = H - EDGE_MARGIN - MIN_PASSAGE - plate - knee;
+      const y0 = lowest + t * (highest - lowest);
+      return {
+        width,
+        solids: [
+          poly([
+            [0, y0], [width, y0], [width, y0 + plate + knee], [width - 14, y0 + plate],
+            [14, y0 + plate], [0, y0 + plate + knee],
+          ]),
+        ],
+      };
+    }
+    case "DOUBLE_FRAME": {
+      // Two web frames a bay apart with their holes offset, so clearing the
       // first leaves you badly placed for the second.
       const width = 68;
       const passage = MIN_PASSAGE + 12;
       const span = H - 2 * EDGE_MARGIN - passage;
       const firstTop = EDGE_MARGIN + t * span;
-      // Push the second opening well away from the first, wrapping in range.
       const secondTop = EDGE_MARGIN + ((t + 0.55) % 1) * span;
       const bar = 16;
       return {
         width,
         solids: [
-          rect(0, 0, bar, firstTop),
-          rect(0, firstTop + passage, bar, H - firstTop - passage),
-          rect(width - bar, 0, bar, secondTop),
-          rect(width - bar, secondTop + passage, bar, H - secondTop - passage),
+          ...platesAround(0, bar, firstTop, firstTop + passage, true),
+          ...platesAround(width - bar, bar, secondTop, secondTop + passage, true),
         ],
       };
     }
-    default: {
-      // GATE — the classic, kept as the baseline the others play against.
-      const width = 40;
-      const passage = MIN_PASSAGE + 22;
-      const top = EDGE_MARGIN + t * (H - 2 * EDGE_MARGIN - passage);
+
+    // --- Mine -------------------------------------------------------------
+    case "ROCK_JAW": {
+      // The drift pinches: rock from the back and the floor, a gap between.
+      const width = 52;
+      const passage = MIN_PASSAGE + 10;
+      const topTip = EDGE_MARGIN + t * (H - 2 * EDGE_MARGIN - passage);
+      const bottomTip = topTip + passage;
+      const upper = ceilingMass(width, topTip, rand, { tip: 0.35 + rand() * 0.3, shoulder: 0.3, points: 8, rough: 0.26 });
+      const lower = floorMass(width, H - bottomTip, rand, {
+        tip: 0.35 + rand() * 0.3,
+        shoulder: 0.3,
+        points: 8,
+        rough: 0.26,
+      });
+      return { width, solids: [poly(upper), poly(lower)] };
+    }
+    case "HANGING_ROCK": {
+      // A loose slab hanging out of the back (the roof, to a miner).
+      const width = 48;
+      const reach = 52 + t * 24;
       return {
         width,
-        solids: [rect(0, 0, width, top), rect(0, top + passage, width, H - top - passage)],
+        solids: [poly(ceilingMass(width, reach, rand, { tip: 0.3 + rand() * 0.4, shoulder: 0.25, points: 9, rough: 0.28 }))],
+      };
+    }
+    case "MUCK_PILE": {
+      // Blasted rock, long slope in front and a steep face behind.
+      const width = 72;
+      const reach = 44 + t * 18;
+      return {
+        width,
+        solids: [poly(floorMass(width, reach, rand, { tip: 0.55 + rand() * 0.25, shoulder: 0.05, points: 11, rough: 0.18 }))],
+      };
+    }
+    case "HANGUP": {
+      // A boulder jammed in the ore pass — the thing the drone was sent to find.
+      const width = 44;
+      const r = 18;
+      const cy = midAirTop(2 * r, t) + r;
+      const n = 13;
+      const phase = rand() * Math.PI * 2;
+      const points: Vec[] = [];
+      for (let i = 0; i < n; i += 1) {
+        const a = phase + (i / n) * Math.PI * 2 + (rand() - 0.5) * 0.3;
+        const rr = r * (0.84 + 0.16 * rand());
+        points.push([width / 2 + rr * Math.cos(a), cy + rr * Math.sin(a)]);
+      }
+      return { width, solids: [poly(points)] };
+    }
+    case "VENT_DUCT": {
+      // Flexible vent ducting slung under the back, turning up into a raise
+      // at each end — so it never reaches past its own footprint.
+      const width = 116;
+      return { width, solids: [poly(ventDuct(width, 4 + t * 10).outline)] };
+    }
+
+    // --- Sewer ------------------------------------------------------------
+    case "ROOTS": {
+      // Tree roots through a pipe joint in the crown, hanging like a tail.
+      const width = 44;
+      const reach = 58 + t * 30;
+      const j = () => (rand() - 0.5) * 0.06;
+      const tipX = width * (0.45 + rand() * 0.1);
+      const control: Vec[] = [
+        [width * 0.28, 0],
+        [width * 0.72, 0],
+        [width * (0.9 + j()), reach * (0.22 + j())],
+        [width, reach * (0.45 + j())],
+        [width * (0.8 + j()), reach * (0.68 + j())],
+        [width * (0.62 + j()), reach * (0.88 + j() / 2)],
+        [tipX, reach],
+        [width * (0.4 + j()), reach * (0.9 + j() / 2)],
+        [width * (0.2 + j()), reach * (0.7 + j())],
+        [0, reach * (0.46 + j())],
+        [width * (0.1 + j()), reach * (0.2 + j())],
+      ];
+      // Roots hang in curves, not facets.
+      return { width, solids: [poly(smoothClosed(control, 4, [0, 0, width, reach]))] };
+    }
+    case "DEBRIS": {
+      // Grit, brick and rag on the invert: fly over it.
+      const width = 60;
+      const reach = 36 + t * 18;
+      return {
+        width,
+        solids: [poly(floorMass(width, reach, rand, { tip: 0.3 + rand() * 0.4, shoulder: 0.12, points: 10, rough: 0.3 }))],
+      };
+    }
+    case "DROP_PIPE": {
+      // A drop connection coming down through the crown, socket joints and all.
+      const width = 26;
+      const length = 56 + t * 34;
+      const j0 = length * 0.42;
+      return {
+        width,
+        solids: [
+          poly([
+            [5, 0], [5, j0], [3, j0], [3, j0 + 8], [5, j0 + 8], [5, length - 12], [3, length - 12],
+            [3, length], [23, length], [23, length - 12], [21, length - 12], [21, j0 + 8],
+            [23, j0 + 8], [23, j0], [21, j0], [21, 0],
+          ]),
+        ],
+      };
+    }
+    case "COLLAPSE": {
+      // A partial collapse: broken crown hanging down, rubble below.
+      const width = 56;
+      const passage = MIN_PASSAGE + 10;
+      const topTip = EDGE_MARGIN + t * (H - 2 * EDGE_MARGIN - passage);
+      const bottomTip = topTip + passage;
+      const upper = ceilingMass(width, topTip, rand, { tip: 0.3 + rand() * 0.4, shoulder: 0.45, points: 7, rough: 0.2 });
+      const lower = floorMass(width, H - bottomTip, rand, {
+        tip: 0.3 + rand() * 0.4,
+        shoulder: 0.2,
+        points: 10,
+        rough: 0.3,
+      });
+      return { width, solids: [poly(upper), poly(lower)] };
+    }
+    case "PENSTOCK": {
+      // A sluice gate half raised over its weir.
+      return { width: 24, solids: wallWithOpening(24, MIN_PASSAGE + 22, t) };
+    }
+
+    // --- Storage tank -----------------------------------------------------
+    case "AGITATOR": {
+      // A mixer shaft from the roof with its impeller at the bottom.
+      const width = 48;
+      const imp = 62 + t * 36;
+      return {
+        width,
+        solids: [rect(21, 0, 6, imp), rect(0, imp, width, 12), rect(16, imp - 5, 16, 22)],
+      };
+    }
+    case "ROOF_LEGS": {
+      // Floating-roof support legs standing on the floor, footpads and all.
+      const width = 52;
+      const solids: Solid[] = [];
+      for (const lx of [4, 22, 40]) {
+        const h = 44 + rand() * 28;
+        solids.push(rect(lx, H - h, 8, h), rect(lx - 3, H - 3, 14, 3));
+      }
+      return { width, solids };
+    }
+    case "HEATING_COILS": {
+      // Steam coils racked along the floor: low, but long.
+      const width = 84;
+      const h = 28 + t * 10;
+      return { width, solids: [poly(roundedRect(0, H - h, width, h, [6, 6, 0, 0]))] };
+    }
+    case "INLET": {
+      // A flanged inlet nozzle, end-on: genuinely round.
+      const width = 44;
+      const r = 17;
+      return { width, solids: [{ shape: "disc", cx: width / 2, cy: midAirTop(2 * r, t) + r, r }] };
+    }
+    case "SWING_LINE": {
+      // A swing line hinged at the floor, climbing to its float.
+      const width = 76;
+      const rise = 56 + t * 16;
+      const x0 = 7;
+      const y0 = H - 7;
+      const x1 = 58;
+      const y1 = H - rise + 9;
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const nx = (-(y1 - y0) / len) * 4.5;
+      const ny = ((x1 - x0) / len) * 4.5;
+      return {
+        width,
+        solids: [
+          rect(0, H - 12, 14, 12),
+          poly([[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]),
+          poly(roundedRect(50, H - rise, 26, 15, [6, 6, 6, 6])),
+        ],
       };
     }
   }
+}
+
+/**
+ * Pick the next kind for a space. An immediate repeat is nudged to the next
+ * kind in the list: two identical obstacles in a row read as a glitch.
+ */
+export function kindFor(zone: Zone, draw: number, previous: ObstacleKind | undefined): ObstacleKind {
+  const kinds = ZONE_KINDS[zone];
+  const safe = Number.isFinite(draw) ? Math.min(Math.max(draw, 0), 0.999999) : 0;
+  const i = Math.floor(safe * kinds.length);
+  return kinds[i] === previous ? kinds[(i + 1) % kinds.length] : kinds[i];
 }
 
 // ---------------------------------------------------------------------------
@@ -204,12 +739,17 @@ export function distanceToSegment(
   bx: number,
   by: number,
 ): number {
+  const [cx, cy] = closestOnSegment(px, py, ax, ay, bx, by);
+  return Math.hypot(px - cx, py - cy);
+}
+
+function closestOnSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): Vec {
   const dx = bx - ax;
   const dy = by - ay;
   const lenSq = dx * dx + dy * dy;
-  // Degenerate segment: fall back to the distance to the point itself.
+  // Degenerate segment: fall back to the point itself.
   const t = lenSq === 0 ? 0 : Math.min(Math.max(((px - ax) * dx + (py - ay) * dy) / lenSq, 0), 1);
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  return [ax + t * dx, ay + t * dy];
 }
 
 export function pointInPolygon(px: number, py: number, points: readonly Vec[]): boolean {
@@ -242,12 +782,51 @@ export function circleHitsSolid(
   return false;
 }
 
+/** The point on a solid nearest to (px, py), in world space. */
+export function nearestPointOnSolid(px: number, py: number, solid: Solid, offsetX: number): Vec {
+  if (solid.shape === "disc") {
+    const cx = solid.cx + offsetX;
+    const d = Math.hypot(px - cx, py - solid.cy);
+    if (d === 0) return [cx, solid.cy];
+    return [cx + ((px - cx) / d) * solid.r, solid.cy + ((py - solid.cy) / d) * solid.r];
+  }
+  const pts: Vec[] = solid.points.map(([x, y]) => [x + offsetX, y] as Vec);
+  if (pointInPolygon(px, py, pts)) return [px, py];
+  let best: Vec = pts[0];
+  let bestD = Infinity;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) {
+    const c = closestOnSegment(px, py, pts[j][0], pts[j][1], pts[i][0], pts[i][1]);
+    const d = Math.hypot(px - c[0], py - c[1]);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
 export function hitsObstacle(y: number, obstacle: Obstacle): boolean {
   // Cheap reject before the per-edge work.
   if (DRONE_X + DRONE_RADIUS < obstacle.x || DRONE_X - DRONE_RADIUS > obstacle.x + obstacle.width) {
     return false;
   }
   return obstacle.solids.some((s) => circleHitsSolid(DRONE_X, y, DRONE_RADIUS, s, obstacle.x));
+}
+
+/**
+ * Clearance between the cage and the nearest obstacle, in world units — the
+ * number the proximity readout shows. Zero or less means contact.
+ */
+export function clearance(y: number, obstacles: readonly Obstacle[]): number {
+  let best = Math.min(y - DRONE_RADIUS, H - y - DRONE_RADIUS);
+  for (const o of obstacles) {
+    if (o.x > DRONE_X + 90 || o.x + o.width < DRONE_X - 90) continue;
+    for (const s of o.solids) {
+      const [nx, ny] = nearestPointOnSolid(DRONE_X, y, s, o.x);
+      best = Math.min(best, Math.hypot(nx - DRONE_X, ny - y) - DRONE_RADIUS);
+    }
+  }
+  return best;
 }
 
 export function hitsGround(y: number): boolean {
@@ -264,6 +843,9 @@ export function hitsCeiling(y: number): boolean {
 
 export type GameStatus = "idle" | "flying" | "crashed";
 
+/** Where a run ended and what it ended on — the crash screen names it. */
+export type Impact = { what: ObstacleKind | "FLOOR" | "CEILING"; x: number; y: number };
+
 export type GameState = {
   status: GameStatus;
   /** Vertical position of the drone's centre. */
@@ -271,12 +853,33 @@ export type GameState = {
   velocity: number;
   obstacles: Obstacle[];
   score: number;
-  /** Seconds elapsed this run; drives rotor and blade animation. */
+  /** Seconds elapsed this run; drives rotor and impeller animation. */
   elapsed: number;
+  /** Index into ZONES of the space the drone is flying in right now. */
+  droneZone: number;
+  /** Index into ZONES of the space new obstacles are being built for. */
+  buildZone: number;
+  /** Obstacles built so far in `buildZone`; at ZONE_LENGTH a bulkhead follows. */
+  buildCount: number;
+  nextId: number;
+  impact: Impact | null;
 };
 
-export function createGame(): GameState {
-  return { status: "idle", y: WORLD_HEIGHT / 2, velocity: 0, obstacles: [], score: 0, elapsed: 0 };
+export function createGame(startZone = 0): GameState {
+  const zone = ZONES.indexOf(zoneAt(startZone));
+  return {
+    status: "idle",
+    y: WORLD_HEIGHT / 2,
+    velocity: 0,
+    obstacles: [],
+    score: 0,
+    elapsed: 0,
+    droneZone: zone,
+    buildZone: zone,
+    buildCount: 0,
+    nextId: 1,
+    impact: null,
+  };
 }
 
 /**
@@ -291,9 +894,11 @@ export function flap(state: GameState): GameState {
 export type StepInput = {
   /** Seconds since the last step. */
   dt: number;
-  /** Two draws in [0, 1): which kind of obstacle, and where its opening sits. */
+  /** Draws in [0, 1): which kind of obstacle, and where its opening sits. */
   kindDraw: number;
   placeDraw: number;
+  /** Draw in [0, 1) that cuts ragged shapes; defaults to a fixed cut. */
+  styleDraw?: number;
 };
 
 export function stepGame(state: GameState, input: StepInput): GameState {
@@ -311,23 +916,51 @@ export function stepGame(state: GameState, input: StepInput): GameState {
     .map((o) => ({ ...o, x: o.x - SCROLL_SPEED * dt }))
     .filter((o) => o.x + o.width > -4);
 
+  let { buildZone, buildCount, nextId } = state;
   const last = obstacles[obstacles.length - 1];
   if (!last || last.x + last.width <= WORLD_WIDTH - OBSTACLE_GAP) {
-    const kind = kindFromDraw(input.kindDraw);
-    const built = buildObstacle(kind, input.placeDraw);
-    obstacles = [...obstacles, { x: WORLD_WIDTH, kind, passed: false, ...built }];
+    let kind: ObstacleKind;
+    if (buildCount >= ZONE_LENGTH) {
+      // The space is done: seal it off and open the next one.
+      buildZone = (buildZone + 1) % ZONES.length;
+      buildCount = 0;
+      kind = "BULKHEAD";
+    } else {
+      kind = kindFor(ZONES[buildZone], input.kindDraw, last?.kind);
+      buildCount += 1;
+    }
+    const seed = seedFromDraw(input.styleDraw ?? 0.5);
+    const built = buildObstacle(kind, input.placeDraw, seed);
+    obstacles = [...obstacles, { id: nextId, x: WORLD_WIDTH, kind, zone: buildZone, seed, passed: false, ...built }];
+    nextId += 1;
   }
 
   let score = state.score;
+  let droneZone = state.droneZone;
   obstacles = obstacles.map((o) => {
     if (!o.passed && o.x + o.width < DRONE_X - DRONE_RADIUS) {
       score += 1;
+      // Through the manhole: the drone is in the next space now.
+      if (o.kind === "BULKHEAD") droneZone = o.zone;
       return { ...o, passed: true };
     }
     return o;
   });
 
-  const crashed = hitsGround(y) || hitsCeiling(y) || obstacles.some((o) => hitsObstacle(y, o));
+  let impact: Impact | null = null;
+  if (hitsGround(y)) {
+    impact = { what: "FLOOR", x: DRONE_X, y: WORLD_HEIGHT };
+  } else if (hitsCeiling(y)) {
+    impact = { what: "CEILING", x: DRONE_X, y: 0 };
+  } else {
+    const hit = obstacles.find((o) => hitsObstacle(y, o));
+    if (hit) {
+      const solid = hit.solids.find((s) => circleHitsSolid(DRONE_X, y, DRONE_RADIUS, s, hit.x)) ?? hit.solids[0];
+      const [ix, iy] = nearestPointOnSolid(DRONE_X, y, solid, hit.x);
+      impact = { what: hit.kind, x: ix, y: iy };
+    }
+  }
+  const crashed = impact !== null;
 
   return {
     status: crashed ? "crashed" : "flying",
@@ -337,6 +970,11 @@ export function stepGame(state: GameState, input: StepInput): GameState {
     obstacles,
     score,
     elapsed: state.elapsed + dt,
+    droneZone,
+    buildZone,
+    buildCount,
+    nextId,
+    impact,
   };
 }
 
