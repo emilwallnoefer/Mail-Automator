@@ -27,6 +27,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       "The drone accelerates as a run goes on — same gaps, less time to read them.",
       "It starts at the old pace, so the first obstacles are what they always were, and tops out a little over a minute in.",
       "Ground speed now shows in the corner, next to the clearance readout.",
+      "The pair of web frames in a ballast tank is a slalom again rather than a wall: the second hole now sits within a flap of the first, and the bay between them is wider.",
     ],
   },
   {
