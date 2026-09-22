@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-23-elios-speed",
+    date: "Sep 23, 2026",
+    title: "The game speeds up the longer you last",
+    highlights: [
+      "The drone accelerates as a run goes on — same gaps, less time to read them.",
+      "It starts at the old pace, so the first obstacles are what they always were, and tops out a little over a minute in.",
+      "Ground speed now shows in the corner, next to the clearance readout.",
+    ],
+  },
+  {
     version: "2026-09-22-elios-confined-spaces",
     date: "Sep 22, 2026",
     title: "The game now flies real confined spaces",

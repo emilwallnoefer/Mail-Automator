@@ -18,9 +18,11 @@
  * seeded generator — so a whole run replays exactly in a test, the same
  * discipline `fleet-rules.ts` follows.
  *
- * The flight model and spacing constants are unchanged from the first version
- * of the game on purpose: the leaderboard counts obstacles cleared, and a
- * redesign that quietly made the run easier would devalue every score on it.
+ * The flight model is unchanged from the first version of the game, and so is
+ * the spacing: the leaderboard counts obstacles cleared, and quietly making the
+ * run easier would devalue every score on it. The one deliberate change is
+ * `speedAt()` — the world accelerates the longer you stay up, which makes a
+ * long run harder rather than an early one easier.
  */
 
 /**
@@ -44,7 +46,16 @@ export const DRONE_X = 68;
 /** The Elios 3 flies inside a cage — one radius covers the whole aircraft. */
 export const DRONE_RADIUS = 11;
 
+/** Speed a run starts at, world units per second. */
 export const SCROLL_SPEED = 78;
+/**
+ * The run speeds up as it goes, the way the dino game does: obstacles stay the
+ * same distance apart, so the time to read one and act on it shrinks. A flap
+ * cycle is about 0.7 s, and at the cap there is still a little over a second
+ * between obstacles — tight, not impossible.
+ */
+export const SPEED_GAIN = 1;
+export const MAX_SCROLL_SPEED = 148;
 /** Clear air between one obstacle and the next. */
 export const OBSTACLE_GAP = 112;
 /** Never open a passage tighter than this, or it stops being playable. */
@@ -71,6 +82,17 @@ export const ZONE_NAMES: Record<Zone, { name: string; industry: string }> = {
   SEWER: { name: "Sewer", industry: "Wastewater" },
   TANK: { name: "Storage tank", industry: "Oil & gas" },
 };
+
+/**
+ * How fast the world is moving after `elapsed` seconds of flight: from
+ * `SCROLL_SPEED` up to `MAX_SCROLL_SPEED`, reached a little over a minute in.
+ * The first few obstacles of every run are at the old pace, so a short run is
+ * still the run it always was.
+ */
+export function speedAt(elapsed: number): number {
+  const seconds = Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0;
+  return Math.min(MAX_SCROLL_SPEED, SCROLL_SPEED + SPEED_GAIN * seconds);
+}
 
 /** The zone at a (possibly out-of-range) index, wrapping like the run does. */
 export function zoneAt(index: number): Zone {
@@ -912,8 +934,9 @@ export function stepGame(state: GameState, input: StepInput): GameState {
   const velocity = Math.min(state.velocity + GRAVITY * dt, MAX_FALL_SPEED);
   const y = state.y + velocity * dt;
 
+  const elapsed = state.elapsed + dt;
   let obstacles = state.obstacles
-    .map((o) => ({ ...o, x: o.x - SCROLL_SPEED * dt }))
+    .map((o) => ({ ...o, x: o.x - speedAt(elapsed) * dt }))
     .filter((o) => o.x + o.width > -4);
 
   let { buildZone, buildCount, nextId } = state;
@@ -969,7 +992,7 @@ export function stepGame(state: GameState, input: StepInput): GameState {
     velocity,
     obstacles,
     score,
-    elapsed: state.elapsed + dt,
+    elapsed,
     droneZone,
     buildZone,
     buildCount,
