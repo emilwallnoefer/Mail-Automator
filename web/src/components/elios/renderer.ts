@@ -12,7 +12,7 @@ import {
 } from "@/lib/elios-flight";
 import { loadAssets } from "./assets";
 import { DroneArt } from "./drone-art";
-import { LightMap, Motes, drawRims, intensityAt, type Light } from "./lighting";
+import { LightMap, Motes, drawRims, easeToward, intensityAt, type Light } from "./lighting";
 import { LOOK, rgba, type RGB } from "./look";
 import { drawObstacleMotion, paintObstacle, type Sprite } from "./obstacle-art";
 import { drawBackdrop, drawMidground, drawSurfaces, type ZoneSpan } from "./scenery";
@@ -33,6 +33,15 @@ const W = WORLD_WIDTH;
 const H = WORLD_HEIGHT;
 /** How fast the far wall drifts while the drone hovers before a run. */
 const IDLE_DRIFT = 12;
+/**
+ * How long the beam takes to swing round to where the drone is pointing.
+ *
+ * A flap changes the drone's attitude in a single frame — that is the input
+ * responding, and the aircraft should snap. The light must not: throwing the
+ * beam, and every shadow it casts, across the frame that fast reads as a
+ * flicker rather than as flying.
+ */
+const HEADING_LAG = 0.18;
 /** Seconds a zone title stays up after the drone comes through a manhole. */
 const TITLE_TIME = 2.4;
 
@@ -74,6 +83,10 @@ export function createRenderer(canvas: HTMLCanvasElement, options: { reducedMoti
   const drone = new DroneArt();
 
   let scroll = 0;
+  /** Where the beam points, easing toward where the drone is pointing. */
+  let heading: number | null = null;
+  /** Spots the start of a new run, where the beam should simply be aimed. */
+  let lastElapsed = 0;
   let lastImpact: Impact | null = null;
   let crashAt = -10;
   let debris: Debris[] = [];
@@ -165,8 +178,18 @@ export function createRenderer(canvas: HTMLCanvasElement, options: { reducedMoti
     const spans = zoneSpans(state);
     const here = spans.find((s) => DRONE_X >= s.x0 && DRONE_X <= s.x1) ?? spans[0];
     const look = LOOK[ZONES[here.zone]];
-    const lamp = DroneArt.lampAt(DRONE_X, droneY, tilt);
-    const beam: Light = { x: lamp.x, y: lamp.y, heading: tilt, color: look.light };
+
+    // Where the beam points eases toward the aircraft's attitude instead of
+    // being pinned to it: a flap changes the tilt in one frame, and swinging
+    // the light and every shadow with it that fast reads as a flicker. The
+    // lamp still sits on the drone — lagging its position would leave the
+    // light trailing behind a fast fall.
+    const newRun = state.elapsed < lastElapsed;
+    lastElapsed = state.elapsed;
+    if (heading === null || newRun || state.status === "idle") heading = tilt;
+    else heading = easeToward(heading, tilt, dt, HEADING_LAG);
+    const lamp = DroneArt.lampAt(DRONE_X, droneY, heading);
+    const beam: Light = { x: lamp.x, y: lamp.y, heading, color: look.light };
 
     drawBackdrop(ctx, assets, spans, scroll);
     drawMidground(ctx, spans, scroll);
