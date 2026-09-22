@@ -195,6 +195,18 @@ export class LightMap {
   }
 }
 
+/**
+ * Ease a value toward a target with a time constant, framerate-independent:
+ * after `lag` seconds it has closed about 63% of the gap, whatever the frame
+ * times were on the way. Used for where the beam points, so a flap does not
+ * throw the light across the frame in one frame.
+ */
+export function easeToward(current: number, target: number, dt: number, lag: number): number {
+  if (!Number.isFinite(current)) return target;
+  if (!(dt > 0) || !(lag > 0)) return dt > 0 ? target : current;
+  return current + (target - current) * (1 - Math.exp(-dt / lag));
+}
+
 /** How strongly the drone lights a point, ignoring shadow: 0 to about 1.3. */
 export function intensityAt(light: Light, x: number, y: number): number {
   const dx = x - light.x;
