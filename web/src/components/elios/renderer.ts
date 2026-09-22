@@ -1,0 +1,273 @@
+import {
+  DRONE_X,
+  METRES_PER_UNIT,
+  SCROLL_SPEED,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  ZONES,
+  ZONE_NAMES,
+  clearance,
+  type GameState,
+  type Impact,
+} from "@/lib/elios-flight";
+import { loadAssets } from "./assets";
+import { DroneArt } from "./drone-art";
+import { LightMap, Motes, drawRims, intensityAt, type Light } from "./lighting";
+import { LOOK, rgba, type RGB } from "./look";
+import { drawObstacleMotion, paintObstacle, type Sprite } from "./obstacle-art";
+import { drawBackdrop, drawMidground, drawSurfaces, type ZoneSpan } from "./scenery";
+
+/**
+ * Puts a frame of the game on the canvas, back to front:
+ *
+ *   photo of the space → distant structure → floor and roof → obstacles
+ *   → the drone's light and the lens falloff (one multiply) → rim light
+ *   → haze in the beam → dust → the drone itself → crash dust → HUD
+ *
+ * The renderer only reads game state; it never changes it. Everything it keeps
+ * — sprites, dust, the crash puff — is presentation, so a frame can be skipped
+ * or redrawn without the game noticing.
+ */
+
+const W = WORLD_WIDTH;
+const H = WORLD_HEIGHT;
+/** How fast the far wall drifts while the drone hovers before a run. */
+const IDLE_DRIFT = 12;
+/** Seconds a zone title stays up after the drone comes through a manhole. */
+const TITLE_TIME = 2.4;
+
+export type Renderer = {
+  frame: (state: GameState, dt: number, t: number) => void;
+  dispose: () => void;
+};
+
+type Debris = { x: number; y: number; vx: number; vy: number; life: number; size: number };
+
+/** The spaces on screen: one, or two either side of a bulkhead. */
+function zoneSpans(state: GameState): ZoneSpan[] {
+  const n = ZONES.length;
+  const bulkhead = state.obstacles.find((o) => o.kind === "BULKHEAD" && o.x + o.width > -2 && o.x < W + 2);
+  if (!bulkhead) return [{ zone: state.droneZone, x0: 0, x1: W }];
+  const split = Math.min(W, Math.max(0, bulkhead.x + bulkhead.width / 2));
+  return [
+    { zone: (bulkhead.zone - 1 + n) % n, x0: 0, x1: split },
+    { zone: bulkhead.zone, x0: split, x1: W },
+  ].filter((s) => s.x1 - s.x0 > 0.01);
+}
+
+export function createRenderer(canvas: HTMLCanvasElement, options: { reducedMotion: boolean }): Renderer | null {
+  const ctx = canvas.getContext("2d", { alpha: false });
+  if (!ctx) return null;
+
+  let disposed = false;
+  const { assets, cancel } = loadAssets(() => {
+    // Sprites painted before a texture arrived repaint on their next draw.
+  });
+  /**
+   * One painted sprite per obstacle. Ids restart at 1 every run, so an id
+   * alone would hand a new run's tube bank the previous run's boulder: the
+   * entry also remembers what it was painted from.
+   */
+  const sprites = new Map<number, { sprite: Sprite; scale: number; version: number; from: string }>();
+  const light = new LightMap();
+  const motes = new Motes();
+  const drone = new DroneArt();
+
+  let scroll = 0;
+  let lastImpact: Impact | null = null;
+  let crashAt = -10;
+  let debris: Debris[] = [];
+  let shownZone = -1;
+  let titleAt = -10;
+
+  const spriteFor = (o: GameState["obstacles"][number], scale: number): Sprite => {
+    const from = `${o.kind}:${o.seed}:${o.zone}`;
+    const cached = sprites.get(o.id);
+    if (cached && cached.from === from && cached.scale === scale && cached.version === assets.version) {
+      return cached.sprite;
+    }
+    const sprite = paintObstacle(o, scale, assets);
+    sprites.set(o.id, { sprite, scale, version: assets.version, from });
+    return sprite;
+  };
+
+  const spawnCrash = (impact: Impact, droneY: number) => {
+    // Dust thrown back off the surface, toward the side the drone came from.
+    let nx = DRONE_X - impact.x;
+    let ny = droneY - impact.y;
+    const len = Math.hypot(nx, ny) || 1;
+    nx /= len;
+    ny /= len;
+    debris = Array.from({ length: 34 }, () => {
+      const spread = (Math.random() - 0.5) * 2.2;
+      const speed = 12 + Math.random() * 46;
+      const ang = Math.atan2(ny, nx) + spread;
+      return {
+        x: impact.x,
+        y: impact.y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 10,
+        life: 0.6 + Math.random() * 0.9,
+        size: 0.3 + Math.random() * 0.9,
+      };
+    });
+  };
+
+  const frame = (state: GameState, dt: number, t: number) => {
+    if (disposed) return;
+    const scale = canvas.width / W;
+    if (!(scale > 0)) return;
+
+    const speed = state.status === "flying" ? SCROLL_SPEED : state.status === "idle" ? IDLE_DRIFT : 0;
+    const scrolled = speed * dt;
+    scroll += scrolled;
+
+    // Drop sprites for obstacles that have left, or belonged to an old run.
+    if (sprites.size > state.obstacles.length) {
+      const live = new Set(state.obstacles.map((o) => o.id));
+      for (const id of sprites.keys()) if (!live.has(id)) sprites.delete(id);
+    }
+
+    // Pose: a gentle hover before the run, banking with the climb in flight.
+    const hover = state.status === "idle" ? Math.sin(t * 2.1) * 1.3 : 0;
+    const droneY = state.y + hover;
+    const tilt =
+      state.status === "idle" ? Math.sin(t * 1.3) * 0.04 : Math.max(-0.42, Math.min(0.55, state.velocity / 460));
+
+    if (state.status === "crashed" && state.impact && state.impact !== lastImpact) {
+      lastImpact = state.impact;
+      crashAt = t;
+      spawnCrash(state.impact, state.y);
+    }
+    if (state.status !== "crashed") lastImpact = null;
+
+    if (state.droneZone !== shownZone) {
+      // A new space: title it — unless this is simply the first frame.
+      if (shownZone !== -1 && state.status === "flying") titleAt = t;
+      shownZone = state.droneZone;
+    }
+
+    const since = t - crashAt;
+    const shake = !options.reducedMotion && since < 0.32 ? (1 - since / 0.32) * 1.8 : 0;
+    const sx = shake ? (Math.random() - 0.5) * shake : 0;
+    const sy = shake ? (Math.random() - 0.5) * shake : 0;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, sx * scale, sy * scale);
+    ctx.imageSmoothingEnabled = true;
+
+    const spans = zoneSpans(state);
+    const here = spans.find((s) => DRONE_X >= s.x0 && DRONE_X <= s.x1) ?? spans[0];
+    const look = LOOK[ZONES[here.zone]];
+    const lamp = DroneArt.lampAt(DRONE_X, droneY, tilt);
+    const beam: Light = { x: lamp.x, y: lamp.y, heading: tilt, color: look.light };
+
+    drawBackdrop(ctx, assets, spans, scroll);
+    drawMidground(ctx, spans, scroll);
+    drawSurfaces(ctx, spans, scroll, t);
+
+    for (const o of state.obstacles) {
+      if (o.x > W + 2 || o.x + o.width < -2) continue;
+      const sprite = spriteFor(o, scale);
+      ctx.drawImage(sprite.canvas, o.x + sprite.x0, sprite.y0, sprite.w, sprite.h);
+      drawObstacleMotion(ctx, o, t);
+    }
+
+    light.render(
+      beam,
+      spans.map((s) => ({ x0: s.x0, x1: s.x1, ambient: LOOK[ZONES[s.zone]].ambient })),
+      state.obstacles,
+    );
+    light.apply(ctx);
+    drawRims(ctx, state.obstacles, beam);
+    light.haze(ctx, look.haze);
+
+    motes.update(dt, scrolled, t);
+    motes.draw(ctx, beam, look.mote, look.moteDensity);
+
+    drone.draw(ctx, DRONE_X, droneY, tilt, t, scale);
+
+    if (debris.length > 0) {
+      const dustColor: RGB = look.mote;
+      ctx.save();
+      for (const d of debris) {
+        d.life -= dt;
+        d.vy += 60 * dt;
+        d.vx *= 1 - 1.8 * dt;
+        d.x += d.vx * dt;
+        d.y = Math.min(H - 1, d.y + d.vy * dt);
+        if (d.life <= 0) continue;
+        const lit = Math.min(1, 0.25 + intensityAt(beam, d.x, d.y));
+        ctx.fillStyle = rgba(dustColor, Math.min(1, d.life) * 0.8 * lit);
+        ctx.fillRect(d.x, d.y, d.size, d.size);
+      }
+      // The puff itself, spreading and thinning.
+      const puff = Math.max(0, 1 - since / 1.1);
+      if (puff > 0 && lastImpact) {
+        const r = 6 + since * 26;
+        const g = ctx.createRadialGradient(lastImpact.x, lastImpact.y, 0, lastImpact.x, lastImpact.y, r);
+        g.addColorStop(0, rgba(dustColor, 0.35 * puff));
+        g.addColorStop(1, rgba(dustColor, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(lastImpact.x - r, lastImpact.y - r, r * 2, r * 2);
+      }
+      ctx.restore();
+      debris = debris.filter((d) => d.life > 0);
+    }
+
+    // HUD, in world units again but without the shake. A hard offset shadow
+    // keeps the text legible on a bright wall; a blurred one costs a filter
+    // pass per glyph.
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.save();
+    const label = (text: string, x: number, y: number, color: string, alpha = 1) => {
+      ctx.fillStyle = `rgba(0,0,0,${0.55 * alpha})`;
+      ctx.fillText(text, x + 0.45, y + 0.55);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    };
+    ctx.font = "700 15px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    if (state.status !== "idle") label(String(state.score), 9, 7, "rgba(255,255,255,0.92)");
+
+    const zone = ZONE_NAMES[ZONES[here.zone]];
+    ctx.font = "600 6px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "right";
+    label(`${zone.name.toUpperCase()} · ${zone.industry.toUpperCase()}`, W - 8, 9, "rgba(255,255,255,0.62)");
+
+    if (state.status === "flying") {
+      const clear = Math.max(0, clearance(state.y, state.obstacles)) * METRES_PER_UNIT;
+      const warn = clear < 0.25 ? "rgba(255,120,100,0.95)" : clear < 0.5 ? "rgba(255,206,110,0.9)" : "rgba(255,255,255,0.6)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.font = "600 5.5px ui-monospace, SFMono-Regular, Menlo, monospace";
+      label(`CLEARANCE ${clear.toFixed(2)} m`, 9, H - 7, warn);
+    }
+
+    const titleAge = t - titleAt;
+    if (titleAge >= 0 && titleAge < TITLE_TIME) {
+      const a = Math.min(1, titleAge / 0.3, (TITLE_TIME - titleAge) / 0.6);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
+      label(zone.name, W / 2, H * 0.3, `rgba(255,255,255,${0.95 * a})`, a);
+      ctx.font = "600 6px ui-sans-serif, system-ui, sans-serif";
+      label(zone.industry.toUpperCase(), W / 2, H * 0.3 + 11, `rgba(255,255,255,${0.7 * a})`, a);
+    }
+    ctx.restore();
+  };
+
+  return {
+    frame,
+    dispose: () => {
+      disposed = true;
+      cancel();
+      sprites.clear();
+    },
+  };
+}

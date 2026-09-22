@@ -20,6 +20,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-22-elios-confined-spaces",
+    date: "Sep 22, 2026",
+    title: "The game now flies real confined spaces",
+    highlights: [
+      "Five spaces the Elios 3 actually inspects — boiler, ballast tank, mine stope, sewer, storage tank — each behind a real photograph from flyability.com.",
+      "You dodge what a pilot meets in them: superheater pendants, web frames, hang-ups in an ore pass, root intrusions, agitators.",
+      "The drone is the only light down there — it throws a beam, casts shadows and catches every edge it passes.",
+      "Each space is sealed off by a bulkhead; fly the manhole and you are in the next one.",
+      "Crash and it tells you what you hit, and where.",
+    ],
+  },
+  {
     version: "2026-09-15-elios-game",
     date: "Sep 15, 2026",
     title: "Something to do while the draft writes",

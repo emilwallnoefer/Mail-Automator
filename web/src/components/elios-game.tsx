@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createRenderer } from "@/components/elios/renderer";
 import type { LeaderboardRow } from "@/lib/elios-leaderboard";
 import {
   BEST_SCORE_KEY,
-  DRONE_RADIUS,
-  DRONE_X,
+  KIND_LABELS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
+  ZONES,
+  ZONE_NAMES,
   createGame,
   crashLine,
   flap,
@@ -15,21 +17,21 @@ import {
   parseStoredBest,
   stepGame,
   type GameState,
+  type Impact,
 } from "@/lib/elios-flight";
 
 /**
- * "Fly where people can't" — the Elios 3 threads gates, spikes, saw blades and
- * ramps while somebody waits for an admin to assign their role.
+ * "Fly where people can't" — the Elios 3 flies through the confined spaces it
+ * really inspects, a boiler, a ballast tank, a mine stope, a sewer and a
+ * storage tank, past what a pilot meets in each of them.
  *
- * The only client component behind the gate, and deliberately inert: no fetch,
- * no Supabase, no session props, so it adds a game without adding anything
- * reachable. All physics lives in `lib/elios-flight.ts` and is unit-tested —
- * this file is canvas, input and the animation loop, nothing else.
- *
- * Drawn rather than sprited so it stays crisp at any density and ships no
- * image: the Elios 3 is a sphere in a protective cage, which is a circle and a
- * few arcs.
+ * This file is input, the frame loop and the chrome around the canvas. The
+ * rules live in `lib/elios-flight.ts` and are unit-tested; the look — real
+ * Flyability photographs, the drone as the only light — lives in
+ * `components/elios/`. The game itself stays inert: the only network it
+ * touches is the leaderboard, and only when a caller opts in.
  */
+
 /**
  * The best score lives in localStorage, which is an external store, so it is
  * read through `useSyncExternalStore` rather than a state-set inside an effect.
@@ -72,6 +74,12 @@ function subscribeBest(onChange: () => void) {
   };
 }
 
+/** A different space from the last run's, so going again shows you somewhere new. */
+function nextZone(previous: number): number {
+  const n = ZONES.length;
+  return (previous + 1 + Math.floor(Math.random() * (n - 1))) % n;
+}
+
 export type EliosGameProps = {
   /** Extra classes for the wrapper — the composer needs different spacing. */
   className?: string;
@@ -90,15 +98,14 @@ export type EliosGameProps = {
   paused?: boolean;
 };
 
+type Hud = { status: GameState["status"]; score: number; impact: Impact | null; zone: number };
+
 export function EliosGame({ className = "mt-4", leaderboard = false, paused = false }: EliosGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(createGame());
   // Server render has no localStorage, so the server snapshot is always null.
   const best = useSyncExternalStore(subscribeBest, readBest, () => null);
-  const [hud, setHud] = useState<{ status: GameState["status"]; score: number }>({
-    status: "idle",
-    score: 0,
-  });
+  const [hud, setHud] = useState<Hud>({ status: "idle", score: 0, impact: null, zone: 0 });
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
 
   /**
@@ -139,6 +146,17 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     };
   }, [leaderboard]);
 
+  // The first space is drawn here rather than during render: the server has
+  // to render the same markup the client hydrates, so nothing random may
+  // happen before mount. Only the canvas shows it, and the canvas is empty
+  // until then anyway.
+  useEffect(() => {
+    const s = stateRef.current;
+    if (s.status === "idle" && s.obstacles.length === 0) {
+      stateRef.current = createGame(Math.floor(Math.random() * ZONES.length));
+    }
+  }, []);
+
   /** Post a finished run. The server decides whether it is an improvement. */
   const submitScore = useCallback(
     async (score: number) => {
@@ -161,12 +179,8 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
   const press = useCallback(() => {
     if (paused) return;
     const s = stateRef.current;
-    if (s.status === "crashed") {
-      stateRef.current = flap(createGame());
-    } else {
-      stateRef.current = flap(s);
-    }
-    setHud({ status: "flying", score: stateRef.current.score });
+    stateRef.current = s.status === "crashed" ? flap(createGame(nextZone(s.droneZone))) : flap(s);
+    setHud({ status: "flying", score: stateRef.current.score, impact: null, zone: stateRef.current.droneZone });
   }, [paused]);
 
   // The frame loop is set up once and must not restart when a callback
@@ -180,20 +194,17 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     if (paused) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const renderer = createRenderer(canvas, { reducedMotion });
+    if (!renderer) return;
 
     /**
      * Size the backing store to the space the canvas actually occupies.
      *
-     * It was fixed at WORLD_WIDTH x WORLD_HEIGHT and then stretched by CSS to
-     * whatever width the container gave it — fine in the narrow role-gate card,
-     * visibly soft in the composer's preview column, which is more than twice
-     * as wide. The drawing code still works in world units; only the transform
-     * changes, so nothing below has to know the display size.
-     *
-     * Re-measured on resize, because the composer column changes width when the
-     * layout breaks to one column and when the window is dragged.
+     * The drawing works in world units; only the transform changes, so
+     * nothing downstream has to know the display size. Re-measured on
+     * resize, because the composer column changes width when the layout
+     * breaks to one column and when the window is dragged.
      */
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     /** Ceiling on the backing store, so a very wide card cannot allocate an absurd buffer. */
@@ -215,164 +226,9 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
-    const css = getComputedStyle(canvas);
-    const ink = css.getPropertyValue("--ink").trim() || "#e2e8f0";
-    const accent = css.getPropertyValue("--accent").trim() || "#22d3ee";
-    const positive = css.getPropertyValue("--positive").trim() || "#a7f3d0";
-
     let raf = 0;
     let last = performance.now();
     let stopped = false;
-
-    /**
-     * The Elios 3.
-     *
-     * The cage is RIGIDLY MOUNTED — that is the Elios 3 change; the gimballed,
-     * free-rotating cage belongs to the Elios 1 and 2. So the whole aircraft
-     * banks as one body: cage and frame rotate together, and the cage never
-     * spins independently of the drone inside it.
-     */
-    const drawDrone = (y: number, t: number) => {
-      const r = DRONE_RADIUS;
-      const tilt = Math.max(-0.42, Math.min(0.55, stateRef.current.velocity / 460));
-      ctx.save();
-      ctx.translate(DRONE_X, y);
-      ctx.rotate(tilt);
-
-      // --- Cage: part of the airframe, so it banks with everything else.
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = 0.9;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 0.34;
-      for (let i = 0; i < 4; i += 1) {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r, r * 0.42, (i * Math.PI) / 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      // Two latitude rings, to read as a sphere rather than a flat rosette.
-      for (const k of [-0.5, 0.5]) {
-        ctx.beginPath();
-        ctx.ellipse(0, r * k, r * Math.sqrt(1 - k * k), r * 0.16, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      ctx.globalAlpha = 1;
-
-      // Rotor discs, blurred while spinning.
-      ctx.strokeStyle = ink;
-      ctx.globalAlpha = 0.5;
-      ctx.lineWidth = 0.7;
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          ctx.beginPath();
-          ctx.ellipse(sx * r * 0.42, sy * r * 0.3, r * 0.26, r * 0.09, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-      // Blade flicker — the only thing on the aircraft that should look busy.
-      ctx.globalAlpha = 0.28;
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          const a = t * 26 + (sx + 2) * (sy + 2);
-          ctx.beginPath();
-          ctx.moveTo(sx * r * 0.42 - Math.cos(a) * r * 0.24, sy * r * 0.3 - Math.sin(a) * r * 0.07);
-          ctx.lineTo(sx * r * 0.42 + Math.cos(a) * r * 0.24, sy * r * 0.3 + Math.sin(a) * r * 0.07);
-          ctx.stroke();
-        }
-      }
-
-      // Fuselage.
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = ink;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r * 0.46, r * 0.3, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Sensor head: the lighting ring and camera face forward.
-      ctx.fillStyle = positive;
-      ctx.beginPath();
-      ctx.arc(r * 0.4, 0, r * 0.15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.35;
-      ctx.beginPath();
-      ctx.arc(r * 0.4, 0, r * 0.27, -0.9, 0.9);
-      ctx.strokeStyle = positive;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-
-      ctx.restore();
-    };
-
-    const STEEL = "rgba(148,163,184,";
-
-    /**
-     * Draw an obstacle from the same solids the collision test uses.
-     *
-     * Nothing here invents an outline: the path is the geometry, so a spike
-     * looks exactly as sharp as it hits and the saw is round in play as well as
-     * on screen. Styling is per kind, but the shape is never decorative.
-     */
-    const drawObstacle = (o: GameState["obstacles"][number], t: number) => {
-      const hot = o.kind === "SAW" || o.kind === "SPIKES_FLOOR" || o.kind === "SPIKES_CEILING";
-      const fill = hot ? "rgba(248,113,113,0.14)" : `${STEEL}0.16)`;
-      const edge = hot ? "rgba(248,113,113,0.65)" : `${STEEL}0.6)`;
-
-      for (const solid of o.solids) {
-        ctx.beginPath();
-        if (solid.shape === "disc") {
-          ctx.arc(solid.cx + o.x, solid.cy, solid.r, 0, Math.PI * 2);
-        } else {
-          solid.points.forEach(([px, py], i) => {
-            if (i === 0) ctx.moveTo(px + o.x, py);
-            else ctx.lineTo(px + o.x, py);
-          });
-          ctx.closePath();
-        }
-        ctx.fillStyle = fill;
-        ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        if (solid.shape === "disc") {
-          // Teeth and a hub, spun from elapsed time so the blade reads as
-          // moving without the collision circle ever changing.
-          const cx = solid.cx + o.x;
-          const spin = t * 5;
-          ctx.strokeStyle = edge;
-          ctx.lineWidth = 1.4;
-          for (let i = 0; i < 10; i += 1) {
-            const a = spin + (i * Math.PI) / 5;
-            ctx.beginPath();
-            ctx.moveTo(cx + Math.cos(a) * (solid.r - 4), solid.cy + Math.sin(a) * (solid.r - 4));
-            ctx.lineTo(cx + Math.cos(a) * (solid.r + 2.5), solid.cy + Math.sin(a) * (solid.r + 2.5));
-            ctx.stroke();
-          }
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(cx, solid.cy, solid.r * 0.3, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (!hot) {
-          // Plating seams inside the solid, clipped to the shape so no line
-          // ever strays outside what actually collides.
-          ctx.save();
-          ctx.clip();
-          ctx.strokeStyle = `${STEEL}0.28)`;
-          ctx.lineWidth = 0.7;
-          const ys = solid.points.map(([, py]) => py);
-          for (let y = Math.min(...ys); y < Math.max(...ys); y += 9) {
-            ctx.beginPath();
-            ctx.moveTo(o.x - 2, y);
-            ctx.lineTo(o.x + o.width + 2, y);
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-      }
-    };
 
     const frame = (now: number) => {
       if (stopped) return;
@@ -380,38 +236,25 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
       last = now;
 
       const before = stateRef.current;
-      const after = stepGame(before, { dt, kindDraw: Math.random(), placeDraw: Math.random() });
+      const after = stepGame(before, {
+        dt,
+        kindDraw: Math.random(),
+        placeDraw: Math.random(),
+        styleDraw: Math.random(),
+      });
       stateRef.current = after;
 
       if (before.status === "flying" && after.status === "crashed") {
         if (isNewBest(after.score, readBest())) writeBest(after.score);
         if (leaderboard && after.score > 0) void submitScoreRef.current(after.score);
-        setHud({ status: "crashed", score: after.score });
+        setHud({ status: "crashed", score: after.score, impact: after.impact, zone: after.droneZone });
       } else if (after.score !== before.score) {
-        setHud({ status: after.status, score: after.score });
+        setHud({ status: after.status, score: after.score, impact: null, zone: after.droneZone });
       }
 
-      // World units to device pixels. Derived from the live backing store so a
-      // resize takes effect on the very next frame.
-      const scale = canvas.width / WORLD_WIDTH;
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-
-      // Floor and ceiling, so the crash surfaces are visible.
-      ctx.fillStyle = "rgba(148,163,184,0.28)";
-      ctx.fillRect(0, WORLD_HEIGHT - 1.5, WORLD_WIDTH, 1.5);
-      ctx.fillRect(0, 0, WORLD_WIDTH, 1.5);
-
-      for (const o of after.obstacles) drawObstacle(o, after.elapsed);
-      drawDrone(after.y, after.elapsed);
-
-      ctx.fillStyle = ink;
-      ctx.globalAlpha = 0.75;
-      ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText(String(after.score), 8, 16);
-      ctx.globalAlpha = 1;
-
+      // The renderer's clock is capped separately: a tab coming back from
+      // the background should not fling the dust across the screen.
+      renderer.frame(after, Math.min(Math.max(dt, 0), 0.1), now / 1000);
       raf = requestAnimationFrame(frame);
     };
 
@@ -420,6 +263,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
       stopped = true;
       cancelAnimationFrame(raf);
       observer.disconnect();
+      renderer.dispose();
     };
   }, [leaderboard, paused]);
 
@@ -435,12 +279,14 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     [press],
   );
 
+  const where = ZONE_NAMES[ZONES[hud.zone]]?.name.toLowerCase();
+
   return (
     <div className={className}>
       <div
         role="button"
         tabIndex={0}
-        aria-label="Fly where people can't: fly the Elios 3 through the gaps. Press space to fly."
+        aria-label="Fly where people can't: fly the Elios 3 through real confined spaces. Press space to fly."
         onPointerDown={(e) => {
           // preventDefault stops the tap selecting text or starting a drag —
           // but it also suppresses the focus that would normally follow, which
@@ -451,7 +297,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
           press();
         }}
         onKeyDown={onKeyDown}
-        className="relative block w-full cursor-pointer overflow-hidden rounded-xl border border-glass/20 bg-glass/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="relative block w-full cursor-pointer overflow-hidden rounded-xl border border-glass/20 bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <canvas
           ref={canvasRef}
@@ -459,17 +305,27 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
           style={{ aspectRatio: `${WORLD_WIDTH} / ${WORLD_HEIGHT}` }}
         />
         {hud.status !== "flying" ? (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-surface/70 px-4 text-center backdrop-blur-[1px]">
+          // The scene behind is always dark, whatever the app theme, so the
+          // title card uses fixed light text rather than theme tokens. It
+          // sits low, under the drone rather than over it.
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-black/25 to-transparent px-4 pb-[7%] text-center">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
                 Fly where people can&rsquo;t
               </p>
               {hud.status === "crashed" ? (
-                <p className="mt-1 text-sm font-medium text-ink">
-                  {hud.score} cleared — {crashLine(hud.score)}
-                </p>
+                <>
+                  <p className="mt-1.5 text-sm font-medium text-white">
+                    {hud.score} cleared — {crashLine(hud.score)}
+                  </p>
+                  {hud.impact && where ? (
+                    <p className="mt-0.5 text-[11px] text-white/65">
+                      Hit {KIND_LABELS[hud.impact.what]} in the {where}.
+                    </p>
+                  ) : null}
+                </>
               ) : null}
-              <p className="mt-1 text-[11px] text-ink-4/80">
+              <p className="mt-1.5 text-[11px] text-white/65">
                 Tap or press space to {hud.status === "crashed" ? "go again" : "fly"}
               </p>
             </div>
