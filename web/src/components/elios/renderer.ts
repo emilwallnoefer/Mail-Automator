@@ -1,12 +1,12 @@
 import {
   DRONE_X,
   METRES_PER_UNIT,
-  SCROLL_SPEED,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   ZONES,
   ZONE_NAMES,
   clearance,
+  speedAt,
   type GameState,
   type Impact,
 } from "@/lib/elios-flight";
@@ -118,7 +118,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: { reducedMoti
     const scale = canvas.width / W;
     if (!(scale > 0)) return;
 
-    const speed = state.status === "flying" ? SCROLL_SPEED : state.status === "idle" ? IDLE_DRIFT : 0;
+    // The scenery keeps up with the run as it speeds up, or drifts while the
+    // drone hovers before one.
+    const speed = state.status === "flying" ? speedAt(state.elapsed) : state.status === "idle" ? IDLE_DRIFT : 0;
     const scrolled = speed * dt;
     scroll += scrolled;
 
@@ -243,10 +245,14 @@ export function createRenderer(canvas: HTMLCanvasElement, options: { reducedMoti
     if (state.status === "flying") {
       const clear = Math.max(0, clearance(state.y, state.obstacles)) * METRES_PER_UNIT;
       const warn = clear < 0.25 ? "rgba(255,120,100,0.95)" : clear < 0.5 ? "rgba(255,206,110,0.9)" : "rgba(255,255,255,0.6)";
-      ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       ctx.font = "600 5.5px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "left";
       label(`CLEARANCE ${clear.toFixed(2)} m`, 9, H - 7, warn);
+      // Ground speed, which climbs all run: the number that says why it is
+      // getting harder.
+      ctx.textAlign = "right";
+      label(`${(speed * METRES_PER_UNIT).toFixed(1)} m/s`, W - 9, H - 7, "rgba(255,255,255,0.6)");
     }
 
     const titleAge = t - titleAt;

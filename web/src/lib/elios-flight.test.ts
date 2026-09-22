@@ -6,8 +6,11 @@ import {
   FLAP_VELOCITY,
   KIND_LABELS,
   MAX_FALL_SPEED,
+  MAX_SCROLL_SPEED,
   MIN_PASSAGE,
+  OBSTACLE_GAP,
   OBSTACLE_KINDS,
+  SCROLL_SPEED,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   ZONES,
@@ -31,6 +34,7 @@ import {
   pointInPolygon,
   seedFromDraw,
   seededRandom,
+  speedAt,
   stepGame,
   zoneAt,
   type GameState,
@@ -458,6 +462,88 @@ describe("a run through the spaces", () => {
     const { final } = tour(1, 3000);
     expect(final.obstacles.length).toBeLessThan(8);
     expect(final.obstacles.every((o) => o.x + o.width > -8 && o.x <= WORLD_WIDTH)).toBe(true);
+  });
+});
+
+describe("the run speeds up as it goes", () => {
+  it("starts at the pace the game always had", () => {
+    expect(speedAt(0)).toBe(SCROLL_SPEED);
+  });
+
+  it("accelerates with time in the air, then holds at the cap", () => {
+    expect(speedAt(10)).toBeGreaterThan(speedAt(0));
+    expect(speedAt(40)).toBeGreaterThan(speedAt(10));
+    expect(speedAt(600)).toBe(MAX_SCROLL_SPEED);
+    expect(speedAt(1e9)).toBe(MAX_SCROLL_SPEED);
+  });
+
+  it("treats junk elapsed as the start of a run", () => {
+    expect(speedAt(-5)).toBe(SCROLL_SPEED);
+    expect(speedAt(Number.NaN)).toBe(SCROLL_SPEED);
+  });
+
+  it("moves the world further per frame later in the run", () => {
+    const travelled = (elapsed: number) => {
+      const before: GameState = {
+        ...createGame(),
+        status: "flying",
+        y: 100,
+        elapsed,
+        obstacles: [{ ...at("PLATEN", 0.5), x: 200 }],
+      };
+      return 200 - stepGame(before, INPUT).obstacles[0].x;
+    };
+    expect(travelled(0)).toBeCloseTo(SCROLL_SPEED / 60, 1);
+    expect(travelled(90)).toBeCloseTo(MAX_SCROLL_SPEED / 60, 1);
+    expect(travelled(90)).toBeGreaterThan(travelled(0) * 1.7);
+  });
+
+  it("keeps the spacing between obstacles, so only the time to read one shrinks", () => {
+    // The gap is measured in world units, not seconds: speeding the world up
+    // must not also crowd the obstacles together.
+    let s = flap(createGame());
+    const gaps: number[] = [];
+    let seen = s.obstacles.length;
+    for (let i = 0; i < 9000; i += 1) {
+      s = stepGame(s, { ...INPUT, kindDraw: (i * 0.618) % 1, placeDraw: (i * 0.414) % 1 });
+      if (s.obstacles.length > seen && s.obstacles.length > 1) {
+        const fresh = s.obstacles[s.obstacles.length - 1];
+        const previous = s.obstacles[s.obstacles.length - 2];
+        gaps.push(fresh.x - (previous.x + previous.width));
+      }
+      seen = s.obstacles.length;
+      if (s.status === "crashed") s = { ...s, status: "flying", y: WORLD_HEIGHT / 2, velocity: 0, impact: null };
+    }
+    expect(gaps.length).toBeGreaterThan(20);
+    // Never tighter than the gap, and never looser than the one frame of
+    // travel it takes to notice the previous obstacle has moved far enough.
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(OBSTACLE_GAP - 0.01);
+      expect(gap).toBeLessThanOrEqual(OBSTACLE_GAP + MAX_SCROLL_SPEED * INPUT.dt + 0.01);
+    }
+  });
+
+  it("is what makes a long run hard: the same flight is faster at the end", () => {
+    // Same obstacle, same drone, later in the run: less time to cross it.
+    const crossing = (elapsed: number) => {
+      // Follow this one obstacle out: the spawner keeps the screen full, so
+      // counting obstacles would never end.
+      const tracked = 4242;
+      let s: GameState = {
+        ...createGame(),
+        status: "flying",
+        y: 100,
+        elapsed,
+        obstacles: [{ ...at("PLATEN", 0.5), id: tracked, x: 300 }],
+      };
+      let frames = 0;
+      while (s.obstacles.some((o) => o.id === tracked) && frames < 3000) {
+        s = stepGame({ ...s, status: "flying", y: 100, velocity: 0, impact: null }, INPUT);
+        frames += 1;
+      }
+      return frames;
+    };
+    expect(crossing(90)).toBeLessThan(crossing(0) * 0.7);
   });
 });
 
