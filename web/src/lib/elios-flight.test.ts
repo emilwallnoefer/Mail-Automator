@@ -4,6 +4,7 @@ import {
   DRONE_X,
   EDGE_MARGIN,
   FLAP_VELOCITY,
+  GRAVITY,
   KIND_LABELS,
   MAX_FALL_SPEED,
   MAX_SCROLL_SPEED,
@@ -40,6 +41,7 @@ import {
   type GameState,
   type Obstacle,
   type ObstacleKind,
+  type Solid,
   type StepInput,
 } from "@/lib/elios-flight";
 
@@ -234,6 +236,59 @@ describe("every kind stays flyable", () => {
       for (const draw of [0, 1]) {
         const free = freeHeights(at(kind, draw));
         expect(free.some((y) => y > EDGE_MARGIN && y < WORLD_HEIGHT - EDGE_MARGIN), kind).toBe(true);
+      }
+    }
+  });
+});
+
+describe("the double web frame stays a slalom, not a wall", () => {
+  /** The y where a plate's edge meets the opening, for each of the two frames. */
+  function holes(solids: readonly Solid[]): Array<{ top: number; bottom: number }> {
+    const lowestOf = (s: Solid) => (s.shape === "poly" ? Math.max(...s.points.map(([, y]) => y)) : s.cy + s.r);
+    const highestOf = (s: Solid) => (s.shape === "poly" ? Math.min(...s.points.map(([, y]) => y)) : s.cy - s.r);
+    return [
+      { top: lowestOf(solids[0]), bottom: highestOf(solids[1]) },
+      { top: lowestOf(solids[2]), bottom: highestOf(solids[3]) },
+    ];
+  }
+
+  it("never offsets the second hole further than the drone can climb inside the bay", () => {
+    // What the flight model allows, at the fastest the run ever gets: one
+    // flap's climb, and a free fall over the time the bay lasts.
+    for (const draw of PLACEMENTS) {
+      for (const seed of SEEDS) {
+        const { width, solids } = buildObstacle("DOUBLE_FRAME", draw, seed);
+        const [first, second] = holes(solids);
+        const bar = 16;
+        const bay = width - 2 * bar;
+        const seconds = bay / MAX_SCROLL_SPEED;
+        const climbOnAFlap = FLAP_VELOCITY ** 2 / (2 * GRAVITY);
+        const dropInTheBay = 0.5 * GRAVITY * seconds ** 2;
+        const offset = Math.abs(second.top - first.top);
+        expect(offset, `DOUBLE_FRAME @ ${draw} seed ${seed}`).toBeLessThanOrEqual(
+          Math.min(climbOnAFlap, dropInTheBay) + 1,
+        );
+        // And it is still a slalom: the holes do not simply line up.
+        expect(offset).toBeGreaterThan(8);
+      }
+    }
+  });
+
+  it("gives both frames the same opening, wider than the tightest gap in the game", () => {
+    for (const draw of PLACEMENTS) {
+      const [first, second] = holes(buildObstacle("DOUBLE_FRAME", draw, 99).solids);
+      expect(first.bottom - first.top).toBeGreaterThan(MIN_PASSAGE);
+      expect(second.bottom - second.top).toBeCloseTo(first.bottom - first.top, 6);
+    }
+  });
+
+  it("keeps both holes inside the world, whatever the placement", () => {
+    for (const draw of PLACEMENTS) {
+      for (const seed of SEEDS) {
+        for (const hole of holes(buildObstacle("DOUBLE_FRAME", draw, seed).solids)) {
+          expect(hole.top).toBeGreaterThanOrEqual(EDGE_MARGIN - 0.01);
+          expect(hole.bottom).toBeLessThanOrEqual(WORLD_HEIGHT - EDGE_MARGIN + 0.01);
+        }
       }
     }
   });

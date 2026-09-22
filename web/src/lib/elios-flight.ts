@@ -543,12 +543,22 @@ export function buildObstacle(
     case "DOUBLE_FRAME": {
       // Two web frames a bay apart with their holes offset, so clearing the
       // first leaves you badly placed for the second.
-      const width = 68;
-      const passage = MIN_PASSAGE + 12;
+      //
+      // The offset is bounded by what the drone can actually cover inside the
+      // bay, at the fastest the run ever gets: one flap climbs about 25 units
+      // (FLAP_VELOCITY² / 2·GRAVITY), and the bay lasts bay/MAX_SCROLL_SPEED
+      // seconds. Beyond that the pair stops being a slalom and becomes a wall
+      // — which is exactly what it had become since the run started speeding
+      // up. The test suite holds this to the flight constants.
+      const width = 96;
+      const bar = 16;
+      const passage = MIN_PASSAGE + 20;
       const span = H - 2 * EDGE_MARGIN - passage;
       const firstTop = EDGE_MARGIN + t * span;
-      const secondTop = EDGE_MARGIN + ((t + 0.55) % 1) * span;
-      const bar = 16;
+      // Away from whichever edge the first hole is nearer, so the second one
+      // always has somewhere to go.
+      const shift = (12 + rand() * 12) * (firstTop < EDGE_MARGIN + span / 2 ? 1 : -1);
+      const secondTop = Math.min(EDGE_MARGIN + span, Math.max(EDGE_MARGIN, firstTop + shift));
       return {
         width,
         solids: [
