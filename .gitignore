@@ -15,3 +15,10 @@ Mail training cursor/
 
 # Claude Code worktrees (local-only; must never be committed as gitlinks)
 .claude/worktrees/
+
+# Secrets and local platform state, repo-wide. web/.gitignore already covers
+# these inside web/ — which is the rule that has been doing the work — but a
+# dotenv or a linked project anywhere else in the tree would not be caught by
+# it, and one committed key is one too many.
+.vercel
+.env*
