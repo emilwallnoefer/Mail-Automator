@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui";
 import { EliosGame } from "@/components/elios-game";
-import { readOnline, readOnlineOnServer, subscribeOnline } from "@/lib/online-status";
+import { readOnline, subscribeOnline } from "@/lib/online-status";
 
 /**
  * The offline page: the game, and a way back once the connection returns.
@@ -14,9 +14,15 @@ import { readOnline, readOnlineOnServer, subscribeOnline } from "@/lib/online-st
  * `leaderboard` is on even though there is no network: the board simply fails
  * to load, a finished run is queued in localStorage, and both catch up the
  * moment the browser reports it is online again.
+ *
+ * The server snapshot is "offline", unlike everywhere else: the service worker
+ * caches this page's HTML while the browser is online, but only ever shows it
+ * when it is not, so the server-rendered first frame should say so.
  */
+const readOfflineOnServer = () => false;
+
 export function OfflineScreen() {
-  const online = useSyncExternalStore(subscribeOnline, readOnline, readOnlineOnServer);
+  const online = useSyncExternalStore(subscribeOnline, readOnline, readOfflineOnServer);
 
   return (
     <main
