@@ -27,27 +27,22 @@ export function OfflineScreen() {
   return (
     <main
       id="main-content"
-      className="relative grid min-h-dvh place-items-center overflow-x-hidden bg-surface p-4 text-ink"
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-x-hidden bg-surface px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-ink"
     >
       <div className="absolute inset-0 aurora-bg" />
-      <div className="relative w-full max-w-md rounded-2xl border border-glass/20 bg-surface/95 p-6 shadow-xl">
-        <p className="text-[11px] uppercase tracking-[0.15em] text-accent-soft/75">
-          {online ? "Connection is back" : "No connection"}
-        </p>
-        <h1 className="mt-2 text-lg font-semibold">
-          {online ? "You’re back online" : "You’re offline"}
-        </h1>
-        <p className="mt-3 text-sm text-ink-3/85">
-          {online
-            ? "Finish your run if you like — your score goes on the leaderboard either way."
-            : "The workspace needs a connection. Scores flown now are saved and go on the leaderboard once you’re back."}
-        </p>
-        <EliosGame leaderboard />
+      <div className="relative w-full max-w-md">
+        <header className="text-center">
+          <h1 className="text-2xl font-semibold">{online ? "You’re back online" : "You’re offline"}</h1>
+          <p className="mt-1.5 text-sm text-ink-3/85">
+            {online ? "Finish your run, then head back." : "Fly while you wait."}
+          </p>
+        </header>
+        <EliosGame className="mt-6" leaderboard />
         <Button
           type="button"
           variant="glass"
           size="md"
-          className="mt-5 w-full"
+          className="mt-6 w-full"
           onClick={() => {
             // The worker serves this page in place of the one that failed, so
             // reloading retries that page. Opened directly, there is nothing
