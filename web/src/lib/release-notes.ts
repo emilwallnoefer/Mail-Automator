@@ -20,6 +20,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "2026-09-23-elios-offline",
+    date: "Sep 23, 2026",
+    title: "Lost your connection? Fly instead",
+    highlights: [
+      "When a page can't load offline, you get the drone game instead of the browser's error.",
+      "If the connection drops while the dashboard is open, the game pops up in the corner.",
+      "Scores flown offline are saved and go on the leaderboard as soon as you're back online.",
+    ],
+  },
+  {
     version: "2026-09-23-elios-speed",
     date: "Sep 23, 2026",
     title: "The game speeds up the longer you last",

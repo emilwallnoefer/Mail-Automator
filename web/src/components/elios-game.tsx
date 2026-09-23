@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { createRenderer } from "@/components/elios/renderer";
 import type { LeaderboardRow } from "@/lib/elios-leaderboard";
 import {
+  flushPendingScore,
+  readPendingScore,
+  subscribePendingScore,
+  submitEliosScore,
+} from "@/lib/elios-score-sync";
+import {
   BEST_SCORE_KEY,
   KIND_LABELS,
   WORLD_HEIGHT,
@@ -30,6 +36,10 @@ import {
  * Flyability photographs, the drone as the only light — lives in
  * `components/elios/`. The game itself stays inert: the only network it
  * touches is the leaderboard, and only when a caller opts in.
+ *
+ * A run flown without a connection still counts: its score waits in
+ * localStorage (`lib/elios-score-sync.ts`) and is posted the moment the
+ * browser is back online.
  */
 
 /**
@@ -107,6 +117,7 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
   const best = useSyncExternalStore(subscribeBest, readBest, () => null);
   const [hud, setHud] = useState<Hud>({ status: "idle", score: 0, impact: null, zone: 0 });
   const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
+  const pending = useSyncExternalStore(subscribePendingScore, readPendingScore, () => null);
 
   /**
    * Refresh the board. Silent on failure: an unapplied migration or a dropped
@@ -157,24 +168,28 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
     }
   }, []);
 
-  /** Post a finished run. The server decides whether it is an improvement. */
+  /**
+   * Post a finished run. The server decides whether it is an improvement;
+   * without a connection the score is kept and posted later.
+   */
   const submitScore = useCallback(
     async (score: number) => {
-      try {
-        const res = await fetch("/api/elios-score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score }),
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { recorded?: boolean };
-        if (json.recorded) await loadBoard();
-      } catch {
-        // A lost score is not worth telling anybody about.
-      }
+      if (await submitEliosScore(score)) await loadBoard();
     },
     [loadBoard],
   );
+
+  // Coming back online: post whatever was flown while away, then refresh the
+  // board — which may well have failed to load in the first place.
+  useEffect(() => {
+    if (!leaderboard) return;
+    const sync = () => {
+      void flushPendingScore().then(() => loadBoard());
+    };
+    if (readPendingScore() !== null) sync();
+    window.addEventListener("online", sync);
+    return () => window.removeEventListener("online", sync);
+  }, [leaderboard, loadBoard]);
 
   const press = useCallback(() => {
     if (paused) return;
@@ -333,7 +348,17 @@ export function EliosGame({ className = "mt-4", leaderboard = false, paused = fa
         ) : null}
       </div>
       <div className="mt-2 flex items-start justify-between gap-3">
-        {best !== null ? <p className="text-[11px] text-ink-5">Best {best}</p> : <span />}
+        {best !== null || (leaderboard && pending !== null) ? (
+          <p className="text-[11px] text-ink-5">
+            {best !== null ? `Best ${best}` : null}
+            {best !== null && leaderboard && pending !== null ? " · " : null}
+            {leaderboard && pending !== null ? (
+              <span className="text-ink-5/80">{pending} waiting to post to the board</span>
+            ) : null}
+          </p>
+        ) : (
+          <span />
+        )}
         {leaderboard && board && board.length > 0 ? (
           <ol className="min-w-0 text-right text-[11px] leading-5 text-ink-4/80">
             {board.slice(0, 5).map((row, i) => (

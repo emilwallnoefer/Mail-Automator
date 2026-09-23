@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { MotionProvider } from "@/components/motion-provider";
+import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { NONCE_HEADER } from "@/lib/security/csp";
@@ -120,6 +121,7 @@ export default async function RootLayout({
           Skip to content
         </a>
         <MotionProvider>{children}</MotionProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

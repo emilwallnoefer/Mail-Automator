@@ -21,6 +21,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: {
+    // Versions the offline service worker (public/sw.js): a new value is a new
+    // script URL, so every deploy re-caches the offline page against its own
+    // chunks. Build time is the fallback off Vercel, so local builds differ too.
+    NEXT_PUBLIC_APP_BUILD: process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now()),
+  },
   turbopack: {
     root: __dirname,
   },

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthNavbar } from "@/components/auth-navbar";
 import { ChatWidget } from "@/components/chat-widget";
+import { OfflineGameCard } from "@/components/offline-game-card";
 import { MailComposerPanel } from "@/components/mail-composer/mail-composer-panel";
 import { useMailComposer } from "@/components/mail-composer/use-mail-composer";
 import { TimeTrackerPanel, type WeekResponse } from "@/components/time-tracker-panel";
@@ -599,6 +600,7 @@ export function DashboardShell({
 
       </section>
       <ChatWidget bottomOffsetRem={chatBottomOffsetRem} isAdmin={isAdmin} />
+      <OfflineGameCard />
       {showProgramReadmePrompt ? (
         <div
           ref={bottomPopupRef}
