@@ -27,22 +27,32 @@ export function OfflineScreen() {
   return (
     <main
       id="main-content"
-      className="relative flex min-h-dvh flex-col items-center justify-center overflow-x-hidden bg-surface px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-ink"
+      className="relative grid min-h-dvh grid-rows-[1fr_auto_1fr] overflow-x-hidden bg-surface px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-ink"
     >
-      <div className="absolute inset-0 aurora-bg" />
-      <div className="relative w-full max-w-md">
-        <header className="text-center">
-          <h1 className="text-2xl font-semibold">{online ? "You’re back online" : "You’re offline"}</h1>
-          <p className="mt-1.5 text-sm text-ink-3/85">
-            {online ? "Finish your run, then head back." : "Fly while you wait."}
-          </p>
-        </header>
-        <EliosGame className="mt-6" leaderboard />
+      {/* `.aurora-bg` sets `position: relative` itself, so it needs a
+          positioned wrapper to fill the page rather than take a grid row. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0">
+        <div className="aurora-bg size-full" />
+      </div>
+      {/* The game holds the optical centre; the status sits just above it. */}
+      <div className="relative flex items-end justify-center pb-5">
+        <h1 className="inline-flex items-center gap-2 rounded-full border border-glass/20 bg-surface/70 px-3.5 py-1.5 text-sm font-medium backdrop-blur">
+          <span
+            aria-hidden
+            className={`size-2 rounded-full ${online ? "bg-emerald-400" : "animate-pulse bg-amber-400"}`}
+          />
+          {online ? "Back online" : "You’re offline"}
+        </h1>
+      </div>
+      <EliosGame className="relative mx-auto w-full max-w-xl" leaderboard />
+      {/* On a phone the button sits at the bottom, under the thumb; on a
+          wider screen it follows the game rather than stranding at the edge. */}
+      <div className="relative mx-auto flex w-full max-w-xl flex-col justify-end pt-6 sm:justify-start">
         <Button
           type="button"
           variant="glass"
           size="md"
-          className="mt-6 w-full"
+          className="w-full"
           onClick={() => {
             // The worker serves this page in place of the one that failed, so
             // reloading retries that page. Opened directly, there is nothing
