@@ -16,6 +16,11 @@ updates:
     versioning-strategy: increase
     commit-message:
       prefix: "deps"
+    ignore:
+      # typescript-eslint rejects TS 7 outright ("does not support TS 7.0"),
+      # so lint fails before anything else runs. Drop this once it ships support.
+      - dependency-name: "typescript"
+        versions: [">=7"]
     groups:
       # next and eslint-config-next are version-locked to each other; never
       # let them arrive in separate PRs.
